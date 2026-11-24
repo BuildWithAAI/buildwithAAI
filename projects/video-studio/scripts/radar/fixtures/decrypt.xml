@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>Decrypt</title>
+  <link>https://decrypt.co/feed</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title>North Korea Moves $247 Million of Binance Hack Loot Through Bitcoin Mixers</title>
+    <link>https://decrypt.co/383844/north-korea-247-million-binance-hack-bitcoin-mixers</link>
+    <guid isPermaLink="false">https://decrypt.co/?p=383844</guid>
+    <pubDate>Mon, 23 Nov 2026 20:36:02 +0000</pubDate>
+    <category></category>
+    <category>Coins</category>
+    <description>Roughly a month after the $6.4 billion hack, Elliptic says nearly all of the coinjoin mixing was coordinated by one person who “refuses to block funds such as these."</description>
+  </item>
+  <item>
+    <title>Wrapped Monero Token Collapses 99% After $13 Million Hack Blamed on Web Host</title>
+    <link>https://decrypt.co/383732/wrapped-monero-token-collapses-99-after-13-million-hack-blamed-on-web-host</link>
+    <guid isPermaLink="false">https://decrypt.co/?p=383732</guid>
+    <pubDate>Fri, 20 Nov 2026 17:41:45 +0000</pubDate>
+    <category>Coins</category>
+    <description>Wagyu’s XMR1 token fell more than 99% after an attacker moved 5.2 million tokens out of its deployer account and sold a fraction of them for $13.5 million.</description>
+  </item>
+  <item>
+    <title>Citi Says Customers Are Responsible When AI Banking Agents Go Rogue—Even After a Hack</title>
+    <link>https://decrypt.co/383677/citi-customers-responsible-ai-banking-agents-rogue-hack</link>
+    <guid isPermaLink="false">https://decrypt.co/?p=383677</guid>
+    <pubDate>Thu, 19 Nov 2026 22:36:02 +0000</pubDate>
+    <category>Artificial Intelligence</category>
+    <description>Citibank’s updated terms put customers on the hook for outside AI agents, including leaked logins.</description>
+  </item>
+</channel>
+</rss>

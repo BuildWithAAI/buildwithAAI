@@ -51,6 +51,11 @@ written; shorten the translation, see `warnings` and `scenes[].overflowMs`). Oth
 
 French has no male Kokoro v1.0 voice, so it is not supported.
 
+Without `--voice`, Zoo's voice comes from `content/<channel>/channel.json` (`zooVoice.byLang[lang]`, else
+`zooVoice.default`): the owner's binding choice is `im_nicola` for every language (CLAUDE.md, 2026-11-24). The table's
+per-language voices apply only to content without a `channel.json` (for example the test fixtures). Added 2026-11-24
+(engine demo), tested in `tests/test_channel_voice.py`.
+
 ## Narration markup
 
 - `{display|spoken}`: captions show `display`, Kokoro says `spoken`: `{$40,000|forty thousand dollars}`.
@@ -74,6 +79,21 @@ all six languages (`tests/test_normalize.py`).
 - Written-number conventions: es/it/pt-br read "68.67" as a decimal and "40,000" as forty thousand,
   because crypto copy is often written English-style. Use markup whenever a number could be read two ways.
 - Tickers: BTC → bitcoin, ETH → ether, SOL → sol, USDC/USDT spelled out. Native review decides the house style.
+- Since 2026-11-24 (review): multi-character currency prefixes with or without a space (`US$40,000`, `R$ 40 mil`,
+  `A$5`, `C$10`, `MX$200`) and a sign before a separate number (`€ 200`); percent ranges (`5-10%` → "five to ten
+  percent", "cinco a diez por ciento", never "five minus ten"); `#1` / `nº 1` → "number one"; es/pt-br/it `10h30`
+  ("dez e trinta", feminine "duas horas"); fractions up to tenths (`1/3` → "one third", "un tercio", "um terço").
+  Every case the review found is in `tests/test_normalize.py` (`ReviewCases`).
+- The build **warns** when a spoken token still holds a digit or one of `$ % # € £ ¥ ₹ /` after normalization
+  (espeak would read it as written); write such a case as `{display|spoken}`.
+
+## Pronunciation lexicon (`voicelib/lexicon.py`)
+
+Applied to each written token before G2P (captions keep the written form): en `memecoins` → "meme coins" (espeak said
+MEM-ih-coins), `DeFi` → "dee fye", `CEX` → "C E X", `KOL(s)` → "K O L('s)", `Pump.fun` → "Pump dot fun" (espeak read
+the dot as a sentence break), plus `NFTs`, `ATH`, `DYOR`, `KYC`, `AML`, `degen(s)`; es `on-chain` → "onchéin", pt-br
+"onchêin" (espeak es said "on-cháin"), `Pump.fun` respellings. A `{display|spoken}` pair still wins. The es/pt-br
+entries are machine-made respellings for the native reviewer.
 
 ## Word timings
 
@@ -96,16 +116,38 @@ ART_GUIDE LP2/LP3 (binding), one `MouthShape` per frame at 30 fps:
 - Mapping: p b m → mbp; rounded vowels and w → oh; open vowels → ah; i ɪ e j → ee; other phones →
   slightlyOpen. ː, aspiration, nasalization and tone arrows fold into the previous phone; stress marks
   and ʔ fold into the next.
+- Snap to the audio (2026-11-24, review): Kokoro gives the last phone before punctuation 300-400 ms while the voice
+  stops about 250 ms earlier, and the residual after it sits 34-39 dB under the peak, so the mouth stayed open 5-10
+  frames after every phrase. Now the phrase-final phone ends where the take's 5 ms energy falls more than 28 dB under
+  the phrase peak (+15 ms), and a phone after a pause (or a voiced space) starts where its sound starts, at most
+  120 ms earlier. Kokoro's token timings also run about 47 ms behind the sound (cross-correlation of token openness
+  with the energy envelope); every timing moves 47 ms earlier (`voicelib/takes.py`), words and stress marks too.
 - Per-language overrides: es/it β → mbp; hi ə → ah (a full vowel, not an English schwa); pt-br y → ee;
   zh ɨ → ee; ja ɯ/β/ɸ → oh.
 - Rules: the track leads the audio by 1 frame; every /p b m/ gets at least one frame; an RMS gate treats
-  4+ frames 40 dB under the scene peak as a pause.
+  4+ frames 32 dB under the scene peak as a pause (it was 40 dB, which never fired on the phrase-final residual).
+- Every build measures lip sync on the normalized audio (`visemes.sync_landmarks`, the review's method: voiced =
+  within 28 dB of the scene peak): the mouth must close within 2 frames of each phrase's last voiced frame and open
+  0-2 frames before each phrase; otherwise `timeline.warnings` says which scene. Measured on the demo after the fix:
+  en phrase ends -2..-1 frames (were +5..+8), onsets -2..0 (mbp-initial phrases read -2: the lips press before the
+  /m/); `tests/test_demo_sync.py` checks en, es and pt-br whenever the demo is built.
 - Pauses: under 4 frames hold the previous shape, 4–10 frames slightlyOpen, 11 or more closed; closed before
   and after speech.
 - Every shape is held at least 2 frames (a 1-frame mbp is extended, never dropped).
 - Decision: LP3's ah → closed in-between is 2 frames, not 1, because LP3, QA 10.8 and the brief all forbid
   1-frame shapes.
-- Measured: 5.1–5.9 changes/s in English (the ART_GUIDE target was 5.1); 6–8/s in faster-syllable languages.
+- Measured: 5.4–7.8 changes/s in English after the 2026-11-24 snap-to-audio fix (5.1–5.9 before, when the stretched
+  phrase-final vowels held 12–14 frames; the ART_GUIDE M2 figure is 5.1); 6–8/s in faster-syllable languages.
+
+## Takes are reproducible (`voicelib/takes.py`)
+
+kokoro-onnx 0.6.1 runs with `trim=False`, `sentence_pause=0`, `clause_pause=0`: its trim and pause insertion measured
+the noise-driven waveform, so the same phonemes gave 6339, 6329 and 6419 ms, and its spliced zeros ticked at -38 dBFS.
+The take is finished from the model's token durations instead: the 47 ms timing correction, 150 ms kept before the
+first phone (of the model's 300 ms pad), silence topped up to 250 ms after a sentence mark and 100 ms after a clause
+mark the model stopped on (kokoro-onnx's own defaults), inserted at the quietest millisecond inside the mark token,
+and 5 ms raised-cosine fades at every silence edge and both ends. Same input, same length and timings; no sample next
+to digital silence above -50 dBFS (`tests/test_takes.py`; the demo narration measured -90 dBFS at worst).
 
 ## Scene timing
 
@@ -116,13 +158,18 @@ so `startMs`, `durationMs` and `totalMs` are integers and `frames = ms × fps / 
 
 ## `--fit-to <masterLang>` (dubbing onto the same video)
 
-Each scene keeps the master's `durationMs`. The Kokoro speed is solved per scene within **0.85–1.15**:
-the model is speech ≈ a/speed + b, solved with a secant step and re-synthesized, at most 5 takes. The
-target is the master's `speechMs`, so the dub keeps the master's pacing and visual beats. The speech
-must also leave 150 ms of air before the next scene. The scene is then padded with silence. If even 1.15
-is too long, the scene is reported in `warnings` with the overflow in ms and the percentage to cut, and
-recorded in `overflowMs`. The scene is then lengthened (so speech never overlaps or gets cut), the track
-no longer lines up with the master, and `build.py` exits 3. `mode` is `fit-to-master` with `masterLang`.
+An audio-track dub plays over the master picture: Zoo's mouth shapes and every on-screen text are the master's. So
+since 2026-11-24 the fit is **per sentence**: every build records each scene's sentence spans (`sentences`, below), and
+a dub synthesizes each sentence on its own, at the Kokoro speed (0.85–1.15, secant search, at most 5 takes) that makes
+its speech as long as the master sentence, then places it where the master sentence starts (never closer than 120 ms
+to the previous one). Talking and pauses line up with the master's mouth. A sentence that ends more than 100 ms after
+its master sentence is reported even when the scene fits ("It is N ms longer than the en sentence: shorten it by
+about X%"). When the sentence count differs from the master's, or the master has no `sentences` (built before this
+change), the scene is fitted as a whole, with a warning. Each scene keeps the master's `durationMs` and leaves 150 ms
+of air; if it still overflows, it is lengthened, reported (`overflowMs`), and `build.py` exits 3.
+
+`--fit-to` is refused for a storyboard with `offers` or `fiction: true` unless the dub SAYS the disclosure and the
+fiction notice in its language (the master picture shows them in English only); otherwise publish a native upload.
 
 ## Loudness
 
@@ -145,6 +192,8 @@ count and alignment (verified with clicks), so scene cuts stay sample-exact.
 - `Timeline.narration`: path (relative to `public/`) of the continuous `narration.wav`.
 - `TimelineScene.speed`: fit-to-master only; the Kokoro speed of that scene.
 - `TimelineScene.overflowMs`: fit-to-master only; present when the dub did not fit even at 1.15.
+- `TimelineScene.sentences` (2026-11-24): `[{startMs, endMs}]`, each sentence's speech (first phone start to last phone
+  end, split at . ! ? …), scene-relative; the per-sentence fit aims for them.
 
 ## Warnings the step writes
 
@@ -152,6 +201,8 @@ count and alignment (verified with clicks), so scene cuts stay sample-exact.
   storyboard says `translation: {status: 'native-reviewed'}` (the rule in `src/episode/types.ts`).
 - zh/ja: the pronunciation comes from misaki and has not been checked by a native speaker.
 - A proportional word-timing fallback, dropped letters, loudness off target, and fit overflows.
+- Digits or symbols left in the spoken text; a lip-sync check outside its tolerance; a dub sentence longer than its
+  master sentence; a sentence-alignment fallback.
 
 ## Tests
 
@@ -160,8 +211,12 @@ count and alignment (verified with clicks), so scene cuts stay sample-exact.
 python3 -m unittest discover -s scripts/voice/tests -t scripts/voice                    # unit tests only (e2e skips)
 ```
 
-- Unit tests (stdlib only): markup, normalization tables, viseme mapping and track rules, phonetic
-  alignment, scene timing and fit-to-master maths (with a fake Kokoro), the timeline validator.
+- Unit tests (stdlib only; the numpy-based take tests skip without numpy): markup, normalization tables and the
+  review's number cases, the lexicon, viseme mapping and track rules (snap to audio, -32 dB gate, sync landmarks),
+  take finishing (determinism, fades), phonetic alignment, scene timing, fit-to-master maths and the per-sentence fit
+  (with a fake Kokoro), the audio-track refusal, the timeline validator.
+- `test_demo_sync.py`: lip sync and silence-edge steps on the built demo (`public/generated/zoora-ai/_engine-demo`),
+  skipped when it is not built.
 - `test_e2e.py`: real synthesis in all 7 languages (fixtures in `tests/fixtures/zoora-ai/voice-smoke/`),
   an es → en fit-to-master dub, and the produced JSON checked against `src/episode/types.ts` with `tsc`
   (`satisfies VoiceTimeline`).

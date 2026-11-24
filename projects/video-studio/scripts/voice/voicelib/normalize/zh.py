@@ -16,7 +16,10 @@ from .common import FULLWIDTH_DIGITS, parse_num
 
 DIG = "零一二三四五六七八九"
 BIG = ["", "万", "亿", "万亿"]
-CURRENCY = {"$": "美元", "＄": "美元", "€": "欧元", "£": "英镑", "¥": "元", "￥": "元", "₹": "卢比"}
+CURRENCY = {
+    "$": "美元", "＄": "美元", "€": "欧元", "£": "英镑", "¥": "元", "￥": "元", "₹": "卢比",
+    "US$": "美元", "R$": "巴西雷亚尔", "A$": "澳元", "C$": "加元", "MX$": "墨西哥比索",
+}
 SCALE = {"k": 10**3, "m": 10**6, "b": 10**9, "bn": 10**9, "t": 10**12, "万": 10**4, "亿": 10**8}
 TICKERS = {"BTC": "比特币", "ETH": "以太币"}
 NUM = r"\d+(?:[.,]\d+)*"
@@ -128,10 +131,15 @@ def _month_day(m: re.Match) -> str:
     return cardinal(int(m.group(1))) + m.group(2)
 
 
-@rule(rf"({SIGN})?([$＄€£¥￥₹])\s?({NUM})(bn|[kKmMbBtT万亿])?")
+@rule(rf"({SIGN})?(US\$|R\$|A\$|C\$|MX\$|[$＄€£¥￥₹])\s?({NUM})(bn|[kKmMbBtT万亿])?")
 def _money(m: re.Match) -> str:
     sign = {"-": "负", "−": "负"}.get(m.group(1) or "", "")
     return sign + _amount(m.group(3), m.group(4)) + CURRENCY[m.group(2)]
+
+
+@rule(r"#(\d+)")
+def _number_sign(m: re.Match) -> str:
+    return f"{cardinal(int(m.group(1)))}号"  # "#1" -> 一号, never "hash"
 
 
 @rule(rf"({SIGN})?({NUM})\s?[%％]")

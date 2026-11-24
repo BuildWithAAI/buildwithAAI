@@ -1,7 +1,11 @@
 /**
- * Desktop monitor in the character style, turned slightly as in the typing panel of
- * zoo_model_sheet_v1.png (its left side edge shows). Local origin = centre of the stand's base where
- * it rests on the desk; world units.
+ * Desktop monitor in the character style, seen FROM BEHIND as in the typing panel of zoo_model_sheet_v1.png (ZOO faces
+ * the screen, we see its back). Local origin = centre of the stand's base where it rests on the desk; world units.
+ *
+ * Repair round 1 (measured on zoo_pose_typing.png at 1.555 u/px): a plain dark back panel (x 72..332, y -615..-416 in
+ * the typing layout) with its lit left-side thickness, a slanted neck drawn IN FRONT of the panel's lower middle down
+ * to a flat rectangular foot. v1 drew a screen-out bezel with a puck base. Repair round 2: panel and foot are straight-
+ * edged polygons with small fillets (no spline overshoot at the corners).
  */
 import React from 'react';
 import {PROP_COLORS} from '../../palette';
@@ -9,21 +13,45 @@ import type {Placement} from '../../types';
 import {smooth, type Pt} from '../geometry';
 import {Shape} from '../parts/Shape';
 
-// Corners measured on the panel (world units, then made relative to the base centre at x=235 on the desk top):
-// top-left (102,-611), top-right (336,-611), bottom-right (323,-417), bottom-left (75,-382). The near (left)
-// edge is longer: the screen is turned toward ZOO and seen in perspective.
-const SIDE: Pt[] = [[-146, -262, 'c'], [-133, -267, 'c'], [-160, -38, 'c'], [-174, -34, 'c']];
-const BEZEL: Pt[] = [[-133, -267, 'c'], [101, -267, 'c'], [88, -73, 'c'], [-160, -38, 'c']];
-const SCREEN: Pt[] = [[-123, -257.4, 'c'], [90.6, -257.6, 'c'], [79, -82.4, 'c'], [-146.6, -50, 'c']];
-const NECK: Pt[] = [[-30, -80, 'c'], [-4, -82, 'c'], [12, -22, 'c'], [-16, -22, 'c']];
-const BASE: Pt[] = [[-64, -25], [62, -25], [67, -12], [64, -1.75, 'c'], [-64, -1.75, 'c'], [-68, -12]];
+const c = (pts: Pt[]): Pt[] => pts.map((p) => [p[0], p[1], 'c'] as Pt);
+const f = (n: number) => (Math.round(n * 100) / 100).toString();
+/**
+ * Closed polygon with straight edges and a small circular-looking fillet (quadratic, inside the corner's hull) at every
+ * vertex. Repair round 2: the back panel was a Catmull-Rom spline whose smooth points next to corners overshot ~11 u past
+ * every corner (four 'horns'); with straight edges the panel's extent is exactly its vertices' extent.
+ */
+const roundedPoly = (v: readonly (readonly [number, number])[], r: number): string => {
+	const n = v.length;
+	const at = (i: number) => v[(i + n) % n];
+	const toward = (a: readonly [number, number], b: readonly [number, number], d: number): [number, number] => {
+		const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+		const k = Math.min(d, len / 2) / len;
+		return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+	};
+	let d = '';
+	for (let i = 0; i < n; i++) {
+		const p = at(i);
+		const a = toward(p, at(i - 1), r);
+		const b = toward(p, at(i + 1), r);
+		d += `${i === 0 ? 'M' : 'L'}${f(a[0])} ${f(a[1])} Q${f(p[0])} ${f(p[1])} ${f(b[0])} ${f(b[1])} `;
+	}
+	return d + 'Z';
+};
+/** Back panel corners: top-left, top-right, bottom-right, bottom-left (top at y -275.4, bottom-left at -71.6). */
+export const MONITOR_BACK: readonly (readonly [number, number])[] = [[-143.6, -275.4], [97.2, -275.4], [87.2, -73.6], [-162.4, -71.6]];
+const BACK = roundedPoly(MONITOR_BACK, 4.5);
+/** The panel's left-side thickness (lit edge). */
+const SIDE: Pt[] = c([[-150, -268], [-144, -271], [-162, -76], [-169, -73]]);
+/** Slanted neck in front of the panel, foot to the panel's lower middle. */
+const NECK: Pt[] = c([[-30, -132], [27, -132], [55, -16], [-9, -16]]);
+const NECK_SHADOW: Pt[] = c([[12, -136], [32, -136], [60, -12], [40, -12]]);
+const BASE = roundedPoly([[-80, -19], [90, -19], [90, -1.75], [-80, -1.75]], 2.6);
 
 export const Monitor: React.FC<Placement> = ({x = 0, y = 0, scale = 1}) => (
 	<g data-prop="monitor" transform={`translate(${x} ${y}) scale(${scale})`}>
-		<Shape name="base" d={smooth(BASE)} fill={PROP_COLORS.monitorShadow} />
-		<Shape name="neck" d={smooth(NECK)} fill={PROP_COLORS.monitor} shadow={{d: smooth([[-8, -84], [-12, -84], [16, -20], [20, -20]]), fill: PROP_COLORS.monitorShadow}} />
-		<Shape name="side" d={smooth(SIDE)} fill={PROP_COLORS.monitorShadow} />
-		<Shape name="bezel" d={smooth(BEZEL)} fill={PROP_COLORS.monitor} />
-		<Shape name="screen" d={smooth(SCREEN)} fill={PROP_COLORS.monitorShadow} stroke={2} />
+		<Shape name="side" d={smooth(SIDE)} fill={PROP_COLORS.monitor} />
+		<Shape name="back" d={BACK} fill={PROP_COLORS.monitorShadow} />
+		<Shape name="base" d={BASE} fill={PROP_COLORS.monitorShadow} />
+		<Shape name="neck" d={smooth(NECK)} fill={PROP_COLORS.monitor} shadow={{d: smooth(NECK_SHADOW), fill: PROP_COLORS.monitorShadow}} />
 	</g>
 );

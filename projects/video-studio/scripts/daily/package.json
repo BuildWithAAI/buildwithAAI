@@ -1,0 +1,6 @@
+{
+  "name": "zoora-daily",
+  "private": true,
+  "type": "module",
+  "description": "Daily orchestrator for channel 2 (zoora-security): prepare, build, approve. Run with node directly (Node >= 22.18 strips the types); see docs/DAILY_BRIEF.md."
+}

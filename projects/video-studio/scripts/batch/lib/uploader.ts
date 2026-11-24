@@ -28,7 +28,37 @@ export type UploaderPlan = {
 	warnings: string[];
 };
 
-export type UploaderPrepared = {plan: UploaderPlan; inputs: {spec: {rel: string} | null; warnings: string[]}; refusals: Reason[]};
+/** A file the upload reads: path relative to projects/video-studio (absolute when outside it) and its SHA-256. */
+export type SentFile = {rel: string; sha256: string | null};
+
+export type UploaderPrepared = {
+	plan: UploaderPlan;
+	inputs: {
+		spec: {rel: string; sha256?: string} | null;
+		thumbnail?: {rel: string; sha256: string} | null;
+		/** rel is null for the kit's own captions (they are inside kit.json, which the page hashes). */
+		captions?: Array<{rel: string | null; sha256: string}>;
+		warnings: string[];
+	};
+	refusals: Reason[];
+};
+
+/**
+ * Every file the upload would read: the video, the storyboard, the thumbnail, caption files and the spec. Read
+ * defensively (the uploader is another workflow's tool): a missing hash comes back null, which the caller refuses.
+ */
+export const sentFiles = (p: UploaderPrepared): SentFile[] => {
+	const hash = (x: unknown): string | null => (typeof x === 'string' && /^[0-9a-f]{64}$/.test(x) ? x : null);
+	const out: SentFile[] = [
+		{rel: p.plan.video.rel, sha256: hash(p.plan.video.sha256)},
+		{rel: p.plan.storyboard.rel, sha256: hash(p.plan.storyboard.sha256)},
+	];
+	const i = p.inputs as Record<string, unknown>;
+	if (isRecord(i.thumbnail) && typeof i.thumbnail.rel === 'string') out.push({rel: i.thumbnail.rel, sha256: hash(i.thumbnail.sha256)});
+	if (Array.isArray(i.captions)) for (const c of i.captions) if (isRecord(c) && typeof c.rel === 'string') out.push({rel: c.rel, sha256: hash(c.sha256)});
+	if (isRecord(i.spec) && typeof i.spec.rel === 'string') out.push({rel: i.spec.rel, sha256: hash(i.spec.sha256)});
+	return out;
+};
 
 export type ChannelsConfig = {minLeadMinutes: number; approvalMaxDays: number; channels: Record<string, {categoryId: string | null}>};
 

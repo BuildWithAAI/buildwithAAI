@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "fiction",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "Fixture roto: ficción sin aviso",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Te despiertas como caller. Tu teléfono no deja de vibrar.",
+      "onScreen": {"title": "Tú eres el caller"},
+      "badger": {"present": true, "reaction": "lookUp"}
+    }
+  ],
+  "sources": [],
+  "translation": {"status": "machine", "method": "machine", "reviewed": false}
+}

@@ -23,6 +23,36 @@ export const DETAIL = {
 	strokeLinejoin: 'round',
 } as const;
 
+/**
+ * Line weight (BadgerExtraProps.lineScale), provided by <Badger/>: every outline and detail width is multiplied by it.
+ * 1 (default) = the palette's LINE widths in world units. Use lineScaleFor(pxPerUnit) for the ART_GUIDE SL5 weights at a
+ * framing, and pass the same value to ZooRig's lineScale so the pair keeps one line weight.
+ */
+export const LineScaleContext = React.createContext(1);
+
+/** STROKE / DETAIL at the current line scale, plus the scale itself (k) for widths derived from LINE. */
+export const useStrokes = () => {
+	const k = React.useContext(LineScaleContext);
+	return React.useMemo(
+		() => ({
+			k,
+			stroke: k === 1 ? STROKE : {...STROKE, strokeWidth: LINE.width * k},
+			detail: k === 1 ? DETAIL : {...DETAIL, strokeWidth: LINE.detailWidth * k},
+		}),
+		[k],
+	);
+};
+
+/**
+ * ART_GUIDE SL5: outline = clamp(LINE.width x k, 3, 6) px at output, where k = output px per world unit (placement scale
+ * times any parent viewBox magnification). Returns the lineScale that produces it (the same formula as zoo/lines.ts).
+ */
+export const lineScaleFor = (pxPerUnit: number): number => {
+	const k = Math.max(1e-6, pxPerUnit);
+	const px = LINE.width * k;
+	return Math.min(6, Math.max(3, px)) / px;
+};
+
 export type ShapeGeom = {
 	readonly fill: string;
 	readonly strokes: readonly string[];
@@ -42,8 +72,9 @@ export const PartShape: React.FC<{
 	children?: React.ReactNode;
 	strokeColor?: string;
 }> = ({geom, clipId, color = BADGER_COLORS.coat, children, strokeColor}) => {
-	const lineProps = strokeColor ? {...STROKE, stroke: strokeColor} : STROKE;
-	const detailProps = strokeColor ? {...DETAIL, stroke: strokeColor} : DETAIL;
+	const L = useStrokes();
+	const lineProps = strokeColor ? {...L.stroke, stroke: strokeColor} : L.stroke;
+	const detailProps = strokeColor ? {...L.detail, stroke: strokeColor} : L.detail;
 	return (
 		<g>
 			<clipPath id={clipId}>

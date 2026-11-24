@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "thumb-demo",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "POV: You become a top caller (thumbnail fixture)",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "You post one chart. Ten thousand strangers buy your coin within the hour.",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "You become a top caller"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    }
+  ],
+  "sources": [],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "TOP CALLER?",
+      "expression": "neutral",
+      "badger": true
+    },
+    {
+      "id": "b",
+      "text": "THE FLOOR VANISHED",
+      "expression": "worried",
+      "badger": true
+    },
+    {
+      "id": "c",
+      "text": "WHO SOLD FIRST",
+      "expression": "shocked",
+      "badger": false
+    }
+  ]
+}

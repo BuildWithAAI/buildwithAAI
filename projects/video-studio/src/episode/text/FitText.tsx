@@ -6,7 +6,7 @@ import React, {useMemo} from 'react';
 import type {Lang} from '../types';
 import {fitGroup, fitText, prepText, type FitResult, type FitSpec} from './fit';
 import {measureFor} from './measure';
-import {fontFor} from '../i18n/fonts';
+import {fontFor, lineFactor} from '../i18n/fonts';
 import {UNSPACED} from '../markup';
 import type {Box, TextSpec} from '../layout/specs';
 
@@ -23,10 +23,12 @@ export const useFit = (text: string, spec: TextSpec, lang: Lang, box: Box = spec
 				maxSize: spec.maxSize,
 				minSize: spec.minSize,
 				maxLines: spec.maxLines,
-				lineHeight: spec.lineHeight,
+				lineHeight: spec.lineHeight * lineFactor(lang),
 				unspaced: UNSPACED.has(lang),
+				lang,
 				balance: spec.balance,
 				ellipsis: spec.ellipsis,
+				phrase: spec.phrase,
 			},
 			measureFor(font),
 		);
@@ -37,7 +39,7 @@ export const useFit = (text: string, spec: TextSpec, lang: Lang, box: Box = spec
 		}
 		return r;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [text, lang, box.w, box.h, spec.maxSize, spec.minSize, spec.maxLines, spec.lineHeight, spec.uppercase, spec.balance, spec.ellipsis, font.fontFamily, font.fontWeight]);
+	}, [text, lang, box.w, box.h, spec.maxSize, spec.minSize, spec.maxLines, spec.lineHeight, spec.uppercase, spec.balance, spec.ellipsis, spec.phrase, font.fontFamily, font.fontWeight]);
 };
 
 const specFor = (spec: TextSpec, box: Box, lang: Lang): FitSpec => ({
@@ -46,10 +48,12 @@ const specFor = (spec: TextSpec, box: Box, lang: Lang): FitSpec => ({
 	maxSize: spec.maxSize,
 	minSize: spec.minSize,
 	maxLines: spec.maxLines,
-	lineHeight: spec.lineHeight,
+	lineHeight: spec.lineHeight * lineFactor(lang),
 	unspaced: UNSPACED.has(lang),
+	lang,
 	balance: spec.balance,
 	ellipsis: spec.ellipsis,
+	phrase: spec.phrase,
 });
 
 /** A list at one shared size that also fits its block (fit.ts fitGroup); throws when it cannot fit. */
@@ -83,7 +87,7 @@ export type LinesProps = {
 /** Render fitted lines in their box (absolute px). */
 export const Lines: React.FC<LinesProps> = ({fit, spec, lang, color, box = spec.box, lineStyle, style}) => {
 	const font = fontFor(lang, spec.role, spec.weight);
-	const lh = fit.fontSize * spec.lineHeight;
+	const lh = fit.fontSize * fit.lineHeight;
 	const valign = spec.valign ?? 'top';
 	const top = valign === 'top' ? 0 : valign === 'bottom' ? box.h - fit.height : (box.h - fit.height) / 2;
 	return (

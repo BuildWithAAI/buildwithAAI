@@ -1,7 +1,7 @@
 /**
- * MouthDemo: ZOO's fixed six-shape mouth library, one shape per second (1920x1080, 30 fps, 6 s, silent).
+ * MouthDemo: Zoo's fixed six-shape mouth library, one shape per second (1920x1080, 30 fps, 6 s, silent).
  * This is a library demonstration, NOT lip-sync: there is no audio track. Shapes are replacements, so
- * each one switches on its second boundary.
+ * each one switches on its second boundary. Line weights follow the close-up rule of decision INT-L1.
  */
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame, useVideoConfig} from 'remotion';
@@ -10,7 +10,7 @@ import {ZooRig} from '../../characters/zoo/Zoo';
 import {BRAND} from '../../characters/palette';
 import type {MouthShape} from '../../characters/types';
 import {blinkAt} from './keys';
-import {EASE} from './stage';
+import {closeLineScale, EASE} from './stage';
 
 export const MOUTH_ORDER: readonly {shape: MouthShape; label: string}[] = [
 	{shape: 'closed', label: 'Closed'},
@@ -27,6 +27,9 @@ const BUST_VB = '-140 -920 280 280';
 const MOUTH_VB = '-69.97 -804.76 139.94 90.55';
 
 const CHIP = {w: 236, h: 153, gapX: 24, gapY: 64, x0: 1080, y0: 520} as const;
+/** Output px per world unit of the bust (900 px for 280 units) and of a chip (236 px for 139.94 units). */
+const BUST_LINE = closeLineScale(900 / 280);
+const CHIP_LINE = closeLineScale(CHIP.w / 139.94);
 
 export const MouthDemo: React.FC = () => {
 	const frame = useCurrentFrame();
@@ -39,7 +42,7 @@ export const MouthDemo: React.FC = () => {
 			<svg width={1920} height={1080} viewBox="0 0 1920 1080" style={{position: 'absolute', inset: 0}}>
 				{/* Large bust: the current shape on the full rig, so the beard and jaw follow the mouth. */}
 				<svg x={60} y={70} width={900} height={900} viewBox={BUST_VB}>
-					<ZooRig mouth={current.shape} blink={blink} />
+					<ZooRig mouth={current.shape} blink={blink} lineScale={BUST_LINE} />
 				</svg>
 				{/* The library: six close-ups, the current one framed. */}
 				{MOUTH_ORDER.map((m, i) => {
@@ -51,7 +54,7 @@ export const MouthDemo: React.FC = () => {
 					return (
 						<g key={m.shape}>
 							<svg x={x} y={y} width={CHIP.w} height={CHIP.h} viewBox={MOUTH_VB}>
-								<ZooRig mouth={m.shape} breathe={false} />
+								<ZooRig mouth={m.shape} breathe={false} lineScale={CHIP_LINE} />
 							</svg>
 							<rect
 								x={x - 1}
@@ -71,7 +74,7 @@ export const MouthDemo: React.FC = () => {
 				})}
 			</svg>
 			<div style={{position: 'absolute', left: 1080, top: 150, width: 760}}>
-				<div style={{fontSize: 34, fontWeight: 600, letterSpacing: 0.5}}>ZOO mouth library · {index + 1} / 6</div>
+				<div style={{fontSize: 34, fontWeight: 600, letterSpacing: 0.5}}>Zoo mouth library · {index + 1} / 6</div>
 				<div style={{fontSize: 104, fontWeight: 800, lineHeight: 1.1, marginTop: 18, whiteSpace: 'nowrap'}}>{current.label}</div>
 			</div>
 			<div

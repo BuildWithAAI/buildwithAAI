@@ -68,16 +68,38 @@ victim owner minister secretary attorney prosecutor judge senator sen rep repres
 officer spokesperson spokesman spokeswoman executive manager advisor adviser member citizen resident teen teenager man
 woman boy girl brother sister father mother son daughter wife husband named dubbed alias aka nicknamed defendant
 plaintiff lawyer streamer youtuber podcaster billionaire entrepreneur investor admin administrator moderator user
-pseudonymous anonymous`.split(/\s+/),
+pseudonymous anonymous commissioner chief inspector sergeant superintendent constable deputy assistant acting
+general chair head ambassador congressman congresswoman lawmaker official prosecutors justice magistrate counsel`.split(/\s+/),
 );
 
-const CONNECTORS = new Set(['of', 'the', 'de', 'da', 'del', 'van', 'von', 'der', 'den', 'bin', 'al', 'la', 'le', 'du', 'dos', 'das', 'di', '&', 'and', 'for']);
+// "and" is not a connector: it would merge "Example Security Group and North Carolina" into one name
+const CONNECTORS = new Set(['of', 'the', 'de', 'da', 'del', 'van', 'von', 'der', 'den', 'bin', 'al', 'la', 'le', 'du', 'dos', 'das', 'di', '&']);
 const MONTHS = new Set('january february march april may june july august september october november december jan feb mar apr jun jul aug sep sept oct nov dec'.split(' '));
 const DAYS = new Set('monday tuesday wednesday thursday friday saturday sunday'.split(' '));
 
 const APPOSITION =
 	/^\s*,\s*(?:the\s+|a\s+|an\s+|its\s+|their\s+|our\s+)?(?:former\s+|ex-|co-|chief\s+|lead\s+|alleged\s+|pseudonymous\s+|anonymous\s+)?(?:founder|co-founder|cofounder|ceo|cto|coo|cfo|developer|dev|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|analyst|executive|spokesperson|spokesman|spokeswoman|director|owner|insider|whale|programmer|victim|defendant|lawyer|attorney|partner|manager|head)\b/i;
 const AGE_AFTER = /^\s*,\s*(?:aged\s+)?\d{1,2}\s*,/i;
+/** "<Name> said/says/told ...": whoever speaks is a person unless allowlisted (an organisation is in the allowlist). */
+const SPEECH_AFTER = /^(?:['’]s)?\s+(?:also\s+|later\s+|then\s+|now\s+)?(?:said|says|told|tells|added|adds|wrote|writes|posted|tweeted|explained|explains|noted|notes|warned|warns|claimed|claims|argued|argues|insisted|insists|denied|denies|admitted|admits|stated|states|believes|thinks|recalled|recalls|testified)\b/i;
+/** Roles after which the next word is the person's name or handle, even in lower case ("investigator zachxbt"). */
+const HANDLE_CUES = new Set(
+	`investigator investigators researcher researchers analyst analysts sleuth sleuths influencer influencers youtuber streamer
+podcaster journalist reporter founder co-founder cofounder ceo cto coo cfo trader whale`.split(/\s+/),
+);
+/** Roles whose name follows only as an apposition between commas ("the engineer, teng, opened ..."). */
+const APPOSITION_CUES = new Set('engineer developer dev employee staffer recruiter user hacker attacker suspect victim worker contractor admin'.split(' '));
+/** Words that commonly follow those roles and are not names. */
+const AFTER_ROLE_OK = new Set(
+	`team group community firm firms report reports account accounts laptop laptops machine computer device devices credentials
+role interview interviews job jobs offer offers position salary access wallet wallets key keys data tool tools platform
+side network who that which whose and or but with at in on of for from to by as was were is are has had have will would
+could can may might did does do said says told found traced flagged posted wrote noted linked estimated reported believes
+thinks first also later then now group's firm's interface experience error side end base behavior behaviour education
+protection safety security support onboarding agreement consent identity address email phone password session flow
+journey portal forum crew gang collective campaign kit playbook tactic technique toolkit dashboard desk feed post
+thread channel blog note alert profile handle page site`.split(/\s+/),
+);
 
 export type PersonReason =
 	| 'two-word-name'
@@ -92,7 +114,10 @@ export type PersonReason =
 	| 'unknown-name'
 	| 'unknown-name-in-sources'
 	| 'unknown-word-headline'
-	| 'identifying-detail';
+	| 'identifying-detail'
+	| 'speaker-name'
+	| 'role-handle'
+	| 'lowercase-name';
 
 export type PersonHit = {text: string; start: number; end: number; reason: PersonReason; severity: 'error' | 'warning'};
 export type EntityRef = {text: string; start: number; end: number; kind: 'known' | 'org' | 'acronym' | 'unknown'; entry?: AllowEntry; sentenceStart: boolean};
@@ -107,6 +132,8 @@ export type NameContext = {
 	sourcePersonTokens?: Set<string>;
 	/** Normalised brief text, to tell an unknown organisation named by a source from a name nobody sourced. */
 	briefText?: string;
+	/** Words seen in lower case in the sources or the storyboard: capitalised only at a sentence start, so not names. */
+	lowerWords?: Set<string>;
 };
 
 const lw = (t: string) => stripPossessive(t).toLowerCase().replace(/\.$/, '');
@@ -148,7 +175,31 @@ export const scanNames = (text: string, ctx: NameContext): NameScan => {
 	for (const m of src.matchAll(/\b\d{1,2}-year-old\b/gi))
 		persons.push({text: m[0], start: m.index ?? 0, end: (m.index ?? 0) + m[0].length, reason: 'identifying-detail', severity: 'error'});
 
-	const headline = ctx.short || isHeadlineCase(toks);
+	// lower-case names and handles: "investigator zachxbt", "the engineer, richard teng, opened ...", "richard teng"
+	for (let k = 0; k + 1 < toks.length; k++) {
+		const cue = lw(toks[k].text);
+		const next = toks[k + 1];
+		const nw = lw(next.text);
+		const gap = src.slice(toks[k].end, next.start);
+		if (used[k + 1] || isCapitalized(next.text) || COMMON.has(nw) || AFTER_ROLE_OK.has(nw) || /^\d/.test(nw)) continue;
+		const cued = (HANDLE_CUES.has(cue) && /^\s*,?\s*$/.test(gap)) || (APPOSITION_CUES.has(cue) && /^\s*,\s*$/.test(gap) && /^\s*,/.test(src.slice(next.end, next.end + 40).replace(/^\s+[\p{Ll}][\p{L}'-]*/u, '')));
+		if (cued && !/(?:ed|ing|ly|s)$/.test(nw) && nw.length >= 3) {
+			const two = toks[k + 2] && !isCapitalized(toks[k + 2].text) && /^\s+$/.test(src.slice(next.end, toks[k + 2].start)) && !COMMON.has(lw(toks[k + 2].text)) && !AFTER_ROLE_OK.has(lw(toks[k + 2].text)) && !/(?:ed|ing|ly)$/.test(lw(toks[k + 2].text)) ? toks[k + 2] : null;
+			const end = two ? two.end : next.end;
+			persons.push({text: src.slice(next.start, end), start: next.start, end, reason: 'role-handle', severity: 'error'});
+			continue;
+		}
+		if (FIRST_NAMES.has(nw) && toks[k + 2]) {
+			const third = toks[k + 2];
+			const tw = lw(third.text);
+			if (!isCapitalized(third.text) && /^\s+$/.test(src.slice(next.end, third.start)) && !COMMON.has(tw) && !AFTER_ROLE_OK.has(tw) && !/(?:ed|ing|ly)$/.test(tw) && tw.length >= 2)
+				persons.push({text: src.slice(next.start, third.end), start: next.start, end: third.end, reason: 'lowercase-name', severity: 'error'});
+		}
+	}
+	if (toks[0] && !isCapitalized(toks[0].text) && FIRST_NAMES.has(lw(toks[0].text)) && toks[1] && !isCapitalized(toks[1].text) && !COMMON.has(lw(toks[1].text)) && !AFTER_ROLE_OK.has(lw(toks[1].text)))
+		persons.push({text: src.slice(toks[0].start, toks[1].end), start: toks[0].start, end: toks[1].end, reason: 'lowercase-name', severity: 'error'});
+
+	const headline = isHeadlineCase(toks, !!ctx.short);
 	let i = 0;
 	while (i < toks.length) {
 		const t = toks[i];
@@ -186,16 +237,17 @@ export const scanNames = (text: string, ctx: NameContext): NameScan => {
 	return {known, persons, entities: entities.sort((a, b) => a.start - b.start)};
 };
 
-const isHeadlineCase = (toks: Tok[]): boolean => {
+/** Title Case or ALL CAPS: at least 80% of the words capitalised (short labels may have 1-2 words). */
+const isHeadlineCase = (toks: Tok[], short: boolean): boolean => {
 	const words = toks.filter((t) => /\p{L}/u.test(t.text));
-	if (words.length < 3) return false;
+	if (!words.length || (!short && words.length < 3)) return false;
 	const caps = words.filter((t) => isCapitalized(t.text) || isAllCaps(t.text)).length;
 	return caps / words.length >= 0.8;
 };
 
 const analyseRun = (
-	run: Tok[],
-	offset: number,
+	runIn: Tok[],
+	offsetIn: number,
 	starts: boolean[],
 	src: string,
 	ctx: NameContext,
@@ -203,6 +255,16 @@ const analyseRun = (
 	persons: PersonHit[],
 	entities: EntityRef[],
 ) => {
+	let run = runIn;
+	let offset = offsetIn;
+	// a leading title or role is a cue, not part of the name: "Commissioner Avery Example" -> "Avery Example"
+	let lead = 0;
+	while (lead < run.length - 1 && PERSON_CUES.has(lw(run[lead].text))) lead++;
+	if (lead === run.length - 1 && PERSON_CUES.has(lw(run[lead].text))) return;
+	if (lead) {
+		run = run.slice(lead);
+		offset += lead;
+	}
 	const words = run.map((t) => lw(t.text));
 	const span = (a: number, b: number) => ({text: src.slice(run[a].start, run[b].end), start: run[a].start, end: run[b].end});
 	// an organisation: "Acme Security Group", "Example Wire"
@@ -234,6 +296,10 @@ const analyseRun = (
 		const hit = span(s, e);
 		const atStart = starts[offset + s];
 		if (sub.length >= 2) {
+			if (ORG_SUFFIXES.has(sub[sub.length - 1])) {
+				entities.push({...hit, kind: 'org', sentenceStart: atStart});
+				continue;
+			}
 			if (PLACE_WORDS.has(sub[0]) || PLACE_WORDS.has(sub[sub.length - 1])) {
 				entities.push({...hit, kind: 'org', sentenceStart: atStart});
 				continue;
@@ -275,12 +341,25 @@ const analyseRun = (
 			entities.push({...hit, kind: 'acronym', sentenceStart: atStart});
 			continue;
 		}
+		// "China-based", "Lazarus-linked": a known place or organisation with a hyphenated suffix
+		const baseWord = raw.replace(/-(?:based|linked|backed|led|owned|tied|affiliated|related|sponsored|funded|run|style|era|born|made)$/i, '').toLowerCase();
+		if (baseWord !== raw.toLowerCase() && (ctx.idx.byFirst.get(baseWord) ?? []).some((en) => en.tokens.length === 1 && en.category !== 'blocked')) continue;
+		// "<Name> said ...": a speaker that is not an allowlisted organisation is a person, at a sentence start too
+		if (SPEECH_AFTER.test(after) && !COMMON.has(w)) {
+			entities.push({...hit, kind: 'unknown', sentenceStart: atStart});
+			persons.push({...hit, reason: 'speaker-name', severity: 'error'});
+			continue;
+		}
 		if (COMMON.has(w)) continue;
+		if ((atStart || headline) && ctx.lowerWords?.has(w)) continue;
 		const inBrief = !!ctx.briefText && new RegExp(`(?:^|[^\\p{L}\\p{N}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}\\p{N}])`, 'u').test(ctx.briefText);
 		entities.push({...hit, kind: 'unknown', sentenceStart: atStart});
-		if (ctx.short) persons.push({...hit, reason: 'unknown-word-headline', severity: inBrief ? 'warning' : 'error'});
-		else if (atStart) persons.push({...hit, reason: inBrief ? 'unknown-name-in-sources' : 'unknown-name', severity: 'warning'});
-		else persons.push({...hit, reason: inBrief ? 'unknown-name-in-sources' : 'unknown-name', severity: inBrief ? 'warning' : 'error'});
+		// fail closed: only allowlisted organisations pass. A word the sources use is still unknown to us (a surname the
+		// radar missed, a pseudonym such as an operator's handle); only a sentence-initial word the sources never
+		// capitalise stays a warning, because it may just be an ordinary word starting the sentence.
+		if (headline) persons.push({...hit, reason: 'unknown-word-headline', severity: 'error'});
+		else if (atStart) persons.push({...hit, reason: inBrief ? 'unknown-name-in-sources' : 'unknown-name', severity: inBrief ? 'error' : 'warning'});
+		else persons.push({...hit, reason: inBrief ? 'unknown-name-in-sources' : 'unknown-name', severity: 'error'});
 	}
 };
 
@@ -289,10 +368,10 @@ export const personTokensIn = (text: string, idx: AllowIndex): Set<string> => {
 	const out = new Set<string>();
 	const scan = scanNames(text, {idx});
 	for (const p of scan.persons)
-		if (p.reason === 'two-word-name' || p.reason === 'title-or-role' || p.reason === 'apposition' || p.reason === 'age')
+		if (p.reason === 'two-word-name' || p.reason === 'title-or-role' || p.reason === 'apposition' || p.reason === 'age' || p.reason === 'speaker-name')
 			for (const t of tokenize(p.text)) {
 				const w = lw(t.text);
-				if (!CONNECTORS.has(w) && !COMMON.has(w) && w.length > 1) out.add(w);
+				if (!CONNECTORS.has(w) && !COMMON.has(w) && !PERSON_CUES.has(w) && w.length > 1) out.add(w);
 			}
 	return out;
 };
@@ -325,6 +404,12 @@ export const personMessage = (p: PersonHit): string => {
 			return `"${p.text}" is not on the allowlist (it does appear in the sources)`;
 		case 'unknown-name':
 			return `"${p.text}" is not a known organisation, protocol, place or term, and no source names it`;
+		case 'speaker-name':
+			return `"${p.text}" is quoted as speaking ("said", "says", "told") and is not an allowlisted organisation, so it reads as a person`;
+		case 'role-handle':
+			return `"${p.text}" follows a role ("investigator", "engineer"), so it reads as a person's name or handle (lower case included)`;
+		case 'lowercase-name':
+			return `"${p.text}" reads as a personal name written in lower case`;
 	}
 };
 
@@ -340,6 +425,7 @@ export const personFix = (p: PersonHit): string => {
 		case 'unknown-name-in-sources':
 		case 'unknown-name':
 		case 'unknown-word-headline':
+		case 'speaker-name':
 			return 'If it is an organisation, protocol, place or term, add it to scripts/news/allowlist.json. If it is a person, remove it and describe the role.';
 		default:
 			return 'Replace the name with the role ("the exchange\'s CEO", "a developer"). Only officials named in a cited law-enforcement or regulator release may be named, and only once they are in allowlist.json "officials".';

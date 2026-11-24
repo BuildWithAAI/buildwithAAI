@@ -9,7 +9,12 @@ Rules enforced here:
     do not re-download unchanged feeds;
   * 429 / 5xx / timeouts are retried twice with backoff (Retry-After honoured,
     capped); policy refusals (HTTP 403, proxy 403) are never retried;
-  * responses are capped in size and gzip is decoded with a size cap.
+  * responses are capped in size, read in chunks within a wall-clock budget, and
+    gzip is decoded with a size cap;
+  * only http and https are ever opened (no ftp:, file: or data: handlers), and
+    redirects are followed by hand: https only, to the same host or to a host
+    listed in sources.json, at most 5, with robots.txt and the per-host spacing
+    checked again for a new host.
 
 The cache keeps only what the parsers extract (titles, URLs, dates and excerpts of
 at most 280 characters) plus validators, never raw article bodies.
@@ -31,7 +36,14 @@ from .textutil import iso_z, parse_iso
 DEFAULT_USER_AGENT = "NewsRadar/0.1"
 PRODUCT_TOKEN_DEFAULT = "NewsRadar"
 RETRY_STATUSES = {429, 500, 502, 503, 504}
+REDIRECT_STATUSES = {301, 302, 303, 307, 308}
+MAX_REDIRECTS = 5
+READ_CHUNK = 64 * 1024
+REQUEST_SECONDS = 60.0
+# robots.txt answers that mean "do not crawl now" rather than "no rules" (RFC 9309 leaves these to the crawler)
+ROBOTS_DENY_STATUSES = {401, 403, 429}
 ROBOTS_TTL = dt.timedelta(hours=24)
+UNREACHABLE_TTL = dt.timedelta(hours=6)
 CACHE_VERSION = 1
 
 
@@ -50,6 +62,24 @@ class Response:
         self.url = url
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Hand every 3xx back to the caller as an HTTPError: redirects are checked and followed by HttpClient."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def build_opener():
+    """An opener that can only speak http and https (through the environment's proxy), never ftp:, file: or data:,
+    and that never follows a redirect on its own."""
+    opener = urllib.request.OpenerDirector()
+    for handler in (urllib.request.ProxyHandler(), urllib.request.UnknownHandler(), urllib.request.HTTPHandler(),
+                    urllib.request.HTTPDefaultErrorHandler(), _NoRedirect(), urllib.request.HTTPErrorProcessor(),
+                    urllib.request.HTTPSHandler()):
+        opener.add_handler(handler)
+    return opener
+
+
 def product_token(user_agent):
     token = (user_agent or "").split("/", 1)[0].split()[0] if user_agent else ""
     return token or PRODUCT_TOKEN_DEFAULT
@@ -58,19 +88,24 @@ def product_token(user_agent):
 class HttpClient:
     def __init__(self, user_agent=DEFAULT_USER_AGENT, min_interval=1.05, timeout=30,
                  max_bytes=8 * 1024 * 1024, retries=2, opener=None, clock=time.monotonic,
-                 sleep=time.sleep, log=None):
+                 sleep=time.sleep, log=None, allowed_hosts=(), deadline=REQUEST_SECONDS):
         self.user_agent = user_agent
         self.min_interval = float(min_interval)
         self.timeout = timeout
         self.max_bytes = max_bytes
         self.retries = retries
-        self.opener = opener or urllib.request.build_opener()
+        self.opener = opener or build_opener()
         self.clock = clock
         self.sleep = sleep
         self.log = log or (lambda msg: None)
         self._last = {}
         self.host_delay = {}
         self.requests = 0
+        # hosts a redirect may lead to besides the requested host (the hosts of sources.json)
+        self.allowed_hosts = {h.lower() for h in allowed_hosts if h}
+        self.deadline = float(deadline)
+        # callable(url) -> (allowed, note): robots.txt for a redirect target on a new host (set by RobotsCache)
+        self.redirect_check = None
 
     def _wait_turn(self, host):
         interval = max(self.min_interval, self.host_delay.get(host) or 0.0)
@@ -81,28 +116,83 @@ class HttpClient:
                 self.sleep(wait)
         self._last[host] = self.clock()
 
-    def get(self, url, headers=None, accept="*/*"):
-        host = urllib.parse.urlsplit(url).netloc.lower()
+    def _redirect_target(self, current, location):
+        """The URL a redirect leads to, or FetchError when it is not https, not on the same host and not on a
+        listed host, or carries credentials or an unusual port."""
+        if not location:
+            raise FetchError("redirect-refused", "redirect without a Location header")
+        target = urllib.parse.urljoin(current, location.strip())
+        parts = urllib.parse.urlsplit(target)
+        try:
+            port = parts.port
+        except ValueError:
+            raise FetchError("redirect-refused", "redirect to a malformed URL") from None
+        if parts.scheme != "https":
+            raise FetchError("redirect-refused", f"redirect to a non-https URL refused ({parts.scheme or 'no scheme'})")
+        if parts.username or parts.password or port not in (None, 443):
+            raise FetchError("redirect-refused", "redirect to a URL with credentials or a non-standard port refused")
+        host = (parts.hostname or "").lower()
+        if host != (urllib.parse.urlsplit(current).hostname or "").lower() and host not in self.allowed_hosts:
+            raise FetchError("redirect-refused", f"redirect to an unlisted host refused: {host}")
+        return target
+
+    def _read(self, resp, started):
+        """The body in chunks, within the size cap and the wall-clock budget."""
+        reader = getattr(resp, "read1", None) or resp.read
+        chunks, size = [], 0
+        while True:
+            if self.clock() - started > self.deadline:
+                raise FetchError("timeout", f"response took longer than {self.deadline:g} s")
+            chunk = reader(READ_CHUNK)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+            if size > self.max_bytes:
+                raise FetchError("too-large", f"response larger than {self.max_bytes} bytes")
+        return b"".join(chunks)
+
+    def get(self, url, headers=None, accept="*/*", robots_request=False):
+        current = url
+        host = (urllib.parse.urlsplit(current).hostname or "").lower()
         attempt = 0
+        redirects = 0
         while True:
             self._wait_turn(host)
             request_headers = {"User-Agent": self.user_agent, "Accept": accept, "Accept-Encoding": "gzip"}
             request_headers.update(headers or {})
-            request = urllib.request.Request(url, headers=request_headers, method="GET")
+            request = urllib.request.Request(current, headers=request_headers, method="GET")
             self.requests += 1
+            started = self.clock()
             try:
                 with self.opener.open(request, timeout=self.timeout) as resp:
-                    raw = resp.read(self.max_bytes + 1)
-                    if len(raw) > self.max_bytes:
-                        raise FetchError("too-large", f"response larger than {self.max_bytes} bytes")
+                    final = (urllib.parse.urlsplit(resp.geturl() or current).hostname or "").lower()
+                    if final != host:
+                        raise FetchError("redirect-refused", f"response came from another host: {final}")
+                    raw = self._read(resp, started)
                     lowered = {k.lower(): v for k, v in resp.headers.items()}
                     body = _decode_body(raw, lowered.get("content-encoding", ""), self.max_bytes)
-                    return Response(resp.status, lowered, body, resp.geturl())
+                    return Response(resp.status, lowered, body, resp.geturl() or current)
             except urllib.error.HTTPError as err:
                 status = err.code
                 lowered = {k.lower(): v for k, v in (err.headers.items() if err.headers else [])}
+                try:
+                    err.close()
+                except Exception:  # noqa: BLE001 - closing a finished error response must never fail a fetch
+                    pass
+                if status in REDIRECT_STATUSES:
+                    if redirects >= MAX_REDIRECTS:
+                        raise FetchError("redirect-refused", f"more than {MAX_REDIRECTS} redirects") from None
+                    target = self._redirect_target(current, lowered.get("location"))
+                    new_host = (urllib.parse.urlsplit(target).hostname or "").lower()
+                    if new_host != host and self.redirect_check and not robots_request:
+                        allowed, note = self.redirect_check(target)
+                        if not allowed:
+                            raise FetchError("robots", f"redirect target disallowed by robots.txt: {note}") from None
+                    current, host, redirects, attempt = target, new_host, redirects + 1, 0
+                    continue
                 if status == 304:
-                    return Response(304, lowered, b"", url)
+                    return Response(304, lowered, b"", current)
                 if status in RETRY_STATUSES and attempt < self.retries:
                     attempt += 1
                     self.sleep(_retry_after(lowered.get("retry-after"), attempt))
@@ -110,7 +200,7 @@ class HttpClient:
                 raise FetchError("http", f"HTTP {status}", status=status) from None
             except urllib.error.URLError as err:
                 reason = str(getattr(err, "reason", err))
-                if "Tunnel connection failed" in reason or "403" in reason and "proxy" in reason.lower():
+                if "Tunnel connection failed" in reason or ("403" in reason and "proxy" in reason.lower()):
                     raise FetchError("proxy-refused", f"network policy refused {host}: {reason}") from None
                 if attempt < self.retries and _transient(err):
                     attempt += 1
@@ -177,12 +267,15 @@ class JsonStore:
 
 
 class RobotsCache:
-    def __init__(self, client, store, now):
+    def __init__(self, client, store, now, extra_tokens=()):
         self.client = client
         self.store = store
         self.now = now
         self.memory = {}
         self.product = product_token(client.user_agent)
+        self.extra_tokens = tuple(t for t in extra_tokens if t and t.lower() != self.product.lower())
+        if getattr(client, "redirect_check", "absent") is None:
+            client.redirect_check = self.check_redirect
 
     def for_url(self, url):
         parts = urllib.parse.urlsplit(url)
@@ -193,10 +286,12 @@ class RobotsCache:
         fresh = False
         if record and record.get("v") == CACHE_VERSION:
             fetched = parse_iso(record.get("fetchedUtc"))
-            fresh = fetched is not None and self.now - fetched < ROBOTS_TTL and record.get("mode") != "disallow-all"
+            # an unreachable host is retried after 6 hours, never sooner
+            ttl = UNREACHABLE_TTL if record.get("mode") == "disallow-all" else ROBOTS_TTL
+            fresh = fetched is not None and self.now - fetched < ttl
         if not fresh:
             record = self._fetch(parts.scheme or "https", host)
-            if self.store and record["mode"] != "disallow-all":
+            if self.store:
                 self.store.save("robots", host, record)
         if record["mode"] == "parsed":
             rules = robots_mod.Robots.parse(record.get("text", ""))
@@ -215,10 +310,13 @@ class RobotsCache:
         url = f"{scheme}://{host}/robots.txt"
         record = {"v": CACHE_VERSION, "host": host, "fetchedUtc": iso_z(self.now), "url": url}
         try:
-            resp = self.client.get(url, accept="text/plain, */*")
+            resp = self.client.get(url, accept="text/plain, */*", robots_request=True)
         except FetchError as err:
-            if err.kind == "http" and err.status and 400 <= err.status < 500:
+            if err.kind == "http" and err.status and 400 <= err.status < 500 and err.status not in ROBOTS_DENY_STATUSES:
                 record.update(mode="allow-all", status=err.status, note=f"robots.txt HTTP {err.status}: no rules")
+            elif err.kind == "http" and err.status in ROBOTS_DENY_STATUSES:
+                # rate limited or refused: treat as "do not crawl now" and ask again after the short TTL
+                record.update(mode="disallow-all", status=err.status, note=f"robots.txt HTTP {err.status}: not crawling this host for now")
             else:
                 record.update(mode="disallow-all", status=err.status, note=f"robots.txt unreachable ({err.kind}): {err}")
             return record
@@ -226,9 +324,21 @@ class RobotsCache:
         record.update(mode="parsed", status=resp.status, text=text)
         return record
 
+    def check_redirect(self, url):
+        """(allowed, note) for a redirect target on a new host: that host's robots.txt is fetched and obeyed too."""
+        allowed, record = self.allowed(url)
+        return allowed, record.get("note") or ("allowed" if allowed else "robots.txt disallows this path")
+
     def allowed(self, url):
+        """(allowed, record): allowed only if our token and every extra token may fetch url."""
         rules, record = self.for_url(url)
-        return rules.allowed(url, self.product), record
+        if not rules.allowed(url, self.product):
+            return False, record
+        for token in self.extra_tokens:
+            if not rules.allowed(url, token):
+                record = dict(record, note=f"robots.txt disallows this path for {token}")
+                return False, record
+        return True, record
 
 
 class SourceCache:

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {describe, it} from 'node:test';
 import type {Offer} from '../types.ts';
-import {checkRegistry, destinationUrl, disclosureLines, hubPath, isLive, regionDecision, RISK_LINE} from './offers.ts';
+import {checkRegistry, destinationUrl, disclosureLines, hubPagePath, hubPath, isLive, isRestricted, regionDecision, RISK_LINE, topDisclosure} from './offers.ts';
 import {testRegistry} from './test-helpers.ts';
 
 const base = (): Record<string, unknown> => ({...testRegistry().offers[0]});
@@ -44,6 +44,26 @@ describe('offer registry validation', () => {
 		assert.match(errorsFor({...base(), allowedCountries: ['DE']}).join('\n'), /restricted by country/);
 	});
 
+	it('treats exchanges and "financialPromotion" offers as financial promotions that must be region-restricted', () => {
+		const yieldApp = {...base(), id: 'yield-app', category: 'tools', relationship: 'referral', disclosure: 'Referral link: I earn a fee if you deposit.'};
+		// filed as "tools" with no country rules: accepted, but the owner is warned
+		const loose = checkRegistry({version: 1, offers: [yieldApp]});
+		assert.deepEqual(loose.errors, []);
+		assert.match(loose.warnings.join('\n'), /mentions "deposit".*"financialPromotion": true/);
+		const flagged = errorsFor({...yieldApp, financialPromotion: true}).join('\n');
+		assert.match(flagged, /financial promotion \("financialPromotion": true\) must use unknownCountry "block"/);
+		assert.match(flagged, /must list the countries/);
+		assert.match(errorsFor({...base(), category: 'exchange', unknownCountry: 'block'}).join('\n'), /must list the countries/);
+		const ok = checkRegistry({version: 1, offers: [{...yieldApp, financialPromotion: true, blockedCountries: ['GB', 'US'], unknownCountry: 'block'}]});
+		assert.deepEqual(ok.errors, []);
+		assert.equal(ok.registry.offers[0]?.financialPromotion, true);
+		assert.equal(regionDecision(ok.registry.offers[0]!, 'GB'), 'blocked_region');
+		assert.equal(regionDecision(ok.registry.offers[0]!, null), 'blocked_unknown_region');
+		assert.match(errorsFor({...base(), financialPromotion: 'yes'}).join('\n'), /"financialPromotion" must be true or false/);
+		// an ordinary affiliate disclosure ("I may earn a commission") is not a financial word
+		assert.deepEqual(checkRegistry(testRegistry()).warnings, []);
+	});
+
 	it('requires alternatives to exist and not point at the offer itself', () => {
 		assert.match(errorsFor({...base(), alternatives: ['missing']}).join('\n'), /alternative "missing" does not exist/);
 		assert.match(errorsFor({...base(), alternatives: ['wallet']}).join('\n'), /must not include the offer itself/);
@@ -52,6 +72,19 @@ describe('offer registry validation', () => {
 	it('never accepts a memecoin launchpad and never activates a placeholder URL', () => {
 		assert.match(errorsFor({...base(), url: 'https://pump.fun/board'}).join('\n'), /launchpads are never offers/);
 		assert.match(errorsFor({...base(), url: 'https://www.pump.fun/x'}).join('\n'), /launchpads/);
+		// behind an affiliate-network tracking link, by name, by notes, and other launchpads
+		for (const fields of [
+			{name: 'Pump.fun', url: 'https://track.affnetwork.io/c/123?u=https%3A%2F%2Fpump.fun%2Fboard'},
+			{url: 'https://track.affnetwork.io/c/123?u=https%253A%252F%252Fpump.fun%252Fboard'},
+			{name: 'Pump fun bonus'},
+			{url: 'https://bags.fm/?ref=abc'},
+			{url: 'https://moonshot.money/?ref=abc'},
+			{url: 'https://www.clanker.world/'},
+			{url: 'https://app.virtuals.io/'},
+			{notes: 'Token launchpad, new partner'},
+		]) {
+			assert.match(errorsFor({...base(), ...fields}).join('\n'), /launchpads are never offers/, JSON.stringify(fields));
+		}
 		assert.match(errorsFor({...base(), url: 'https://example.com/?ref=REPLACE'}).join('\n'), /replace the placeholder URL/);
 		assert.deepEqual(errorsFor({...base(), url: 'https://example.com/?ref=REPLACE', active: false}), []);
 	});
@@ -119,6 +152,27 @@ describe('links and disclosures', () => {
 		assert.equal(destinationUrl(offer({url: 'https://shop.test/?', subIdParam: 'sid'}), 'v1', 'x'), 'https://shop.test/?sid=v1.x');
 		assert.equal(destinationUrl(offer({url: 'https://shop.test/?sid=old', subIdParam: 'sid'}), 'v1', 'x'), 'https://shop.test/?sid=v1.x');
 		assert.equal(destinationUrl(offer({url: 'https://shop.test/?a=1', subIdParam: undefined}), 'v1', 'x'), 'https://shop.test/?a=1');
+	});
+
+	it('fills an existing empty sub-ID placeholder without re-encoding the rest of the URL', () => {
+		const o = offer({url: 'https://x.test/buy?ref=abc%20def&subid=&sig=AB%2BC~d*e&flag#frag', subIdParam: 'subid'});
+		assert.equal(destinationUrl(o, 'vidA', 'yt'), 'https://x.test/buy?ref=abc%20def&subid=vidA.yt&sig=AB%2BC~d*e&flag#frag');
+		const twice = offer({url: 'https://x.test/?subid=a&subid=b', subIdParam: 'subid'});
+		assert.equal(destinationUrl(twice, 'v', 'x'), 'https://x.test/?subid=v.x&subid=b');
+	});
+
+	it('marks offers that text visible everywhere must not name, and words the opening disclosure like the publish kit', () => {
+		assert.equal(isRestricted(offer({})), false);
+		assert.equal(isRestricted(offer({unknownCountry: 'block'})), true);
+		assert.equal(isRestricted(offer({blockedCountries: ['GB'], unknownCountry: 'block'})), true);
+		assert.equal(topDisclosure([]), null);
+		assert.equal(
+			topDisclosure([offer({relationship: 'affiliate'}), offer({relationship: 'referral'})]),
+			'Disclosure: some links for this video are affiliate or referral links. If you use them, I may earn money. Each one is labelled next to the link.',
+		);
+		assert.match(topDisclosure([offer({relationship: 'own-product'})]) ?? '', /some links for this video go to my own products/);
+		assert.equal(hubPagePath('abc', 'yt'), '/?v=abc&s=yt');
+		assert.equal(hubPagePath(null, null), '/');
 	});
 
 	it('builds hub paths with encoded attribution', () => {

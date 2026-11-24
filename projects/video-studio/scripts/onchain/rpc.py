@@ -12,7 +12,7 @@ Rules this client enforces:
   * at most `rps` requests per second across ALL processes on this machine that
     use this module (one shared lock file serialises the clock; override its
     path with the ONCHAIN_RPC_LOCK environment variable);
-  * HTTP 429 / 5xx / network errors / JSON-RPC rate-limit errors are retried with
+  * HTTP 413 / 429 / 5xx / network errors / JSON-RPC rate-limit errors are retried with
     exponential backoff (1 s, 2 s, 4 s ... capped at 60 s, with jitter).
 
 The cache directory may contain wallet addresses: keep it in a gitignored place.
@@ -157,7 +157,9 @@ class RPC:
                         os.replace(tmp, p)
                     return env.get("result")
             except urllib.error.HTTPError as e:
-                if e.code == 429 or 500 <= e.code < 600:
+                # 413 has been seen on small requests from the shared egress (a throttling
+                # proxy answer, not a real payload problem): retry it like 429 / 5xx.
+                if e.code in (413, 429) or 500 <= e.code < 600:
                     last_err = e
                 else:
                     raise

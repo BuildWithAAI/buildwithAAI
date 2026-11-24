@@ -1,6 +1,9 @@
 /**
  * ZOO mouth library (matches reference/crops/zoo_mouth_*.png). Coordinates are mouth-local units:
- * origin = PIVOTS.jaw (0, -768.3), the line where the closed mouth sits just under the moustache.
+ * origin = PIVOTS.jaw (0, -769.6), the line where the closed mouth sits just under the moustache.
+ * Sizes are matched RELATIVE TO THE MOUSTACHE (decision ZOO-M1: the mouth panels draw the lower face ~19% narrower
+ * than the turnaround; measured that way 'oh' is 17 x 15.5 u vs the panel's 16.7 x 14.9 and 'ah' 28 x 19 vs 25 x 19.6).
+ * Repair round 1 (ZOO-M2): line shapes are thin dark-brown lip lines (beardShadow), open shapes have a thin rim.
  * `hole` drops the top edge of the chin beard (lower-lip skin patch) and `jaw` drops the chin
  * outline, so the beard and jaw stay one coherent shape when the mouth opens.
  */
@@ -25,14 +28,14 @@ export const MOUTHS: Record<MouthShape, MouthSpec> = {
 	closed: {
 		kind: 'line',
 		line: [[-12.5, 0.15], [-6, 0], [0, 0], [6, 0], [13, 0.15]],
-		width: 2.1,
+		width: 1.6,
 		hole: 0,
 		jaw: 0,
 	},
 	slightlyOpen: {
 		kind: 'open',
-		top: [[-12.2, -0.3, 'c'], [-6, -1.1], [0, -1.25], [6, -1.1], [12.6, -0.3, 'c']],
-		bottom: [[8, 2.4], [0, 3.5], [-8, 2.4]],
+		top: [[-12.2, -0.3, 'c'], [-6, -1.3], [0, -1.5], [6, -1.3], [12.6, -0.3, 'c']],
+		bottom: [[8, 2.7], [0, 3.9], [-8, 2.7]],
 		hole: 1,
 		jaw: 0.5,
 	},
@@ -66,7 +69,7 @@ export const MOUTHS: Record<MouthShape, MouthSpec> = {
 	mbp: {
 		kind: 'line',
 		line: [[-12, -0.3], [-6, 0.35], [0, 0.55], [6, 0.35], [12.4, -0.3]],
-		width: 2.5,
+		width: 1.9,
 		lowerLip: [[-6.5, 3.5], [0, 4.3], [6.5, 3.5]],
 		hole: -0.8,
 		jaw: -0.3,

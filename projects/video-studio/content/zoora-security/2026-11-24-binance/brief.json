@@ -1,0 +1,2490 @@
+{
+  "version": 1,
+  "schema": "zoora-security/daily-brief@1",
+  "channel": "zoora-security",
+  "slug": "2026-11-24-binance",
+  "date": "2026-11-24",
+  "generatedAt": "2026-11-24T07:55:17.767Z",
+  "status": "confirmed",
+  "format": "daily-short",
+  "incident": {
+    "id": "2026-10-29-binance",
+    "title": "Binance: social engineering",
+    "protocol": "Binance",
+    "type": "social-engineering",
+    "dateUtc": "2026-10-29",
+    "chains": [
+      "Ethereum",
+      "Bitcoin",
+      "TRON",
+      "Avalanche",
+      "Optimism",
+      "Arbitrum",
+      "Base"
+    ],
+    "status": "confirmed",
+    "statusReason": "confirmed: unhedged tier-A source(s): chainalysis-blog, defillama-hacks, rekt-news",
+    "typeReason": "text 'Fake Interview' via chainalysis-blog; tier-A votes: key-compromise (chainalysis-blog), key-compromise (defillama-hacks), social-engineering (chainalysis-blog), social-engineering (rekt-news)",
+    "mechanismKnown": true,
+    "score": 91,
+    "scoreReasons": {
+      "loss": "lowest tier-A figure $6B (chainalysis-blog); 4 figure(s) from 3 source(s), range $6B to $6.4B",
+      "recency": "freshest source 2026-11-24T05:40:00Z (theblock), 18 h before the end of 2026-11-24",
+      "sources": "12 independent publisher(s): Ax3 (Chainalysis, DefiLlama, rekt.news); Bx6 (CoinDesk, Cointelegraph, DL News, Decrypt, The Block, The Defiant); Cx3 (Coin Edition, Web3 is Going Just Great, crypto.news)",
+      "novelty": "follow-up to an incident from 2026-10-29 (26 days ago); 0 other social-engineering incident(s) in the 14 days before 2026-11-24",
+      "evergreen": "social-engineering -> fake-job-malware (direct: the incident is the topic)",
+      "audience": "target CEX (base 0.85); retail cues: account, users"
+    },
+    "shortReady": {
+      "ready": true,
+      "missing": []
+    },
+    "postMortemUrl": "https://rekt.news/binance-rekt",
+    "notes": [
+      "Sources state different figures (3 distinct). Quote each with its source; never average.",
+      "Legal matter (allegedly, forfeiture, freezing order, plaintiffs, prosecutors, seize): allegations and filings are not findings; name no individuals."
+    ]
+  },
+  "evergreenTopic": "fake-job-malware",
+  "evergreen": {
+    "topic": "fake-job-malware",
+    "title": "Fake job interviews that install malware",
+    "url": null,
+    "status": "planned"
+  },
+  "incidents": [
+    {
+      "id": "2026-10-29-binance",
+      "name": "Binance",
+      "status": "confirmed",
+      "date": "2026-10-29",
+      "role": "primary"
+    },
+    {
+      "id": "defillama-30d",
+      "name": "DefiLlama hack list (30 days)",
+      "status": "confirmed",
+      "date": "2026-11-24",
+      "role": "comparison"
+    }
+  ],
+  "sources": [
+    {
+      "id": "defillama-hacks",
+      "feed": "defillama-hacks",
+      "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+      "title": "DefiLlama hacks: Binance CEX (2026-10-29)",
+      "publisher": "DefiLlama",
+      "kind": "tracker",
+      "tier": "A",
+      "publishedAt": null,
+      "eventDate": "2026-10-29",
+      "excerpt": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+    },
+    {
+      "id": "chainalysis-blog",
+      "feed": "chainalysis-blog",
+      "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/",
+      "title": "The $6.4 Billion Binance Hack: Tracing the North Korea Link",
+      "publisher": "Chainalysis",
+      "kind": "security-firm",
+      "tier": "A",
+      "publishedAt": "2026-10-30T09:34:29Z",
+      "eventDate": "2026-10-29",
+      "excerpt": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis."
+    },
+    {
+      "id": "chainalysis-blog-2",
+      "feed": "chainalysis-blog",
+      "url": "https://www.chainalysis.com/blog/binance-hack-dprk-employment-fraud/",
+      "title": "DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance",
+      "publisher": "Chainalysis",
+      "kind": "security-firm",
+      "tier": "A",
+      "publishedAt": "2026-11-03T19:43:21Z",
+      "eventDate": null,
+      "excerpt": "Summary Binance disclosed that a DPRK fake employment scheme was behind its $6 billion hack: Attackers used a fabricated job… The post DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance appeared first on Chainalysis."
+    },
+    {
+      "id": "rekt-news",
+      "feed": "rekt-news",
+      "url": "https://rekt.news/binance-rekt",
+      "title": "Binance - Rekt",
+      "publisher": "rekt.news",
+      "kind": "post-mortem",
+      "tier": "A",
+      "publishedAt": "2026-11-06T00:00:00Z",
+      "eventDate": null,
+      "excerpt": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?"
+    },
+    {
+      "id": "coindesk",
+      "feed": "coindesk",
+      "url": "https://www.coindesk.com/business/2026/11/23/binance-hackers-push-usd247-million-through-transactions-designed-to-cloud-the-source",
+      "title": "Binance hackers push $247 million through transactions designed to cloud the source",
+      "publisher": "CoinDesk",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T15:29:01Z",
+      "eventDate": null,
+      "excerpt": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
+      "hedge": "potential"
+    },
+    {
+      "id": "thedefiant",
+      "feed": "thedefiant",
+      "url": "https://thedefiant.io/news/hacks/elliptic-traces-about-247m-in-binance-theft-linked-bitcoin-to-coinjoins",
+      "title": "Elliptic Traces About $247M in Binance Theft-Linked Bitcoin to Coinjoins",
+      "publisher": "The Defiant",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T16:07:46Z",
+      "eventDate": null,
+      "excerpt": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds."
+    },
+    {
+      "id": "thedefiant-2",
+      "feed": "thedefiant",
+      "url": "https://thedefiant.io/news/regulation/us-court-extends-binance-account-freeze-to-dec-17",
+      "title": "US Court Extends Binance Account Freeze to Dec. 17",
+      "publisher": "The Defiant",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T18:00:29Z",
+      "eventDate": null,
+      "excerpt": "Binance says it cannot release affected funds on its own. The plaintiffs' notice still lists Nov. 24 as the requested date to contact counsel."
+    },
+    {
+      "id": "thedefiant-3",
+      "feed": "thedefiant",
+      "url": "https://thedefiant.io/news/hacks/doj-seeks-over-1-1-billion-in-usdc-tied-to-binance-hack",
+      "title": "DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack",
+      "publisher": "The Defiant",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T19:00:04Z",
+      "eventDate": null,
+      "excerpt": "The civil case concerns previously frozen tokens. Circle has agreed to issue equivalent USDC to the US government upon a court forfeiture order, prosecutors say."
+    },
+    {
+      "id": "theblock",
+      "feed": "theblock",
+      "url": "https://www.theblock.co/news/regulation/2026-11-23-doj-1-17-billion-usdc-binance-hack-circle-replacement-tokens-445398",
+      "title": "DOJ seeks $1.17 billion in USDC tied to Binance hack; Circle could issue replacement tokens",
+      "publisher": "The Block",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T20:00:34Z",
+      "eventDate": "2026-10-29",
+      "excerpt": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack."
+    },
+    {
+      "id": "decrypt",
+      "feed": "decrypt",
+      "url": "https://decrypt.co/383844/north-korea-247-million-binance-hack-bitcoin-mixers",
+      "title": "North Korea Moves $247 Million of Binance Hack Loot Through Bitcoin Mixers",
+      "publisher": "Decrypt",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T20:36:02Z",
+      "eventDate": null,
+      "excerpt": "Roughly a month after the $6.4 billion hack, Elliptic says nearly all of the coinjoin mixing was coordinated by one person who “refuses to block funds such as these.\""
+    },
+    {
+      "id": "cointelegraph",
+      "feed": "cointelegraph",
+      "url": "https://cointelegraph.com/news/us-seeks-11b-crypto-stolen-north-korea-binance-hack",
+      "title": "US seeks to recover $1.1B in crypto stolen in North Korea-linked Binance hack",
+      "publisher": "Cointelegraph",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T21:04:03Z",
+      "eventDate": null,
+      "excerpt": "US prosecutors are seeking control of stolen USDC, while Elliptic says hackers have moved $247 million through Bitcoin mixers."
+    },
+    {
+      "id": "dlnews",
+      "feed": "dlnews",
+      "url": "https://www.dlnews.com/articles/regulation/binance-obtains-usd65-billion-freezing-order-for-stolen-crypto/",
+      "title": "Binance obtains $6.5 billion freezing order for stolen crypto",
+      "publisher": "DL News",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-23T22:08:13Z",
+      "eventDate": "2026-10-29",
+      "excerpt": "Binance says it secured a $6.5 billion worldwide freezing order from Abu Dhabi courts to recover crypto stolen in the October 29 hack."
+    },
+    {
+      "id": "thedefiant-4",
+      "feed": "thedefiant",
+      "url": "https://thedefiant.io/news/hacks/reuters-circle-world-liberty-ordered-to-keep-tokens-frozen",
+      "title": "Reuters: Circle, World Liberty Ordered to Keep Tokens Frozen",
+      "publisher": "The Defiant",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-24T05:19:20Z",
+      "eventDate": null,
+      "excerpt": "An ADGM order requires 18 firms to preserve Binance hack-linked tokens, Reuters reported. A Dec. 1 hearing will consider whether the restrictions continue."
+    },
+    {
+      "id": "theblock-2",
+      "feed": "theblock",
+      "url": "https://www.theblock.co/newsletters/the-daily/2026-11-24-doj-binance-hack-strategy-bitcoin-more-crypto-news-445430",
+      "title": "DOJ moves to recover $1.17 billion from Binance hack, Strategy buys another 457 BTC, and more",
+      "publisher": "The Block",
+      "kind": "news",
+      "tier": "B",
+      "publishedAt": "2026-11-24T05:40:00Z",
+      "eventDate": null,
+      "excerpt": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more."
+    },
+    {
+      "id": "coinedition",
+      "feed": "coinedition",
+      "url": "https://coinedition.com/crypto-live-news/us-doj-moves-to-recover-1-1-billion-in-usdc-linked-to-6-3-billion-binance-hack/",
+      "title": "US DOJ Moves to Recover $1.1 Billion in USDC Linked to $6.3 Billion Binance Hack",
+      "publisher": "Coin Edition",
+      "kind": "news",
+      "tier": "C",
+      "publishedAt": "2026-11-23T19:25:49Z",
+      "eventDate": "2026-10-29",
+      "excerpt": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…"
+    },
+    {
+      "id": "web3isgoinggreat",
+      "feed": "web3isgoinggreat",
+      "url": "https://web3isgoinggreat.com/single/binance-hack",
+      "title": "North Korea hacks Binance for around $6.3 billion, some frozen",
+      "publisher": "Web3 is Going Just Great",
+      "kind": "news",
+      "tier": "C",
+      "publishedAt": "2026-10-29T21:42:37Z",
+      "eventDate": null,
+      "excerpt": "Binance has confirmed that an attacker exploited the exchange, stealing around $6.3 billion from multiple hot wallets. The theft has set the new record for the largest crypto theft. Luckily for Binance, Tether and Circle quickly began freezing some of the exploiter's wallets.…"
+    },
+    {
+      "id": "cryptonews",
+      "feed": "cryptonews",
+      "url": "https://crypto.news/binance-hack-usdc-forfeiture/",
+      "title": "DOJ seeks about $1B in USDC from Binance hack",
+      "publisher": "crypto.news",
+      "kind": "news",
+      "tier": "C",
+      "publishedAt": "2026-11-23T19:30:00Z",
+      "eventDate": "2026-11-23",
+      "excerpt": "The U.S. Justice Department has filed a civil forfeiture complaint seeking about $1 billion in USDC tied to the October hack of Binance, a theft federal investigators have attributed to North Korean hackers. The verified complaint, filed Nov. 23 in…"
+    },
+    {
+      "id": "coinedition-2",
+      "feed": "coinedition",
+      "url": "https://coinedition.com/crypto-live-news/doj-moves-to-seize-1b-in-usdc-linked-to-binance-hack/",
+      "title": "DOJ Targets $1B in USDC Tied to North Korea’s Binance Hack",
+      "publisher": "Coin Edition",
+      "kind": "news",
+      "tier": "C",
+      "publishedAt": "2026-11-23T20:36:44Z",
+      "eventDate": "2026-11-23",
+      "excerpt": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…"
+    },
+    {
+      "id": "defillama-30d",
+      "feed": "defillama-hacks",
+      "url": "https://api.llama.fi/hacks",
+      "title": "DefiLlama hacks: incidents dated 2026-10-26 to 2026-11-24",
+      "publisher": "DefiLlama",
+      "kind": "tracker",
+      "tier": "A",
+      "publishedAt": "2026-11-24T06:44:26Z",
+      "excerpts": [
+        "Bloom Trading Bot · 2026-10-26 · reported loss $953,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet · chains: Solana",
+        "Myriad Markets · 2026-10-26 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: BSC",
+        "Fence Finance · 2026-10-27 · reported loss $1,010,000 · Token & Share Accounting / Incorrect Share Accounting · target: DeFi Protocol · chains: Avalanche",
+        "Predict Fun · 2026-10-27 · reported loss $400,000 · Frontend & Infrastructure / Frontend Compromise · target: Prediction Market · chains: BSC",
+        "Zilliqa X-Bridge · 2026-10-27 · loss not stated · Key Compromise / Private Key Compromised · target: DeFi Protocol · chains: Zilliqa · bridge hack: yes",
+        "Hifi Finance · 2026-10-28 · loss not stated · Governance / Malicious Proposal · target: DeFi Protocol · chains: Ethereum",
+        "zkLink Nova · 2026-10-28 · reported loss $783,100 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Ethereum · bridge hack: yes",
+        "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base",
+        "Polymarket International · 2026-10-29 · reported loss $2,700,000 · Frontend & Infrastructure / Supply Chain Attack · target: Prediction Market · chains: Polygon",
+        "b14g · 2026-10-31 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: CORE",
+        "Sovryn Lend · 2026-10-31 · reported loss $914,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Rootstock",
+        "Troves · 2026-10-31 · reported loss $666,935 · Access Control / Improper Access Control · target: DeFi Protocol",
+        "BTCPay Server · 2026-11-01 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Wallet · chains: Bitcoin, Litecoin",
+        "Premia V3 · 2026-11-01 · reported loss $437,000 · Protocol Logic / Withdrawal Logic Flaw · target: DeFi Protocol · chains: Arbitrum",
+        "Sovryn Dex · 2026-11-01 · reported loss $538,749 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Rootstock",
+        "BitMart · 2026-11-02 · reported loss $391,000 · Protocol Logic / Unknown · target: CEX · chains: Base, Arbitrum, Optimism",
+        "Mercado Bitcoin · 2026-11-02 · reported loss $40,000,000 · Protocol Logic / Unknown · target: CEX · chains: Bitcoin, Ethereum, Solana, TRON, Polygon, Arbitrum, Avalanche, BSC, Stellar, XDC",
+        "DeFiChain · 2026-11-03 · loss not stated · Token & Share Accounting / Arithmetic Error · target: Chain · chains: DefiChain",
+        "Loopscale Lending · 2026-11-05 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: Solana",
+        "TENDRIL · 2026-11-05 · reported loss $550,000 · Protocol Logic / Swap Logic Flaw · target: DeFi Protocol · chains: BSC",
+        "Keplr Wallet (Web3Auth) · 2026-11-06 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Wallet",
+        "LiquidCore · 2026-11-07 · reported loss $136,664 · Key Compromise / Deployer Key Compromised · target: DeFi Protocol · chains: Hyperliquid L1",
+        "ACryptoS · 2026-11-08 · reported loss $665,429 · Input Validation / Missing Input Validation · target: DeFi Protocol · chains: Arbitrum, BSC, Polygon, Base, Optimism",
+        "LNbits · 2026-11-08 · loss not stated · Protocol Logic / Unknown · target: Wallet · chains: Bitcoin, Lightning Network",
+        "Ankr Bridge · 2026-11-09 · reported loss $304,500 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Ethereum · bridge hack: yes",
+        "Across · 2026-11-10 · loss not stated · Frontend & Infrastructure / DNS Hijack · target: DeFi Protocol · chains: Plasma · bridge hack: yes",
+        "Arcus Perps · 2026-11-10 · reported loss $2,234,391 · returned $2,234,391 · Protocol Logic / Withdrawal Logic Flaw · target: DeFi Protocol · chains: Robinhood Chain",
+        "Curve Finance (CowSwapBurner) · 2026-11-10 · reported loss $38,206 · Input Validation / Signature Verification Flaw · target: DeFi Protocol · chains: Ethereum",
+        "Initia · 2026-11-10 · reported loss $615,000 · Key Compromise / Private Key Compromised · target: Chain · chains: Initia",
+        "Rujira AMM Strategies · 2026-11-11 · reported loss $200,000 · Protocol Logic / Swap Logic Flaw · target: DeFi Protocol · chains: THORChain",
+        "Edel · 2026-11-12 · reported loss $300,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Ethereum",
+        "Pennysia · 2026-11-13 · reported loss $5,131 · Access Control / Arbitrary External Call · target: DeFi Protocol · chains: Ethereum",
+        "Hyprearn Perps · 2026-11-14 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: Hyperliquid L1",
+        "Kava Lend · 2026-11-14 · reported loss $3,700,000 · Token & Share Accounting / Arithmetic Error · target: DeFi Protocol · chains: Kava",
+        "Chain Games · 2026-11-15 · reported loss $20,000 · Protocol Logic / Reward Logic Flaw · target: DeFi Protocol · chains: Polygon",
+        "Luxor Commander · 2026-11-15 · loss not stated · Protocol Logic / Unknown · target: Mining Infrastructure · chains: Bitcoin",
+        "Lighter Perps · 2026-11-16 · reported loss $10,393,057 · Frontend & Infrastructure / API Key Compromised · target: DeFi Protocol · chains: zkLighter",
+        "MORE Markets · 2026-11-16 · reported loss $308,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Flow",
+        "Optimizely (OPTIMJACK) · 2026-11-16 · reported loss $2,260 · Frontend & Infrastructure / Supply Chain Attack · target: Web Infrastructure · chains: Bitcoin, Litecoin, TRON, Ethereum, BSC",
+        "B18 TimeBank · 2026-11-17 · reported loss $404,540 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Base",
+        "Gonka AI · 2026-11-18 · reported loss $1,050,000 · Bridge & Cross-Chain / Bridge Logic Flaw · target: DeFi Protocol · chains: Ethereum",
+        "K3 Capital · 2026-11-18 · reported loss $3,420,000 · Token & Share Accounting / Incorrect Share Accounting · target: DeFi Protocol · chains: Ethereum",
+        "LUKSO · 2026-11-18 · reported loss $496,000 · Access Control / Improper Access Control · target: Wallet · chains: LUKSO",
+        "Peapods Finance · 2026-11-18 · loss not stated · Key Compromise / Deployer Key Compromised · target: DeFi Protocol",
+        "RNT Lend · 2026-11-18 · reported loss $954,703 · Key Compromise / Private Key Compromised · target: DeFi Protocol · chains: Polygon",
+        "CALC · 2026-11-19 · reported loss $26,900 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Ethereum, Hyperliquid L1",
+        "Fluidkey · 2026-11-19 · reported loss $1,600,000 · Frontend & Infrastructure / Database Breach · target: Wallet · chains: Ethereum, Base, Binance, Polygon, Optimism, Arbitrum",
+        "The Moats · 2026-11-19 · reported loss $600,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Avalanche, Robinhood Chain",
+        "Wagyu (XMR1) · 2026-11-20 · reported loss $13,510,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Hyperliquid L1",
+        "Chainflip AMM · 2026-11-21 · reported loss $11,960,000 · Key Compromise / Validator Key Compromised · target: DeFi Protocol · chains: Ethereum, Bitcoin · bridge hack: yes",
+        "CyberConnect · 2026-11-21 · reported loss $968,000 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Solana, Ethereum · bridge hack: yes",
+        "Endurance Bridge · 2026-11-22 · reported loss $1,040,000 · Bridge & Cross-Chain / Unbacked Cross-Chain Mint · target: DeFi Protocol · chains: BSC · bridge hack: yes"
+      ],
+      "note": "Structured rows only (name · date · loss · classification · target · chains), from the radar's cache fetched 2026-11-24T06:44:26Z."
+    }
+  ],
+  "facts": [
+    {
+      "id": "f1",
+      "text": "DefiLlama lists a loss of $6,360,000,000.",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "reported loss $6,360,000,000",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f2",
+      "text": "DefiLlama classifies it as Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Frontend & Infrastructure / Key Leaked via Infrastructure",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f3",
+      "text": "DefiLlama dates it 2026-10-29.",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "2026-10-29",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f4",
+      "text": "DefiLlama lists the chains as Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base.",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f5",
+      "text": "DefiLlama lists the target type as CEX.",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "target: CEX",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f6",
+      "text": "Chainalysis headline, 2026-10-30: \"The $6.4 Billion Binance Hack: Tracing the North Korea Link\"",
+      "sourceIds": [
+        "chainalysis-blog"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "chainalysis-blog",
+          "text": "The $6.4 Billion Binance Hack: Tracing the North Korea Link"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "The $6.4 Billion Binance Hack: Tracing the North Korea Link",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f7",
+      "text": "Chainalysis states a figure of $6,400,000,000.",
+      "sourceIds": [
+        "chainalysis-blog"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "chainalysis-blog",
+          "text": "The $6.4 Billion Binance Hack: Tracing the North Korea Link"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "$6.4 Billion",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f8",
+      "text": "Chainalysis headline, 2026-11-03: \"DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance\"",
+      "sourceIds": [
+        "chainalysis-blog-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "chainalysis-blog-2",
+          "text": "DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f9",
+      "text": "Chainalysis states a figure of $6,000,000,000.",
+      "sourceIds": [
+        "chainalysis-blog-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "chainalysis-blog-2",
+          "text": "Summary Binance disclosed that a DPRK fake employment scheme was behind its $6 billion hack: Attackers used a fabricated job… The post DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance appeared first on Chainalysis."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "$6 billion",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f10",
+      "text": "rekt.news post-mortem, 2026-11-06: \"Binance - Rekt\"",
+      "sourceIds": [
+        "rekt-news"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "rekt-news",
+          "text": "Binance - Rekt"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance - Rekt",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f11",
+      "text": "CoinDesk headline, 2026-11-23: \"Binance hackers push $247 million through transactions designed to cloud the source\"",
+      "sourceIds": [
+        "coindesk"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "coindesk",
+          "text": "Binance hackers push $247 million through transactions designed to cloud the source"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance hackers push $247 million through transactions designed to cloud the source",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f12",
+      "text": "The Defiant headline, 2026-11-23: \"Elliptic Traces About $247M in Binance Theft-Linked Bitcoin to Coinjoins\"",
+      "sourceIds": [
+        "thedefiant"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "thedefiant",
+          "text": "Elliptic Traces About $247M in Binance Theft-Linked Bitcoin to Coinjoins"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Elliptic Traces About $247M in Binance Theft-Linked Bitcoin to Coinjoins",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f13",
+      "text": "The Defiant headline, 2026-11-23: \"US Court Extends Binance Account Freeze to Dec. 17\"",
+      "sourceIds": [
+        "thedefiant-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "thedefiant-2",
+          "text": "US Court Extends Binance Account Freeze to Dec. 17"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "US Court Extends Binance Account Freeze to Dec. 17",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "f14",
+      "text": "The Defiant headline, 2026-11-23: \"DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack\"",
+      "sourceIds": [
+        "thedefiant-3"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "thedefiant-3",
+          "text": "DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack",
+      "kind": "radar-fact"
+    },
+    {
+      "id": "e1",
+      "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…",
+      "sourceIds": [
+        "defillama-hacks"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-hacks",
+          "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e2",
+      "text": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis.",
+      "sourceIds": [
+        "chainalysis-blog"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "chainalysis-blog",
+          "text": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e3",
+      "text": "Summary Binance disclosed that a DPRK fake employment scheme was behind its $6 billion hack: Attackers used a fabricated job… The post DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance appeared first on Chainalysis.",
+      "sourceIds": [
+        "chainalysis-blog-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "chainalysis-blog-2",
+          "text": "Summary Binance disclosed that a DPRK fake employment scheme was behind its $6 billion hack: Attackers used a fabricated job… The post DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance appeared first on Chainalysis."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Summary Binance disclosed that a DPRK fake employment scheme was behind its $6 billion hack: Attackers used a fabricated job… The post DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance appeared first on Chainalysis.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e4",
+      "text": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?",
+      "sourceIds": [
+        "rekt-news"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "rekt-news",
+          "text": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e5",
+      "text": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
+      "sourceIds": [
+        "coindesk"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "coindesk",
+          "text": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e6",
+      "text": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds.",
+      "sourceIds": [
+        "thedefiant"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "thedefiant",
+          "text": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e7",
+      "text": "Binance says it cannot release affected funds on its own. The plaintiffs' notice still lists Nov. 24 as the requested date to contact counsel.",
+      "sourceIds": [
+        "thedefiant-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "thedefiant-2",
+          "text": "Binance says it cannot release affected funds on its own. The plaintiffs' notice still lists Nov. 24 as the requested date to contact counsel."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance says it cannot release affected funds on its own. The plaintiffs' notice still lists Nov. 24 as the requested date to contact counsel.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e8",
+      "text": "The civil case concerns previously frozen tokens. Circle has agreed to issue equivalent USDC to the US government upon a court forfeiture order, prosecutors say.",
+      "sourceIds": [
+        "thedefiant-3"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "thedefiant-3",
+          "text": "The civil case concerns previously frozen tokens. Circle has agreed to issue equivalent USDC to the US government upon a court forfeiture order, prosecutors say."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "The civil case concerns previously frozen tokens. Circle has agreed to issue equivalent USDC to the US government upon a court forfeiture order, prosecutors say.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e9",
+      "text": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack.",
+      "sourceIds": [
+        "theblock"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "theblock",
+          "text": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e10",
+      "text": "Roughly a month after the $6.4 billion hack, Elliptic says nearly all of the coinjoin mixing was coordinated by one person who “refuses to block funds such as these.\"",
+      "sourceIds": [
+        "decrypt"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "decrypt",
+          "text": "Roughly a month after the $6.4 billion hack, Elliptic says nearly all of the coinjoin mixing was coordinated by one person who “refuses to block funds such as these.\""
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Roughly a month after the $6.4 billion hack, Elliptic says nearly all of the coinjoin mixing was coordinated by one person who “refuses to block funds such as these.\"",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e11",
+      "text": "US prosecutors are seeking control of stolen USDC, while Elliptic says hackers have moved $247 million through Bitcoin mixers.",
+      "sourceIds": [
+        "cointelegraph"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "cointelegraph",
+          "text": "US prosecutors are seeking control of stolen USDC, while Elliptic says hackers have moved $247 million through Bitcoin mixers."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "US prosecutors are seeking control of stolen USDC, while Elliptic says hackers have moved $247 million through Bitcoin mixers.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e12",
+      "text": "Binance says it secured a $6.5 billion worldwide freezing order from Abu Dhabi courts to recover crypto stolen in the October 29 hack.",
+      "sourceIds": [
+        "dlnews"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "dlnews",
+          "text": "Binance says it secured a $6.5 billion worldwide freezing order from Abu Dhabi courts to recover crypto stolen in the October 29 hack."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance says it secured a $6.5 billion worldwide freezing order from Abu Dhabi courts to recover crypto stolen in the October 29 hack.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e13",
+      "text": "An ADGM order requires 18 firms to preserve Binance hack-linked tokens, Reuters reported. A Dec. 1 hearing will consider whether the restrictions continue.",
+      "sourceIds": [
+        "thedefiant-4"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "thedefiant-4",
+          "text": "An ADGM order requires 18 firms to preserve Binance hack-linked tokens, Reuters reported. A Dec. 1 hearing will consider whether the restrictions continue."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "An ADGM order requires 18 firms to preserve Binance hack-linked tokens, Reuters reported. A Dec. 1 hearing will consider whether the restrictions continue.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e14",
+      "text": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more.",
+      "sourceIds": [
+        "theblock-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "theblock-2",
+          "text": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more."
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more.",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e15",
+      "text": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…",
+      "sourceIds": [
+        "coinedition"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "coinedition",
+          "text": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e16",
+      "text": "Binance has confirmed that an attacker exploited the exchange, stealing around $6.3 billion from multiple hot wallets. The theft has set the new record for the largest crypto theft. Luckily for Binance, Tether and Circle quickly began freezing some of the exploiter's wallets.…",
+      "sourceIds": [
+        "web3isgoinggreat"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "web3isgoinggreat",
+          "text": "Binance has confirmed that an attacker exploited the exchange, stealing around $6.3 billion from multiple hot wallets. The theft has set the new record for the largest crypto theft. Luckily for Binance, Tether and Circle quickly began freezing some of the exploiter's wallets.…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "Binance has confirmed that an attacker exploited the exchange, stealing around $6.3 billion from multiple hot wallets. The theft has set the new record for the largest crypto theft. Luckily for Binance, Tether and Circle quickly began freezing some of the exploiter's wallets.…",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e17",
+      "text": "The U.S. Justice Department has filed a civil forfeiture complaint seeking about $1 billion in USDC tied to the October hack of Binance, a theft federal investigators have attributed to North Korean hackers. The verified complaint, filed Nov. 23 in…",
+      "sourceIds": [
+        "cryptonews"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "cryptonews",
+          "text": "The U.S. Justice Department has filed a civil forfeiture complaint seeking about $1 billion in USDC tied to the October hack of Binance, a theft federal investigators have attributed to North Korean hackers. The verified complaint, filed Nov. 23 in…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "The U.S. Justice Department has filed a civil forfeiture complaint seeking about $1 billion in USDC tied to the October hack of Binance, a theft federal investigators have attributed to North Korean hackers. The verified complaint, filed Nov. 23 in…",
+      "kind": "excerpt"
+    },
+    {
+      "id": "e18",
+      "text": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…",
+      "sourceIds": [
+        "coinedition-2"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "coinedition-2",
+          "text": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…"
+        }
+      ],
+      "incidentId": "2026-10-29-binance",
+      "quote": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…",
+      "kind": "excerpt"
+    },
+    {
+      "id": "t1",
+      "text": "DefiLlama lists Bloom Trading Bot: 2026-10-26, reported loss $953,000, Frontend & Infrastructure / Supply Chain Attack.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Bloom Trading Bot · 2026-10-26 · reported loss $953,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet · chains: Solana"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Bloom Trading Bot · 2026-10-26 · reported loss $953,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet · chains: Solana",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t2",
+      "text": "DefiLlama lists Myriad Markets: 2026-10-26, loss not stated, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Myriad Markets · 2026-10-26 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: BSC"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Myriad Markets · 2026-10-26 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: BSC",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t3",
+      "text": "DefiLlama lists Fence Finance: 2026-10-27, reported loss $1,010,000, Token & Share Accounting / Incorrect Share Accounting.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Fence Finance · 2026-10-27 · reported loss $1,010,000 · Token & Share Accounting / Incorrect Share Accounting · target: DeFi Protocol · chains: Avalanche"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Fence Finance · 2026-10-27 · reported loss $1,010,000 · Token & Share Accounting / Incorrect Share Accounting · target: DeFi Protocol · chains: Avalanche",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t4",
+      "text": "DefiLlama lists Predict Fun: 2026-10-27, reported loss $400,000, Frontend & Infrastructure / Frontend Compromise.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Predict Fun · 2026-10-27 · reported loss $400,000 · Frontend & Infrastructure / Frontend Compromise · target: Prediction Market · chains: BSC"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Predict Fun · 2026-10-27 · reported loss $400,000 · Frontend & Infrastructure / Frontend Compromise · target: Prediction Market · chains: BSC",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t5",
+      "text": "DefiLlama lists Zilliqa X-Bridge: 2026-10-27, loss not stated, Key Compromise / Private Key Compromised.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Zilliqa X-Bridge · 2026-10-27 · loss not stated · Key Compromise / Private Key Compromised · target: DeFi Protocol · chains: Zilliqa · bridge hack: yes"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Zilliqa X-Bridge · 2026-10-27 · loss not stated · Key Compromise / Private Key Compromised · target: DeFi Protocol · chains: Zilliqa · bridge hack: yes",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t6",
+      "text": "DefiLlama lists Hifi Finance: 2026-10-28, loss not stated, Governance / Malicious Proposal.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Hifi Finance · 2026-10-28 · loss not stated · Governance / Malicious Proposal · target: DeFi Protocol · chains: Ethereum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Hifi Finance · 2026-10-28 · loss not stated · Governance / Malicious Proposal · target: DeFi Protocol · chains: Ethereum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t7",
+      "text": "DefiLlama lists zkLink Nova: 2026-10-28, reported loss $783,100, Bridge & Cross-Chain / Cross-Chain Message Spoofing.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "zkLink Nova · 2026-10-28 · reported loss $783,100 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Ethereum · bridge hack: yes"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "zkLink Nova · 2026-10-28 · reported loss $783,100 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Ethereum · bridge hack: yes",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t8",
+      "text": "DefiLlama lists Binance CEX: 2026-10-29, reported loss $6,360,000,000, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t9",
+      "text": "DefiLlama lists Polymarket International: 2026-10-29, reported loss $2,700,000, Frontend & Infrastructure / Supply Chain Attack.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Polymarket International · 2026-10-29 · reported loss $2,700,000 · Frontend & Infrastructure / Supply Chain Attack · target: Prediction Market · chains: Polygon"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Polymarket International · 2026-10-29 · reported loss $2,700,000 · Frontend & Infrastructure / Supply Chain Attack · target: Prediction Market · chains: Polygon",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t10",
+      "text": "DefiLlama lists b14g: 2026-10-31, loss not stated, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "b14g · 2026-10-31 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: CORE"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "b14g · 2026-10-31 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: CORE",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t11",
+      "text": "DefiLlama lists Sovryn Lend: 2026-10-31, reported loss $914,000, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Sovryn Lend · 2026-10-31 · reported loss $914,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Rootstock"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Sovryn Lend · 2026-10-31 · reported loss $914,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Rootstock",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t12",
+      "text": "DefiLlama lists Troves: 2026-10-31, reported loss $666,935, Access Control / Improper Access Control.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Troves · 2026-10-31 · reported loss $666,935 · Access Control / Improper Access Control · target: DeFi Protocol"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Troves · 2026-10-31 · reported loss $666,935 · Access Control / Improper Access Control · target: DeFi Protocol",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t13",
+      "text": "DefiLlama lists BTCPay Server: 2026-11-01, loss not stated, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "BTCPay Server · 2026-11-01 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Wallet · chains: Bitcoin, Litecoin"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "BTCPay Server · 2026-11-01 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Wallet · chains: Bitcoin, Litecoin",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t14",
+      "text": "DefiLlama lists Premia V3: 2026-11-01, reported loss $437,000, Protocol Logic / Withdrawal Logic Flaw.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Premia V3 · 2026-11-01 · reported loss $437,000 · Protocol Logic / Withdrawal Logic Flaw · target: DeFi Protocol · chains: Arbitrum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Premia V3 · 2026-11-01 · reported loss $437,000 · Protocol Logic / Withdrawal Logic Flaw · target: DeFi Protocol · chains: Arbitrum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t15",
+      "text": "DefiLlama lists Sovryn Dex: 2026-11-01, reported loss $538,749, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Sovryn Dex · 2026-11-01 · reported loss $538,749 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Rootstock"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Sovryn Dex · 2026-11-01 · reported loss $538,749 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Rootstock",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t16",
+      "text": "DefiLlama lists BitMart: 2026-11-02, reported loss $391,000, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "BitMart · 2026-11-02 · reported loss $391,000 · Protocol Logic / Unknown · target: CEX · chains: Base, Arbitrum, Optimism"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "BitMart · 2026-11-02 · reported loss $391,000 · Protocol Logic / Unknown · target: CEX · chains: Base, Arbitrum, Optimism",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t17",
+      "text": "DefiLlama lists Mercado Bitcoin: 2026-11-02, reported loss $40,000,000, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Mercado Bitcoin · 2026-11-02 · reported loss $40,000,000 · Protocol Logic / Unknown · target: CEX · chains: Bitcoin, Ethereum, Solana, TRON, Polygon, Arbitrum, Avalanche, BSC, Stellar, XDC"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Mercado Bitcoin · 2026-11-02 · reported loss $40,000,000 · Protocol Logic / Unknown · target: CEX · chains: Bitcoin, Ethereum, Solana, TRON, Polygon, Arbitrum, Avalanche, BSC, Stellar, XDC",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t18",
+      "text": "DefiLlama lists DeFiChain: 2026-11-03, loss not stated, Token & Share Accounting / Arithmetic Error.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "DeFiChain · 2026-11-03 · loss not stated · Token & Share Accounting / Arithmetic Error · target: Chain · chains: DefiChain"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "DeFiChain · 2026-11-03 · loss not stated · Token & Share Accounting / Arithmetic Error · target: Chain · chains: DefiChain",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t19",
+      "text": "DefiLlama lists Loopscale Lending: 2026-11-05, loss not stated, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Loopscale Lending · 2026-11-05 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: Solana"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Loopscale Lending · 2026-11-05 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: Solana",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t20",
+      "text": "DefiLlama lists TENDRIL: 2026-11-05, reported loss $550,000, Protocol Logic / Swap Logic Flaw.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "TENDRIL · 2026-11-05 · reported loss $550,000 · Protocol Logic / Swap Logic Flaw · target: DeFi Protocol · chains: BSC"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "TENDRIL · 2026-11-05 · reported loss $550,000 · Protocol Logic / Swap Logic Flaw · target: DeFi Protocol · chains: BSC",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t21",
+      "text": "DefiLlama lists Keplr Wallet (Web3Auth): 2026-11-06, loss not stated, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Keplr Wallet (Web3Auth) · 2026-11-06 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Wallet"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Keplr Wallet (Web3Auth) · 2026-11-06 · loss not stated · Frontend & Infrastructure / Key Leaked via Infrastructure · target: Wallet",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t22",
+      "text": "DefiLlama lists LiquidCore: 2026-11-07, reported loss $136,664, Key Compromise / Deployer Key Compromised.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "LiquidCore · 2026-11-07 · reported loss $136,664 · Key Compromise / Deployer Key Compromised · target: DeFi Protocol · chains: Hyperliquid L1"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "LiquidCore · 2026-11-07 · reported loss $136,664 · Key Compromise / Deployer Key Compromised · target: DeFi Protocol · chains: Hyperliquid L1",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t23",
+      "text": "DefiLlama lists ACryptoS: 2026-11-08, reported loss $665,429, Input Validation / Missing Input Validation.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "ACryptoS · 2026-11-08 · reported loss $665,429 · Input Validation / Missing Input Validation · target: DeFi Protocol · chains: Arbitrum, BSC, Polygon, Base, Optimism"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "ACryptoS · 2026-11-08 · reported loss $665,429 · Input Validation / Missing Input Validation · target: DeFi Protocol · chains: Arbitrum, BSC, Polygon, Base, Optimism",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t24",
+      "text": "DefiLlama lists LNbits: 2026-11-08, loss not stated, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "LNbits · 2026-11-08 · loss not stated · Protocol Logic / Unknown · target: Wallet · chains: Bitcoin, Lightning Network"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "LNbits · 2026-11-08 · loss not stated · Protocol Logic / Unknown · target: Wallet · chains: Bitcoin, Lightning Network",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t25",
+      "text": "DefiLlama lists Ankr Bridge: 2026-11-09, reported loss $304,500, Bridge & Cross-Chain / Cross-Chain Message Spoofing.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Ankr Bridge · 2026-11-09 · reported loss $304,500 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Ethereum · bridge hack: yes"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Ankr Bridge · 2026-11-09 · reported loss $304,500 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Ethereum · bridge hack: yes",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t26",
+      "text": "DefiLlama lists Across: 2026-11-10, loss not stated, Frontend & Infrastructure / DNS Hijack.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Across · 2026-11-10 · loss not stated · Frontend & Infrastructure / DNS Hijack · target: DeFi Protocol · chains: Plasma · bridge hack: yes"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Across · 2026-11-10 · loss not stated · Frontend & Infrastructure / DNS Hijack · target: DeFi Protocol · chains: Plasma · bridge hack: yes",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t27",
+      "text": "DefiLlama lists Arcus Perps: 2026-11-10, reported loss $2,234,391, Protocol Logic / Withdrawal Logic Flaw.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Arcus Perps · 2026-11-10 · reported loss $2,234,391 · returned $2,234,391 · Protocol Logic / Withdrawal Logic Flaw · target: DeFi Protocol · chains: Robinhood Chain"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Arcus Perps · 2026-11-10 · reported loss $2,234,391 · returned $2,234,391 · Protocol Logic / Withdrawal Logic Flaw · target: DeFi Protocol · chains: Robinhood Chain",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t28",
+      "text": "DefiLlama lists Curve Finance (CowSwapBurner): 2026-11-10, reported loss $38,206, Input Validation / Signature Verification Flaw.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Curve Finance (CowSwapBurner) · 2026-11-10 · reported loss $38,206 · Input Validation / Signature Verification Flaw · target: DeFi Protocol · chains: Ethereum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Curve Finance (CowSwapBurner) · 2026-11-10 · reported loss $38,206 · Input Validation / Signature Verification Flaw · target: DeFi Protocol · chains: Ethereum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t29",
+      "text": "DefiLlama lists Initia: 2026-11-10, reported loss $615,000, Key Compromise / Private Key Compromised.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Initia · 2026-11-10 · reported loss $615,000 · Key Compromise / Private Key Compromised · target: Chain · chains: Initia"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Initia · 2026-11-10 · reported loss $615,000 · Key Compromise / Private Key Compromised · target: Chain · chains: Initia",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t30",
+      "text": "DefiLlama lists Rujira AMM Strategies: 2026-11-11, reported loss $200,000, Protocol Logic / Swap Logic Flaw.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Rujira AMM Strategies · 2026-11-11 · reported loss $200,000 · Protocol Logic / Swap Logic Flaw · target: DeFi Protocol · chains: THORChain"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Rujira AMM Strategies · 2026-11-11 · reported loss $200,000 · Protocol Logic / Swap Logic Flaw · target: DeFi Protocol · chains: THORChain",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t31",
+      "text": "DefiLlama lists Edel: 2026-11-12, reported loss $300,000, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Edel · 2026-11-12 · reported loss $300,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Ethereum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Edel · 2026-11-12 · reported loss $300,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Ethereum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t32",
+      "text": "DefiLlama lists Pennysia: 2026-11-13, reported loss $5,131, Access Control / Arbitrary External Call.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Pennysia · 2026-11-13 · reported loss $5,131 · Access Control / Arbitrary External Call · target: DeFi Protocol · chains: Ethereum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Pennysia · 2026-11-13 · reported loss $5,131 · Access Control / Arbitrary External Call · target: DeFi Protocol · chains: Ethereum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t33",
+      "text": "DefiLlama lists Hyprearn Perps: 2026-11-14, loss not stated, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Hyprearn Perps · 2026-11-14 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: Hyperliquid L1"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Hyprearn Perps · 2026-11-14 · loss not stated · Protocol Logic / Unknown · target: DeFi Protocol · chains: Hyperliquid L1",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t34",
+      "text": "DefiLlama lists Kava Lend: 2026-11-14, reported loss $3,700,000, Token & Share Accounting / Arithmetic Error.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Kava Lend · 2026-11-14 · reported loss $3,700,000 · Token & Share Accounting / Arithmetic Error · target: DeFi Protocol · chains: Kava"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Kava Lend · 2026-11-14 · reported loss $3,700,000 · Token & Share Accounting / Arithmetic Error · target: DeFi Protocol · chains: Kava",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t35",
+      "text": "DefiLlama lists Chain Games: 2026-11-15, reported loss $20,000, Protocol Logic / Reward Logic Flaw.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Chain Games · 2026-11-15 · reported loss $20,000 · Protocol Logic / Reward Logic Flaw · target: DeFi Protocol · chains: Polygon"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Chain Games · 2026-11-15 · reported loss $20,000 · Protocol Logic / Reward Logic Flaw · target: DeFi Protocol · chains: Polygon",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t36",
+      "text": "DefiLlama lists Luxor Commander: 2026-11-15, loss not stated, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Luxor Commander · 2026-11-15 · loss not stated · Protocol Logic / Unknown · target: Mining Infrastructure · chains: Bitcoin"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Luxor Commander · 2026-11-15 · loss not stated · Protocol Logic / Unknown · target: Mining Infrastructure · chains: Bitcoin",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t37",
+      "text": "DefiLlama lists Lighter Perps: 2026-11-16, reported loss $10,393,057, Frontend & Infrastructure / API Key Compromised.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Lighter Perps · 2026-11-16 · reported loss $10,393,057 · Frontend & Infrastructure / API Key Compromised · target: DeFi Protocol · chains: zkLighter"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Lighter Perps · 2026-11-16 · reported loss $10,393,057 · Frontend & Infrastructure / API Key Compromised · target: DeFi Protocol · chains: zkLighter",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t38",
+      "text": "DefiLlama lists MORE Markets: 2026-11-16, reported loss $308,000, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "MORE Markets · 2026-11-16 · reported loss $308,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Flow"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "MORE Markets · 2026-11-16 · reported loss $308,000 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Flow",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t39",
+      "text": "DefiLlama lists Optimizely (OPTIMJACK): 2026-11-16, reported loss $2,260, Frontend & Infrastructure / Supply Chain Attack.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Optimizely (OPTIMJACK) · 2026-11-16 · reported loss $2,260 · Frontend & Infrastructure / Supply Chain Attack · target: Web Infrastructure · chains: Bitcoin, Litecoin, TRON, Ethereum, BSC"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Optimizely (OPTIMJACK) · 2026-11-16 · reported loss $2,260 · Frontend & Infrastructure / Supply Chain Attack · target: Web Infrastructure · chains: Bitcoin, Litecoin, TRON, Ethereum, BSC",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t40",
+      "text": "DefiLlama lists B18 TimeBank: 2026-11-17, reported loss $404,540, Protocol Logic / Unknown.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "B18 TimeBank · 2026-11-17 · reported loss $404,540 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Base"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "B18 TimeBank · 2026-11-17 · reported loss $404,540 · Protocol Logic / Unknown · target: DeFi Protocol · chains: Base",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t41",
+      "text": "DefiLlama lists Gonka AI: 2026-11-18, reported loss $1,050,000, Bridge & Cross-Chain / Bridge Logic Flaw.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Gonka AI · 2026-11-18 · reported loss $1,050,000 · Bridge & Cross-Chain / Bridge Logic Flaw · target: DeFi Protocol · chains: Ethereum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Gonka AI · 2026-11-18 · reported loss $1,050,000 · Bridge & Cross-Chain / Bridge Logic Flaw · target: DeFi Protocol · chains: Ethereum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t42",
+      "text": "DefiLlama lists K3 Capital: 2026-11-18, reported loss $3,420,000, Token & Share Accounting / Incorrect Share Accounting.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "K3 Capital · 2026-11-18 · reported loss $3,420,000 · Token & Share Accounting / Incorrect Share Accounting · target: DeFi Protocol · chains: Ethereum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "K3 Capital · 2026-11-18 · reported loss $3,420,000 · Token & Share Accounting / Incorrect Share Accounting · target: DeFi Protocol · chains: Ethereum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t43",
+      "text": "DefiLlama lists LUKSO: 2026-11-18, reported loss $496,000, Access Control / Improper Access Control.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "LUKSO · 2026-11-18 · reported loss $496,000 · Access Control / Improper Access Control · target: Wallet · chains: LUKSO"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "LUKSO · 2026-11-18 · reported loss $496,000 · Access Control / Improper Access Control · target: Wallet · chains: LUKSO",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t44",
+      "text": "DefiLlama lists Peapods Finance: 2026-11-18, loss not stated, Key Compromise / Deployer Key Compromised.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Peapods Finance · 2026-11-18 · loss not stated · Key Compromise / Deployer Key Compromised · target: DeFi Protocol"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Peapods Finance · 2026-11-18 · loss not stated · Key Compromise / Deployer Key Compromised · target: DeFi Protocol",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t45",
+      "text": "DefiLlama lists RNT Lend: 2026-11-18, reported loss $954,703, Key Compromise / Private Key Compromised.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "RNT Lend · 2026-11-18 · reported loss $954,703 · Key Compromise / Private Key Compromised · target: DeFi Protocol · chains: Polygon"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "RNT Lend · 2026-11-18 · reported loss $954,703 · Key Compromise / Private Key Compromised · target: DeFi Protocol · chains: Polygon",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t46",
+      "text": "DefiLlama lists CALC: 2026-11-19, reported loss $26,900, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "CALC · 2026-11-19 · reported loss $26,900 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Ethereum, Hyperliquid L1"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "CALC · 2026-11-19 · reported loss $26,900 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Ethereum, Hyperliquid L1",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t47",
+      "text": "DefiLlama lists Fluidkey: 2026-11-19, reported loss $1,600,000, Frontend & Infrastructure / Database Breach.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Fluidkey · 2026-11-19 · reported loss $1,600,000 · Frontend & Infrastructure / Database Breach · target: Wallet · chains: Ethereum, Base, Binance, Polygon, Optimism, Arbitrum"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Fluidkey · 2026-11-19 · reported loss $1,600,000 · Frontend & Infrastructure / Database Breach · target: Wallet · chains: Ethereum, Base, Binance, Polygon, Optimism, Arbitrum",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t48",
+      "text": "DefiLlama lists The Moats: 2026-11-19, reported loss $600,000, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "The Moats · 2026-11-19 · reported loss $600,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Avalanche, Robinhood Chain"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "The Moats · 2026-11-19 · reported loss $600,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Avalanche, Robinhood Chain",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t49",
+      "text": "DefiLlama lists Wagyu (XMR1): 2026-11-20, reported loss $13,510,000, Frontend & Infrastructure / Key Leaked via Infrastructure.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Wagyu (XMR1) · 2026-11-20 · reported loss $13,510,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Hyperliquid L1"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Wagyu (XMR1) · 2026-11-20 · reported loss $13,510,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: DeFi Protocol · chains: Hyperliquid L1",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t50",
+      "text": "DefiLlama lists Chainflip AMM: 2026-11-21, reported loss $11,960,000, Key Compromise / Validator Key Compromised.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Chainflip AMM · 2026-11-21 · reported loss $11,960,000 · Key Compromise / Validator Key Compromised · target: DeFi Protocol · chains: Ethereum, Bitcoin · bridge hack: yes"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Chainflip AMM · 2026-11-21 · reported loss $11,960,000 · Key Compromise / Validator Key Compromised · target: DeFi Protocol · chains: Ethereum, Bitcoin · bridge hack: yes",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t51",
+      "text": "DefiLlama lists CyberConnect: 2026-11-21, reported loss $968,000, Bridge & Cross-Chain / Cross-Chain Message Spoofing.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "CyberConnect · 2026-11-21 · reported loss $968,000 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Solana, Ethereum · bridge hack: yes"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "CyberConnect · 2026-11-21 · reported loss $968,000 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Solana, Ethereum · bridge hack: yes",
+      "kind": "tracker-row"
+    },
+    {
+      "id": "t52",
+      "text": "DefiLlama lists Endurance Bridge: 2026-11-22, reported loss $1,040,000, Bridge & Cross-Chain / Unbacked Cross-Chain Mint.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "defillama-30d",
+          "text": "Endurance Bridge · 2026-11-22 · reported loss $1,040,000 · Bridge & Cross-Chain / Unbacked Cross-Chain Mint · target: DeFi Protocol · chains: BSC · bridge hack: yes"
+        }
+      ],
+      "incidentId": "defillama-30d",
+      "quote": "Endurance Bridge · 2026-11-22 · reported loss $1,040,000 · Bridge & Cross-Chain / Unbacked Cross-Chain Mint · target: DeFi Protocol · chains: BSC · bridge hack: yes",
+      "kind": "tracker-row"
+    }
+  ],
+  "reportedLosses": [
+    {
+      "sourceId": "defillama-hacks",
+      "publisher": "DefiLlama",
+      "amountUsd": 6360000000,
+      "quote": "reported loss $6,360,000,000",
+      "tier": "A"
+    },
+    {
+      "sourceId": "chainalysis-blog",
+      "publisher": "Chainalysis",
+      "amountUsd": 6400000000,
+      "quote": "$6.4 Billion",
+      "tier": "A"
+    },
+    {
+      "sourceId": "chainalysis-blog-2",
+      "publisher": "Chainalysis",
+      "amountUsd": 6000000000,
+      "quote": "$6 billion",
+      "tier": "A"
+    },
+    {
+      "sourceId": "decrypt",
+      "publisher": "Decrypt",
+      "amountUsd": 6400000000,
+      "quote": "$6.4 billion",
+      "tier": "B"
+    }
+  ],
+  "entities": [
+    {
+      "name": "ACryptoS",
+      "kind": "protocol"
+    },
+    {
+      "name": "Across",
+      "kind": "protocol"
+    },
+    {
+      "name": "Ankr Bridge",
+      "kind": "protocol"
+    },
+    {
+      "name": "Arcus Perps",
+      "kind": "protocol"
+    },
+    {
+      "name": "B18 TimeBank",
+      "kind": "protocol"
+    },
+    {
+      "name": "BTCPay Server",
+      "kind": "protocol"
+    },
+    {
+      "name": "Binance CEX",
+      "kind": "protocol"
+    },
+    {
+      "name": "BitMart",
+      "kind": "protocol"
+    },
+    {
+      "name": "Bloom Trading Bot",
+      "kind": "protocol"
+    },
+    {
+      "name": "CALC",
+      "kind": "protocol"
+    },
+    {
+      "name": "Chain Games",
+      "kind": "protocol"
+    },
+    {
+      "name": "Chainflip",
+      "kind": "protocol"
+    },
+    {
+      "name": "Chainflip AMM",
+      "kind": "protocol"
+    },
+    {
+      "name": "Curve Finance (CowSwapBurner)",
+      "kind": "protocol"
+    },
+    {
+      "name": "Cyber Bridge",
+      "kind": "protocol"
+    },
+    {
+      "name": "CyberConnect",
+      "kind": "protocol"
+    },
+    {
+      "name": "Cysic",
+      "kind": "protocol"
+    },
+    {
+      "name": "DCENT",
+      "kind": "protocol"
+    },
+    {
+      "name": "DeFiChain",
+      "kind": "protocol"
+    },
+    {
+      "name": "Edel",
+      "kind": "protocol"
+    },
+    {
+      "name": "Endurance Bridge",
+      "kind": "protocol"
+    },
+    {
+      "name": "Fence Finance",
+      "kind": "protocol"
+    },
+    {
+      "name": "Fluidkey",
+      "kind": "protocol"
+    },
+    {
+      "name": "Gonka AI",
+      "kind": "protocol"
+    },
+    {
+      "name": "Hifi Finance",
+      "kind": "protocol"
+    },
+    {
+      "name": "Hyprearn Perps",
+      "kind": "protocol"
+    },
+    {
+      "name": "Initia",
+      "kind": "protocol"
+    },
+    {
+      "name": "K3 Capital",
+      "kind": "protocol"
+    },
+    {
+      "name": "Kava Lend",
+      "kind": "protocol"
+    },
+    {
+      "name": "Keplr Wallet (Web3Auth)",
+      "kind": "protocol"
+    },
+    {
+      "name": "LNbits",
+      "kind": "protocol"
+    },
+    {
+      "name": "LUKSO",
+      "kind": "protocol"
+    },
+    {
+      "name": "Lighter",
+      "kind": "protocol"
+    },
+    {
+      "name": "Lighter Perps",
+      "kind": "protocol"
+    },
+    {
+      "name": "LiquidCore",
+      "kind": "protocol"
+    },
+    {
+      "name": "Loopscale Lending",
+      "kind": "protocol"
+    },
+    {
+      "name": "Luxor Commander",
+      "kind": "protocol"
+    },
+    {
+      "name": "MORE Markets",
+      "kind": "protocol"
+    },
+    {
+      "name": "Mercado Bitcoin",
+      "kind": "protocol"
+    },
+    {
+      "name": "MoldyRoost",
+      "kind": "protocol"
+    },
+    {
+      "name": "Myriad Markets",
+      "kind": "protocol"
+    },
+    {
+      "name": "Optimizely (OPTIMJACK)",
+      "kind": "protocol"
+    },
+    {
+      "name": "Peapods Finance",
+      "kind": "protocol"
+    },
+    {
+      "name": "Pennysia",
+      "kind": "protocol"
+    },
+    {
+      "name": "Polymarket International",
+      "kind": "protocol"
+    },
+    {
+      "name": "Predict Fun",
+      "kind": "protocol"
+    },
+    {
+      "name": "Premia V3",
+      "kind": "protocol"
+    },
+    {
+      "name": "RNT Lend",
+      "kind": "protocol"
+    },
+    {
+      "name": "Rujira AMM Strategies",
+      "kind": "protocol"
+    },
+    {
+      "name": "Sovryn Dex",
+      "kind": "protocol"
+    },
+    {
+      "name": "Sovryn Lend",
+      "kind": "protocol"
+    },
+    {
+      "name": "Stake DAO",
+      "kind": "protocol"
+    },
+    {
+      "name": "TENDRIL",
+      "kind": "protocol"
+    },
+    {
+      "name": "The Moats",
+      "kind": "protocol"
+    },
+    {
+      "name": "Trezor and Exodus",
+      "kind": "protocol"
+    },
+    {
+      "name": "Troves",
+      "kind": "protocol"
+    },
+    {
+      "name": "Wagyu (XMR1)",
+      "kind": "protocol"
+    },
+    {
+      "name": "Zilliqa X-Bridge",
+      "kind": "protocol"
+    },
+    {
+      "name": "b14g",
+      "kind": "protocol"
+    },
+    {
+      "name": "zkLink Nova",
+      "kind": "protocol"
+    }
+  ],
+  "analysisOpportunities": [
+    {
+      "id": "tracker-30d",
+      "kind": "comparison",
+      "basis": "own-data",
+      "strength": "strong",
+      "available": true,
+      "title": "Rekt Meter: this incident against DefiLlama's list for Oct 26 to Nov 24",
+      "detail": "DefiLlama lists 52 incidents in the 30 days from Oct 26 to Nov 24. As listed by DefiLlama, Binance's $6,360,000,000 loss is the largest of the 39 with a stated loss. 14 of the 52 share its DefiLlama classification (frontend and infrastructure).",
+      "method": "Read the DefiLlama /hacks rows the radar cached at 2026-11-24T06:44:26Z (source \"defillama-30d\" in brief.json, facts t1..t52). Kept the 52 rows dated 2026-10-26 to 2026-11-24. Ranked the 39 rows with a stated loss by DefiLlama's own figure (one source, no averaging); this incident is number 1. Counted rows whose classification is \"Frontend & Infrastructure\": 14.",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "factIds": [
+        "t8",
+        "t1",
+        "t2",
+        "t4",
+        "t9",
+        "t13",
+        "t21",
+        "t26",
+        "t37",
+        "t39",
+        "t46",
+        "t47"
+      ],
+      "why": "DefiLlama lists this incident and 52 incident(s) in the window.",
+      "numbers": {
+        "incidentsListed": 52,
+        "withStatedLoss": 39,
+        "rankByDefiLlamaFigure": 1,
+        "sameClassification": 14
+      }
+    },
+    {
+      "id": "radar-30d",
+      "kind": "pattern",
+      "basis": "own-data",
+      "strength": "strong",
+      "available": false,
+      "title": "Pattern: social-engineering incidents on our radar, Oct 26 to Nov 24",
+      "detail": null,
+      "method": null,
+      "sourceIds": [],
+      "factIds": [],
+      "why": "The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run)."
+    },
+    {
+      "id": "fund-flow",
+      "kind": "fund-flow",
+      "basis": "own-data",
+      "strength": "strong",
+      "available": false,
+      "title": "Fund flow on Solana (RPC trace)",
+      "detail": null,
+      "method": null,
+      "sourceIds": [],
+      "factIds": [],
+      "why": "Not a Solana incident (chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base); the RPC trace covers Solana only."
+    },
+    {
+      "id": "figures",
+      "kind": "comparison",
+      "basis": "source",
+      "strength": "supporting",
+      "available": true,
+      "title": "Rekt Meter: what each source reports",
+      "detail": "The sources do not agree on the loss: DefiLlama lists $6,360,000,000; Chainalysis reports $6.4 Billion and $6 billion; Decrypt reports $6.4 billion. We quote each figure with its source and never average them.",
+      "method": "Listed the loss figures each tier-A/B source states in its stored excerpt or title (the radar's reportedLosses), at most two per publisher.",
+      "sourceIds": [
+        "defillama-hacks",
+        "chainalysis-blog",
+        "chainalysis-blog-2",
+        "decrypt"
+      ],
+      "factIds": [],
+      "why": "3 sources state a figure (3 distinct).",
+      "numbers": {
+        "sources": 3,
+        "distinctFigures": 3
+      }
+    }
+  ],
+  "mustNotSay": [
+    {
+      "rule": "names",
+      "text": "No individual's name, handle, likeness or hint (suspects, victims, founders, investigators). Organisations, protocols and agencies are fine; an official only when a cited law-enforcement or regulator release names them."
+    },
+    {
+      "rule": "figures",
+      "text": "Sources state 3 different loss figures (DefiLlama reported loss $6,360,000,000; Chainalysis $6.4 Billion; Chainalysis $6 billion; Decrypt $6.4 billion). Say each with its source; never average, merge or pick a \"real\" one."
+    },
+    {
+      "rule": "hedge",
+      "text": "CoinDesk hedges (\"potential\") in \"Binance hackers push $247 million through transactions designed to cloud the source\": repeat it only attributed and with the hedge, or leave it out. Never state it as fact."
+    },
+    {
+      "rule": "attribution",
+      "text": "A source links this to a state or threat group. Name the group only as \"according to <source>\" in the same sentence, never in a title, thumbnail or on its own. Do not add attributions the sources do not make."
+    },
+    {
+      "rule": "legal",
+      "text": "Court, prosecution and freezing items are filings and allegations, not findings: \"prosecutors say\", \"the filing says\". Never \"guilty\", \"stole\" or \"criminal\" as our words."
+    },
+    {
+      "rule": "how-to",
+      "text": "No code, addresses, transaction hashes, function or contract names, payloads or step-by-step attack sequences, on screen or spoken. One or two concept-level sentences for the mechanism. Defensive checklists are fine."
+    },
+    {
+      "rule": "price",
+      "text": "No prices, token moves, market talk, \"buy/sell/hold\", returns or income claims. \"Price oracle\" as a mechanism name is fine."
+    },
+    {
+      "rule": "speculation",
+      "text": "No \"probably\", \"likely\", \"rumoured\", \"insiders say\", \"must have been\", or question headlines about causes. Only what the sources confirm."
+    },
+    {
+      "rule": "others-material",
+      "text": "No screenshots, redrawn charts, logos or images of other people's posts or dashboards. Describe the finding and attribute it."
+    },
+    {
+      "rule": "tier-c",
+      "text": "Aggregators (Coin Edition, Web3 is Going Just Great, crypto.news) never carry a claim or a figure alone; cite a tier-A or tier-B source for it."
+    }
+  ],
+  "alternates": [
+    {
+      "rank": 3,
+      "incidentId": "2026-11-16-lighter",
+      "dateSlug": "2026-11-24-lighter",
+      "title": "Lighter: key compromise",
+      "protocol": "Lighter",
+      "status": "confirmed",
+      "type": "key-compromise",
+      "evergreenTopic": "key-management",
+      "score": 68.9,
+      "shortReady": true,
+      "missing": [],
+      "eligible": true,
+      "reasons": [],
+      "strongAnalysis": [
+        "tracker-30d"
+      ],
+      "chains": [
+        "zkLighter",
+        "Ethereum"
+      ]
+    },
+    {
+      "rank": 4,
+      "incidentId": "2026-11-22-endurance-bridge",
+      "dateSlug": "2026-11-24-endurance-bridge",
+      "title": "Endurance Bridge: key compromise",
+      "protocol": "Endurance Bridge",
+      "status": "confirmed",
+      "type": "key-compromise",
+      "evergreenTopic": "key-management",
+      "score": 68.9,
+      "shortReady": true,
+      "missing": [],
+      "eligible": true,
+      "reasons": [],
+      "strongAnalysis": [
+        "tracker-30d"
+      ],
+      "chains": [
+        "BNB Chain"
+      ]
+    }
+  ],
+  "selection": {
+    "policy": [
+      "Candidates are the radar's top and also-seen incidents, best score first.",
+      "A daily Short needs all of: confirmed status; the radar's short-ready check (2 or more independent sources, a stated mechanism, a strong evergreen fix); no approved episode about the same incident in the last 14 days; and at least one strong analysis available (the 30-day DefiLlama comparison, the 30-day radar pattern, or a Solana fund-flow trace with published addresses).",
+      "The primary is the best-scoring eligible incident; the alternates are the next two eligible ones.",
+      "If nothing is eligible, there is no video today. Developing stories are listed for the owner but never picked automatically (a \"what we know\" Short needs his call: prepare --pick <id>).",
+      "Only one daily video per day: once a video for the date is approved, prepare picks nothing new unless --pick is given."
+    ],
+    "primary": {
+      "rank": 1,
+      "incidentId": "2026-10-29-binance",
+      "dateSlug": "2026-11-24-binance",
+      "title": "Binance: social engineering",
+      "protocol": "Binance",
+      "status": "confirmed",
+      "type": "social-engineering",
+      "evergreenTopic": "fake-job-malware",
+      "score": 91,
+      "shortReady": true,
+      "missing": [],
+      "eligible": true,
+      "reasons": [],
+      "strongAnalysis": [
+        "tracker-30d"
+      ],
+      "chains": [
+        "Ethereum",
+        "Bitcoin",
+        "TRON",
+        "Avalanche",
+        "Optimism",
+        "Arbitrum",
+        "Base"
+      ]
+    },
+    "considered": [
+      {
+        "rank": 1,
+        "incidentId": "2026-10-29-binance",
+        "dateSlug": "2026-11-24-binance",
+        "title": "Binance: social engineering",
+        "protocol": "Binance",
+        "status": "confirmed",
+        "type": "social-engineering",
+        "evergreenTopic": "fake-job-malware",
+        "score": 91,
+        "shortReady": true,
+        "missing": [],
+        "eligible": true,
+        "reasons": [],
+        "strongAnalysis": [
+          "tracker-30d"
+        ],
+        "chains": [
+          "Ethereum",
+          "Bitcoin",
+          "TRON",
+          "Avalanche",
+          "Optimism",
+          "Arbitrum",
+          "Base"
+        ]
+      },
+      {
+        "rank": 2,
+        "incidentId": "2026-11-21-chainflip",
+        "dateSlug": "2026-11-24-chainflip",
+        "title": "Chainflip: key compromise",
+        "protocol": "Chainflip",
+        "status": "confirmed",
+        "type": "key-compromise",
+        "evergreenTopic": "key-management",
+        "score": 69.9,
+        "shortReady": false,
+        "missing": [
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "radar short check: no strong 'one fix' explainer link"
+        ],
+        "strongAnalysis": [
+          "tracker-30d"
+        ],
+        "chains": [
+          "Ethereum",
+          "Bitcoin"
+        ]
+      },
+      {
+        "rank": 3,
+        "incidentId": "2026-11-16-lighter",
+        "dateSlug": "2026-11-24-lighter",
+        "title": "Lighter: key compromise",
+        "protocol": "Lighter",
+        "status": "confirmed",
+        "type": "key-compromise",
+        "evergreenTopic": "key-management",
+        "score": 68.9,
+        "shortReady": true,
+        "missing": [],
+        "eligible": true,
+        "reasons": [],
+        "strongAnalysis": [
+          "tracker-30d"
+        ],
+        "chains": [
+          "zkLighter",
+          "Ethereum"
+        ]
+      },
+      {
+        "rank": 4,
+        "incidentId": "2026-11-22-endurance-bridge",
+        "dateSlug": "2026-11-24-endurance-bridge",
+        "title": "Endurance Bridge: key compromise",
+        "protocol": "Endurance Bridge",
+        "status": "confirmed",
+        "type": "key-compromise",
+        "evergreenTopic": "key-management",
+        "score": 68.9,
+        "shortReady": true,
+        "missing": [],
+        "eligible": true,
+        "reasons": [],
+        "strongAnalysis": [
+          "tracker-30d"
+        ],
+        "chains": [
+          "BNB Chain"
+        ]
+      },
+      {
+        "rank": 5,
+        "incidentId": "2026-11-21-cyber-bridge",
+        "dateSlug": "2026-11-24-cyber-bridge",
+        "title": "Cyber Bridge: bridge exploit",
+        "protocol": "Cyber Bridge",
+        "status": "confirmed",
+        "type": "bridge",
+        "evergreenTopic": "bridge-security",
+        "score": 68.3,
+        "shortReady": true,
+        "missing": [],
+        "eligible": true,
+        "reasons": [],
+        "strongAnalysis": [
+          "tracker-30d"
+        ],
+        "chains": [
+          "Solana",
+          "Ethereum"
+        ]
+      },
+      {
+        "rank": 6,
+        "incidentId": "2026-11-23-moldyroost",
+        "dateSlug": "2026-11-24-moldyroost",
+        "title": "MoldyRoost: phishing",
+        "protocol": "MoldyRoost",
+        "status": "confirmed",
+        "type": "phishing",
+        "evergreenTopic": "phishing",
+        "score": 60.5,
+        "shortReady": true,
+        "missing": [],
+        "eligible": false,
+        "reasons": [
+          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": []
+      },
+      {
+        "rank": 7,
+        "incidentId": "2026-11-19-fluidkey",
+        "dateSlug": "2026-11-24-fluidkey",
+        "title": "Fluidkey: exploit",
+        "protocol": "Fluidkey",
+        "status": "confirmed",
+        "type": "exploit",
+        "evergreenTopic": null,
+        "score": 57.5,
+        "shortReady": false,
+        "missing": [
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "radar short check: no strong 'one fix' explainer link"
+        ],
+        "strongAnalysis": [
+          "tracker-30d"
+        ],
+        "chains": [
+          "Ethereum",
+          "Base",
+          "BNB Chain",
+          "Polygon",
+          "Optimism",
+          "Arbitrum"
+        ]
+      },
+      {
+        "rank": 8,
+        "incidentId": "2026-11-23-trezor-and-exodus",
+        "dateSlug": "2026-11-24-trezor-and-exodus",
+        "title": "Trezor and Exodus users: reported theft (developing)",
+        "protocol": "Trezor and Exodus",
+        "status": "developing",
+        "type": "exploit",
+        "evergreenTopic": null,
+        "score": 46.2,
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: fewer than 2 independent sources",
+          "radar short check: no strong 'one fix' explainer link",
+          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": []
+      },
+      {
+        "rank": 9,
+        "incidentId": "2026-11-23-dcent",
+        "dateSlug": "2026-11-24-dcent",
+        "title": "DCENT: reported exploit (developing)",
+        "protocol": "DCENT",
+        "status": "developing",
+        "type": "exploit",
+        "evergreenTopic": null,
+        "score": 44.5,
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: no strong 'one fix' explainer link",
+          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: Bitcoin, Ethereum); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": [
+          "Bitcoin",
+          "Ethereum"
+        ]
+      },
+      {
+        "rank": 10,
+        "incidentId": "2026-11-23-stake-dao",
+        "dateSlug": "2026-11-24-stake-dao",
+        "title": "Stake DAO: reported security incident (mechanism not classified) (developing)",
+        "protocol": "Stake DAO",
+        "status": "developing",
+        "type": "other",
+        "evergreenTopic": null,
+        "score": 43.3,
+        "shortReady": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "mechanism not stated by any source",
+          "no strong 'one fix' explainer link"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "radar short check: fewer than 2 independent sources",
+          "radar short check: mechanism not stated by any source",
+          "radar short check: no strong 'one fix' explainer link",
+          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: none listed); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": []
+      },
+      {
+        "rank": 11,
+        "incidentId": "2026-10-28-cysic",
+        "dateSlug": "2026-11-24-cysic",
+        "title": "Cysic: reported bridge exploit (developing)",
+        "protocol": "Cysic",
+        "status": "developing",
+        "type": "bridge",
+        "evergreenTopic": "bridge-security",
+        "score": 31.6,
+        "shortReady": false,
+        "missing": [
+          "not confirmed"
+        ],
+        "eligible": false,
+        "reasons": [
+          "developing: not confirmed by an unhedged tier-A source or two tier-B outlets",
+          "no strong analysis available (tracker-30d: DefiLlama has no record of this incident in the radar file, so it cannot be ranked in DefiLlama's own list.; radar-30d: The radar has 1 live daily file(s) from 2026-10-26 to 2026-11-24; this comparison needs at least 7 (history builds up with every live run).; fund-flow: Not a Solana incident (chains: BNB Chain); the RPC trace covers Solana only.)"
+        ],
+        "strongAnalysis": [],
+        "chains": [
+          "BNB Chain"
+        ]
+      }
+    ]
+  },
+  "radar": {
+    "path": "content/zoora-security/radar/2026-11-24.json",
+    "sha256": "ba7dadea3359768bd78f8fb739f471501d84b5a3523975df1333eda41707ef30",
+    "runDate": "2026-11-24",
+    "generatedUtc": "2026-11-24T06:46:54Z",
+    "mode": "live"
+  },
+  "history": {
+    "radarFiles": 1,
+    "radarFrom": "2026-10-26",
+    "radarTo": "2026-11-24",
+    "trackerRows": 52,
+    "trackerFetchedUtc": "2026-11-24T06:44:26Z",
+    "previousEpisodes": [
+      {
+        "slug": "2026-11-24-binance",
+        "incidentId": "2026-10-29-binance",
+        "approved": false
+      }
+    ],
+    "notes": []
+  },
+  "rules": [
+    "Every fact traces to a stored source excerpt that contains it.",
+    "Loss amounts are \"reported by X\" and never averaged.",
+    "Unconfirmed incidents are labelled \"developing\".",
+    "No suspect or individual names, except officials named in law-enforcement or regulator releases.",
+    "No exploit how-tos: mechanisms at concept level, with no code, function names or step lists.",
+    "No price or investment talk.",
+    "Don't redraw or speculate about others' material; attribute every fact.",
+    "X/Twitter and Telegram were not read: never reconstruct or quote their content."
+  ],
+  "notes": [
+    "Sources state different figures (3 distinct). Quote each with its source; never average.",
+    "Legal matter (allegedly, forfeiture, freezing order, plaintiffs, prosecutors, seize): allegations and filings are not findings; name no individuals."
+  ]
+}

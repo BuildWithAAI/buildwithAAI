@@ -10,9 +10,10 @@
     "excerptMaxChars": 280,
     "storage": "Titles, URLs, dates and excerpts of at most 280 characters only. No article bodies are stored, in the cache or in the output.",
     "tiers": {
-      "A": "Primary or official incident data, security-firm research and post-mortems. One unhedged tier-A source confirms an incident.",
-      "B": "Established news outlets. Two independent unhedged tier-B outlets confirm an incident.",
-      "C": "Aggregators and mixed sponsored/original sites. Never count toward confirmation."
+      "A": "Primary statements (the project's own report or post-mortem, law-enforcement or regulator releases), security-firm research and post-mortems. One unhedged tier-A source that is not an incident database confirms an incident.",
+      "B": "Established news outlets. Two unhedged tier-B outlets that do not relay the same origin (the same firm's research, the same report) confirm an incident; one that relays the project's own statement does too.",
+      "C": "Aggregators and mixed sponsored/original sites. Never count toward confirmation.",
+      "tracker": "Incident databases (\"tracker\": true; tier A for figures and dates): they seed, date and size an incident but never confirm it alone. A record whose only reference is an X post is marked unverified."
     }
   },
   "sources": [
@@ -24,6 +25,7 @@
       "url": "https://api.llama.fi/hacks",
       "parser": "defillama_hacks",
       "tier": "A",
+      "tracker": true,
       "role": "incident-db",
       "enabled": true,
       "minRefetchMinutes": 60,
@@ -38,6 +40,7 @@
       "url": "https://hacked.slowmist.io/",
       "parser": "slowmist_hacked",
       "tier": "A",
+      "tracker": true,
       "role": "incident-db",
       "enabled": true,
       "minRefetchMinutes": 60,

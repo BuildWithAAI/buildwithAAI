@@ -4,6 +4,7 @@ decision can be printed as a reason.
 """
 
 import re
+import urllib.parse
 
 from . import safety
 from .textutil import MONEY_RE, clean_ws, core_name, money_value
@@ -17,7 +18,7 @@ EVERGREEN = (
     "oracle-manipulation", "rug-pulls", "social-engineering", "fake-job-malware",
 )
 TYPE_LABEL = {
-    "exploit": "smart-contract or protocol exploit",
+    "exploit": "exploit",
     "phishing": "phishing",
     "drainer": "wallet drainer",
     "rug": "rug pull",
@@ -61,6 +62,20 @@ PROMO_RE = re.compile(
 )
 
 
+_NEGATION = re.compile(
+    r"\b(?:no|not|never|without|denie[sd]|deny|ruled out|no evidence of|no sign of|isn't|wasn't|"
+    r"weren't|unaffected by)\b[^.;:]{0,40}$",
+    re.IGNORECASE,
+)
+
+
+def _first_unnegated(pattern, text):
+    for match in pattern.finditer(text):
+        if not _NEGATION.search(text[max(0, match.start() - 60): match.start()]):
+            return match
+    return None
+
+
 def relevance(item, source):
     """(security: bool, incident: bool, reason: str) for one parsed item."""
     title = item.get("title") or ""
@@ -77,11 +92,13 @@ def relevance(item, source):
         return False, False, "excluded: promotional post"
     if item.get("kind") == "structured":
         return True, True, "incident database record"
-    text = f"{title} {excerpt}"
-    incident = INCIDENT_RE.search(text)
-    topic = SECURITY_TOPIC_RE.search(text)
+    text = f"{title}. {excerpt}"
+    incident = _first_unnegated(INCIDENT_RE, text)
+    topic = _first_unnegated(SECURITY_TOPIC_RE, text)
     forced = any(p in url for p in source.get("securityUrlPatterns", []))
-    crypto = CRYPTO_RE.search(text)
+    path = urllib.parse.urlsplit(url).path  # not the host: every crypto.news URL says "crypto"
+    context = f"{text} {' '.join(cats)} {re.sub(r'[^A-Za-z0-9]+', ' ', path)}"
+    crypto = CRYPTO_RE.search(context) or re.search(r"\b0x[0-9a-fA-F]{40}\b", text)
     if not crypto and not forced:
         return False, False, "no crypto context"
     if item.get("kind") == "postmortem" and (incident or item.get("subject")):
@@ -102,10 +119,16 @@ _TEXT_TYPE_RULES = (
      r"hiring scam|recruit\w* scam|interview playbook"),
     ("drainer", "drainers", r"\bdrainers?\b|wallet[- ]drain\w*|permit phishing|approval phishing"),
     ("phishing", "address-poisoning", r"address[- ]poison\w*|poisoned address\w*|zero[- ]value transfers?"),
+    # ads that compromise the device itself ("compromise vulnerable iPhones with a single tap") are not phishing: the
+    # phishing explainer's fix would be the wrong advice, so no explainer fits ("other")
+    ("other", None,
+     r"compromis\w* (?:vulnerable |unpatched )?(?:iphones?|android|phones?|devices?|computers?|macs?)|single[- ]tap|"
+     r"zero[- ]click|one[- ]click exploit|exploit kits?|drive[- ]by (?:download|compromise)\w*|malvertis\w*|"
+     r"(?:malicious|fake|poisoned|online|search) ads?\b|\bads? (?:that |which |can |to )?(?:steal|infect|drain|compromise)\w*"),
     ("phishing", "phishing",
-     r"phish\w*|malvertis\w*|malicious (?:ads?|links?|sites?|websites?|extensions?)|"
+     r"phish\w*|malicious (?:links?|sites?|websites?|extensions?)|"
      r"fake (?:websites?|sites?|apps?|extensions?|exchanges?|support)|dns hijack\w*|"
-     r"front-?end (?:compromise|hijack)\w*|typosquat\w*|online ads"),
+     r"front-?end (?:compromise|hijack)\w*|typosquat\w*"),
     ("social-engineering", "social-engineering",
      r"social[- ]engineer\w*|pig[- ]butcher\w*|romance scam|wrench attack|kidnap\w*|extort\w*|"
      r"sextortion|impersonation scam|impersonat\w+"),
@@ -126,6 +149,9 @@ TYPE_PRIORITY = (
     "social-engineering", "drainer", "phishing", "rug", "key-compromise", "oracle", "governance",
     "bridge", "exploit", "other",
 )
+
+# A type vote that only rests on a bare incident word ("hack", "theft", "exploit") states no mechanism.
+GENERIC_VOTE = re.compile(r"^text '(?:hack\w*|exploit\w*|drain\w*|stolen|theft|steal\w*)'$", re.IGNORECASE)
 
 _TECHNIQUE_MAP = {
     "Phishing": ("phishing", "phishing"),
@@ -211,10 +237,22 @@ def type_from_slowmist(method):
     return None
 
 
+_ADVICE = re.compile(
+    r"(?:watch (?:out )?for|beware of|be wary of|warn\w* (?:\w+ )?(?:of|about|against)|"
+    r"alert\w* (?:\w+ )?(?:to|for|about)|guard against|look out for|protect\w* (?:\w+ )?(?:from|against)|"
+    r"avoid|risk of|could lead to|vulnerable to)\s+(?:\w+\s+){0,2}$",
+    re.IGNORECASE,
+)
+
+
 def type_from_text(text):
+    """First rule (in priority order) with a match that is not advice or a warning
+    ("watch for phishing" says nothing about how this incident happened)."""
+    text = text or ""
     for kind, topic, pattern in _TEXT_TYPE_RULES:
-        match = pattern.search(text or "")
-        if match:
+        for match in pattern.finditer(text):
+            if _ADVICE.search(text[max(0, match.start() - 50): match.start()]):
+                continue
             return (kind, topic, f"text {match.group(0)!r}")
     return None
 
@@ -246,8 +284,14 @@ TARGET_AUDIENCE = {
 }
 
 
+_CUE_NEGATION = re.compile(r"\b(?:no|not|never|without|unaffected|zero|none of the)\b[^.;:]{0,25}$", re.IGNORECASE)
+
+
 def retail_cues(text):
-    return sorted({m.group(1).lower() for m in _RETAIL_CUES.finditer(text or "")})
+    """Retail cue words in text, skipping negated ones ("no user funds were affected")."""
+    text = text or ""
+    return sorted({m.group(1).lower() for m in _RETAIL_CUES.finditer(text)
+                   if not _CUE_NEGATION.search(text[max(0, m.start() - 40): m.start()])})
 
 
 def institutional_cues(text):
@@ -259,7 +303,8 @@ def institutional_cues(text):
 FOLLOW_UP_RE = re.compile(
     r"\b(recover\w*|freez\w*|frozen|forfeit\w*|seiz\w*|launder\w*|mixers?|bounty|post-?mortem|"
     r"reimburs\w*|compensat\w*|refund\w*|indict\w*|charged|arrest\w*|stolen in|tied to|linked to|"
-    r"hack-linked|hack loot|loot|after (?:the|its|a) \w*\s?(?:hack|exploit|breach)|in the wake|"
+    r"(?:hack|theft|exploit|heist|breach)-linked|hack loot|loot|trac(?:e|es|ed|ing)|"
+    r"after (?:the|its|a) \w*\s?(?:hack|exploit|breach)|in the wake|"
     r"(?:days|weeks|months) after|shut down|shuts down|to shut)\b",
     re.IGNORECASE,
 )
@@ -284,10 +329,10 @@ _LOSS_VERB_BEFORE = re.compile(
 # "$X <0-2 words> <loss noun>": $12M hack, $12.6 Million Vault Hack, $133M crypto theft,
 # "$X in thefts", "$X stolen"
 _LOSS_NOUN_AFTER = re.compile(
-    r"^\s*(?P<between>(?:[A-Za-z][\w.\-]*\s+){0,2}?)(?:hack|hacks|exploit|exploits|theft|thefts|"
-    r"heist|breach|drain|attack|loss|losses)\b"
-    r"|^\s*(?:in|of)\s+(?:stolen|losses|thefts)\b"
-    r"|^\s*(?:was\s+|were\s+)?(?:stolen|drained|lost|swiped|siphoned|looted)\b",
+    r"^\s*(?:in|of)\s+(?:stolen|losses|thefts)\b"
+    r"|^\s*(?:was\s+|were\s+)?(?:stolen|drained|lost|swiped|siphoned|looted)\b"
+    r"|^\s*(?P<between>(?:[A-Za-z][\w.\-]*\s+){0,2}?)(?:hack|hacks|exploit|exploits|theft|thefts|"
+    r"heist|breach|drain|attack|loss|losses)\b",
     re.IGNORECASE,
 )
 _BETWEEN_STOP = {"of", "in", "from", "to", "through", "with", "for", "tied", "linked", "order", "freezing", "as"}
@@ -299,6 +344,25 @@ _NOT_LOSS = re.compile(
     r"push(?:es|ed)?|through|worth of|order|valuation|revenue|tvl|market cap|insurance|cover\w*)\b",
     re.IGNORECASE,
 )
+
+
+_OTHER_INCIDENT = re.compile(
+    r"\b(?:previous(?:ly)?|earlier|prior|last (?:month|week|year)|first (?:hack|exploit|attack|incident)|"
+    r"another|second|may have|might have|could have|potentially)\b",
+    re.IGNORECASE,
+)
+
+
+def excerpt_amounts(text):
+    """Loss figures from an excerpt, skipping sentences about other or possible losses."""
+    out = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text or ""):
+        if _OTHER_INCIDENT.search(sentence):
+            continue
+        for value, quote in reported_amounts(sentence):
+            if all(abs(value - v) > 0.5 for v, _ in out):
+                out.append((value, quote))
+    return out
 
 
 def reported_amounts(text):
@@ -321,10 +385,158 @@ def reported_amounts(text):
         if is_loss and _NOT_LOSS.search(text[max(0, match.start() - 45): match.start()]):
             is_loss = False
         if is_loss:
-            quote = text[match.start(): match.end()].strip()
+            # keep the source's qualifier with the figure ("almost $1 million" is not "$1 million")
+            qual = _QUALIFIER_BEFORE.search(before)
+            start = match.start() - len(qual.group(0)) if qual else match.start()
+            quote = text[start: match.end()].strip()
             if all(abs(value - v) > 0.5 for v, _ in out):
                 out.append((value, quote))
     return out
+
+
+_QUALIFIER_BEFORE = re.compile(
+    r"\b(?:almost|nearly|about|around|approximately|approx\.|roughly|some|an estimated|estimated|at least|up to|"
+    r"over|more than|less than|under|close to)\s+$",
+    re.IGNORECASE,
+)
+_QUALIFIER_WORD = re.compile(
+    r"^(almost|nearly|about|around|approximately|approx\.|roughly|some|an estimated|estimated|at least|up to|over|"
+    r"more than|less than|under|close to)\s+",
+    re.IGNORECASE,
+)
+
+
+def qualifier_of(quote):
+    """The qualifier a figure's quote keeps ("almost", "at least"), or ""."""
+    match = _QUALIFIER_WORD.match(quote or "")
+    return match.group(1).lower() if match else ""
+
+
+_TITLE_OTHER = re.compile(
+    r"^(?:(?:days?|weeks?|months?|years?)\s+after|after|following|since|weeks? before|months? before|"
+    r"its (?:second|third|latest|previous)|a (?:previous|prior|separate|second))\b",
+    re.IGNORECASE,
+)
+
+
+def title_amounts(title):
+    """Loss figures stated in a headline about THIS incident: clauses about another incident ("..., months after a
+    $1 million exploit") are skipped, and only the first loss figure counts."""
+    # a comma inside a figure ("$800,000") is not a clause boundary
+    parts = re.split(r",(?!\d{3}\b)\s*|;\s*|\s+[-–—]\s+|\s+(?=(?:days?|weeks?|months?|years?)\s+after\b)|\s+(?=after\b)|\s+(?=following\b)", title or "")
+    for part in parts:
+        part = part.strip()
+        if not part or _TITLE_OTHER.search(part) or _OTHER_INCIDENT.search(part):
+            continue
+        found = reported_amounts(part)
+        if found:
+            return found[:1]
+    return []
+
+
+_POSSIBLE_LOSS = re.compile(r"\b(?:may have|might have|could have|possibly|potentially) (?:also )?(?:lost|been (?:stolen|drained|affected))\b", re.IGNORECASE)
+
+
+def includes_possible_losses(text):
+    """Does the text count amounts someone only "may have" lost?"""
+    return bool(_POSSIBLE_LOSS.search(text or ""))
+
+
+# ---------------------------------------------------------------- mechanism qualifiers
+
+_MECH_WORDS = re.compile(
+    r"\b(?:attack\w*|exploit\w*|hack\w*|compromis\w*|keys?|vulnerab\w*|mechanism|cause|method|breach\w*|theft|"
+    r"leak\w*|access|authorit\w*|flaw\w*|bugs?|sign\w*|phish\w*|malware|how|origin|minting|mint)\b",
+    re.IGNORECASE,
+)
+_MECH_UNKNOWN = re.compile(
+    r"\b(?:remains? (?:unknown|unclear|under investigation)|(?:is|are|was|were) (?:still )?(?:unknown|unclear|"
+    r"being investigated|under investigation)|under investigation|as-yet[- ]unidentified|unidentified|"
+    r"not (?:yet )?(?:known|determined|confirmed|clear)|attack method:\s*unknown|(?:root )?cause (?:is |was )?"
+    r"(?:still )?(?:unknown|unclear)|anomal(?:y|ies|ous))\b",
+    re.IGNORECASE,
+)
+_MECH_SUSPECTED = re.compile(
+    r"\b(?:suspect(?:s|ed)?|suspicious|potential(?:ly)?|possibl[ey]|apparent(?:ly)?|believed to|appears? to|"
+    r"likely|may have|might have|reportedly|alleged(?:ly)?|unconfirmed|preliminary)\b",
+    re.IGNORECASE,
+)
+
+
+# Words that name HOW an incident happened. "A suspected exploit" hedges whether there was an incident at all (the
+# status hedge); only a hedged mechanism ("suspected key theft", "a possible phishing link") makes it "suspected".
+_MECH_SPECIFIC = re.compile(
+    r"\b(?:keys?|signing|signer\w*|seed phrases?|vulnerab\w*|flaw\w*|bugs?|phish\w*|malware|drainer\w*|"
+    r"access control|oracle\w*|price manipulation|flash[- ]loan\w*|reentran\w*|logic|mint\w*|compromis\w*|leak\w*|"
+    r"insider\w*|social engineering|supply[- ]chain|front[- ]?end|dns|cause|method|mechanism|root cause|"
+    r"poison\w*|deepfake\w*|impersonat\w*|sdk|api)\b",
+    re.IGNORECASE,
+)
+
+
+def mechanism_qualifier(text):
+    """('unknown' | 'suspected', sentence) when the text says the mechanism is unknown or only suspected, else
+    (None, None). Read from the FULL text before it is cut to an excerpt, so caveats past 280 characters count."""
+    found = None
+    for sentence in re.split(r"(?<=[.!?])\s+", clean_ws(text or "")):
+        if not _MECH_WORDS.search(sentence):
+            continue
+        if _MECH_UNKNOWN.search(sentence):
+            return "unknown", sentence
+        if found is None and _MECH_SUSPECTED.search(sentence) and _MECH_SPECIFIC.search(sentence):
+            found = ("suspected", sentence)
+    return found or (None, None)
+
+
+# ---------------------------------------------------------------- who says it (origin) and user-side incidents
+
+_ORIGIN_VERBS = (r"says|said|found|finds|reports|reported|traced|traces|tracked|tracks|flagged|flags|identified|"
+                 r"identifies|discovered|discovers|confirmed|confirms|disclosed|discloses|estimates|estimated|warns|"
+                 r"warned|alleges|alleged|attributed|attributes|linked|links|tied")
+_ORG = r"([A-Z][\w.&'’-]*(?:\s+(?:of\s+)?[A-Z][\w.&'’-]*){0,2})"
+_ORIGIN_PATTERNS = (
+    re.compile(r"\baccording to (?:a |an |the )?(?:new )?(?:report|analysis|research|post|statement|blog post|alert|data)?\s*(?:from|by)?\s*" + _ORG),
+    re.compile(_ORG + r"['’]s (?:research|report|analysis|findings|data|investigation|team)\b"),
+    re.compile(r"\b(?:research|report|analysis|findings|data) (?:from|by) " + _ORG),
+    re.compile(_ORG + r"\s+(?:" + _ORIGIN_VERBS + r")\b"),
+    re.compile(r"^" + _ORG + r":\s"),
+)
+_NOT_ORIGIN = {
+    "the", "a", "an", "it", "this", "that", "they", "hackers", "hacker", "attackers", "attacker", "users", "user",
+    "investors", "traders", "researchers", "analysts", "police", "officials", "prosecutors", "authorities", "court",
+    "named person", "[named person]", "report", "reports", "exclusive", "breaking", "update",
+}
+
+
+def origin_of(text, publisher=""):
+    """The organisation a news item relays (Confiant's research, Elliptic's findings, the project's statement),
+    lower-cased, or None when the item reports on its own."""
+    own = (publisher or "").lower()
+    for pattern in _ORIGIN_PATTERNS:
+        for match in pattern.finditer(text or ""):
+            name = clean_ws(match.group(1)).strip(".,:;'’").lower()
+            name = re.sub(r"['’]s$", "", name)
+            if not name or name in _NOT_ORIGIN or name == own or name.split()[0] in _NOT_ORIGIN:
+                continue
+            return name
+    return None
+
+
+_USER_SIDE = re.compile(
+    r"\b(?:an?|one|several|some|two|three)?\s*(?:trader|user|customer|holder|investor|whale|account)s?['’]?s?\s+"
+    r"(?:leaked\s+|compromised\s+|stolen\s+)?(?:api\s+)?(?:keys?|devices?|phones?|wallets?|accounts?|seed phrases?)\b|"
+    r"\bleaked (?:trader|user|customer)s?['’]? (?:api )?keys?\b|\b(?:non-?official|unofficial|third-party) sdk\b|"
+    r"\b(?:api |private |signing )?keys? (?:belonging to|of|held by|owned by) (?:an? |one |several |some )?(?:trader|user|customer|holder|investor|account)s?\b|"
+    r"\b(?:protocol|smart contracts?|contracts?)(?: and smart contracts?)? (?:were|was|are|is|remain(?:ed)?) unaffected\b|"
+    r"\busers?(?:\(s\))? (?:were |was )?exploited\b|\buser-side\b",
+    re.IGNORECASE,
+)
+
+
+def user_side(text):
+    """The phrase showing that users, not the protocol, were compromised (a trader's API key, a user's device), or None."""
+    match = _USER_SIDE.search(text or "")
+    return clean_ws(match.group(0)) if match else None
 
 
 # ---------------------------------------------------------------- subject extraction
@@ -346,8 +558,20 @@ _STOPWORDS = {
     And Or But Not Its It His Her Their Our Your We You They He She Million Billion Thousand
     Says Said Report Reports Researchers Researcher Investigators Security Firm Firms Platform
     Chain Network Ledger Hardware Wallet iPhone iPhones iPad iOS macOS Android YouTube GitHub
-    Google Apple Microsoft Telegram Discord WhatsApp ChatGPT OpenAI Nvidia X Twitter""".split()
+    Google Apple Microsoft Telegram Discord WhatsApp ChatGPT OpenAI Nvidia X Twitter
+    Elliptic Chainalysis TRM PeckShield CertiK SlowMist Cyvers BlockSec Arkham Nansen Bitquery
+    Lookonchain Hacken Immunefi SEAL Hexagate Blockaid ScamSniffer MistTrack Confiant Wiz Mandiant
+    Kaspersky Bubblemaps Interpol Europol""".split()
 }
+_HEADLINE_VERBS = {
+    w for w in """confirms confirmed suspects loses lost offers urges warns says said halts halted pauses
+    paused suspends suspended freezes froze admits discloses reports reported blames plans seeks
+    moves targets traces weighs extends faces hit hits suffers suffered recovers restores resumes
+    reopens shuts patches fixes issues denies claims reveals identifies asks proposes votes is was
+    has gets got obtains secures exploited hacked drained breached compromised attacked collapses
+    crashes plunges followed to""".split()
+}
+_ROLE_TRAIL = {"founder", "ceo", "team", "users", "user", "holders", "community", "account", "accounts", "cofounder", "co-founder"}
 _TRIGGERS = {
     w for w in """exploited hacked drained breached compromised attacked rugged robbed loses lost lose
     suffers suffered halts halted pauses paused suspends suspended freezes confirms confirmed
@@ -367,7 +591,7 @@ _SKIPPABLE = {
 _MODIFIER_SUFFIX = re.compile(
     r"-(?:linked|backed|based|focused|owned|related|tied|led|affiliated)$", re.IGNORECASE
 )
-_CONNECTORS = {"and", "&", "of", "de", "du", "la", "des", "x"}
+_CONNECTORS = {"and", "&", "de", "du", "la", "des", "x"}
 _QUOTES = "\"'‘’“”()[]!?"
 AMT = "§AMT§"
 
@@ -496,11 +720,37 @@ def extract_subject(title, exclude=()):
     return subject, method
 
 
+def _lead_subject(tokens, ends, excluded):
+    """'Stake DAO Warns ...', 'Chainflip confirms ...', "Korea's DCENT to shut ..."."""
+    run = []
+    for index, tok in enumerate(tokens[:5]):
+        word = _bare(tok)
+        if word.lower() in _HEADLINE_VERBS and run:
+            while run and _bare(run[-1]).lower() in _ROLE_TRAIL:
+                run.pop()
+            candidate = _clean_run(run) if run else None
+            if candidate and candidate.lower() not in excluded and core_name(candidate) not in excluded:
+                return candidate
+            return None
+        if not _cap_like(tok) or len(run) >= 4:
+            return None
+        if _has_possessive(tok):
+            run = []  # "South Korea's DCENT": the owner is a modifier
+        else:
+            run.append(tok)
+        if ends[index]:
+            return None
+    return None
+
+
 def _extract_subject(title, excluded):
-    text = MONEY_RE.sub(" " + AMT + " ", title.replace("’", "'"))
+    text = MONEY_RE.sub(" " + AMT + " ", title.replace("\u2019", "'"))
     raw = text.split()
     tokens = [t.rstrip(",:;") for t in raw]
     ends = [t.endswith((",", ":", ";")) for t in raw]
+    lead = _lead_subject(tokens, ends, excluded)
+    if lead:
+        return lead, "headline subject"
     for index, token in enumerate(tokens):
         word = _bare(token).lower()
         if word not in _TRIGGERS:

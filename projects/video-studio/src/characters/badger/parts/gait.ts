@@ -1,4 +1,5 @@
 import type {LegAngles, LegGeom} from './Leg';
+import {samplePath} from './pathSample';
 import type {Pt} from './shared';
 import type {LegKey, SidePose, SideRig} from './SideBody';
 
@@ -86,22 +87,23 @@ export const plantLegs = (R: SideRig, dir: 1 | -1, body: SidePose['body'], offse
 	return out;
 };
 
-/** BADGER's walk: a lateral-sequence 4-beat gait (LH, LF, RH, RF a quarter cycle apart). */
+/** BADGER's walk: a 4-beat lateral-sequence gait (LH, LF, RH, RF), lateral pairs close together as drawn on the sheet. */
 export const WALK = {
 	/** Body travel per gait cycle at scale 1 (world units). Move the root by exactly this much per cycle. */
-	stride: 175 / 0.6,
+	stride: 215 / 0.6,
 	/** Fraction of the cycle each paw is on the ground. */
 	duty: 0.6,
 	/**
 	 * Stance sweep of each paw pivot, relative to its own shoulder / hip (units, + = forward): it lands at `land`
-	 * and lifts at `lift`. Both sweeps are 175 units (= stride * duty), so planted paws never slide. The hind
-	 * paws work from under the hip to behind it, as in badger_pose_walking.png.
+	 * and lifts at `lift`. Both sweeps are 215 units (= stride * duty), so planted paws never slide. Measured on
+	 * badger_pose_walking.png (normalised by body length): the far fore paw lands well ahead of the chest and the
+	 * near hind paw leaves the ground behind the hip.
 	 */
-	front: {land: 92, lift: -83},
-	hind: {land: 72, lift: -103},
+	front: {land: 124, lift: -91},
+	hind: {land: 92, lift: -123},
 	/** Shoulder glide (scapula) of the front legs, fraction of the paw offset, capped (hidden inside the chest). */
 	glide: 0.3,
-	glideMax: 20,
+	glideMax: 22,
 	/**
 	 * Stance legs keep their reach (pivot-to-paw distance / full leg length) inside these bands; the shoulder or
 	 * hip slides up/down inside the body to do so (scapula / pelvis movement, hidden by the torso). Front legs stay
@@ -109,31 +111,103 @@ export const WALK = {
 	 */
 	reachFront: [0.965, 0.99],
 	reachHind: [0.84, 0.99],
-	maxSlide: 34,
-	/** Heel roll about the planted toe at the end of stance (deg), so the trailing leg can stay on the ground. */
-	roll: 22,
+	/** Reach band of a swinging fore leg (the carpus folds, so the leg may shorten a little more). */
+	swingReachFront: [0.93, 0.985],
+	maxSlide: 36,
+	/** Heel-up roll onto the toes at the end of stance (deg, toes-down), about the paw's real ground contact point. */
+	roll: 20,
+	/** Most the swinging paw may pitch toes-down (deg): the carpus folds, but the paw never points straight down. */
+	maxPawPitch: 28,
 	/** Paw lift at mid-swing (units). */
-	lift: 28,
+	lift: 30,
 	/** Body carried lower than the stand (legs slightly flexed), plus a small bob. */
-	drop: 8,
+	drop: 6,
 	bob: 2,
-	/** Phase offsets per ANATOMICAL leg; walkPhase 0 is close to badger_pose_walking.png. */
-	offsets: {leftHind: -0.15, leftFront: 0.1, rightHind: 0.35, rightFront: 0.6},
-	neck: -17,
-	tail: 26,
+	/**
+	 * Phase offsets per ANATOMICAL leg. walkPhase 0 is the frame of badger_pose_walking.png seen from the right:
+	 * far (left) fore paw landing, far hind just planted under the belly, near (right) hind at toe-off, near fore
+	 * in late stance.
+	 */
+	offsets: {leftHind: -0.08, leftFront: 0.0, rightHind: 0.4, rightFront: 0.52},
+	/** Neck carriage while walking (deg, + = raised): the sheet carries the head up and forward, close to the stand. */
+	neck: 2,
+	/** Tail carriage while walking (deg, + = raised): the sheet's walking tail is carried up in a sabre curve. */
+	tail: 34,
 } as const;
 
 const frac = (v: number) => v - Math.floor(v);
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-const NUM = /-?\d*\.?\d+/g;
-/** Toe contact point of a paw (paw-pivot space, normalised): the most forward of its lowest points. */
+/** Sampled outlines (paw-local / pastern-local SVG units) of the parts that can touch the ground. */
+type GroundShape = {paw: readonly Pt[]; lower: readonly Pt[]};
+const GROUND_CACHE = new WeakMap<LegGeom, GroundShape>();
+const groundShape = (geom: LegGeom): GroundShape => {
+	let g = GROUND_CACHE.get(geom);
+	if (!g) {
+		g = {paw: samplePath(geom.paw.fill, 10), lower: samplePath(geom.lower.fill, 6)};
+		GROUND_CACHE.set(geom, g);
+	}
+	return g;
+};
+
+/**
+ * Roll pivot of a paw (paw-pivot space, facing-normalised), measured ON THE DRAWN OUTLINE (sampled curve, not control
+ * points): the point of the toe arc that is the lowest point of the paw once it has rolled WALK.roll degrees heel-up.
+ * Rolling about it never pushes the toes into the ground; while the paw is flat its height is taken up by the ground
+ * clamp in walkPose, so a planted paw keeps a fixed x and a fixed ground contact.
+ */
+const TOE_CACHE = new WeakMap<LegGeom, Pt>();
 export const toeOf = (geom: LegGeom, dir: 1 | -1): Pt => {
-	const n = (geom.paw.fill.match(NUM) ?? []).map(Number);
-	const pts: Pt[] = [];
-	for (let i = 0; i + 1 < n.length; i += 2) pts.push({x: dir * n[i], y: n[i + 1]});
-	const maxY = Math.max(...pts.map((p) => p.y));
-	const low = pts.filter((p) => p.y > maxY - 5);
-	return low.reduce((a, b) => (b.x > a.x ? b : a));
+	let t = TOE_CACHE.get(geom);
+	if (!t) {
+		const pts = groundShape(geom).paw;
+		const maxY = Math.max(...pts.map((p) => p.y));
+		const facing = (p: Pt) => (dir * p.x); // forward coordinate (cache is per geom; both rigs use one dir each)
+		const sole = pts.filter((p) => p.y > maxY - 0.75).reduce((a, b) => (facing(b) > facing(a) ? b : a));
+		const a = (WALK.roll * Math.PI) / 180;
+		// heel-up roll = toes-down: rotate (forward, down) by +roll in the facing-normalised frame
+		const dropOf = (p: Pt) => facing(p) * Math.sin(a) + p.y * Math.cos(a);
+		let best = sole;
+		let bestDrop = -Infinity;
+		for (const p of pts) {
+			if (facing(p) < facing(sole) - 0.5 || p.y < maxY - 20) continue;
+			const d = dropOf(p);
+			if (d > bestDrop) {
+				bestDrop = d;
+				best = p;
+			}
+		}
+		t = {x: best.x, y: best.y};
+		TOE_CACHE.set(geom, t);
+	}
+	return {x: dir * t.x, y: t.y};
+};
+
+const rotSvg = (v: Pt, deg: number): Pt => {
+	const a = (deg * Math.PI) / 180;
+	return {x: v.x * Math.cos(a) - v.y * Math.sin(a), y: v.x * Math.sin(a) + v.y * Math.cos(a)};
+};
+const addP = (a: Pt, b: Pt): Pt => ({x: a.x + b.x, y: a.y + b.y});
+
+/**
+ * Lowest point (largest world y; ground = 0, y down) of a posed paw and pastern FILL, sampled on the drawn curves.
+ * Replicates SideBody's transform chain exactly. The fills are inset by `geom.inset`, so the traced sole is this value
+ * plus the inset; walkPose keeps that traced sole on the ground line (the outline then reaches LINE.width / 2 below it,
+ * exactly as in the standing pose).
+ */
+export const pawLowestY = (R: SideRig, dir: 1 | -1, body: SidePose['body'], svgMount: Pt, a: LegAngles, geom: LegGeom): number => {
+	const T = R.torso.pivot;
+	const root = {x: T.x + dir * body.forward, y: T.y - body.up};
+	const pitchSvg = -dir * body.pitch;
+	const su = -dir * a.upper;
+	const sl = -dir * a.lower;
+	const sp = -dir * a.paw;
+	const g = groundShape(geom);
+	let m = -Infinity;
+	const world = (q: Pt) => addP(root, rotSvg(addP(svgMount, rotSvg(q, su)), pitchSvg)).y;
+	for (const p of g.paw) m = Math.max(m, world(addP(geom.lowerPivot, rotSvg(addP(geom.pawPivot, rotSvg(p, sp)), sl))));
+	for (const p of g.lower) m = Math.max(m, world(addP(geom.lowerPivot, rotSvg(p, sl))));
+	return m;
 };
 
 /** Walk pose at gait phase t (cycles; fractional part used). Planted toes move back at exactly `stride` per cycle. */
@@ -147,63 +221,92 @@ export const walkPose = (R: SideRig, dir: 1 | -1, t: number, nearSide: 'left' | 
 		const front = key.startsWith('front');
 		return W.offsets[`${side}${front ? 'Front' : 'Hind'}` as keyof typeof W.offsets];
 	};
+	/** Ground in the gait's root frame (torso-local at rest): world y = 0. */
+	const groundY = -R.torso.pivot.y;
 	const legs = {} as Record<LegKey, LegAngles>;
 	const mountShift = {} as Record<LegKey, Pt>;
 	for (const s of legSpecs(R)) {
 		const u = frac(ph - offOf(s.key));
-		const rest = restPaw(s.geom, dir, s.mount);
 		const m = {x: dir * s.mount.x, y: s.mount.y};
 		const rng = s.front ? W.front : W.hind;
 		const toe = toeOf(s.geom, dir);
-		// paw pivot when the paw is rolled by phi about its toe, the toe touching the ground at x = toeX
-		const pivotAt = (toeX: number, phi: number): Pt => {
-			const r = rot({x: -toe.x, y: -toe.y}, (-phi * Math.PI) / 180);
-			return {x: toeX + r.x, y: rest.y + toe.y + r.y};
+		const sole = groundShape(s.geom).paw.map((q) => ({x: dir * q.x - toe.x, y: q.y - toe.y}));
+		/** Depth of the paw's lowest drawn point below the roll pivot when the paw has world pitch `pw`. */
+		const depthAt = (pw: number): number => {
+			let d = 0;
+			for (const q of sole) d = Math.max(d, rot(q, (-pw * Math.PI) / 180).y);
+			return d;
+		};
+		// the fills are inset by `inset` (stroke-under-fill legs): the traced sole = lowest fill point + inset
+		const inset = s.geom.inset ?? 0;
+		// paw pivot when the paw has world pitch `pw` (+ = toes up), its roll pivot at x = toeX and its traced sole
+		// exactly on the ground line, as in the standing pose
+		const pivotAt = (toeX: number, pw: number): Pt => {
+			const r = rot({x: -toe.x, y: -toe.y}, (-pw * Math.PI) / 180);
+			return {x: toeX + r.x, y: groundY - inset - depthAt(pw) + r.y};
 		};
 		const toeLand = m.x + rng.land + toe.x;
 		const toeLift = m.x + rng.lift + toe.x;
 		const Lmax = Math.hypot(s.geom.lowerPivot.x, s.geom.lowerPivot.y) + Math.hypot(s.geom.pawPivot.x, s.geom.pawPivot.y);
 		const band = s.front ? W.reachFront : W.reachHind;
 		const glideAt = (tx: number) => (s.front ? Math.max(-W.glideMax, Math.min(W.glideMax, W.glide * (tx - m.x))) : 0);
-		/** Mount slide (dx forward, dy down) that keeps a planted paw pivot within the reach band. */
-		const slideFor = (tgtRoot: Pt): Pt => {
+		/** Mount slide (dx forward, dy down) that keeps a paw pivot within the reach band (scapula / pelvis). */
+		const slideFor = (tgtRoot: Pt, bnd: readonly number[] = band): Pt => {
 			const tb = rootToBody(tgtRoot, body);
 			const gx = glideAt(tgtRoot.x);
 			const dx = tb.x - (m.x + gx);
 			const dy0 = tb.y - m.y;
 			const d0 = Math.hypot(dx, dy0);
-			const want = Math.max(band[0] * Lmax, Math.min(band[1] * Lmax, d0));
+			const want = Math.max(bnd[0] * Lmax, Math.min(bnd[1] * Lmax, d0));
 			const dy = Math.sqrt(Math.max(0, want * want - dx * dx));
 			const slide = Math.max(-W.maxSlide, Math.min(W.maxSlide, dy0 - dy));
 			return {x: gx, y: slide};
 		};
 		let target: Pt;
 		let slide: Pt;
-		let pawWorld = 0;
+		let pawWorld: number;
+		let swingBand: readonly number[] = band;
 		let prefer = s.front ? 0 : 10;
 		const rollStart = W.duty * 0.6;
-		if (u < W.duty) {
+		const stance = u < W.duty;
+		if (stance) {
 			const toeX = toeLand - (u / W.duty) * (toeLand - toeLift); // planted toe; the body advances over it
 			const phi = u > rollStart ? W.roll * Math.pow((u - rollStart) / (W.duty - rollStart), 1.6) : 0;
-			target = pivotAt(toeX, phi);
+			pawWorld = -phi; // heel up, onto the toes
+			target = pivotAt(toeX, pawWorld);
 			slide = slideFor(target);
-			pawWorld = phi;
 		} else {
 			const sp = (u - W.duty) / (1 - W.duty);
 			const e = 0.5 - 0.5 * Math.cos(sp * Math.PI);
-			const a = pivotAt(toeLift, W.roll);
+			const a = pivotAt(toeLift, -W.roll);
 			const b = pivotAt(toeLand, 0);
 			target = {x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e - W.lift * Math.sin(sp * Math.PI)};
-			const sa = slideFor(a);
-			const sb = slideFor(b);
-			slide = {x: sa.x + (sb.x - sa.x) * e, y: sa.y + (sb.y - sa.y) * e};
-			const fold = (s.front ? -46 : -20) * Math.sin(Math.min(1, sp * 1.12) * Math.PI);
-			pawWorld = W.roll * Math.pow(1 - sp, 2) + fold;
+			// a swinging fore leg has no elbow joint in the rig: the scapula rises with the paw (slide from the lifted
+			// target itself), the carpus fold does the rest. The reach band eases from the stance band so the leg top
+			// never jumps at toe-off or landing.
+			const k = Math.sin(sp * Math.PI);
+			swingBand = s.front ? [lerp(band[0], W.swingReachFront[0], k), lerp(band[1], W.swingReachFront[1], k)] : band;
+			slide = slideFor(target, swingBand);
+			// the carpus / hock folds the paw toes-down after toe-off (eased in, so the toe lifts clean) and opens it
+			// again before landing; capped so the paw never hangs straight down
+			const ease = Math.min(1, sp / 0.3);
+			const fold = (s.front ? 1 : 0.55) * W.maxPawPitch * Math.sin(Math.min(1, sp * 1.15) * Math.PI) * ease * ease * (3 - 2 * ease);
+			pawWorld = -Math.min(W.maxPawPitch, Math.max(W.roll * Math.pow(1 - sp, 2), fold));
 			if (s.front) prefer = -70;
 		}
+		const mountOf = (sl: Pt): Pt => ({x: s.mount.x + dir * sl.x, y: s.mount.y + sl.y});
+		// ground clamp on the drawn outline: a planted paw sits exactly on the ground, a swinging paw never dips below it
+		let ang = solveLeg(s.geom, dir, mountOf(slide), rootToBody(target, body), prefer, body.pitch, pawWorld);
+		for (let it = 0; it < 6; it++) {
+			const low = pawLowestY(R, dir, body, mountOf(slide), ang, s.geom) + inset;
+			const err = stance ? low : Math.max(0, low);
+			if (Math.abs(err) < 0.02) break;
+			target = {x: target.x, y: target.y - err};
+			if (!stance) slide = slideFor(target, swingBand);
+			ang = solveLeg(s.geom, dir, mountOf(slide), rootToBody(target, body), prefer, body.pitch, pawWorld);
+		}
 		mountShift[s.key] = slide;
-		const mount = {x: s.mount.x + dir * slide.x, y: s.mount.y + slide.y};
-		legs[s.key] = solveLeg(s.geom, dir, mount, rootToBody(target, body), prefer, body.pitch, pawWorld);
+		legs[s.key] = ang;
 	}
 	return {body, neck: W.neck, legs, tail: W.tail, mountShift};
 };

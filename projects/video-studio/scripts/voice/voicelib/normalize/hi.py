@@ -5,6 +5,7 @@ Devanagari digits (०-९) are read like ASCII digits. Common spelling variants
 उनासी/उन्यासी); the native-speaker review of each script decides the house style.
 """
 
+from ..lexicon import PRONUNCIATIONS
 from .common import DEVANAGARI_DIGITS, SpacedNormalizer, parse_num
 
 HI_0_99 = [
@@ -58,13 +59,20 @@ class Hindi(SpacedNormalizer):
         "£": ("पाउंड", "पाउंड", None, None),
         "¥": ("येन", "येन", None, None),
         "₹": ("रुपया", "रुपये", "पैसा", "पैसे"),
+        "US$": ("अमेरिकी डॉलर", "अमेरिकी डॉलर", "सेंट", "सेंट"),
+        "R$": ("ब्राज़ीलियाई रियाल", "ब्राज़ीलियाई रियाल", None, None),
+        "A$": ("ऑस्ट्रेलियाई डॉलर", "ऑस्ट्रेलियाई डॉलर", "सेंट", "सेंट"),
+        "C$": ("कनाडाई डॉलर", "कनाडाई डॉलर", "सेंट", "सेंट"),
+        "MX$": ("मैक्सिकन पेसो", "मैक्सिकन पेसो", None, None),
     }
     scales = {"k": ("हज़ार", "हज़ार"), "m": ("मिलियन", "मिलियन"), "b": ("बिलियन", "बिलियन"), "t": ("ट्रिलियन", "ट्रिलियन")}
     scale_words = frozenset({"हज़ार", "हजार", "लाख", "करोड़", "मिलियन", "बिलियन", "अरब"})
     tickers = {"BTC": "बिटकॉइन", "ETH": "ईथर", "SOL": "सोल", "USDC": "USDC", "USDT": "USDT"}
-    symbols = {"&": "और", "+": "प्लस", "=": "बराबर", "@": "एट", "%": "प्रतिशत", "~": "लगभग", "×": "गुणा"}
+    symbols = {"&": "और", "+": "प्लस", "=": "बराबर", "@": "एट", "%": "प्रतिशत", "~": "लगभग", "×": "गुणा", "#": "नंबर"}
     months = MONTHS
     month_lookup = {m: i + 1 for i, m in enumerate(MONTHS)}
+    lexicon = PRONUNCIATIONS["hi"]
+    number_word = "नंबर"
 
     def preprocess(self, token: str) -> str:
         # espeak ignores the danda, so the sentence pause would be lost: speak it as a full stop.
@@ -115,6 +123,15 @@ class Hindi(SpacedNormalizer):
 
     def multiplier(self, num: str) -> str:
         return f"{self.number(num)} {self.times_word}"
+
+    def fraction_words(self, n: int, d: int) -> str | None:
+        if (n, d) == (1, 2):
+            return "आधा"
+        if d == 3:
+            return f"{cardinal(n)} तिहाई"
+        if d == 4:
+            return f"{cardinal(n)} चौथाई"
+        return f"{cardinal(n)} बटा {cardinal(d)}"
 
     def is_year(self, n: int) -> bool:
         return False

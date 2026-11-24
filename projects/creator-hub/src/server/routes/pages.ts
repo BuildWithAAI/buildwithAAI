@@ -28,6 +28,14 @@ const RELATIONSHIP_PLAIN: Record<Relationship, string> = {
 	'own-product': 'Our own product: we own it and earn money from it.',
 };
 
+/** For offers not shown to this visitor: the relationship, without inviting them to sign up. */
+const RELATIONSHIP_ONLY: Record<Relationship, string> = {
+	affiliate: 'Affiliate relationship.',
+	referral: 'Referral relationship.',
+	sponsor: 'Sponsor relationship.',
+	'own-product': 'Our own product.',
+};
+
 const sendText = (ctx: Ctx, type: string, body: string, cacheControl: string): void => {
 	ctx.res.statusCode = 200;
 	ctx.res.setHeader('Content-Type', type);
@@ -76,11 +84,12 @@ const disclosures: Handler = (ctx) => {
 	const live = ctx.config.offers.offers.filter((o) => isLive(o, now));
 	const items = live
 		.map((offer) => {
-			const here = isAvailable(offer, ctx.country, now);
-			const detail = here
-				? `<p class="disclosure">${disclosureLines(offer).map((line) => `<span>${esc(line)}</span>`).join('')}</p>`
-				: '<p class="disclosure">Not shown in your region.</p>';
-			return `<li class="card"><h3>${esc(offer.name)}</h3>\n<p>${esc(RELATIONSHIP_PLAIN[offer.relationship])}</p>\n${detail}</li>`;
+			if (isAvailable(offer, ctx.country, now)) {
+				const lines = disclosureLines(offer).map((line) => `<span>${esc(line)}</span>`).join('');
+				return `<li class="card"><h3>${esc(offer.name)}</h3>\n<p>${esc(RELATIONSHIP_PLAIN[offer.relationship])}</p>\n<p class="disclosure">${lines}</p></li>`;
+			}
+			const why = ctx.country === null ? 'Not shown here: we could not confirm your country.' : 'Not offered in your region.';
+			return `<li class="card"><h3>${esc(offer.name)}</h3>\n<p>${esc(RELATIONSHIP_ONLY[offer.relationship])}</p>\n<p class="disclosure">${why}</p></li>`;
 		})
 		.join('\n');
 	const brand = esc(ctx.config.brandName);
@@ -110,6 +119,7 @@ ${contactLine(ctx, 'Questions about a link? Email')}`,
 
 const privacy: Handler = (ctx) => {
 	const base = esc(ctx.config.publicBaseUrl);
+	const operator = esc(ctx.config.operatorName ?? ctx.config.brandName);
 	ctx.html(
 		200,
 		page(ctx.config, {
@@ -125,21 +135,22 @@ const privacy: Handler = (ctx) => {
 <li>your country, when our network provider reports it (never your city or precise location);</li>
 <li>the name of the website you came from, such as www.youtube.com, when your browser shares it;</li>
 <li>whether the visit looked automated, and what happened: sent on, not available in your region, offer ended, or unknown link;</li>
-<li>a visitor code: a one-way hash of your IP address and browser name, mixed with a secret that changes every day. It only lets us count each visitor once per day. We never store your IP address, and codes from different days cannot be matched.</li>
+<li>a visitor code: a one-way code made from your IP address and your browser details (the user-agent text your browser sends), mixed with our secret key and the date. It lets us count each visitor once per day. We never store your IP address. The code is pseudonymous: without our secret key it cannot be turned back into an IP address or matched across days.</li>
 </ul>
+<p>Your IP address is also held briefly in our server's memory to limit abuse (rate limiting). It is never written to disk.</p>
 <p>Links on /go set no cookies, and this site uses no tracking cookies, analytics scripts or ad pixels. Forms may use a short-lived security cookie to block forged submissions. Once you are sent on, the site you visit has its own privacy policy.</p>
 <h2>Page visits</h2>
 <p>For pages on this site we record the same kind of information (time, page, platform and video from the link, country, the automated-visit flag and the daily visitor code), so we can see which videos bring visitors.</p>
 <h2>Video-service requests</h2>
-<p>If you send a request through the <a href="/studio">studio order form</a>, we store what you enter (name, email, company, project link, package, budget, deadline, message and your consent) with the daily visitor code. We use it to reply to you and manage your request, and we do not sell it.</p>
+<p>If you send a request through the <a href="/studio">studio order form</a>, we store what you enter (name, email, company, project link, package, budget, deadline, message and your consent) with that day's visitor code. Because of that code, your request can be linked to the clicks and page visits made from the same browser on the same day. We use it to reply to you, manage your request and stop duplicate or abusive requests, and we do not sell it.</p>
 <h2>Email newsletter</h2>
 <p>Newsletter sign-ups are handled by Kit (kit.com), our email provider. Your email address goes to Kit, Kit's privacy policy applies, and every email has an unsubscribe link.</p>
 <h2>How long we keep it</h2>
 <p>Click records, page-visit records and video-service requests are deleted automatically after 13 months. A request that becomes a client project is kept as a business record.</p>
-<h2>Who can see it</h2>
-<p>Only the site owner, through a password-protected admin page. Our hosting and network providers process IP addresses to deliver the site, under their own policies.</p>
+<h2>Who runs this site and can see the data</h2>
+<p>This site is run by ${operator}. Only the site owner can see these records, through a password-protected admin page. Our hosting and network providers process IP addresses to deliver the site, under their own policies.</p>
 <h2>Your choices</h2>
-<p>You can ask for a copy of your video-service request, or ask us to correct or delete it. Click and visit records contain no name, email or IP address, so we cannot look up one person's clicks.</p>
+<p>You can ask for a copy of your video-service request, or ask us to correct or delete it. Click and visit records hold no name, email or IP address, and we do not use them to identify anyone.</p>
 ${contactLine(ctx, 'To make a request, email')}`,
 		}),
 	);

@@ -87,11 +87,12 @@ export type TestHub = {
 	close(): Promise<void>;
 };
 
-export const startTestHub = async (options: {env?: Record<string, string>; registry?: unknown} = {}): Promise<TestHub> => {
+export const startTestHub = async (options: {env?: Record<string, string>; registry?: unknown; configFiles?: Record<string, unknown>} = {}): Promise<TestHub> => {
 	const dir = mkdtempSync(join(tmpdir(), 'creator-hub-test-'));
 	const configDir = join(dir, 'config');
 	mkdirSync(configDir);
 	writeFileSync(join(configDir, 'offers.json'), JSON.stringify(options.registry ?? testRegistry()));
+	for (const [name, value] of Object.entries(options.configFiles ?? {})) writeFileSync(join(configDir, name), JSON.stringify(value));
 	const settings = loadSettings({
 		NODE_ENV: 'test',
 		HOST: '127.0.0.1',

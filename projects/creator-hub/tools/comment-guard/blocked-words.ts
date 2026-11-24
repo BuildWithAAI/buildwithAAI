@@ -37,9 +37,14 @@ export const STRONG_PHRASES = [
 /** Catches more bots but also holds genuine questions ("is the Telegram bot safe?"). */
 export const AGGRESSIVE_WORDS = ['whatsapp', 'telegram', 'signal app', 'viber', 'wechat', 'giveaway', 'airdrop', 'hacker', 'mrs', 'mentor', 'broker', 'bit.ly', 'tinyurl'];
 
+/**
+ * The safety line, worded like the hub page and the publish kit's pinned-comment.txt. YouTube allows one
+ * pinned comment per video, and the publish kit's pinned comment (disclosure, hub links, this safety line)
+ * is the one to pin, so this text is for videos without a publish kit or for a channel post.
+ */
 export const PINNED_COMMENT =
-	'Zoora AI will never ask you to message us on WhatsApp, Telegram or anywhere else, and never asks for your seed phrase or for money. ' +
-	'Any reply that does is a scam: please report it.';
+	'Zoora AI will never DM you first, ask for your seed phrase, ask you to connect a wallet, or ask for payment in comments or DMs. ' +
+	'Replies that do are impersonators: please report them.';
 
 export const blockedWordsGuide = (): string =>
 	[
@@ -59,7 +64,8 @@ export const blockedWordsGuide = (): string =>
 		'3. Blocked words: the list above.',
 		'4. Hidden users: add impersonator accounts listed under "Accounts to consider hiding" in the guard report.',
 		'   Their future comments are hidden from everyone else.',
-		'5. Pin this comment under every video (reply bots copy your look, not your words):',
+		'5. Pin the publish kit\'s pinned-comment.txt under every video. YouTube allows one pinned comment, and that',
+		'   one already carries the disclosure, the hub links and the safety line. For a video without a kit, pin this:',
 		`   "${PINNED_COMMENT}"`,
 		'6. Check Comments > "Held for review" regularly. YouTube Help says held comments are kept for up to 60 days.',
 		'7. After each upload, run the dry run: npm run guard (it changes nothing and writes a report).',

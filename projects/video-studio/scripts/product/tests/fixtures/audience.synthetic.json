@@ -1,0 +1,9 @@
+{
+  "asOf": "2026-11-20",
+  "subscribers": 1234,
+  "returningViewersPct": 31,
+  "topCountries": [{"country": "United States", "pct": 38.5}, {"country": "United Kingdom", "pct": 9.2}, {"country": "Brazil", "pct": 6}],
+  "ageGroups": [{"range": "25-34", "pct": 41}, {"range": "35-44", "pct": 27}],
+  "gender": [{"label": "Male", "pct": 80}, {"label": "Female", "pct": 19}],
+  "devices": [{"label": "Mobile phone", "pct": 64}, {"label": "Computer", "pct": 30}]
+}

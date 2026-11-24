@@ -79,8 +79,23 @@ export const renderCalendar = (c: CalendarInput): string => {
 				`| ${dayLabel(item.slot.date)}${note ? ` (${cell(note)})` : ''} | ${item.slot.time} | ${formatUtcTime(Date.parse(item.slot.publishAt)).replace(' UTC', '')} | ${cell(item.channelName)} | \`${item.id}\` | ${item.kind === 'long' ? cell(FORMAT_NAMES[item.format] ?? item.format) : `Short ${item.shortIndex} of \`${item.parentId}\``} | ${cell(item.title)} | ${idea ? `\`${idea.evergreenTopic}\`` : ''} | ${['en', ...item.languages.dubs].join(', ')} | ${idea && item.kind === 'long' ? cell(factsLabel(idea, !!item.research.file)) : ''} |`,
 			);
 		}
+		for (const ch of config.channels) {
+			for (const r of ch.reserved ?? []) {
+				const date = r.day ? addDays(monday, DAYS.indexOf(r.day)) : null;
+				const utc = date && r.time ? (() => {
+					const z = zonedToUtc(date, r.time, config.timeZone);
+					return z.ok ? formatUtcTime(z.ms).replace(' UTC', '') : '';
+				})() : '';
+				out.push(`| ${date ? dayLabel(date) : 'Day TBD (owner)'} | ${r.time ?? 'TBD'} | ${utc || 'TBD'} | ${cell(ch.name)} | reserved | ${cell(r.label)} | Made in-week, not by the batch | | en | |`);
+			}
+		}
 		out.push('');
 		const longs = items.filter((i) => i.kind === 'long');
+		const pilots = longs.filter((l) => /^pilot\b/i.test(ideaOf(l)?.role ?? ''));
+		for (const p of pilots) {
+			const format = config.channels.find((ch) => ch.channel === p.channel)?.formats[p.format];
+			out.push(`**Pilot:** \`${p.id}\` is the pilot. CLAUDE.md (Status, Phase 2) defines the pilot as a 60–90 s video with 1 Short, 3 thumbnails and publish.md, then an owner review; this calendar plans it as a ${cell(format?.label ?? p.format)} (${cell((format?.length ?? 'TBD').replace(/\s*\(proposal\)/i, ''))}) with ${p.shortIds.length} Short(s). The owner decides which (see the decisions at the end).`, '');
+		}
 		const withShorts = longs.filter((l) => l.shortIds.length);
 		if (withShorts.length) out.push(`**Shorts map:** ${withShorts.map((l) => `\`${l.id}\` → ${l.shortIds.map((s) => `\`${s}\` (${items.find((x) => x.id === s)?.slot.day ?? '?'})`).join(', ')}`).join(' · ')}`, '');
 		const holidays = [...new Set(items.map((i) => i.slot.date))].filter((d) => config.dateNotes[d]);
@@ -110,6 +125,12 @@ export const renderCalendar = (c: CalendarInput): string => {
 		'- The YouTube category for each channel (`categoryId` in creator-hub/tools/uploader/channels.json): approve is refused until it is set.',
 		"- The security channel's display name (TBD; the show name stands in).",
 		'- Who reviews the Spanish and Brazilian Portuguese dubs natively before their tracks go up.',
+		...config.channels.flatMap((ch) => (ch.reserved ?? []).filter((r) => !r.day).map((r) => `- The day and time of ${cell(ch.name)}'s ${cell(r.label.replace(/\s*\(.*\)$/, '').toLowerCase())}: every week above keeps a reserved row for it. ${cell(r.note)}`)),
+		...c.backlogs.flatMap((b) =>
+			b.ideas
+				.filter((i) => /^pilot\b/i.test(i.role ?? '') && i.status === 'idea')
+				.map((i) => `- The pilot's format (\`${i.id}\`): CLAUDE.md's Phase 2 is a 60–90 s pilot with 1 Short, 3 thumbnails and publish.md, followed by an owner review before the next phase. This calendar plans it as a full ${cell(FORMAT_NAMES[i.format] ?? i.format)} with daily Shorts. Either keep the short pilot first (this calendar then starts after its review), or approve the full-length version.`),
+		),
 		'',
 	);
 	return out.join('\n');

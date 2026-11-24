@@ -1,0 +1,15 @@
+{
+  "id": "farm-selftest-handoff",
+  "entry": "src/index.ts",
+  "encrypt": true,
+  "recipient": "owner",
+  "retentionDays": 1,
+  "voice": [
+    {"channel": "_farm", "slug": "voice-selftest", "lang": "en", "voice": "im_nicola"},
+    {"channel": "_farm", "slug": "voice-selftest", "lang": "es", "voice": "im_nicola", "fitTo": "en"}
+  ],
+  "jobs": [
+    {"composition": "TestCard", "kind": "video", "output": "out/farm-selftest-handoff/es/testcard.mp4", "props": {"channel": "_farm", "slug": "voice-selftest", "lang": "es", "title": "Encrypted hand-off", "subtitle": "narration under RENDER_HANDOFF_KEY, output to the owner's key"}},
+    {"composition": "TestCard", "kind": "audio", "output": "out/farm-selftest-handoff/es/dub-track.m4a", "props": {"channel": "_farm", "slug": "voice-selftest", "lang": "es", "title": "Encrypted hand-off", "subtitle": "audio only"}}
+  ]
+}

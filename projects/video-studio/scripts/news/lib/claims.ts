@@ -21,7 +21,9 @@ const ABBREV = new Set(
 );
 // ... unless the next word starts with a capital (then "in the U.S. The firm said" ends at "U.S.").
 const MAY_END = new Set('etc inc ltd co corp u.s u.k u.n e.u a.m p.m'.split(' '));
-const CLOSERS = new Set(['"', "'", '”', '’', ')', ']', '»']);
+const CLOSERS = new Set(['"', "'", '”', '’', ')', ']', '»', '」', '』', '）']);
+/** Full stops of zh/ja (。！？) and hi (। ॥) end a sentence with no space after them. */
+const UNSPACED_STOPS = new Set(['。', '！', '？', '।', '॥']);
 
 const tidy = (s: string): string =>
 	s
@@ -70,6 +72,7 @@ const finish = (w: Work): Sentence => {
 
 const isBoundary = (text: string, k: number, nextSeg: Segment | undefined, d: string): boolean => {
 	const ch = text[k];
+	if (UNSPACED_STOPS.has(ch)) return true;
 	let j = k + 1;
 	while (j < text.length && CLOSERS.has(text[j])) j++;
 	const atEnd = j >= text.length;
@@ -121,7 +124,7 @@ export const splitNarration = (narration: string): Sentence[] => {
 			const ch = text[k];
 			w.d += ch;
 			w.s += ch;
-			if (ch === '.' || ch === '!' || ch === '?' || ch === '…') {
+			if (ch === '.' || ch === '!' || ch === '?' || ch === '…' || UNSPACED_STOPS.has(ch)) {
 				if (isBoundary(text, k, segs[idx + 1], w.d.slice(0, -1))) {
 					// keep closing quotes with the sentence
 					while (k + 1 < text.length && CLOSERS.has(text[k + 1])) {

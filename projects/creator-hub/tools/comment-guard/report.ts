@@ -100,7 +100,7 @@ export const resolveReport = (value: string, dir: string, mode: Report['mode']):
 /* ------------------------------------------------------------------ Markdown */
 
 /** Control and bidirectional-override characters could hide or reorder text in a viewer. */
-const UNSAFE_CHARS = /[\u0000-\u0008\u000B-\u001F\u007F​-‏‪-‮⁦-⁩﻿]/gu;
+const UNSAFE_CHARS = /[\u{0}-\u{8}\u{B}-\u{1F}\u{7F}\u{200B}-\u{200F}\u{202A}-\u{202E}\u{2066}-\u{2069}\u{FEFF}]/gu;
 
 const TLDS = 'com|net|org|io|xyz|app|live|site|online|top|info|pro|finance|exchange|dev|me|co|cc|ly|gg|link|click|vip|shop|club|ai|ru|cn|tk|ml|ga|cf|gq|biz|us|uk|example';
 

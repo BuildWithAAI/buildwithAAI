@@ -9,7 +9,7 @@
 
 /** Zero-width and formatting characters, variation selectors, the keycap mark and tag characters. */
 const INVISIBLE =
-	/[­͏؜ᅟᅠ឴឵᠋-᠏​-‏‪-‮⁠-⁯⃣ㅤ︀-️﻿ﾠ\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
+	/[\u{AD}\u{34F}\u{61C}\u{115F}\u{1160}\u{17B4}\u{17B5}\u{180B}-\u{180F}\u{200B}-\u{200F}\u{202A}-\u{202E}\u{2060}-\u{206F}\u{20E3}\u{3164}\u{FE00}-\u{FE0F}\u{FEFF}\u{FFA0}\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 
 /** Small capitals and IPA letters that "fancy text" generators use; they are never part of normal writing. */
 const FANCY_LETTERS: Record<string, string> = {
@@ -67,24 +67,31 @@ export const toAsciiDigits = (text: string): string =>
  * The base form every view starts from: NFKC (folds styled and full-width letters), invisible characters
  * removed, ASCII digits, plain plus signs, apostrophes and dashes, and collapsed spaces. Case is kept.
  */
-export const baseText = (text: string): string =>
-	toAsciiDigits(text.normalize('NFKC').replace(INVISIBLE, ''))
-		.replace(/[➕✚✙]/gu, '+')
-		.replace(/[‘’ʼ´`]/gu, "'")
-		.replace(/[‐-―−]/gu, '-')
-		.replace(/\r\n?/g, '\n')
-		.replace(/[^\S\n]+/g, ' ')
-		.replace(/ ?\n[\s]*/g, '\n')
-		.trim();
+/** One space for every run of spaces, and one line break for every run of line breaks and spaces. */
+const collapseSpaces = (text: string): string => text.replace(/[^\S\n]+/g, ' ').replace(/ ?\n\s*/g, '\n');
 
+export const baseText = (text: string): string =>
+	collapseSpaces(
+		toAsciiDigits(text.normalize('NFKC').replace(INVISIBLE, ''))
+			.replace(/[\u{2795}\u{271A}\u{2719}]/gu, '+') // heavy plus signs used in phone numbers
+			.replace(/[\u{2018}\u{2019}\u{2BC}\u{B4}\u{60}]/gu, "'")
+			.replace(/[\u{2010}-\u{2015}\u{2212}]/gu, '-')
+			.replace(/\r\n?/g, '\n'),
+	).trim();
+
+/**
+ * Removes accents and other combining marks. Spacing marks such as "¨" decompose to a space plus a mark,
+ * so callers collapse spaces again afterwards: a run of marks must never become a long run of spaces,
+ * which would make rules with several optional spaces in a row backtrack for seconds.
+ */
 const stripMarks = (text: string): string => text.normalize('NFKD').replace(/\p{M}/gu, '');
 
 const FOREIGN_SCRIPT = /[\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Armenian}]/u;
 const LATIN_SCRIPT = /\p{Script=Latin}/u;
 /** Four or more single letters separated by spaces or punctuation: "w h a t s a p p", "t.e.l.e.g.r.a.m". */
 const SPACED_LETTERS = /(?<![\p{L}\p{N}])\p{L}(?:[ .\-_*·•|,/\\]{1,2}\p{L}){3,}(?![\p{L}\p{N}])/gu;
-const STYLED = /[\u{1D400}-\u{1D7FF}\u{1F130}-\u{1F189}Ⓐ-ⓩ]/u;
-const FULLWIDTH_LATIN = /[Ａ-Ｚａ-ｚ０-９]/u;
+const STYLED = /[\u{1D400}-\u{1D7FF}\u{1F130}-\u{1F189}\u{24B6}-\u{24E9}]/u;
+const FULLWIDTH_LATIN = /[\u{FF21}-\u{FF3A}\u{FF41}-\u{FF5A}\u{FF10}-\u{FF19}]/u;
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const FANCY_CHARS = new RegExp(`[${Object.keys(FANCY_LETTERS).join('')}]`, 'u');
 
@@ -108,8 +115,8 @@ export const makeView = (text: string): View => {
 	if (STYLED.test(text) || FANCY_CHARS.test(lower) || (FULLWIDTH_LATIN.test(text) && !CJK.test(text))) {
 		obfuscation.add('styled letters');
 	}
-	if (/⃣/u.test(text) || (/[^\d\P{Nd}]/u.test(text) && /\p{Script=Latin}/u.test(text))) obfuscation.add('unusual digits');
-	let latin = map(stripMarks(lower), LATIN_LOOKALIKES).replace(/[\p{L}\p{N}]+/gu, (word) => {
+	if (/\u{20E3}/u.test(text) || (/[^\d\P{Nd}]/u.test(text) && /\p{Script=Latin}/u.test(text))) obfuscation.add('unusual digits');
+	let latin = collapseSpaces(map(stripMarks(lower), LATIN_LOOKALIKES)).replace(/[\p{L}\p{N}]+/gu, (word) => {
 		if (!LATIN_SCRIPT.test(word) || !FOREIGN_SCRIPT.test(word)) return word;
 		obfuscation.add('mixed-script words');
 		return map(word, FOREIGN_LOOKALIKES);

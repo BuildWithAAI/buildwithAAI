@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "2026-11-24-binance",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "DOJ moves to recover Binance hack funds",
+  "fiction": false,
+  "news": {
+    "format": "daily-short",
+    "incidentIds": [
+      "2026-10-29-binance"
+    ]
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "segment": "coldOpen",
+      "narration": "According to The Block, the Justice Department is seeking to recover about {$1.17 billion|one point one seven billion dollars} in USDC tied to the October 29 Binance hack [src:theblock].",
+      "onScreen": {
+        "kicker": "Threat Brief",
+        "title": "DOJ moves on Binance hack funds"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true
+      },
+      "badgerBeats": [
+        {
+          "reaction": "lookUp"
+        }
+      ]
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "segment": "headline",
+      "narration": "DefiLlama lists the loss at {$6,360,000,000|six point three six billion dollars} [src:defillama-hacks]. Chainalysis puts it at {$6.4 billion|six point four billion dollars} [src:chainalysis-blog].",
+      "onScreen": {
+        "title": "Binance hack, by the numbers",
+        "loss": "$6,360,000,000",
+        "lossAlt": "$6.4 Billion"
+      },
+      "rekt": {
+        "usd": 6360000000,
+        "source": "defillama-hacks",
+        "alt": {
+          "usd": 6400000000,
+          "source": "chainalysis-blog"
+        }
+      }
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "segment": "howItWorked",
+      "narration": "Rekt's post-mortem says a fake job interview led to Binance's signing service, and the funds left across 11 chains [src:rekt-news].",
+      "onScreen": {
+        "title": "How it worked",
+        "nodes": [
+          "A fake job interview",
+          "The signing service",
+          "Funds out, 11 chains"
+        ],
+        "links": [
+          "led to",
+          "then"
+        ]
+      },
+      "diagram": {
+        "nodes": [
+          "message",
+          "key",
+          "funds"
+        ]
+      }
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "segment": "desk",
+      "narration": "Our check: DefiLlama lists 52 incidents in the 30 days from October 26 to November 24. As listed by DefiLlama, Binance's loss is the largest of the 39 with a stated figure.",
+      "onScreen": {
+        "title": "Our check",
+        "bullets": [
+          "52 incidents in 30 days",
+          "Binance: largest of 39"
+        ]
+      },
+      "badger": {
+        "present": true
+      },
+      "badgerBeats": [
+        {
+          "reaction": "shocked"
+        }
+      ],
+      "claimWaivers": [
+        {
+          "match": "DefiLlama lists 52 incidents",
+          "rule": "factual",
+          "reason": "Own-data analysis a1 (method in storyboard.analysis), checked by the news gate R7."
+        },
+        {
+          "match": "largest of the 39",
+          "rule": "factual",
+          "reason": "Own-data analysis a1 (method in storyboard.analysis), checked by the news gate R7."
+        }
+      ]
+    },
+    {
+      "id": "s05",
+      "type": "talk",
+      "segment": "badgerRedFlag",
+      "narration": "Badger's general red flag: a recruiter who needs you to install software for an interview.",
+      "onScreen": {
+        "flag": "A recruiter who needs you to install software"
+      },
+      "badgerBeats": [
+        {
+          "reaction": "judge"
+        }
+      ]
+    },
+    {
+      "id": "s06",
+      "type": "talk",
+      "segment": "zooOneFix",
+      "narration": "Zoo's one fix: take interviews on a separate device, never on a machine that can reach work keys.",
+      "onScreen": {
+        "fix": "Use a separate device for interviews",
+        "detail": "Never one that can reach work keys."
+      }
+    },
+    {
+      "id": "s07",
+      "type": "cta",
+      "narration": "Subscribe for tomorrow's Threat Brief.",
+      "onScreen": {
+        "button": "Subscribe"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "theblock",
+      "title": "DOJ seeks $1.17 billion in USDC tied to Binance hack; Circle could issue replacement tokens (The Block)",
+      "url": "https://www.theblock.co/news/regulation/2026-11-23-doj-1-17-billion-usdc-binance-hack-circle-replacement-tokens-445398",
+      "publisher": "The Block",
+      "accessed": "2026-11-24",
+      "status": "verified",
+      "quote": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack.",
+      "publishedAt": "2026-11-23"
+    },
+    {
+      "id": "defillama-hacks",
+      "title": "DefiLlama hacks: Binance CEX (2026-10-29) (DefiLlama)",
+      "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+      "publisher": "DefiLlama",
+      "accessed": "2026-11-24",
+      "status": "verified",
+      "quote": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…"
+    },
+    {
+      "id": "chainalysis-blog",
+      "title": "The $6.4 Billion Binance Hack: Tracing the North Korea Link (Chainalysis)",
+      "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/",
+      "publisher": "Chainalysis",
+      "accessed": "2026-11-24",
+      "status": "verified",
+      "quote": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis.",
+      "publishedAt": "2026-10-30"
+    },
+    {
+      "id": "rekt-news",
+      "title": "Binance - Rekt (rekt.news)",
+      "url": "https://rekt.news/binance-rekt",
+      "publisher": "rekt.news",
+      "accessed": "2026-11-24",
+      "status": "verified",
+      "quote": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?",
+      "publishedAt": "2026-11-06"
+    },
+    {
+      "id": "defillama-30d",
+      "title": "DefiLlama hacks: incidents dated 2026-10-26 to 2026-11-24 (DefiLlama)",
+      "url": "https://api.llama.fi/hacks",
+      "publisher": "DefiLlama",
+      "accessed": "2026-11-24",
+      "status": "verified",
+      "quote": "Bloom Trading Bot · 2026-10-26 · reported loss $953,000 · Frontend & Infrastructure / Supply Chain Attack · target: Wallet · chains: Solana",
+      "publishedAt": "2026-11-24"
+    }
+  ],
+  "analysis": [
+    {
+      "id": "a1",
+      "kind": "comparison",
+      "basis": "own-data",
+      "detail": "DefiLlama lists 52 incidents in the 30 days from Oct 26 to Nov 24. As listed by DefiLlama, Binance's $6,360,000,000 loss is the largest of the 39 with a stated loss. 14 of the 52 share its DefiLlama classification (frontend and infrastructure).",
+      "sourceIds": [
+        "defillama-30d"
+      ],
+      "sceneIds": [
+        "s04"
+      ],
+      "method": "Read the DefiLlama /hacks rows the radar cached at 2026-11-24T06:44:26Z (source \"defillama-30d\" in brief.json, facts t1..t52). Kept the 52 rows dated 2026-10-26 to 2026-11-24. Ranked the 39 rows with a stated loss by DefiLlama's own figure (one source, no averaging); this incident is number 1. Counted rows whose classification is \"Frontend & Infrastructure\": 14."
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s02",
+        "s03",
+        "s04",
+        "s05",
+        "s06",
+        "s07"
+      ],
+      "title": "DOJ moves to recover Binance hack funds"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "t1",
+      "text": "Fake job,\nreal hack",
+      "expression": "worried",
+      "badger": true,
+      "badgerReaction": "worried"
+    },
+    {
+      "id": "t2",
+      "text": "Binance hack update",
+      "expression": "neutral",
+      "badger": true,
+      "badgerReaction": "judge"
+    },
+    {
+      "id": "t3",
+      "text": "Don't run that file",
+      "expression": "shocked",
+      "badger": false
+    }
+  ]
+}

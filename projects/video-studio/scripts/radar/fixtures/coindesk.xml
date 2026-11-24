@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>CoinDesk</title>
+  <link>https://www.coindesk.com/</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title><![CDATA[Binance hackers push $247 million through transactions designed to cloud the source]]></title>
+    <link>https://www.coindesk.com/business/2026/11/23/binance-hackers-push-usd247-million-through-transactions-designed-to-cloud-the-source</link>
+    <guid isPermaLink="false">b1a213c4-b347-4f36-b298-a33cd92d1ab4</guid>
+    <pubDate>Mon, 23 Nov 2026 15:29:01 +0000</pubDate>
+    <category domain="https://www.coindesk.com/business"><![CDATA[Finance]]></category>
+    <category domain="tag"><![CDATA[Binance]]></category>
+    <category domain="tag"><![CDATA[hacking]]></category>
+    <category domain="tag"><![CDATA[Bitcoin News]]></category>
+    <description><![CDATA[<p>Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.</p>]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Crypto thieves are using online ads to infect iPhones with a single tap, research finds]]></title>
+    <link>https://www.coindesk.com/tech/2026/11/23/moldyroost-malvertizing-campaign-uses-one-tap-iphone-hacks-to-hunt-crypto-wallet-keys-research-shows</link>
+    <guid isPermaLink="false">19cbabf8-1f6d-4bba-bc98-a1c5b003bea7</guid>
+    <pubDate>Mon, 23 Nov 2026 07:45:30 +0000</pubDate>
+    <category domain="https://www.coindesk.com/tech"><![CDATA[Tech]]></category>
+    <category domain="https://www.coindesk.com/"><![CDATA[News]]></category>
+    <description><![CDATA[<p>A malicious ad campaign known as MoldyRoost can compromise vulnerable iPhones with a single tap, putting cryptocurrency wallet seed phrases at risk, according to cybersecurity firm Confiant.</p>]]></description>
+  </item>
+  <item>
+    <title><![CDATA[Bitcoin sold for $17,000 on Kraken's Canadian dollar market, and the trades stand]]></title>
+    <link>https://www.coindesk.com/markets/2026/11/23/bitcoin-sold-for-usd17-000-on-kraken-s-canadian-dollar-market-and-the-trades-stand</link>
+    <guid isPermaLink="false">b88d9317-a90a-4c53-a974-c59247039b05</guid>
+    <pubDate>Mon, 23 Nov 2026 05:42:22 +0000</pubDate>
+    <category domain="https://www.coindesk.com/markets"><![CDATA[Markets]]></category>
+    <category domain="https://www.coindesk.com/"><![CDATA[News]]></category>
+    <description><![CDATA[<p>An apparent breakdown in Kraken's CAD order book cut every coin on it by over 70%, overnight.</p>]]></description>
+  </item>
+  <item>
+    <title><![CDATA[U.S. CFTC sets policies on event contract data, using crypto to check financial boxes]]></title>
+    <link>https://www.coindesk.com/policy/2026/11/23/u-s-cftc-sets-policies-on-event-contract-data-using-crypto-to-check-financial-boxes</link>
+    <guid isPermaLink="false">2219975b-3614-4ee4-afd4-032830aa7d8c</guid>
+    <pubDate>Tue, 24 Nov 2026 00:25:04 +0000</pubDate>
+    <category domain="https://www.coindesk.com/policy"><![CDATA[Policy]]></category>
+    <category domain="tag"><![CDATA[Prediction Markets]]></category>
+    <category domain="tag"><![CDATA[CFTC]]></category>
+    <category domain="https://www.coindesk.com/"><![CDATA[News]]></category>
+    <description><![CDATA[<p>The derivatives regulator issues a rule on data reporting for event contracts and new guidance for how crypto assets can be used to meet regulatory requirements.</p>]]></description>
+  </item>
+</channel>
+</rss>

@@ -55,7 +55,7 @@ export type ZooFrame = {
 	view: ZooView;
 };
 
-const PHRASE_END = /[.,!?;:…。，！？；：、]$/;
+const PHRASE_END = /[.,!?;:…。，！？；：、।॥]$/;
 const ACCENT_MIN_GAP = 40; // frames between accents
 const GESTURE_WINDUP = 17; // frames before arrival: windup starts
 const GESTURE_SWING = 12;

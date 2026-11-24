@@ -63,7 +63,18 @@ export const feedProblems = (show: PodcastShow, items: FeedItem[]): FeedProblem[
 	return p;
 };
 
-const cdata = (html: string) => `<![CDATA[${html.replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
+/** Characters XML 1.0 can carry (#x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]). */
+// eslint-disable-next-line no-control-regex
+const NOT_XML_CHAR = /[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu;
+
+/** A CDATA section: characters XML 1.0 forbids are removed first (as xml() does), then "]]>" is split. */
+export const cdata = (html: string): string => `<![CDATA[${html.replace(NOT_XML_CHAR, '').replace(/]]>/g, ']]]]><![CDATA[>')}]]>`;
+
+/** A positive safe integer, or null: season and episode numbers. */
+const posInt = (v: unknown): number | null => (typeof v === 'number' && Number.isSafeInteger(v) && v > 0 ? v : null);
+/** A non-negative safe integer (0 for anything else): durations and byte lengths. */
+const count = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(Math.round(v), Number.MAX_SAFE_INTEGER) : 0);
+const EPISODE_TYPES = ['full', 'trailer', 'bonus'] as const;
 
 const npt = (ms: number) => {
 	const t = Math.max(0, Math.round(ms));
@@ -97,6 +108,7 @@ export const buildPodcastFeed = (show: PodcastShow, lang: string, items: FeedIte
 		'    <podcast:medium>podcast</podcast:medium>',
 	];
 	const its = sorted.map((it) => {
+		// every value below is escaped with xml(), wrapped by cdata(), or checked to be a number or an enum value
 		const lines = [
 			'    <item>',
 			`      <title>${xml(it.title)}</title>`,
@@ -105,19 +117,19 @@ export const buildPodcastFeed = (show: PodcastShow, lang: string, items: FeedIte
 			`      <guid isPermaLink="false">${xml(it.guid)}</guid>`,
 			`      <pubDate>${rfc822(it.pubDate)}</pubDate>`,
 			`      <description>${cdata(it.descriptionHtml)}</description>`,
-			`      <enclosure url="${xml(safeUrl(it.enclosure.url, {httpsOnly: true}))}" length="${it.enclosure.bytes}" type="${xml(it.enclosure.type)}"/>`,
-			`      <itunes:duration>${Math.round(it.durationSec)}</itunes:duration>`,
-			`      <itunes:explicit>${it.explicit ? 'true' : 'false'}</itunes:explicit>`,
-			`      <itunes:episodeType>${it.episodeType}</itunes:episodeType>`,
-			...(it.season !== undefined ? [`      <itunes:season>${it.season}</itunes:season>`] : []),
-			...(it.episode !== undefined ? [`      <itunes:episode>${it.episode}</itunes:episode>`] : []),
+			`      <enclosure url="${xml(safeUrl(it.enclosure.url, {httpsOnly: true}))}" length="${count(it.enclosure.bytes)}" type="${xml(it.enclosure.type)}"/>`,
+			`      <itunes:duration>${count(it.durationSec)}</itunes:duration>`,
+			`      <itunes:explicit>${it.explicit === true ? 'true' : 'false'}</itunes:explicit>`,
+			`      <itunes:episodeType>${EPISODE_TYPES.includes(it.episodeType) ? it.episodeType : 'full'}</itunes:episodeType>`,
+			...(posInt(it.season) !== null ? [`      <itunes:season>${posInt(it.season)}</itunes:season>`] : []),
+			...(posInt(it.episode) !== null ? [`      <itunes:episode>${posInt(it.episode)}</itunes:episode>`] : []),
 			...(it.imageUrl ? [`      <itunes:image href="${xml(safeUrl(it.imageUrl, {httpsOnly: true}))}"/>`] : []),
 			...it.transcripts.map((t) => `      <podcast:transcript url="${xml(safeUrl(t.url, {httpsOnly: true}))}" type="${xml(t.type)}"${t.language ? ` language="${xml(t.language)}"` : ''}${t.type === 'text/vtt' || t.type === 'application/x-subrip' ? ' rel="captions"' : ''}/>`),
 			...(it.chaptersUrl ? [`      <podcast:chapters url="${xml(safeUrl(it.chaptersUrl, {httpsOnly: true}))}" type="application/json+chapters"/>`] : []),
 		];
 		if (it.chapters.length) {
 			lines.push('      <psc:chapters version="1.2">');
-			for (const c of it.chapters) lines.push(`        <psc:chapter start="${npt(c.startMs)}" title="${xml(c.title)}"${c.href ? ` href="${xml(safeUrl(c.href, {httpsOnly: true}))}"` : ''}/>`);
+			for (const c of it.chapters) lines.push(`        <psc:chapter start="${npt(count(c.startMs))}" title="${xml(String(c.title))}"${c.href ? ` href="${xml(safeUrl(c.href, {httpsOnly: true}))}"` : ''}/>`);
 			lines.push('      </psc:chapters>');
 		}
 		lines.push('    </item>');

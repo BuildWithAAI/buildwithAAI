@@ -64,13 +64,36 @@ export const prepareIdentity = (identity: Identity): PreparedIdentity => ({
 
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/** Only whole handles: "@ZooraExampleBot_help" is somebody else's account, not ours with a suffix. */
 const removeOwnHandles = (text: string, handles: string[]): string =>
 	handles.reduce(
-		(out, handle) => out.replace(new RegExp(escapeRegExp(handle.trim()), 'giu'), ' (our official account) '),
+		(out, handle) => out.replace(new RegExp(`${escapeRegExp(handle.trim())}(?![\\p{L}\\p{N}_])`, 'giu'), ' (our official account) '),
 		text,
 	);
 
 const actionFor = (score: number): Action => (score >= HOLD_AT ? 'hold' : score >= REVIEW_AT ? 'review' : 'allow');
+
+/**
+ * Rules that can fire on the same words: one number after "WhatsApp" is both a messaging contact and a
+ * phone number. When one rule's evidence ends with the other's (the contact found IS that number), the
+ * words count once, at the higher weight (on a tie, the first rule of the pair). A victim quoting the
+ * number that called them is then not held; a separate @handle next to a number still counts on its own.
+ */
+const SAME_EVIDENCE: readonly (readonly [string, string])[] = [['phone-number', 'messaging-handle']];
+
+const countOverlapsOnce = (reasons: Reason[]): void => {
+	for (const [a, b] of SAME_EVIDENCE) {
+		const first = reasons.find((r) => r.rule === a && r.weight > 0);
+		const second = reasons.find((r) => r.rule === b && r.weight > 0);
+		if (!first || !second) continue;
+		const x = first.evidence;
+		const y = second.evidence;
+		if (x.endsWith('…') || y.endsWith('…') || !(x.endsWith(y) || y.endsWith(x))) continue;
+		const [strong, weak] = first.weight >= second.weight ? [first, second] : [second, first];
+		weak.weight = 0;
+		weak.explanation += ` The same words already count under "${strong.rule}", so they count once.`;
+	}
+};
 
 const byWeight = (a: Reason, b: Reason): number => b.weight - a.weight;
 
@@ -112,6 +135,7 @@ const scoreOne = (comment: CommentInput, identity: PreparedIdentity, ownHandles:
 		}
 		reasons.push(reason);
 	}
+	countOverlapsOnce(reasons);
 	return verdict(reasons);
 };
 

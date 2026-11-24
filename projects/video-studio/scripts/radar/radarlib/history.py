@@ -4,7 +4,8 @@ import datetime as dt
 import json
 import os
 
-from .cluster import aliases_for, names_match
+from . import classify
+from .cluster import Carried, aliases_for, names_match
 
 
 def load_history(directory, run_date, days=14):
@@ -32,10 +33,13 @@ def load_history(directory, run_date, days=14):
                     "protocol": inc.get("protocol"),
                     "aliases": aliases_for(inc.get("protocol") or ""),
                     "dateUtc": inc.get("dateUtc"),
+                    "firstSeenUtc": inc.get("firstSeenUtc"),
                     "status": inc.get("status"),
                     "type": inc.get("type"),
-                    "losses": {(e.get("by"), round(float(e.get("amountUsd") or 0))) for e in inc.get("reportedLosses", [])},
+                    "losses": {(e.get("by"), e.get("url"), round(float(e.get("amountUsd") or 0))) for e in inc.get("reportedLosses", [])},
                     "urls": {s.get("url") for s in inc.get("sources", [])},
+                    "sources": [s for s in inc.get("sources", []) if isinstance(s, dict) and s.get("url")],
+                    "lossEntries": [e for e in inc.get("reportedLosses", []) if isinstance(e, dict) and e.get("url")],
                 })
     return history
 
@@ -43,11 +47,11 @@ def load_history(directory, run_date, days=14):
 def match_previous(incident, history):
     """Most recent previous radar entry for the same incident, or None."""
     aliases = aliases_for(incident["protocol"])
-    date = dt.date.fromisoformat(incident["dateUtc"])
+    date = dt.date.fromisoformat(incident.get("dateUtc") or incident["firstSeenUtc"])
     best = None
     for prev in history["incidents"]:
         try:
-            prev_date = dt.date.fromisoformat(prev["dateUtc"])
+            prev_date = dt.date.fromisoformat(prev["dateUtc"] or prev.get("firstSeenUtc") or "")
         except (TypeError, ValueError):
             continue
         if abs((prev_date - date).days) > 3 or not names_match(aliases, prev["aliases"]):
@@ -57,8 +61,32 @@ def match_previous(incident, history):
     return best
 
 
+def carried_sources(previous, incident):
+    """The previous run's sources for this incident that are no longer in today's feeds (feeds keep about a day of
+    items): they still count for the status, because a source rotating out of a feed is not a retraction."""
+    if not previous:
+        return []
+    now = {s.get("url") for s in incident["sources"]}
+    out = []
+    for s in previous.get("sources", []):
+        if s.get("url") in now:
+            continue
+        text = f"{s.get('title') or ''}. {s.get('excerpt') or ''}"
+        tracker = bool(s.get("tracker")) or s.get("id") in ("defillama-hacks", "slowmist-hacked") or s.get("kind") == "structured"
+        entry = dict(s)
+        entry["carried"] = True
+        entry.setdefault("carriedFrom", previous.get("radarDate"))
+        losses = [e for e in previous.get("lossEntries", []) if e.get("url") == s.get("url")]
+        out.append(Carried(sid=s.get("id"), url=s.get("url"), tier=s.get("tier"), publisher=s.get("publisher") or s.get("id"),
+                           hedge=s.get("hedge"), tracker=tracker, origin=s.get("origin") or classify.origin_of(text, s.get("publisher") or ""),
+                           retraction=False, roundup=bool(s.get("roundup")), entry=entry, losses=losses))
+    return out
+
+
 def corrections(incident, previous):
-    """Changes since the previous radar run (candidates for a pinned correction)."""
+    """Changes since the previous radar run (candidates for a pinned correction). A status change counts only when it
+    survives the carried-over sources (a feed rotating is not a change); a figure change only when the SAME source
+    (the same article) now states a different figure. A new source repeating a known figure is not a change."""
     if not previous:
         return []
     changes = []
@@ -66,22 +94,23 @@ def corrections(incident, previous):
         changes.append(f"status {previous['status']} -> {incident['status']}")
     if previous["type"] != incident["type"]:
         changes.append(f"type {previous['type']} -> {incident['type']}")
-    # Items drop out of feeds over time, so a figure that is no longer seen is not a
-    # correction. A source that now states a different figure is.
     before = {}
-    for by, amount in previous["losses"]:
-        before.setdefault(by, set()).add(amount)
+    known = set()
+    for by, url, amount in previous["losses"]:
+        before.setdefault((by, url), set()).add(amount)
+        known.add(amount)
     now = {}
     for entry in incident["reportedLosses"]:
-        now.setdefault(entry["by"], set()).add(round(entry["amountUsd"]))
-    for by in sorted(now):
-        added = sorted(now[by] - before.get(by, set()))
-        if not added:
+        now.setdefault((entry["by"], entry["url"]), set()).add(round(entry["amountUsd"]))
+    for key in sorted(now, key=lambda k: (k[0] or "", k[1] or "")):
+        if key not in before:
+            # a new article: only a figure nobody stated before is worth a look
+            fresh = sorted(a for a in now[key] if not any(abs(a - k) <= 0.05 * max(a, k) for k in known))
+            if fresh:
+                changes.append(f"new figure from {key[0]}: {', '.join(f'{a:,}' for a in fresh)} USD")
             continue
-        shown = ", ".join(f"{a:,}" for a in added)
-        if by in before:
-            old = ", ".join(f"{a:,}" for a in sorted(before[by]))
-            changes.append(f"{by} now states {shown} USD (previously {old} USD)")
-        else:
-            changes.append(f"new figure from {by}: {shown} USD")
+        added = sorted(now[key] - before[key])
+        if added:
+            old = ", ".join(f"{a:,}" for a in sorted(before[key]))
+            changes.append(f"{key[0]} now states {', '.join(f'{a:,}' for a in added)} USD (previously {old} USD)")
     return changes

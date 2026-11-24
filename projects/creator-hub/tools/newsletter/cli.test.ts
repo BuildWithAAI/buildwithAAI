@@ -83,16 +83,37 @@ describe('newsletter CLI', () => {
 			calls.push({url: String(url), body: JSON.parse(String(init?.body)) as Record<string, unknown>});
 			return new Response(JSON.stringify({broadcast: {id: 77, subject: 'x', send_at: null, created_at: '2026-11-24T12:00:01Z'}}), {status: 201});
 		}) as typeof fetch;
-		const {code, out, err} = await run(['draft', KIT, '--offers', OFFERS, '--out', 'kit', '--kit-draft'], {env: {KIT_API_KEY: 'test-key'}, fetch: fetchImpl});
+		const {code, out, err} = await run(['draft', KIT, '--offers', OFFERS, '--out', 'kit', '--kit-draft'], {env: {KIT_API_KEY: 'test-key', KIT_SUBSCRIBER_FILTER: 'tag:4242'}, fetch: fetchImpl});
 		assert.equal(code, 0, err);
-		assert.match(out, /created Kit broadcast draft 77\. It has NOT been sent or scheduled/);
+		assert.match(out, /created Kit broadcast draft 77 for subscribers with tag 4242\. It has NOT been sent or scheduled/);
 		assert.equal(calls.length, 1);
 		assert.equal(calls[0]?.url, 'https://api.kit.com/v4/broadcasts');
 		assert.equal(calls[0]?.body.send_at, null);
 		assert.equal(calls[0]?.body.public, false);
+		assert.deepEqual(calls[0]?.body.subscriber_filter, [{all: [{type: 'tag', ids: [4242]}]}]);
 		assert.equal(calls[0]?.body.subject, 'POV: "Support" DMs you first');
 		assert.doesNotMatch(String(calls[0]?.body.content), /<html|<head|<body/);
 		assert.match(String(calls[0]?.body.content), /Affiliate link: I may earn a commission/);
+	});
+
+	it('draft --kit-draft makes the owner choose the recipients before anything reaches Kit', async () => {
+		let called = 0;
+		const fetchImpl = (async () => {
+			called++;
+			return new Response(JSON.stringify({broadcast: {id: 78, subject: 'x', send_at: null}}), {status: 201});
+		}) as typeof fetch;
+		const none = await run(['draft', KIT, '--offers', OFFERS, '--out', 'nofilter', '--kit-draft'], {env: {KIT_API_KEY: 'test-key'}, fetch: fetchImpl});
+		assert.equal(none.code, 1);
+		assert.match(none.err, /Kit draft not created: choose who it is for\. Set KIT_SUBSCRIBER_FILTER=tag:<id>/);
+		assert.equal(called, 0);
+		assert.equal(existsSync(join(dir, 'nofilter', 'fake-support-dm.html')), true, 'the files are still written');
+		const bad = await run(['draft', KIT, '--offers', OFFERS, '--out', 'badfilter', '--kit-draft'], {env: {KIT_API_KEY: 'test-key', KIT_SUBSCRIBER_FILTER: 'list:7'}, fetch: fetchImpl});
+		assert.equal(bad.code, 2);
+		assert.match(bad.err, /KIT_SUBSCRIBER_FILTER must look like tag:123/);
+		const everyone = await run(['draft', KIT, '--offers', OFFERS, '--out', 'all', '--kit-draft', '--all-subscribers'], {env: {KIT_API_KEY: 'test-key'}, fetch: fetchImpl});
+		assert.equal(everyone.code, 0, everyone.err);
+		assert.match(everyone.out, /created Kit broadcast draft 78 for all subscribers/);
+		assert.equal(called, 1);
 	});
 
 	it('draft --kit-draft without KIT_API_KEY keeps the files but fails', async () => {

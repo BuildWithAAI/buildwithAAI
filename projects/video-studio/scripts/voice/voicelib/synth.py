@@ -3,11 +3,16 @@ the pinned release assets (the same pins setup.sh downloads against).
 
 Phonemes are always passed with is_phonemes=True: the G2P runs in g2p.py, so the exact phoneme string
 (and therefore the timing of every character) is known.
+
+Kokoro runs with trim=False and no pause insertion; takes.py finishes the take from the token durations
+(timing-lag correction, leading pad, pauses with fades), so a take is reproducible (2026-11-24, VCD fix).
 """
 
 import hashlib
 import os
 from dataclasses import dataclass
+
+from . import takes
 
 MODEL_FILE = "kokoro-v1.0.int8.onnx"
 VOICES_FILE = "voices-v1.0.bin"
@@ -68,10 +73,15 @@ class Synth:
             raise ValueError(f"voice {voice!r} is not in {VOICES_FILE}; male voices: " + ", ".join(sorted(v for v in self.voices if v[1:2] == "m")))
 
     def speak(self, phonemes: str, voice: str, speed: float) -> Take:
-        audio, sr, timings = self.kokoro.create_timed(phonemes, voice, speed=speed, lang="en-us", is_phonemes=True)
+        # trim=False and no kokoro-onnx pauses: both measure the noise-driven waveform (lengths varied run to run,
+        # and the spliced zeros ticked at -38 dBFS). takes.finish adds them from the token durations instead.
+        audio, sr, timings = self.kokoro.create_timed(
+            phonemes, voice, speed=speed, lang="en-us", is_phonemes=True, trim=False, sentence_pause=0.0, clause_pause=0.0
+        )
         if sr != SAMPLE_RATE:
             raise RuntimeError(f"unexpected sample rate {sr}")
-        return Take(audio, [(t.phoneme, t.start, t.end) for t in timings], speed)
+        audio, tokens = takes.finish(audio, [(t.phoneme, t.start, t.end) for t in timings], SAMPLE_RATE)
+        return Take(audio, tokens, speed)
 
 
 def char_times(phonemes: str, timings: list[tuple[str, float, float]]) -> list[tuple[float, float] | None]:

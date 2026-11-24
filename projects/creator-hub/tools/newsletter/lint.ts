@@ -1,12 +1,15 @@
 /**
  * Newsletter lint. Errors block the draft (no files are written and nothing is sent to Kit):
- *   - income, return or guarantee claims (guaranteed, risk-free, get rich, passive income, 100x, ...),
- *     even when quoting a scam: describe the trick without repeating its pitch;
+ *   - income, return, price or guarantee claims (guaranteed, risk-free, 100x, "I made $5,000", "20% monthly
+ *     returns", "could hit $500", "buy now", ...), even when quoting a scam: describe the trick without
+ *     repeating its pitch. The rules are shared with the studio check in src/claims.ts and mirror the
+ *     publish kit's;
  *   - an offer without a disclosure, a disclosure that does not say what the relationship is, or a
  *     rendered offer link without its disclosure right above it;
  *   - placeholders (TODO, REPLACE, example.com, ...), unsafe HTML, and hub links not tagged s=email&v=<slug>.
  * Warnings (softer money words, long subjects, plain http links) are printed for the owner to judge.
  */
+import {findClaims, INCOME_CLAIMS as SHARED_INCOME_CLAIMS} from '../../src/claims.ts';
 import type {NewsletterDraft} from './draft.ts';
 import {escEmail, mdText, mdUrl} from './render.ts';
 
@@ -14,22 +17,8 @@ export type Issue = {level: 'error' | 'warning'; where: string; message: string}
 
 type Rule = {label: string; pattern: RegExp};
 
-/** Never allowed in an email. */
-export const INCOME_CLAIMS: readonly Rule[] = [
-	{label: 'guaranteed', pattern: /\bguarantee[ds]?\b/i},
-	{label: 'risk-free', pattern: /\brisk[\s-]?free\b|\b(?:no|zero)[\s-]risk\b|\bwithout (?:any )?risk\b/i},
-	{label: 'get rich', pattern: /\bget(?:ting)?[\s-]rich\b|\brich[\s-]quick\b/i},
-	{label: 'passive income', pattern: /\bpassive[\s-]income\b/i},
-	{label: 'a 100x-style multiplier', pattern: /(?<![\w$.,])(?:\d{1,3}(?:,\d{3})+|\d{2,})\s?x\b(?!\s?\d)|\bx\d{2,}\b/i},
-	{label: 'double your money', pattern: /\b(?:double|triple) your (?:money|crypto|investment|portfolio|savings)\b/i},
-	{label: 'financial freedom', pattern: /\bfinancial(?:ly)?[\s-]free(?:dom)?\b/i},
-	{label: 'make money fast', pattern: /\bmake (?:money|\$\s?\d[\d,]*k?) (?:fast|quick(?:ly)?|online|overnight|while you sleep)\b/i},
-	{label: 'quit your job', pattern: /\bquit your (?:day )?job\b/i},
-	{label: 'to the moon', pattern: /\bto the moon\b|\bmoon[\s-]?shot\b/i},
-	{label: 'a price target', pattern: /\bprice target\b|\bgoing to \$\s?\d/i},
-	{label: 'life-changing money', pattern: /\blife[\s-]changing (?:money|wealth|gains|returns|income)\b/i},
-	{label: 'a sure thing', pattern: /\bsure[\s-](?:thing|fire|bet|win)\b/i},
-];
+/** Never allowed in an email (shared with the studio check: src/claims.ts). */
+export const INCOME_CLAIMS: readonly Rule[] = SHARED_INCOME_CLAIMS;
 
 /** Printed as warnings: fine in an anti-scam context, but check they are not return or price claims. */
 export const SOFT_CLAIMS: readonly Rule[] = [
@@ -59,15 +48,12 @@ const snippet = (text: string, index: number): string => {
 /** Claim and placeholder checks for one piece of reader-visible text. */
 export const checkText = (text: string, where: string): Issue[] => {
 	const issues: Issue[] = [];
-	for (const rule of INCOME_CLAIMS) {
-		const match = rule.pattern.exec(text);
-		if (match) {
-			issues.push({
-				level: 'error',
-				where,
-				message: `income or return claim (${rule.label}): "${match[0]}" in "${snippet(text, match.index)}". Rephrase without it, even when describing a scam.`,
-			});
-		}
+	for (const hit of findClaims(text)) {
+		issues.push({
+			level: 'error',
+			where,
+			message: `income or return claim (${hit.label}): "${hit.match}" in "${snippet(text, hit.index)}". Rephrase without it, even when describing a scam.`,
+		});
 	}
 	for (const rule of PLACEHOLDERS) {
 		const match = rule.pattern.exec(text);

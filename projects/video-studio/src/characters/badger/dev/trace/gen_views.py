@@ -9,11 +9,10 @@ The replaceable heads keep their own (size-panel) size in every view (decision V
 Each view is a list of parts in draw order. Paths are in VIEW-ROOT world space (origin = ground contact point);
 animated groups (neck, tail, torso breathing) rotate/scale about pivots that are also in root space.
 Markings: front/3-4 use the coat-map ids as seen from that side (R- right, L- left) plus the front-only midline
-chest spot M-CHEST; the back uses the top coat map (T- ids, projected onto the back) plus the leg spots seen
-from behind. Nothing is mirrored from another view.
+chest spot M-CHEST; the back keeps the top-coat-map identities (T- ids with sameAs) at the size and place the turnaround
+back draws them, plus the leg spots seen from behind. Nothing is mirrored from another view.
 """
 import json
-import math
 import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
@@ -48,6 +47,22 @@ def pts(T, name, ymin=None, ymax=None):
 
 def rev(a):
     return list(reversed(a))
+
+
+def straight_past(points, y0, y1, ys):
+    """Replace the traced points strictly between y0 and y1 by points on the straight line joining the points at y0
+    and y1. Used where a trace followed the edge of a spot that touches the outline: the sheet's contour runs straight
+    past the spot (the spot stays inside the fill clip)."""
+    a = next(p for p in points if p[1] == y0)
+    b = next(p for p in points if p[1] == y1)
+    out = []
+    for p in points:
+        if y0 < p[1] < y1:
+            continue
+        out.append(p)
+        if p is a:
+            out.extend((round(a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]), 1), y) for y in ys)
+    return out
 
 
 class View:
@@ -94,10 +109,15 @@ fv = View('front', 156)
 CF = 'badger_turn_front.png'
 # the far hind leg shows only as a narrow strip inside the screen-left gap between the front legs (single shadow
 # tone); the rest of the gap is background, as on the sheet
-fv.part('hindBehind', [(134, 298, 'c'), (147, 301, 'c')] + pts(F, 'hind_line')[1:] + [(134, 444, 'c'), (131, 380)],
-        [pts(F, 'hind_line')], color='coatShadow')
-outL = pts(F, 'out_L')
-outR = pts(F, 'out_R')
+# round-1 repair: the strip's line runs down into the inner contour of the leg in front of it (the trace ended in a
+# U-hook that read as a stepped outline)
+hl = pts(F, 'hind_line')[:-2] + [(134.5, 446)]
+fv.part('hindBehind', [(134, 298, 'c'), (147, 301, 'c')] + hl[1:] + [(131, 446, 'c'), (131, 380)],
+        [hl], color='coat')  # coat white, as the turnaround draws it
+# round-1 repair: the outer forearm contours were traced round the inner edge of the forearm spots R-08 / L-09 (a
+# V-notch with the spot bulging outside it); badger_turn_front.png runs the contour straight past each spot
+outL = straight_past(pts(F, 'out_L'), 339, 362, (348, 355))
+outR = straight_past(pts(F, 'out_R'), 339, 362, (348, 355))
 oLt = [p for p in outL if p[1] <= 292]
 oRt = [p for p in outR if p[1] <= 292]
 fv.part('torso', [(113, 150, 'c')] + oLt + [(104, 300, 'c'), (137, 301)] + pts(F, 'brisket')[1:-1] + [(176, 300), (212, 300, 'c')] + rev(oRt) + [(203, 150, 'c')],
@@ -128,7 +148,7 @@ fv.part('collar', col, [col + [col[0]]], color='collar', group='neck')
 cmid = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 1.5) for a, b in zip(col_top[1:-1], rev(col_bot[1:-1]))]
 fv.part('collarShadow', cmid + col_bot[1:-1], [], color='collarShadow', group='neck')
 ring = [(155.5, 182), (154.5, 186.5), (158.5, 189.5), (162.5, 186.5), (161.5, 182)]
-fv.part('tagRing', ring, [], [ring], color='none', group='tag')
+fv.part('tagRing', ring, [ring + [ring[0]]], color='silver', group='tag')
 tagp = blob(158.5, 197, 8.2, 9.0, 0)
 fv.part('tag', tagp, [tagp + [tagp[0]]], color='tag', group='tag')
 fv.part('tagShadow', [(162, 189.5), (166, 194), (166.5, 200), (162, 205.5, 'c'), (163.8, 199.5), (163.5, 193.5)], [], color='tagShadow', group='tag')
@@ -188,72 +208,27 @@ bv.spot('L-07', 'left', 'legHindLeft', (84.3, 271.8, 12.2, 5.3, -89.2), (84, 272
 bv.spot('L-08', 'left', 'legHindLeft', (87.1, 387.3, 9.4, 6.3, -87.8), (87, 387), CB, 'left gaskin above the hock, L-08 seen from behind')
 bv.spot('R-07', 'right', 'legHindRight', (189.2, 389.4, 8.3, 5.6, 81.5), (189, 389), CB, 'right gaskin above the hock, R-07 seen from behind')
 
-# ---- top coat map (badger_coat_top.png, "TT" px) projected onto the back.
-# Orientation: the top map is a true dorsal view with the head at screen left, so its image TOP is the dog's
-# anatomical RIGHT (decision T-ORIENT). Seen from behind, anatomical right is SCREEN RIGHT.
-# Length axis (TT x, withers 195 .. tail root 505) -> back-view height (TB y): the back is foreshortened,
-# the rear of the croup turns down toward the tail root. Width axis (TT y, spine 162) -> TB x around the spine.
-SPINE_Y = 162.0
-LEN_MAP = [(195, 140.0), (260, 152.0), (330, 168.0), (380, 185.0), (440, 215.0), (470, 235.0), (505, 262.0)]
-HALF_W_TT = 54.0                      # top map half width (spine to the side outline)
-HALF_W_TB = [(142, 40.0), (175, 52.0), (205, 63.0), (240, 68.0), (265, 69.0)]  # back-view half width by height
-
-
-def interp(tab, v):
-    if v <= tab[0][0]:
-        return tab[0][1]
-    for (a, A), (b, Bv) in zip(tab, tab[1:]):
-        if v <= b:
-            return A + (Bv - A) * (v - a) / (b - a)
-    return tab[-1][1]
-
-
-def top_to_back(x, y, k=0.84):
-    """Orthographic: the lateral offset seen from above is the lateral offset seen from behind; points away
-    from the spine sit lower on the rounded back (cross-section treated as a half ellipse, 34 px deep)."""
-    u = (SPINE_Y - y) / HALF_W_TT          # +1 = anatomical right edge (TT image top)
-    base = interp(LEN_MAP, x)
-    hw = interp(HALF_W_TB, base)
-    by = base + 34.0 * (1 - math.sqrt(max(0.0, 1 - u * u)))
-    return (137.0 + k * hw * u, by)  # k < 1 keeps edge spots just inside the silhouette, as the back view draws them
-
-
-def proj_blob(cx, cy, rx, ry, rot, n=12):
-    """A small top-map spot projected as a whole: its centre goes through top_to_back, its shape is scaled by the
-    local foreshortening (length axis -> height; lateral axis -> width, kept at >= 50% near the flanks so an edge
-    spot reads as a spot, not a sliver)."""
-    a = math.radians(rot)
-    X0, Y0 = top_to_back(cx, cy)
-    sy = (interp(LEN_MAP, cx + 2) - interp(LEN_MAP, cx - 2)) / 4.0
-    u = max(-1.0, min(1.0, (SPINE_Y - cy) / HALF_W_TT))
-    sx = 0.84 * interp(HALF_W_TB, Y0) / HALF_W_TT * max(0.5, math.sqrt(max(0.0, 1 - u * u)))
-    out = []
-    for i in range(n):
-        t = 2 * math.pi * i / n
-        dx = rx * math.cos(t) * math.cos(a) - ry * math.sin(t) * math.sin(a)
-        dy = rx * math.cos(t) * math.sin(a) + ry * math.sin(t) * math.cos(a)
-        out.append((X0 - dy * sx, Y0 + dx * sy))
-    return out
-
-
+# ---- back markings (decision BADGER-D20, revised 2026-11-24). Identity comes from the top coat map (T- ids name the side
+# marking they continue, sameAs); size, shape and placement are traced from badger_turn_back.png, because an eye-level
+# camera behind the dog sees the back as the turnaround draws it, not as a foreshortened projection of the top map (the
+# projection shrank the spots to specks below the outline width). What the turnaround shows, and nothing else:
+#   * T-PATCH = L-WITHERS: the domed crescent under the collar (85 x 23 units);
+#   * T-05 = R-01 and T-08 = L-02: the two croup spots, seen from behind as the two large ovals (by height they match the
+#     side maps' croup spots, 254 / 256 units, not the mid-back pair at 283 / 290 units);
+#   * L-07, L-08, R-07 (above): back of the left thigh and both hocks.
+# The other top-map spots (T-01 / T-02 on the spine, T-03 / T-06 = R-04 / L-03 on the shoulder edges, T-04 / T-07 =
+# R-02 / L-01 on the mid back) lie on the receding dorsal surface and are hidden at eye level, as on the turnaround.
 CT = 'badger_coat_top.png'
-# T-PATCH outline traced on the top map (TT px), then projected
-patch_tt = [(222, 122), (238, 120), (258, 124), (276, 133), (292, 143), (308, 150), (320, 158), (324, 168), (318, 178),
-            (300, 186), (280, 192), (258, 200), (238, 204), (226, 198), (222, 180), (224, 160), (220, 140)]
-T_SPOTS = [
-    ('T-PATCH', 'left', [top_to_back(*p, k=1.0) for p in patch_tt], (262, 167), 'L-WITHERS',
-     'large withers patch from above: centred on the spine, wraps mostly to the left side (top map)'),
-    ('T-01', 'midline', proj_blob(376.7, 146.5, 12.5, 7.5, 0.7), (377, 147), None, 'spine spot mid back (top map)'),
-    ('T-02', 'midline', proj_blob(460.4, 170.8, 14.5, 10.4, -50.2), (460, 171), None, 'spine spot on the croup above the tail (top map)'),
-    ('T-03', 'right', proj_blob(221.6, 109.2, 7.7, 4.2, 1.8), (222, 109), None, 'right shoulder edge spot (top map)'),
-    ('T-04', 'right', proj_blob(327.4, 113.8, 18.7, 7.2, 2.6), (327, 114), 'R-02', 'right mid-back edge spot (top map), the top of R-02'),
-    ('T-05', 'right', proj_blob(465.2, 115.5, 11.5, 4.9, 18.6), (465, 116), 'R-01', 'right croup edge spot (top map), the top of R-01'),
-    ('T-06', 'left', proj_blob(221.5, 216.7, 8.6, 4.3, -0.2), (222, 217), None, 'left shoulder edge spot (top map)'),
-    ('T-07', 'left', proj_blob(331.4, 212.8, 18.3, 6.4, -3.9), (331, 213), 'L-01', 'left mid-back edge spot (top map), the top of L-01'),
-    ('T-08', 'left', proj_blob(465.0, 212.3, 10.6, 4.3, -16.6), (465, 212), 'L-02', 'left croup edge spot (top map), the top of L-02'),
-]
-for sid, side, poly, ref, same, desc in T_SPOTS:
-    bv.spot(sid, side, 'torso', poly, ref, CT, desc + '; projected onto the back view', same)
+crescent = [(97.5, 172.5, 'c'), (100.5, 165), (106, 158), (115, 151), (124, 147), (133, 145), (141, 144.5), (151, 146),
+            (160, 149), (169, 154), (178, 161), (184, 167), (188, 172, 'c'), (183, 175.5), (176, 171.5), (166, 168),
+            (152, 168.5), (139, 169.5), (126, 167.5), (115, 166.5), (106, 168.5), (100.5, 172)]
+bv.spot('T-PATCH', 'left', 'torso', crescent, (141, 158), CB,
+        'large withers patch L-WITHERS seen from behind: the domed crescent under the collar (badger_turn_back.png); '
+        'the top map (badger_coat_top.png) places it across the spine at the withers', same='L-WITHERS')
+bv.spot('T-05', 'right', 'torso', (181.1, 208.4, 15.6, 8.6, 62.7), (181, 208), CB,
+        'right croup spot R-01 seen from behind (screen right): the right oval of the turnaround back; top-map T-05', same='R-01')
+bv.spot('T-08', 'left', 'torso', (100.7, 198.5, 14.1, 7.3, -50.9), (101, 199), CB,
+        'left croup spot L-02 seen from behind (screen left): the left oval of the turnaround back; top-map T-08', same='L-02')
 
 # =====================================================================================================  3/4
 Q = load('threeQuarter.json')
@@ -298,7 +273,7 @@ ctop = col[1:12]
 cbot = col[14:25]
 cmid = [((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 1) for a, b in zip(ctop, rev(cbot))]
 qv.part('collarShadow', cmid + cbot[1:-1] + [(256, 154)], [], color='collarShadow', group='neck')
-qv.part('tagRing', [(319, 186), (318, 191), (322, 194), (326, 191), (325, 186)], [], [[(319, 186), (318, 191), (322, 194), (326, 191), (325, 186)]], color='none', group='tag')
+qv.part('tagRing', [(319, 186), (318, 191), (322, 194), (326, 191), (325, 186)], [[(319, 186), (318, 191), (322, 194), (326, 191), (325, 186)] + [(319, 186)]], color='silver', group='tag')
 qv.part('tag', blob(322, 202, 7.4, 8.6, 0), [blob(322, 202, 7.4, 8.6, 0) + [blob(322, 202, 7.4, 8.6, 0)[0]]], color='tag', group='tag')
 qv.part('tagShadow', [(325, 195), (329, 200), (329, 206), (324, 210.5, 'c'), (326.5, 205), (326.5, 199)], [], color='tagShadow', group='tag')
 qv.pivot('tailRoot', 105, 262)
@@ -308,12 +283,13 @@ qv.pivot('tagAnchor', 322, 186)
 qv.pivot('breath', 230, 160)
 # markings: right side (R-) as the 3/4 shows the right flank, plus the front-visible chest and far-side forearm/shoulder
 qv.spot('R-01', 'right', 'torso', (139.3, 188.7, 13.5, 8.0, -41.3), (139, 189), CQ, 'croup spot R-01')
-qv.spot('R-02', 'right', 'torso', (190.0, 182.0, 12.0, 7.2, -8.0), (190, 182), CQ, 'mid-back spot R-02 (the sheet draws the left withers patch here; coat maps control, decision Q-PATCH)')
+qv.spot('R-02', 'right', 'torso', (165.0, 193.0, 9.5, 6.2, -12.0), (165, 193), CQ, 'mid-back spot R-02, just behind the withers patch (foreshortened by the turn)')
 qv.spot('R-03', 'right', 'torso', (163.2, 226.0, 8.5, 6.5, 80.0), (163, 226), CQ, 'mid-flank spot R-03')
 qv.spot('R-04', 'right', 'torso', (228.4, 233.8, 11.6, 6.6, -79.6), (228, 234), CQ, 'right shoulder spot R-04')
 qv.spot('R-05', 'right', 'torso', (203.0, 256.0, 7.0, 5.0, -15.0), (203, 256), CQ, 'lower-ribs spot R-05 (not drawn on the 3/4 sheet; placed from coat_right)')
-qv.spot('L-WITHERS', 'left', 'torso', [(214, 161.5, 'c'), (230, 158.5), (246, 153, 'c'), (240, 162), (227, 166), (215, 165.5)], (230, 160), CQ,
-        'edge of the left withers patch over the top line (as coat_right shows it)')
+qv.spot('L-WITHERS', 'left', 'torso', [(181, 166, 'c'), (182, 176), (186, 186), (193, 194), (205, 198.5), (216, 196), (226, 186), (233, 172),
+                                       (238, 158, 'c'), (225, 151), (205, 154), (190, 159)], (208, 176), CQ,
+        'withers patch L-WITHERS on top of the back: the elevated 3/4 camera sees the dorsal surface where the patch straddles the spine (traced from badger_turn_34.png, decision BADGER-D16)')
 qv.spot('M-CHEST', 'midline', 'torso', (323.0, 236.0, 9.0, 4.2, -88.0), (323, 236), CQ, 'midline chest spot, turned with the chest')
 qv.spot('L-03', 'left', 'torso', (339.0, 180.5, 9.0, 5.5, -42.6), (337, 180), CQ, 'left shoulder spot L-03 at the far edge of the chest')
 qv.spot('R-06', 'right', 'legHindNear', (151.0, 300.0, 9.5, 5.6, -69.0), (151, 300), CQ, 'front of the right thigh R-06 (placed from coat_right)')
@@ -331,8 +307,9 @@ with open(sys.argv[1], 'w') as fh:
     fh.write('export const VIEW_RIGS = ' + json.dumps(out, indent='\t') + ' as const;\n')
 blocks = [
     {'const': 'FRONT_SPOTS', 'doc': 'Markings of the FRONT view (badger_turn_front.png): side-map spots seen from the front plus the midline chest spot M-CHEST. View-root space.', 'spots': spots['front']},
-    {'const': 'BACK_SPOTS', 'doc': ('Markings of the BACK view: the top coat map (T- ids, badger_coat_top.png) projected onto the back, plus the leg spots seen from behind. '
-                                    'T- records name the side-map marking they continue (sameAs). View-root space.'), 'spots': spots['back']},
+    {'const': 'BACK_SPOTS', 'doc': ('Markings of the BACK view (badger_turn_back.png): the withers patch as the crescent under the collar (T-PATCH = L-WITHERS), '
+                                    'the two croup spots (T-05 = R-01, T-08 = L-02) and the leg spots seen from behind. T- records name the side-map marking '
+                                    'they continue (sameAs); the other top-map spots are hidden on the receding back at eye level (decision BADGER-D20). View-root space.'), 'spots': spots['back']},
     {'const': 'THREE_QUARTER_SPOTS', 'doc': 'Markings of the THREE-QUARTER view (badger_turn_34.png, right flank toward camera). View-root space.', 'spots': spots['threeQuarter']},
 ]
 with open(sys.argv[2], 'w') as fh:

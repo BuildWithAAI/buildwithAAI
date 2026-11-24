@@ -1,0 +1,8 @@
+"videoId","title","channel","publishedAt","format","views","impressions","ctr","avgViewDurationSec","avgPercentViewed","subscribersGained","adRevenueUsd","hubClicks","conversions","affiliateRevenueUsd","tags","formatSource","engagedViews","subscribersNet","hubClicksYoutube","revenueUsd","revenuePer1kViews","hubClicksPer1kViews","affiliateRevenueOther","adRevenueOther","inputs"
+"fixture-long-1","SYNTHETIC FIXTURE: long A","zoora-security","2026-08-02","long",1200,24000,0.05,240,0.42,30,12.5,6,,,"hacks","videos.csv",1100,28,5,,,,,,"fixture"
+"fixture-long-2","SYNTHETIC FIXTURE: long B","zoora-security","2026-09-10","long",3000,40000,0.075,300,0.5,70,30.0,15,,,"drainers","videos.csv",2900,65,12,,,,,,"fixture"
+"fixture-long-3","SYNTHETIC FIXTURE: long C","zoora-security","2026-10-20","long",2000,,,180,0.36,40,,4,,,"ai","videos.csv",,38,4,,,,,,"fixture"
+"fixture-long-4","SYNTHETIC FIXTURE: long D (tiny)","zoora-security","2026-11-15","long",80,2000,0.2,200,0.6,1,,0,,,"ai","videos.csv",70,1,0,,,,,,"fixture"
+"fixture-short-1","SYNTHETIC FIXTURE: short A","zoora-security","2026-10-01","short",5000,,,25,1.1,12,,2,,,"hacks","api",4800,10,,,,,,,"fixture"
+"fixture-short-2","'=SYNTHETIC FIXTURE: short B (formula-guarded title)","zoora-security","2026-11-01","short",7000,,,28,0.95,20,,3,,,"drainers","api",6500,18,,,,,,,"fixture"
+"fixture-other","SYNTHETIC FIXTURE: other channel","zoora-ai","2026-11-02","long",99999,,,999,0.99,999,,99,,,"pov","videos.csv",,,99,,,,,,"fixture"

@@ -99,17 +99,17 @@
           "status": "fact-bank"
         },
         {
-          "need": "aixbt: an attacker with dashboard access made the agent send ETH",
+          "need": "aixbt: the agent sent ETH from its wallet after an attacker breached its dashboard and queued prompts",
           "factId": "aixbt-dashboard-breach",
           "status": "fact-bank"
         },
         {
-          "need": "Memory injection can make ElizaOS agents send crypto (a research demonstration)",
+          "need": "Memory injection: researchers showed that crypto AI agents built on ElizaOS can be manipulated through malicious instructions planted in their stored memory (a research demonstration)",
           "factId": "elizaos-memory-injection-study",
           "status": "fact-bank"
         },
         {
-          "need": "A chatbot was tricked into relaying a command that made a trading bot send tokens",
+          "need": "An instruction disguised as Morse code got tokens moved out of a Grok-linked wallet",
           "factId": "grok-bankrbot-morse-transfer",
           "status": "fact-bank"
         },
@@ -363,7 +363,7 @@
       "research": null,
       "facts": [
         {
-          "need": "How many new tokens stopped trading on their launch day (CoinGecko, Pump.fun tokens)",
+          "need": "How many Pump.fun tokens made their last bonding-curve trade on launch day (CoinGecko)",
           "factId": "pumpfun-coingecko-launch-day-deaths",
           "status": "fact-bank"
         },

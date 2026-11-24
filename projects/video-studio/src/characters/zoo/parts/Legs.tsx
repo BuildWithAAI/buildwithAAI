@@ -5,32 +5,41 @@
  * the ankle, inseam from the crotch (-392) to +-27 at the hem (-54), sneakers ~95 wide.
  */
 import React from 'react';
-import {LINE, ZOO_COLORS} from '../../palette';
+import {ZOO_COLORS} from '../../palette';
 import {line, mirrorX, smooth, type Pt} from '../geometry';
-import {Clipped, Shape, Stroke} from './Shape';
+import {ZOO_LINE} from '../lines';
+import {Clipped, Outline, Shape, Stroke} from './Shape';
 
+// Repair round 1: the hem drapes lower over the shoe tongue (break at -44.6 in the middle), as on zoo_turn_front.png.
 const LEG: Pt[] = [
-	[0, -434], [78, -434], [78.2, -380], [77.6, -300], [79.4, -200], [80.6, -120], [82, -64], [81, -53.5, 'c'], [54, -51.6],
-	[24.6, -53.6, 'c'], [21.2, -100], [15.6, -170], [10.2, -250], [5, -320], [1.6, -372], [0, -392],
+	[0, -434], [78, -434], [78.2, -380], [77.6, -300], [79.4, -200], [80.6, -120], [81.8, -64], [81.4, -50.2, 'c'], [66, -46.2],
+	[52, -44.6], [36, -46], [26.4, -48, 'c'], [22.2, -100], [15.6, -170], [10.2, -250], [5, -320], [1.6, -372], [0, -392],
 ];
 /** Under the shirt hem, and along the inseam. */
 const LEG_SHADOWS: Pt[][] = [
 	[[0, -440], [84, -440], [84, -405], [40, -399], [12, -397], [0, -395]],
-	[[0, -392], [2, -372], [5.6, -320], [10.8, -250], [16.4, -170], [22, -100], [25.4, -53], [34, -53], [29, -170], [18, -320], [7, -390]],
+	[[0, -392], [2, -372], [5.6, -320], [10.8, -250], [16.4, -170], [22, -100], [25.4, -44], [34, -44], [29, -170], [18, -320], [7, -390]],
 ];
 
-/** Path bottom sits at y = -1.75 so the outline's outer edge touches the ground (y = 0). */
+/**
+ * Path bottom sits at y = -1.75 so the outline's outer edge touches the ground (y = 0). Repair round 1 (row scan of
+ * zoo_turn_front.png): a rounded low-top, narrow at the ankle (outer edge ~82 at y -50) with a convex toe box that
+ * flares to ~109 only near the sole (v1 was a straight trapezoid, 8-13 u wider at y -50..-30).
+ */
 const SHOE: Pt[] = [
-	[33, -56], [58, -58.6], [83, -56], [93.6, -45], [103.4, -32.6], [110.6, -20.6], [114, -9.6], [111.4, -3.2], [100, -1.75], [60, -1.75],
-	[33, -2.2], [28.2, -7], [27.4, -22], [28.6, -40],
+	[34, -55.6], [58, -57.8], [79.8, -55.6], [82.6, -49], [84.4, -40], [89.6, -30.4], [96.6, -24], [102.8, -19.4], [107, -12.6],
+	[109.2, -6.4], [106.6, -2.4], [96, -1.75], [60, -1.75], [33.6, -2.2], [30.6, -7], [29.8, -22], [30.4, -40],
 ];
-const SOLE: Pt[] = [[116, -11.6], [100, -10.6], [60, -10.2], [26, -11], [26, 2], [116, 2]];
-const SHOE_SHADOW: Pt[] = [[25, -62], [44, -62], [40.6, -30], [35, -12], [24, -12]];
-const SOLE_LINE: Pt[] = [[113.6, -11.4], [100, -10.6], [60, -10.2], [27.6, -11]];
-const TOE_LINE: Pt[] = [[105, -26.4], [88, -22.6], [64, -21.4], [44, -21]];
+const SOLE: Pt[] = [[112, -11.6], [100, -10.8], [60, -10.4], [28, -11], [28, 2], [112, 2]];
+/** One flat shadow tone: a narrow terminator along the inner edge (no full-height band). */
+const SHOE_SHADOW: Pt[] = [[26, -60], [37.6, -60], [36, -40], [35.2, -22], [35.6, -12], [26, -12]];
+const SOLE_LINE: Pt[] = [[108.6, -11.4], [96, -10.8], [60, -10.4], [30.4, -11]];
+/** Toe cap seam and three crossing lace bars on the tongue. */
+const TOE_LINE: Pt[] = [[100.6, -21.6], [86, -18.2], [66, -17], [46, -17.6]];
 const LACES: Pt[][] = [
-	[[48, -47.6], [62, -46.4], [76, -47]],
-	[[46, -38.4], [63, -36.8], [82, -37.6]],
+	[[49.4, -47.6], [61.4, -45.6], [73.6, -47.2]],
+	[[50.2, -41.2], [62, -39.2], [74.2, -40.8]],
+	[[52.4, -34.8], [62.4, -33.2], [72, -34.6]],
 ];
 
 const mirrorIf = (side: 1 | -1) => (p: Pt[]) => (side === 1 ? p : mirrorX(p));
@@ -57,11 +66,11 @@ const Shoe: React.FC<{side: 1 | -1}> = ({side}) => {
 				<path d={smooth(m(SHOE_SHADOW))} fill={ZOO_COLORS.sneakerShadow} />
 				<path d={smooth(m(SOLE))} fill={ZOO_COLORS.sneakerSole} />
 			</Clipped>
-			<path d={shoe} fill="none" stroke={LINE.color} strokeWidth={LINE.width} strokeLinejoin="round" />
-			<Stroke d={line(m(SOLE_LINE))} width={LINE.detailWidth} />
-			<Stroke d={line(m(TOE_LINE))} width={LINE.detailWidth * 0.8} />
+			<Outline d={shoe} />
+			<Stroke d={line(m(SOLE_LINE))} width={ZOO_LINE.detail} />
+			<Stroke d={line(m(TOE_LINE))} width={ZOO_LINE.fine} />
 			{LACES.map((l, i) => (
-				<Stroke key={i} d={line(m(l))} width={LINE.detailWidth * 0.8} />
+				<Stroke key={i} d={line(m(l))} width={ZOO_LINE.fine} />
 			))}
 		</g>
 	);

@@ -1,0 +1,889 @@
+{
+  "kind": "zoora-translation-sheet",
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "_engine-demo",
+  "sourceLang": "en",
+  "targetLang": "pt-br",
+  "targetLanguage": "Brazilian Portuguese",
+  "sourceFile": "content/zoora-ai/_engine-demo/storyboard.json",
+  "sourceSha256": "b35adab651523936fad567374cfd406a7d3e29c2a467e5992a3d3a77b9f29791",
+  "preparedAt": "2026-11-24T10:22:30.109Z",
+  "method": "machine",
+  "instructions": [
+    "Translate every item's \"source\" into Brazilian Portuguese and write it in \"translation\". Style: Brazilian Portuguese: \"você\", natural spoken style. Common crypto terms (wallet, token, memecoin) may stay in English when Brazilians use them.",
+    "Audience: adults. Zoo is deadpan, calm and dry; keep the jokes dry and the sentences speakable. Badger never speaks.",
+    "Keep every [src:id] tag exactly, after the claim it backs: the same tags in the same scene (the claim gate checks them 1:1).",
+    "Keep {display|spoken} pairs: translate both sides. Numbers keep their values; write them the way the voice reads them in this language (es/pt-br/it: 40.000 and 1,5; en/hi/zh: 40,000 and 1.5). When a number could be read two ways, use {display|spoken}.",
+    "Never translate the glossary terms (names, platforms, organisations, tickers, URLs): copy them exactly, same case, Latin script.",
+    "Stay within each item's budget: on-screen text that does not fit fails the render; narration longer than about 1.1x the source will not fit an audio-track dub (the voice step speeds up to 1.15 at most; measured: Spanish lines at 1.16x or more overflowed).",
+    "Cue items: copy the exact word from YOUR narration of that scene (it times the reveal). Waiver items: copy the exact words from your translation.",
+    "Spoken respellings (\"spokenRespellings\"): when one of those terms is in your narration, write it as {term|spoken} so the voice says it right; the native reviewer checks each by ear.",
+    "A translated quote is no longer the speaker's own words: mark its attribution \"(translated quote)\" in your language. Source titles are translated; their URLs never change.",
+    "Audio-track dubs (the voice fitted to the English video) play over the English picture: Zoo's mouth and every on-screen text stay English. Keep each sentence about as long as the English sentence (the voice aligns sentence by sentence).",
+    "Do not add facts, numbers, names, links, price talk, buy calls, or income or return claims. Do not soften \"alleged\" or \"estimated\".",
+    "Set \"method\" to \"machine\" if you are an AI or a machine-translation system, \"human\" if you are a person. Either way the result is marked \"machine translation: needs native review\" until the owner confirms a native speaker reviewed it.",
+    "Optional: \"note\" on any item, for the native reviewer (doubts, alternatives, cultural notes)."
+  ],
+  "glossary": [
+    {
+      "term": "Zoo",
+      "kind": "name",
+      "note": "the host's name (title case since 2026-11-24); never translate it (not 'zoológico', 'zoo', '动物园')"
+    },
+    {
+      "term": "Zoora AI",
+      "kind": "name",
+      "note": "the channel name"
+    },
+    {
+      "term": "Zoora",
+      "kind": "name",
+      "note": "the brand name"
+    },
+    {
+      "term": "Pump.fun",
+      "kind": "name",
+      "note": "platform name"
+    },
+    {
+      "term": "Bubblemaps",
+      "kind": "name",
+      "note": "analytics firm"
+    },
+    {
+      "term": "CoinGecko",
+      "kind": "org",
+      "note": "organisation name: keep it in Latin script (you may add a short native explanation once)"
+    },
+    {
+      "term": "$EXAMPLE",
+      "kind": "ticker",
+      "note": "token ticker (fictional ones too): copy exactly"
+    },
+    {
+      "term": "SOL",
+      "kind": "ticker",
+      "note": "token ticker: copy exactly, upper case"
+    }
+  ],
+  "mustNotSay": [
+    "uma garantia (\"garantido\")",
+    "\"sem risco\"",
+    "\"ficar rico\"",
+    "\"renda passiva\"",
+    "\"não tem como perder\"",
+    "um múltiplo tipo \"100x\"",
+    "um \"conselho financeiro\"",
+    "um chamado para comprar",
+    "uma previsão de preço",
+    "uma promessa de dinheiro fácil",
+    "\"renda extra\" / dinheiro garantido",
+    "multiplicar seu dinheiro",
+    "\"não tem como perder\"",
+    "\"ganham até\"",
+    "uma previsão de preço",
+    "ganhos de seis ou sete dígitos",
+    "Zoo presented as a human financial adviser or expert (YouTube AI-persona policy)"
+  ],
+  "fixed": [
+    {
+      "key": "scenes.s03.onScreen.pair",
+      "value": "$EXAMPLE / SOL",
+      "reason": "ticker pair on the chart: fictional tickers stay as they are"
+    }
+  ],
+  "spokenRespellings": [
+    {
+      "term": "on-chain",
+      "spoken": "onchêin",
+      "note": "espeak pt-br misreads the English loanword; the voice lexicon says \"onchêin\" too"
+    },
+    {
+      "term": "Pump.fun",
+      "spoken": "Pâmp ponto fân",
+      "note": "the platform name, said the way Brazilian crypto users say it"
+    },
+    {
+      "term": "memecoins",
+      "spoken": "mímcoins",
+      "note": "English loanword"
+    },
+    {
+      "term": "CoinGecko",
+      "spoken": "Côin Guéco",
+      "note": "espeak pt-br reads \"Coin Jéco\""
+    },
+    {
+      "term": "Bubblemaps",
+      "spoken": "Bâbou maps",
+      "note": "English name"
+    },
+    {
+      "term": "bonding curve",
+      "spoken": "bôndin kârv",
+      "note": "keep the English term (the study's caveat)"
+    }
+  ],
+  "items": [
+    {
+      "key": "title",
+      "kind": "title",
+      "context": "Episode title (YouTube title, at most 100 characters). Keep the hook; no clickbait figures.",
+      "source": "Why most new memecoins die on day one",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 100,
+        "note": "At most 100 characters."
+      },
+      "translation": "Por que a maioria das memecoins novas morre no primeiro dia"
+    },
+    {
+      "key": "scenes.s01.narration",
+      "kind": "narration",
+      "scene": "s01",
+      "sceneType": "hook",
+      "field": "narration",
+      "context": "Narration of scene s01 (hook), spoken by Zoo (Kokoro voice) and shown as captions. Keep every [src:id] tag right after the claim it backs (same tags, same scene). Keep {display|spoken} pairs and translate both sides: display is what viewers read, spoken is what the voice says.",
+      "source": "Most new memecoins on {Pump.fun|Pump dot fun} never see day two. [src:cg-cryptonews,cg-cryptobriefing]",
+      "budget": {
+        "maxRatio": 1.1,
+        "note": "Speech length: aim for at most 1.1x the source. An audio-track dub is fitted to the English timing (speed 0.85-1.15), and Kokoro speaks most languages slower than this estimate shows; only a native re-render with its own timing can run longer."
+      },
+      "claimTags": [
+        "[src:cg-cryptonews]",
+        "[src:cg-cryptobriefing]"
+      ],
+      "markup": [
+        "{Pump.fun|Pump dot fun}"
+      ],
+      "glossary": [
+        "Pump.fun"
+      ],
+      "translation": "A maioria das {memecoins|mímcoins} novas na {Pump.fun|Pâmp ponto fân} nunca chega ao segundo dia. [src:cg-cryptonews,cg-cryptobriefing]",
+      "note": "Spoken respellings for espeak pt-br: 'mímcoins' (memecoins) and 'Pâmp ponto fân' (Pump.fun). Check them by ear."
+    },
+    {
+      "key": "scenes.s01.onScreen.kicker",
+      "kind": "onScreen",
+      "scene": "s01",
+      "sceneType": "hook",
+      "field": "kicker",
+      "context": "Small label above the hook title (e.g. \"POV\", \"Case file 01\").",
+      "source": "Explainer",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 86,
+        "note": "hook kicker: aim for at most 1.35x the source; about 86 characters is the most the box takes (Short layout included)."
+      },
+      "translation": "Explicando"
+    },
+    {
+      "key": "scenes.s01.onScreen.title",
+      "kind": "onScreen",
+      "scene": "s01",
+      "sceneType": "hook",
+      "field": "title",
+      "context": "The big hook title (display font, upper-cased in Latin scripts). Short and punchy.",
+      "source": "Dead on day one",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 152,
+        "note": "hook title (display font, capitals): aim for at most 1.35x the source; about 152 characters is the most the box takes (Short layout included)."
+      },
+      "translation": "Mortas no primeiro dia"
+    },
+    {
+      "key": "scenes.s01.onScreen.subtitle",
+      "kind": "onScreen",
+      "scene": "s01",
+      "sceneType": "hook",
+      "field": "subtitle",
+      "context": "One-line subtitle under the hook title (landscape only).",
+      "source": "What the launch data shows",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 142,
+        "note": "hook subtitle (landscape only): aim for at most 1.35x the source; about 142 characters is the most the box takes."
+      },
+      "translation": "O que os dados de lançamento mostram"
+    },
+    {
+      "key": "scenes.s02.narration",
+      "kind": "narration",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "narration",
+      "context": "Narration of scene s02 (talk), spoken by Zoo (Kokoro voice) and shown as captions. Keep every [src:id] tag right after the claim it backs (same tags, same scene). Keep {display|spoken} pairs and translate both sides: display is what viewers read, spoken is what the voice says.",
+      "source": "CoinGecko tracked {18.67 million|nearly nineteen million} of them. [src:cg-cryptonews,cg-cryptobriefing] {68.67%|Nearly sixty-nine percent} made their last bonding-curve trade on launch day. [src:cg-cryptonews,cg-cryptobriefing] Ninety days later, only {4.55%|four and a half percent} were still trading. [src:cg-cryptonews,cg-cryptobriefing]",
+      "budget": {
+        "maxRatio": 1.1,
+        "note": "Speech length: aim for at most 1.1x the source. An audio-track dub is fitted to the English timing (speed 0.85-1.15), and Kokoro speaks most languages slower than this estimate shows; only a native re-render with its own timing can run longer."
+      },
+      "claimTags": [
+        "[src:cg-cryptonews]",
+        "[src:cg-cryptobriefing]",
+        "[src:cg-cryptonews]",
+        "[src:cg-cryptobriefing]",
+        "[src:cg-cryptonews]",
+        "[src:cg-cryptobriefing]"
+      ],
+      "markup": [
+        "{18.67 million|nearly nineteen million}",
+        "{68.67%|Nearly sixty-nine percent}",
+        "{4.55%|four and a half percent}"
+      ],
+      "glossary": [
+        "CoinGecko"
+      ],
+      "numbers": [
+        "18,670,000",
+        "68.67%",
+        "4.55%"
+      ],
+      "translation": "A {CoinGecko|Côin Guéco} acompanhou {18,67 milhões|quase dezenove milhões} delas. [src:cg-cryptonews,cg-cryptobriefing] {68,67%|Quase sessenta e nove por cento} fizeram a última negociação na {bonding curve|bôndin kârv} no primeiro dia. [src:cg-cryptonews,cg-cryptobriefing] Noventa dias depois, só {4,55%|quatro e meio por cento} ainda eram negociadas. [src:cg-cryptonews,cg-cryptobriefing]",
+      "note": "'Côin Guéco' is a respelling so espeak does not say 'Coin Jéco'. 'bonding curve' stays in English (the study's key caveat; the review of 2026-11-24 found 'curva de lançamento' is not a term Brazilian crypto media use); 'bôndin kârv' is its spoken respelling: native reviewer decides. Numbers rounded only in speech (display keeps 18,67 / 68,67% / 4,55%)."
+    },
+    {
+      "key": "scenes.s02.onScreen.title",
+      "kind": "onScreen",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "title",
+      "context": "Heading above the bullets.",
+      "source": "The launch-day numbers",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 97,
+        "note": "talk title: aim for at most 1.35x the source; about 97 characters is the most the box takes."
+      },
+      "translation": "Os números do lançamento"
+    },
+    {
+      "key": "scenes.s02.onScreen.bullets.0",
+      "kind": "onScreen",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "bullets",
+      "index": 0,
+      "context": "A bullet, revealed when Zoo says its cue word. Short; no full sentences. (item 1 of 3)",
+      "source": "18.67M tokens tracked",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 143,
+        "note": "talk bullet: aim for at most 1.35x the source; about 143 characters is the most the box takes."
+      },
+      "numbers": [
+        "18,670,000"
+      ],
+      "translation": "18,67 milhões de tokens acompanhados"
+    },
+    {
+      "key": "scenes.s02.onScreen.bullets.1",
+      "kind": "onScreen",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "bullets",
+      "index": 1,
+      "context": "A bullet, revealed when Zoo says its cue word. Short; no full sentences. (item 2 of 3)",
+      "source": "68.67%: last curve trade on day one",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 143,
+        "note": "talk bullet: aim for at most 1.35x the source; about 143 characters is the most the box takes."
+      },
+      "numbers": [
+        "68.67%"
+      ],
+      "translation": "68,67%: última negociação na bonding curve, dia um",
+      "note": "'bonding curve' kept in English, as in the narration (native reviewer decides)."
+    },
+    {
+      "key": "scenes.s02.onScreen.bullets.2",
+      "kind": "onScreen",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "bullets",
+      "index": 2,
+      "context": "A bullet, revealed when Zoo says its cue word. Short; no full sentences. (item 3 of 3)",
+      "source": "4.55% still trading after 90 days",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 143,
+        "note": "talk bullet: aim for at most 1.35x the source; about 143 characters is the most the box takes."
+      },
+      "numbers": [
+        "4.55%",
+        "90"
+      ],
+      "translation": "4,55% ainda negociadas após 90 dias"
+    },
+    {
+      "key": "scenes.s02.onScreen.lowerThird.0",
+      "kind": "onScreen",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "lowerThird",
+      "index": 0,
+      "context": "Name strap: [name, role]. Names stay as they are; translate the role. (item 1 of 2)",
+      "source": "Zoo",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 30,
+        "note": "lower-third name (landscape only): aim for at most 1.35x the source; about 30 characters is the most the box takes."
+      },
+      "glossary": [
+        "Zoo"
+      ],
+      "translation": "Zoo"
+    },
+    {
+      "key": "scenes.s02.onScreen.lowerThird.1",
+      "kind": "onScreen",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "lowerThird",
+      "index": 1,
+      "context": "Name strap: [name, role]. Names stay as they are; translate the role. (item 2 of 2)",
+      "source": "Host · Zoora AI",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 43,
+        "note": "lower-third role (landscape only): aim for at most 1.35x the source; about 43 characters is the most the box takes."
+      },
+      "glossary": [
+        "Zoora AI",
+        "Zoora"
+      ],
+      "translation": "Apresentador · Zoora AI"
+    },
+    {
+      "key": "scenes.s02.onScreen.cues.0",
+      "kind": "cue",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "cues",
+      "index": 0,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s02, the word that reveals item 1 (\"18.67M tokens tracked\"). One word (zh/ja: a short run of characters).",
+      "source": "tracked",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "acompanhou"
+    },
+    {
+      "key": "scenes.s02.onScreen.cues.1",
+      "kind": "cue",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "cues",
+      "index": 1,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s02, the word that reveals item 2 (\"68.67%: last curve trade on day one\"). One word (zh/ja: a short run of characters).",
+      "source": "last",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "última"
+    },
+    {
+      "key": "scenes.s02.onScreen.cues.2",
+      "kind": "cue",
+      "scene": "s02",
+      "sceneType": "talk",
+      "field": "cues",
+      "index": 2,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s02, the word that reveals item 3 (\"4.55% still trading after 90 days\"). One word (zh/ja: a short run of characters).",
+      "source": "still",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "ainda"
+    },
+    {
+      "key": "scenes.s03.narration",
+      "kind": "narration",
+      "scene": "s03",
+      "sceneType": "chart",
+      "field": "narration",
+      "context": "Narration of scene s03 (chart), spoken by Zoo (Kokoro voice) and shown as captions. Keep every [src:id] tag right after the claim it backs (same tags, same scene). Keep {display|spoken} pairs and translate both sides: display is what viewers read, spoken is what the voice says.",
+      "source": "Here's day one, on a made-up coin. A launch, a burst of buying, then one big sell-off, and a slow bleed.",
+      "budget": {
+        "maxRatio": 1.1,
+        "note": "Speech length: aim for at most 1.1x the source. An audio-track dub is fitted to the English timing (speed 0.85-1.15), and Kokoro speaks most languages slower than this estimate shows; only a native re-render with its own timing can run longer."
+      },
+      "translation": "Veja o primeiro dia de uma moeda inventada. Um lançamento, uma onda de compras, depois uma venda em massa, e uma lenta agonia.",
+      "note": "'Veja o primeiro dia' avoids 'é o primeiro', which the claim gate reads as a superlative. 'uma lenta agonia' renders 'a slow bleed'."
+    },
+    {
+      "key": "scenes.s03.onScreen.cues.0",
+      "kind": "cue",
+      "scene": "s03",
+      "sceneType": "chart",
+      "field": "cues",
+      "index": 0,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s03, the word of the pump beat. One word (zh/ja: a short run of characters).",
+      "source": "burst",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "onda"
+    },
+    {
+      "key": "scenes.s03.onScreen.cues.1",
+      "kind": "cue",
+      "scene": "s03",
+      "sceneType": "chart",
+      "field": "cues",
+      "index": 1,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s03, the word of the rug beat. One word (zh/ja: a short run of characters).",
+      "source": "sell-off",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "venda"
+    },
+    {
+      "key": "scenes.s04.narration",
+      "kind": "narration",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "narration",
+      "context": "Narration of scene s04 (steps), spoken by Zoo (Kokoro voice) and shown as captions. Keep every [src:id] tag right after the claim it backs (same tags, same scene). Keep {display|spoken} pairs and translate both sides: display is what viewers read, spoken is what the voice says.",
+      "source": "Before you touch a new coin, ask: who holds the supply? What else did the creator launch? And who's paid to hype it?",
+      "budget": {
+        "maxRatio": 1.1,
+        "note": "Speech length: aim for at most 1.1x the source. An audio-track dub is fitted to the English timing (speed 0.85-1.15), and Kokoro speaks most languages slower than this estimate shows; only a native re-render with its own timing can run longer."
+      },
+      "translation": "Antes de mexer numa moeda nova, pergunte: quem detém a oferta? O que mais o criador lançou? E quem é pago para promovê-la?",
+      "note": "'oferta' = token supply ('supply' is also common in Brazilian crypto slang)."
+    },
+    {
+      "key": "scenes.s04.onScreen.title",
+      "kind": "onScreen",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "title",
+      "context": "Heading above the numbered steps.",
+      "source": "Before you touch a new coin",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 107,
+        "note": "steps title: aim for at most 1.35x the source; about 107 characters is the most the box takes."
+      },
+      "translation": "Antes de mexer numa moeda nova"
+    },
+    {
+      "key": "scenes.s04.onScreen.steps.0",
+      "kind": "onScreen",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "steps",
+      "index": 0,
+      "context": "A numbered step in the imperative (\"Check who bought before the post\"). (item 1 of 3)",
+      "source": "Who holds the supply?",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 158,
+        "note": "numbered step: aim for at most 1.35x the source; about 158 characters is the most the box takes."
+      },
+      "translation": "Quem detém a oferta?"
+    },
+    {
+      "key": "scenes.s04.onScreen.steps.1",
+      "kind": "onScreen",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "steps",
+      "index": 1,
+      "context": "A numbered step in the imperative (\"Check who bought before the post\"). (item 2 of 3)",
+      "source": "What else did the creator launch?",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 158,
+        "note": "numbered step: aim for at most 1.35x the source; about 158 characters is the most the box takes."
+      },
+      "translation": "O que mais o criador lançou?"
+    },
+    {
+      "key": "scenes.s04.onScreen.steps.2",
+      "kind": "onScreen",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "steps",
+      "index": 2,
+      "context": "A numbered step in the imperative (\"Check who bought before the post\"). (item 3 of 3)",
+      "source": "Who is paid to hype it?",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 158,
+        "note": "numbered step: aim for at most 1.35x the source; about 158 characters is the most the box takes."
+      },
+      "translation": "Quem é pago para promovê-la?"
+    },
+    {
+      "key": "scenes.s04.onScreen.badgerCue",
+      "kind": "cue",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "badgerCue",
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s04, the word where Badger reacts. One word (zh/ja: a short run of characters).",
+      "source": "hype",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "promovê-la"
+    },
+    {
+      "key": "scenes.s04.onScreen.cues.0",
+      "kind": "cue",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "cues",
+      "index": 0,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s04, the word that reveals item 1 (\"Who holds the supply?\"). One word (zh/ja: a short run of characters).",
+      "source": "holds",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "detém"
+    },
+    {
+      "key": "scenes.s04.onScreen.cues.1",
+      "kind": "cue",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "cues",
+      "index": 1,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s04, the word that reveals item 2 (\"What else did the creator launch?\"). One word (zh/ja: a short run of characters).",
+      "source": "else",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "mais"
+    },
+    {
+      "key": "scenes.s04.onScreen.cues.2",
+      "kind": "cue",
+      "scene": "s04",
+      "sceneType": "steps",
+      "field": "cues",
+      "index": 2,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s04, the word that reveals item 3 (\"Who is paid to hype it?\"). One word (zh/ja: a short run of characters).",
+      "source": "paid",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "pago"
+    },
+    {
+      "key": "scenes.s05.narration",
+      "kind": "narration",
+      "scene": "s05",
+      "sceneType": "quote",
+      "field": "narration",
+      "context": "Narration of scene s05 (quote), spoken by Zoo (Kokoro voice) and shown as captions. Keep every [src:id] tag right after the claim it backs (same tags, same scene). Keep {display|spoken} pairs and translate both sides: display is what viewers read, spoken is what the voice says.",
+      "source": "Because on-chain analysts at Bubblemaps warned: side wallets have become a business model. [src:bm-side-wallets]",
+      "budget": {
+        "maxRatio": 1.1,
+        "note": "Speech length: aim for at most 1.1x the source. An audio-track dub is fitted to the English timing (speed 0.85-1.15), and Kokoro speaks most languages slower than this estimate shows; only a native re-render with its own timing can run longer."
+      },
+      "claimTags": [
+        "[src:bm-side-wallets]"
+      ],
+      "glossary": [
+        "Bubblemaps"
+      ],
+      "translation": "Porque os analistas {on-chain|onchêin} da {Bubblemaps|Bâbou maps} alertaram: as carteiras secundárias se tornaram um modelo de negócio. [src:bm-side-wallets]",
+      "note": "Translated quote: the original English is 'Side wallets have become a business model.' 'onchêin' and 'Bâbou maps' are spoken respellings."
+    },
+    {
+      "key": "scenes.s05.onScreen.quote",
+      "kind": "onScreen",
+      "scene": "s05",
+      "sceneType": "quote",
+      "field": "quote",
+      "context": "The quoted words, shown word by word as Zoo reads them: translate them exactly as you translated the quote in this scene's narration.",
+      "source": "Side wallets have become a business model.",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 459,
+        "note": "quote: aim for at most 1.35x the source; about 459 characters is the most the box takes."
+      },
+      "translation": "As carteiras secundárias se tornaram um modelo de negócio.",
+      "note": "Translated quote; original: 'Side wallets have become a business model.'"
+    },
+    {
+      "key": "scenes.s05.onScreen.attribution",
+      "kind": "onScreen",
+      "scene": "s05",
+      "sceneType": "quote",
+      "field": "attribution",
+      "context": "Who said it (a role, or \"fictional composite\"). A real quote you translated is no longer their words: add \"(translated quote)\" in your language, e.g. \"(cita traducida)\", \"(citação traduzida)\".",
+      "source": "Bubblemaps, on-chain analytics firm",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 121,
+        "note": "quote attribution: aim for at most 1.35x the source; about 121 characters is the most the box takes."
+      },
+      "glossary": [
+        "Bubblemaps"
+      ],
+      "translation": "Bubblemaps, empresa de análise on-chain (citação traduzida)",
+      "note": "'(citação traduzida)': the quote card shows a translation, not Bubblemaps' own words (the original is English)."
+    },
+    {
+      "key": "scenes.s06.narration",
+      "kind": "narration",
+      "scene": "s06",
+      "sceneType": "cta",
+      "field": "narration",
+      "context": "Narration of scene s06 (cta), spoken by Zoo (Kokoro voice) and shown as captions. Keep every [src:id] tag right after the claim it backs (same tags, same scene). Keep {display|spoken} pairs and translate both sides: display is what viewers read, spoken is what the voice says.",
+      "source": "If you'd rather read the data than chase the hype, subscribe.",
+      "budget": {
+        "maxRatio": 1.1,
+        "note": "Speech length: aim for at most 1.1x the source. An audio-track dub is fitted to the English timing (speed 0.85-1.15), and Kokoro speaks most languages slower than this estimate shows; only a native re-render with its own timing can run longer."
+      },
+      "translation": "Se você prefere ler os dados em vez de correr atrás da euforia, inscreva-se.",
+      "note": "'euforia' renders 'hype' (espeak reads the English word 'hype' as 'ipi')."
+    },
+    {
+      "key": "scenes.s06.onScreen.title",
+      "kind": "onScreen",
+      "scene": "s06",
+      "sceneType": "cta",
+      "field": "title",
+      "context": "Call-to-action title.",
+      "source": "Read the data, not the hype",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 145,
+        "note": "CTA title: aim for at most 1.35x the source; about 145 characters is the most the box takes (Short layout included)."
+      },
+      "translation": "Leia os dados, não a euforia"
+    },
+    {
+      "key": "scenes.s06.onScreen.cues.0",
+      "kind": "cue",
+      "scene": "s06",
+      "sceneType": "cta",
+      "field": "cues",
+      "index": 0,
+      "context": "Cue: copy, exactly as written in YOUR translated narration of scene s06, the word that reveals item 1. One word (zh/ja: a short run of characters).",
+      "source": "subscribe",
+      "budget": {
+        "maxRatio": 3,
+        "note": "One word from your narration."
+      },
+      "translation": "inscreva-se"
+    },
+    {
+      "key": "scenes.s07.narration",
+      "kind": "narration",
+      "scene": "s07",
+      "sceneType": "endscreen",
+      "field": "narration",
+      "context": "Narration of scene s07 (endscreen), spoken by Zoo (Kokoro voice) and shown as captions. Keep every [src:id] tag right after the claim it backs (same tags, same scene). Keep {display|spoken} pairs and translate both sides: display is what viewers read, spoken is what the voice says.",
+      "source": "Next: who's really on the other side of your trade?",
+      "budget": {
+        "maxRatio": 1.1,
+        "note": "Speech length: aim for at most 1.1x the source. An audio-track dub is fitted to the English timing (speed 0.85-1.15), and Kokoro speaks most languages slower than this estimate shows; only a native re-render with its own timing can run longer."
+      },
+      "translation": "A seguir: quem está realmente do outro lado da sua negociação?"
+    },
+    {
+      "key": "scenes.s07.onScreen.title",
+      "kind": "onScreen",
+      "scene": "s07",
+      "sceneType": "endscreen",
+      "field": "title",
+      "context": "Outro line beside the end-screen slots.",
+      "source": "Next: who's on the other side of your trade?",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 163,
+        "note": "end-screen outro line: aim for at most 1.35x the source; about 163 characters is the most the box takes."
+      },
+      "translation": "A seguir: quem está do outro lado da sua negociação?"
+    },
+    {
+      "key": "shorts.short1.title",
+      "kind": "short-title",
+      "ref": "short1",
+      "context": "Title of the Short \"short1\" (at most 100 characters).",
+      "source": "Most memecoins never see day two",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 100,
+        "note": "At most 100 characters."
+      },
+      "translation": "A maioria das memecoins nunca chega ao dia dois"
+    },
+    {
+      "key": "thumbnails.a.text",
+      "kind": "thumbnail",
+      "ref": "a",
+      "context": "Thumbnail headline, variant \"a\" (YouTube Test & Compare). 4 words or fewer (zh/ja: 10 characters); no figures, currency, % or \"100x\"; a newline is an explicit line break.",
+      "source": "DEAD ON DAY ONE",
+      "budget": {
+        "maxRatio": 1.35,
+        "maxWords": 4,
+        "maxUnits": 10,
+        "note": "4 words or fewer (zh/ja: 10 characters)."
+      },
+      "translation": "MORTAS NO PRIMEIRO DIA"
+    },
+    {
+      "key": "thumbnails.b.text",
+      "kind": "thumbnail",
+      "ref": "b",
+      "context": "Thumbnail headline, variant \"b\" (YouTube Test & Compare). 4 words or fewer (zh/ja: 10 characters); no figures, currency, % or \"100x\"; a newline is an explicit line break.",
+      "source": "WHY MEMECOINS DIE",
+      "budget": {
+        "maxRatio": 1.35,
+        "maxWords": 4,
+        "maxUnits": 10,
+        "note": "4 words or fewer (zh/ja: 10 characters)."
+      },
+      "translation": "POR QUE ELAS MORREM?"
+    },
+    {
+      "key": "thumbnails.c.text",
+      "kind": "thumbnail",
+      "ref": "c",
+      "context": "Thumbnail headline, variant \"c\" (YouTube Test & Compare). 4 words or fewer (zh/ja: 10 characters); no figures, currency, % or \"100x\"; a newline is an explicit line break.",
+      "source": "NEVER SEE DAY TWO",
+      "budget": {
+        "maxRatio": 1.35,
+        "maxWords": 4,
+        "maxUnits": 10,
+        "note": "4 words or fewer (zh/ja: 10 characters)."
+      },
+      "translation": "SEM SEGUNDO DIA"
+    },
+    {
+      "key": "sources.cg-cryptonews.title",
+      "kind": "source-title",
+      "ref": "cg-cryptonews",
+      "context": "Title of source \"cg-cryptonews\", shown on the sources card (\"Source: <title> · crypto.news\"). Translate the description; keep names and dates; the URL is never changed.",
+      "source": "CoinGecko launch-day survival study",
+      "budget": {
+        "maxRatio": 1.35,
+        "note": "Aim for at most 1.35x the source length."
+      },
+      "glossary": [
+        "CoinGecko"
+      ],
+      "translation": "Estudo da CoinGecko sobre a sobrevivência no dia do lançamento",
+      "note": "Source title, translated for the sources card; the URL is unchanged."
+    },
+    {
+      "key": "sources.cg-cryptobriefing.title",
+      "kind": "source-title",
+      "ref": "cg-cryptobriefing",
+      "context": "Title of source \"cg-cryptobriefing\", shown on the sources card (\"Source: <title> · cryptobriefing.com\"). Translate the description; keep names and dates; the URL is never changed.",
+      "source": "CoinGecko survival study",
+      "budget": {
+        "maxRatio": 1.35,
+        "note": "Aim for at most 1.35x the source length."
+      },
+      "glossary": [
+        "CoinGecko"
+      ],
+      "translation": "Estudo de sobrevivência da CoinGecko",
+      "note": "Source title, translated for the sources card; the URL is unchanged."
+    },
+    {
+      "key": "sources.bm-side-wallets.title",
+      "kind": "source-title",
+      "ref": "bm-side-wallets",
+      "context": "Title of source \"bm-side-wallets\", shown on the sources card (\"Source: <title> · tokenpost.com\"). Translate the description; keep names and dates; the URL is never changed.",
+      "source": "Bubblemaps urges launchpads to audit top traders, Nov 6, 2026",
+      "budget": {
+        "maxRatio": 1.35,
+        "note": "Aim for at most 1.35x the source length."
+      },
+      "glossary": [
+        "Bubblemaps"
+      ],
+      "numbers": [
+        "6",
+        "2026"
+      ],
+      "translation": "Bubblemaps pede que launchpads auditem os top traders, 6 nov. 2026",
+      "note": "Source title, translated for the sources card; 'launchpads' and 'top traders' kept as crypto loanwords (native reviewer decides)."
+    },
+    {
+      "key": "ui.sources",
+      "kind": "ui",
+      "ref": "sources",
+      "context": "Heading of the small sources card (\"Source\").",
+      "source": "Source",
+      "budget": {
+        "maxRatio": 1.35,
+        "note": "Aim for at most 1.35x the source length."
+      },
+      "translation": "Fonte"
+    },
+    {
+      "key": "ui.illustrative",
+      "kind": "ui",
+      "ref": "illustrative",
+      "context": "Chip under synthetic charts: says the chart is illustrative and the token fictional.",
+      "source": "Illustrative · fictional token",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 133,
+        "note": "chart chip: aim for at most 1.35x the source; about 133 characters is the most the box takes (Short layout included)."
+      },
+      "translation": "Ilustrativo · token fictício"
+    },
+    {
+      "key": "ui.subscribe",
+      "kind": "ui",
+      "ref": "subscribe",
+      "context": "Subscribe button label (upper-cased, one line).",
+      "source": "Subscribe",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 80,
+        "note": "CTA button (capitals, one line): aim for at most 1.35x the source; about 80 characters is the most the box takes (Short layout included)."
+      },
+      "translation": "Inscreva-se"
+    },
+    {
+      "key": "ui.watchNext",
+      "kind": "ui",
+      "ref": "watchNext",
+      "context": "Heading over the end-screen video slots (\"Watch next\").",
+      "source": "Watch next",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 42,
+        "note": "end-screen slot heading (landscape only): aim for at most 1.35x the source; about 42 characters is the most the box takes."
+      },
+      "translation": "Assista a seguir"
+    },
+    {
+      "key": "ui.subscribeSlot",
+      "kind": "ui",
+      "ref": "subscribeSlot",
+      "context": "Label of the end-screen subscribe circle (\"Subscribe\"). Very short.",
+      "source": "Subscribe",
+      "budget": {
+        "maxRatio": 1.35,
+        "hardMaxChars": 18,
+        "note": "end-screen subscribe label (landscape only): aim for at most 1.35x the source; about 18 characters is the most the box takes."
+      },
+      "translation": "Inscreva-se"
+    }
+  ]
+}

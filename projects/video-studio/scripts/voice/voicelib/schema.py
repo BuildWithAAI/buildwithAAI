@@ -16,7 +16,7 @@ SCENE_REQUIRED = ("id", "audio", "startMs", "durationMs", "speechMs", "words", "
 # Optional fields the voice step adds (recorded in scripts/voice/timeline-additions.ts and README.md).
 ADDITIONS = {
     "timeline": ("narration",),
-    "scene": ("speed", "overflowMs"),
+    "scene": ("speed", "overflowMs", "sentences"),
 }
 
 
@@ -143,6 +143,13 @@ def validate(t) -> list[str]:
             err(f"{where} speed invalid")
         if "overflowMs" in s and (not _num(s["overflowMs"]) or s["overflowMs"] < 0):
             err(f"{where} overflowMs invalid")
+        if "sentences" in s:
+            sen = s["sentences"]
+            ok = isinstance(sen, list) and all(
+                isinstance(x, dict) and set(x) == {"startMs", "endMs"} and _num(x["startMs"]) and _num(x["endMs"]) and 0 <= x["startMs"] <= x["endMs"] <= s["durationMs"] for x in sen
+            )
+            if not ok or any(a["endMs"] > b["startMs"] for a, b in zip(sen, sen[1:])):
+                err(f"{where} sentences must be [{{startMs, endMs}}] in order inside the scene")
     if _num(t["totalMs"]) and abs(t["totalMs"] - expected_start) > 1e-6:
         err(f"totalMs {t['totalMs']} != sum of durationMs {expected_start}")
     return errs

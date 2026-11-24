@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {LIMITS, outputProblem, parseRequest, validateRequest, voiceContentDir, voiceOutputDir, type Validation} from '../request.ts';
+import {audioCodec, isTestComposition, LIMITS, outputProblem, parseRequest, validateRequest, voiceContentDir, voiceOutputDir, type Validation} from '../request.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FARM = join(HERE, '..');
@@ -59,6 +59,7 @@ test('the shipped self-test requests and the example are valid', () => {
 		[join(PROJECT, 'render-requests', 'farm-selftest-voice.json'), 'farm-selftest-voice'],
 		[join(PROJECT, 'render-requests', 'farm-selftest-encrypted.json'), 'farm-selftest-encrypted'],
 		[join(FARM, 'examples', 'episode-en-es-ptbr.json'), 'episode-en-es-ptbr'],
+		[join(FARM, 'examples', 'farm-selftest-handoff.json'), 'farm-selftest-handoff'],
 	] as const) {
 		const v = parseRequest(readFileSync(file, 'utf8'), id);
 		assert.ok(v.ok, `${file}: ${JSON.stringify(errorsOf(v))}`);
@@ -107,10 +108,22 @@ test('props must be a JSON object within the size limit', () => {
 	expectError(big, /props must be at most/);
 });
 
-test('kind is video or still; frame is only for stills and is a bounded integer', () => {
+test('kind is video, still or audio; frame is only for stills and is a bounded integer', () => {
 	const raw = episode();
 	(raw.jobs[0] as Record<string, unknown>).kind = 'gif';
-	expectError(raw, /jobs\[0\]\.kind must be "video" or "still"/);
+	expectError(raw, /jobs\[0\]\.kind must be "video", "still" or "audio"/);
+	// audio: a dub's full mix for a multi-language audio track, as WAV, M4A (AAC) or MP3
+	for (const [out, codec] of [['out/e/es/dub.wav', 'wav'], ['out/e/es/dub.m4a', 'aac'], ['out/e/es/dub.mp3', 'mp3']] as const) {
+		assert.equal(outputProblem(out, 'audio'), null);
+		assert.equal(audioCodec(out), codec);
+	}
+	assert.ok(outputProblem('out/e/es/dub.mp4', 'audio'));
+	assert.ok(outputProblem('out/e/es/dub.flac', 'audio'));
+	const a = episode();
+	a.jobs[1] = {...a.jobs[1], kind: 'audio', output: 'out/episodes/ep-demo/es/dub.wav'};
+	assert.ok(validateRequest(a, 'ep-demo').ok);
+	(a.jobs[1] as Record<string, unknown>).frame = 1;
+	expectError(a, /jobs\[1\]\.frame is only for kind "still"/);
 	const f = episode();
 	(f.jobs[0] as Record<string, unknown>).frame = 3;
 	expectError(f, /frame is only for kind "still"/);
@@ -149,8 +162,8 @@ test('voice entries: Zoo is im_nicola in every language; ja and fr are refused; 
 	expectError(slug, /voice\[0\]\.slug must be/);
 });
 
-test('encrypt: false is refused for anything but test entries and _farm voice fixtures', () => {
-	expectError({...episode(), encrypt: false}, /encrypt: false is only for test renders.*jobs\[0\]/);
+test('encrypt: false is refused for anything but the listed test compositions and _farm voice fixtures', () => {
+	expectError({...episode(), encrypt: false}, /encrypt: false is only for the test compositions .*jobs\[0\] renders another composition/);
 	const mixed = {
 		id: 'mix',
 		entry: 'src/index.ts',
@@ -160,9 +173,50 @@ test('encrypt: false is refused for anything but test entries and _farm voice fi
 	};
 	expectError(mixed, /voice\[0\] voices real content/, 'mix');
 	const thumbs = {id: 'th', entry: 'src/index.ts', encrypt: false, jobs: [{composition: 'Thumbnail', props: {}, output: 'out/t.png', kind: 'still', entry: 'src/episode/index.ts'}]};
-	expectError(thumbs, /jobs\[0\] renders from another entry/, 'th');
+	expectError(thumbs, /jobs\[0\] renders another composition/, 'th');
 	const test1 = {id: 't1', entry: 'src/charts/dev/index.ts', encrypt: false, jobs: [{composition: 'ChartTest', props: {}, output: 'out/c.png', kind: 'still'}]};
 	assert.ok(validateRequest(test1, 't1').ok);
+	// the 2026-11-24 review's case: a new composition registered in src/index.ts is not a test, whatever its entry
+	const leak = {id: 'leak', entry: 'src/index.ts', encrypt: false, retentionDays: 90, jobs: [{composition: 'EpisodeLowerThird', kind: 'video', output: 'out/leak/ep.mp4', props: {channel: 'zoora-ai', slug: 'pumpfun-top-caller', lang: 'en'}}]};
+	const errs = expectError(leak, /jobs\[0\] renders another composition, so this request must be encrypted to the owner/, 'leak');
+	assert.ok(errs.some((e) => /retentionDays may be at most 7 for an unencrypted request/.test(e)), 'and a public test artifact is kept a week at most');
+	assert.ok(isTestComposition('src/index.ts', 'TestCard') && isTestComposition('src/index.ts', 'Preview10s') && isTestComposition('src/charts/dev/index.ts', 'ChartReveal'));
+	assert.ok(!isTestComposition('src/index.ts', 'ChartTest'), 'listed with its own entry only');
+	assert.ok(!isTestComposition('src/episode/index.ts', 'TestCard'));
+	expectError({...test1, retentionDays: 8}, /retentionDays may be at most 7/, 't1');
+	assert.ok(validateRequest({...test1, retentionDays: 7}, 't1').ok);
+});
+
+test('recipient: outputs go to the owner\'s public key by default; "selftest" only for test compositions', () => {
+	const v = validateRequest(episode(), 'ep-demo');
+	assert.ok(v.ok && v.request.recipient === 'owner');
+	expectError({...episode(), recipient: 'selftest'}, /recipient "selftest" is only for the test compositions/);
+	expectError({...episode(), recipient: '../owner'}, /recipient must be 1-32 lowercase letters/);
+	const st = {id: 'st', entry: 'src/index.ts', recipient: 'selftest', jobs: [{composition: 'TestCard', props: {}, output: 'out/t.mp4', kind: 'video'}]};
+	const ok = validateRequest(st, 'st');
+	assert.ok(ok.ok && ok.request.encrypt && ok.request.recipient === 'selftest');
+});
+
+test('dubs: fitTo voices a language into its master\'s timeline; the master must be a native entry of the same episode', () => {
+	const dub = episode();
+	(dub.voice[1] as Record<string, unknown>).fitTo = 'en';
+	const v = validateRequest(dub, 'ep-demo');
+	assert.ok(v.ok, JSON.stringify(errorsOf(v)));
+	assert.deepEqual(v.request.voice.map((x) => [x.lang, x.fitTo ?? null]), [['en', null], ['es', 'en']]);
+	const self = episode();
+	(self.voice[1] as Record<string, unknown>).fitTo = 'es';
+	expectError(self, /voice\[1\]\.fitTo must differ from lang/);
+	const orphan = episode();
+	(orphan.voice[1] as Record<string, unknown>).fitTo = 'pt-br';
+	expectError(orphan, /voice\[1\]\.fitTo is "pt-br", but the request has no voice entry for pt-br of the same channel and slug/);
+	const chain = episode();
+	chain.voice.push({channel: 'zoora-ai', slug: 'ep-demo', lang: 'pt-br', voice: 'im_nicola'});
+	(chain.voice[1] as Record<string, unknown>).fitTo = 'en';
+	(chain.voice[2] as Record<string, unknown>).fitTo = 'es';
+	expectError(chain, /voice\[2\] fits to a voice entry that is itself a dub/);
+	const bad = episode();
+	(bad.voice[1] as Record<string, unknown>).fitTo = 'fr';
+	expectError(bad, /voice\[1\]\.fitTo must be one of en, es, pt-br, hi, it, zh/);
 });
 
 test('limits: jobs, voice entries and retention', () => {

@@ -5,6 +5,7 @@ millón/millones/billón: "dos millones de dólares", but "dos millones quinient
 
 import re
 
+from ..lexicon import PRONUNCIATIONS
 from .common import SpacedNormalizer, split_punct
 
 UNITS = [
@@ -20,6 +21,13 @@ HUNDREDS = {
 }
 ORDINALS = ["", "primero", "segundo", "tercero", "cuarto", "quinto", "sexto", "séptimo", "octavo", "noveno", "décimo"]
 MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def _feminine(words: str) -> str:
+    """'uno' -> 'una', 'veintiuno' -> 'veintiuna' (before a feminine noun: la una, veintiuna horas)."""
+    if words.endswith("uno"):
+        return words[:-1] + "a"
+    return words
 
 
 def apocope(words: str) -> str:
@@ -86,15 +94,22 @@ class Spanish(SpacedNormalizer):
         "£": ("libra", "libras", None, None),
         "¥": ("yen", "yenes", None, None),
         "₹": ("rupia", "rupias", None, None),
+        "US$": ("dólar", "dólares", "centavo", "centavos"),
+        "R$": ("real", "reales", "centavo", "centavos"),
+        "A$": ("dólar australiano", "dólares australianos", "centavo", "centavos"),
+        "C$": ("dólar canadiense", "dólares canadienses", "centavo", "centavos"),
+        "MX$": ("peso mexicano", "pesos mexicanos", "centavo", "centavos"),
     }
     scales = {"k": ("mil", "mil"), "m": ("millón", "millones"), "b": ("mil millones", "mil millones"), "t": ("billón", "billones")}
     scale_words = frozenset({"mil", "millón", "millones", "billón", "billones"})
     connector_after_scale = "de"
     big_scale_words = frozenset({"millón", "millones", "billón", "billones"})
     tickers = {"BTC": "bitcóin", "ETH": "ether", "SOL": "sol", "USDC": "U S D C", "USDT": "U S D T"}
-    symbols = {"&": "y", "+": "más", "=": "igual a", "@": "arroba", "%": "por ciento", "~": "unos", "×": "por"}
+    symbols = {"&": "y", "+": "más", "=": "igual a", "@": "arroba", "%": "por ciento", "~": "unos", "×": "por", "#": "número", "nº": "número", "n.º": "número", "Nº": "número", "N.º": "número"}
     months = MONTHS
     month_lookup = {m: i + 1 for i, m in enumerate(MONTHS)} | {"setiembre": 9}
+    lexicon = PRONUNCIATIONS["es"]
+    number_word = "número"
 
     def cardinal(self, n: int) -> str:
         return cardinal(n)
@@ -126,6 +141,17 @@ class Spanish(SpacedNormalizer):
 
     def time(self, h: int, mi: int) -> str:
         return cardinal(h) + (f" y {cardinal(mi)}" if mi else " en punto")
+
+    def hours(self, h: int, mi: int | None) -> str | None:
+        # "10h30" -> "diez y treinta"; "24h" -> "veinticuatro horas" (hora is feminine: "una", "veintiuna")
+        fem = _feminine(cardinal(h))
+        if mi:
+            return f"{fem} y {cardinal(mi)}"
+        return f"{fem} {'hora' if h == 1 else 'horas'}"
+
+    def fraction_words(self, n: int, d: int) -> str | None:
+        name = {2: "medio", 3: "tercio", 4: "cuarto", 5: "quinto", 6: "sexto", 7: "séptimo", 8: "octavo", 9: "noveno", 10: "décimo"}[d]
+        return f"{cardinal(n, noun=True)} {name}{'s' if n > 1 else ''}"
 
     def ordinal_token(self, core: str) -> str | None:
         m = re.fullmatch(r"(\d+)\.?[ºª°]", core)

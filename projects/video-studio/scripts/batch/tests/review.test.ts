@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {test} from 'node:test';
 import {displayNarration, inspectItem, safeStudioPath} from '../lib/inspect.ts';
 import {readPlan, runPlan} from '../lib/plan.ts';
-import {runReview, type ReviewSnapshot} from '../lib/review.ts';
+import {pageCodeOf, runReview, type ReviewSnapshot} from '../lib/review.ts';
 import {esc, safeRelative, safeUrl} from '../lib/escape.ts';
 import type {PlanItem} from '../lib/types.ts';
 import {parseWeek} from '../lib/week.ts';
@@ -109,8 +109,14 @@ test('the page escapes everything, runs no script, links only http(s), and shows
 	assert.match(html, /<meta http-equiv="Content-Security-Policy" content="script-src 'none'/);
 	assert.match(html, /<meta name="viewport" content="width=device-width,initial-scale=1">/);
 	assert.match(html, /prefers-color-scheme:dark/);
-	assert.match(html, /Approve every READY item: reply <code>APPROVE 2026-W49 all<\/code>/);
-	assert.match(html, /Approve: reply <code>APPROVE 2026-W49 ai1<\/code>/);
+	const pageCode = r.model.pageCode;
+	assert.match(pageCode, /^[0-9a-f]{8}$/);
+	assert.match(html, new RegExp(`Approve every READY item: reply <code>APPROVE 2026-W49 all #${pageCode}</code>`));
+	assert.match(html, new RegExp(`Approve: reply <code>APPROVE 2026-W49 ai1 #${pageCode}</code>`));
+	assert.match(html, new RegExp(`Page code #${pageCode}`));
+	assert.match(html, /Upload spec<\/h3><p class="small">None: the upload sends the publish kit's English title, description and tags only\./);
+	assert.match(html, /render farm draft out\/batch\/2026-W49\/sec1\/render-request\.json/, 'the farm draft path is written out, not a <week> placeholder');
+	assert.doesNotMatch(html, /&lt;week&gt;/);
 	assert.match(html, /Edit: reply <code>EDIT ai1: &lt;what to change&gt;<\/code>/);
 	assert.match(html, /Proposed slot: <b>Mon 2026-11-30 11:00 CST<\/b> \(17:00 UTC\)/);
 	assert.match(html, /<video controls playsinline preload="none" src="\.\.\/\.\.\/publish\/zoora-ai\/alpha\/media\/long\.mp4">/);
@@ -128,6 +134,10 @@ test('review.json records readiness and the hash of every file the page showed',
 	const r = await review(ws, {copyMedia: true});
 	const snap = JSON.parse(readFileSync(r.snapshotPath, 'utf8')) as ReviewSnapshot;
 	assert.equal(snap.kind, 'zoora-weekly-review');
+	const {page, ...rest} = snap;
+	assert.equal(page.code, pageCodeOf(rest), 'the page code is the hash of everything the snapshot records');
+	assert.equal(readFileSync(join(ws.root, `out/approval/week-2026-W49/review-${page.code}.json`), 'utf8'), readFileSync(r.snapshotPath, 'utf8'), 'every page keeps its own record');
+	assert.deepEqual(snap.items.find((i) => i.id === 'ai1')?.specHashes, {'content/zoora-ai/alpha/upload-spec.long.json': null}, 'no spec: recorded as none, so one added later is a change');
 	const ai1 = snap.items.find((i) => i.id === 'ai1');
 	assert.equal(ai1?.ready, true);
 	assert.deepEqual(Object.keys(ai1?.hashes ?? {}).sort(), [

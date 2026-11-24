@@ -11,7 +11,7 @@ A sales page for explainer videos plus a quote-request form. Built 2026-11-24. R
 
 ## Set it up
 
-1. Copy `config/studio.example.json` to `config/studio.json`. The real file is gitignored. Without it, the server uses the example.
+1. Copy `config/studio.example.json` to `config/studio.json`. The real file is gitignored. Without it, development shows the example, and production answers `/studio` with `503` (not indexed), so the unreviewed example offer is never published.
 2. Edit packages, deliverables, budget ranges and FAQ answers so they match what you will actually deliver.
 3. Check the file: `node src/server/studio/check-config.ts config/studio.json` (run it from `projects/creator-hub`).
 4. Restart the server.
@@ -22,10 +22,12 @@ A sales page for explainer videos plus a quote-request form. Built 2026-11-24. R
 | `turnaroundDays` | Whole days from an approved brief to delivery. `null` shows "Agreed after the brief". |
 | `revisions` | Revision rounds included. `null` shows "Agreed in your quote". |
 | `portfolio` | `[{title, url, description?, client?}]`, https links only. List only real, published work you are allowed to show. Empty hides the section. |
-| `stripePaymentLinks` | Optional `{"<package id>": "https://buy.stripe.com/..."}`. A "Pay online with Stripe" button appears only for those packages, with a note to pay only after the quote is confirmed. Stripe payment links live on `buy.stripe.com` unless you set up a custom domain. |
+| `stripePaymentLinks` | Optional `{"<package id>": "https://buy.stripe.com/..."}`. A "Pay online with Stripe" button appears only for those packages, with a note to pay only after the quote is confirmed. A package needs a decided `priceUsd` before it can have a payment link. Stripe payment links live on `buy.stripe.com` unless you set up a custom domain. |
 | Keys starting with `_` | Notes, ignored. Any other unknown key is an error, which catches typos like `priceUSD`. |
 
 The terms are in `copy.ts`, not in the config, so a config edit cannot remove them. Change them only on purpose.
+
+Package names, summaries, deliverables, FAQ answers, portfolio entries and budget ranges are checked for claims the studio never makes: income, return or price claims (the shared rules in `src/claims.ts`, the same as the newsletter's) and promises of results such as "get 100k views". A denied claim or a question is fine ("Do you guarantee views? No."). A failing config names the setting, for example `packages[0].summary makes a claim the studio never makes (guaranteed: "Guaranteed")`.
 
 An invalid config does not crash the server. `/studio` answers `503` and the log names the bad setting once, for example `packages[0].priceUsd`.
 

@@ -21,6 +21,31 @@ export const badgerFace = (p: BadgerPlace): Box => {
 	return scaleBox(b, p.x, p.y, p.scale);
 };
 
+/** Where ZOO stands in a scene's main shot (null: he is not in it). Chart scenes use the pair framing when Badger shares it. */
+export const zooPlacement = (sc: Pick<StoryboardScene, 'type' | 'zoo' | 'badger'>, format: Format): ZooPlace | null => {
+	if (sc.zoo?.present === false) return null;
+	if (sc.type === 'chart') {
+		const L = LAYOUTS.chart[format];
+		return sc.badger?.present && L.pair ? L.pair.zoo : L.solo.zoo;
+	}
+	return (LAYOUTS as unknown as Record<string, Record<Format, {zoo: ZooPlace}>>)[sc.type][format].zoo;
+};
+
+/**
+ * A hard cut between these two framings reads as a glitch (a jump cut): ZOO stays on the same side at nearly the same
+ * size but moves (or resizes) a little. A side switch or a 1.25x+ punch-in/out is a real reframe (MO15); an identical
+ * framing is a continuity cut. Added 2026-11-24 (review: ZOO popped 120 px sideways on a steps -> quote cut).
+ */
+export const isJumpCut = (a: ZooPlace | null, b: ZooPlace | null, format: Format): boolean => {
+	if (!a || !b) return false;
+	const mid = FRAME[format].width / 2;
+	if (a.x < mid !== b.x < mid) return false;
+	const ratio = b.scale / a.scale;
+	if (ratio >= 1.25 || ratio <= 1 / 1.25) return false;
+	const dx = Math.abs(b.x - a.x);
+	return dx < 300 && (dx > 0 || Math.abs(ratio - 1) > 0.02);
+};
+
 /** Every face that can appear in a scene of this type and format (main shot and, for Shorts, Badger's insert). */
 export const sceneFaces = (sc: Pick<StoryboardScene, 'type' | 'zoo' | 'badger'>, format: Format): Box[] => {
 	const out: Box[] = [];

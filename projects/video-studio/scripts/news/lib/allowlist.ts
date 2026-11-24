@@ -214,7 +214,9 @@ export const findKnown = (toks: Tok[], idx: AllowIndex, src: string): KnownMatch
 				const t0 = stripPossessive(toks[i].text);
 				const exactFirst = t0 === en.name.split(/\s+/)[0];
 				// capitalised in the text, or spelled exactly like an entry that starts lower-case (crypto.news, stETH, 1inch)
-				const capOk = isCapitalized(t0) || (/^[\p{Ll}\p{N}]/u.test(en.name) && exactFirst);
+				// a blocked handle matches in any case ("zachxbt" is "ZachXBT"), except short all-caps ones (CZ, SBF)
+				const blockedAnyCase = en.category === 'blocked' && en.name.length > 3;
+				const capOk = blockedAnyCase || isCapitalized(t0) || (/^[\p{Ll}\p{N}]/u.test(en.name) && exactFirst);
 				if (!capOk) continue;
 				// short all-caps blocked handles (CZ, SBF) must match case exactly
 				if (en.category === 'blocked' && en.name.length <= 3 && t0 !== en.name) continue;

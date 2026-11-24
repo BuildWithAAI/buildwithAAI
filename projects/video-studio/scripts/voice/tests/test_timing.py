@@ -123,3 +123,78 @@ class FitScene(unittest.TestCase):
         self.assertEqual(take.speed, T.SPEED_MAX)
         self.assertEqual(over, T.overflow_ms(9000 / 1.15 + 400, 5200))
         self.assertGreater(over, 3000)
+
+
+class FitSentences(unittest.TestCase):
+    """pipeline._fit_sentences: each dubbed sentence fitted to its master sentence and placed where it starts
+    (2026-11-24, VCD fix: the scene-level fit let sentence pauses fall at other times than in the master picture)."""
+
+    class FakeSynth:
+        """A take of one sentence: 150 ms lead, then phones lasting a / speed ms (a per sentence, by its first
+        character), then a mark; numpy audio of that length."""
+
+        def __init__(self, a_by_first):
+            self.a_by_first, self.calls = a_by_first, []
+
+        def speak(self, phonemes, voice, speed):
+            import numpy as np
+
+            from voicelib.synth import Take
+
+            self.calls.append((phonemes, speed))
+            d = self.a_by_first[phonemes[0]] / speed / 1000.0
+            timings = [(phonemes[0], 0.15, 0.15 + d), (".", 0.15 + d, 0.2 + d)]
+            return Take(audio=np.zeros(int((0.25 + d) * 24000), dtype=np.float32), timings=timings, speed=speed)
+
+    MASTER = {"durationMs": 9000, "speechMs": 8000, "sentences": [{"startMs": 150, "endMs": 2650}, {"startMs": 3150, "endMs": 7150}]}
+
+    def fit(self, synth, master=None):
+        from voicelib.pipeline import _fit_sentences
+
+        return _fit_sentences(synth, "a. b.", "im_nicola", 1.0, master or self.MASTER, T.FIT_MIN_TAIL_MS)
+
+    @unittest.skipUnless(__import__("importlib").util.find_spec("numpy"), "numpy not installed")
+    def test_each_sentence_starts_with_its_master_sentence(self):
+        take, over, _, detail = self.fit(self.FakeSynth({"a": 2700, "b": 3800}))  # 2.7 s vs 2.5 s, 3.8 s vs 4.0 s
+        self.assertEqual(over, 0)
+        self.assertEqual([d["startMs"] for d in detail], [150, 3150])  # the second sentence waits for its master start
+        self.assertGreater(detail[0]["speed"], 1.0)
+        self.assertLess(detail[1]["speed"], 1.0)
+        for d in detail:
+            self.assertLessEqual(abs((d["endMs"] - d["startMs"]) - (d["masterEndMs"] - d["masterStartMs"])), 100)
+        starts = [a for ch, a, _ in take.timings if ch in "ab"]
+        self.assertAlmostEqual(starts[1], 3.15, places=2)
+
+    @unittest.skipUnless(__import__("importlib").util.find_spec("numpy"), "numpy not installed")
+    def test_an_overlong_sentence_is_reported_even_when_the_scene_fits(self):
+        take, over, _, detail = self.fit(self.FakeSynth({"a": 3500, "b": 2000}))  # 3.5 s even at 1.15 > 2.5 s
+        self.assertEqual(over, 0)  # the scene still fits
+        self.assertEqual(detail[0]["speed"], T.SPEED_MAX)
+        self.assertGreater(detail[0]["overrunMs"], 100)
+        self.assertGreater(detail[0]["longerMs"], 100)
+
+    def test_a_different_sentence_count_falls_back(self):
+        from voicelib.pipeline import _fit_sentences
+
+        self.assertIsNone(_fit_sentences(self.FakeSynth({"a": 1}), "a. b. a.", "v", 1.0, self.MASTER, T.FIT_MIN_TAIL_MS))
+        self.assertIsNone(_fit_sentences(self.FakeSynth({"a": 1}), "a. b.", "v", 1.0, {"durationMs": 9000, "speechMs": 1}, T.FIT_MIN_TAIL_MS))
+
+
+class AudioTrackRefusal(unittest.TestCase):
+    """--fit-to plays a dub over the master picture: its fiction card and disclosure are the master's (English)."""
+
+    def test_fiction_and_offers_must_be_spoken(self):
+        from voicelib.pipeline import audio_track_problems
+
+        sb = {"fiction": True, "offers": ["hardware-wallet"], "scenes": [{"narration": "Te despiertas como caller."}, {"narration": "Este video no está patrocinado y no recibo ninguna comisión."}]}
+        self.assertEqual(len(audio_track_problems(sb, "es")), 2)
+        ok = {"fiction": True, "offers": ["x"], "scenes": [{"narration": "Una historia ficticia: te despiertas como caller."}, {"narration": "Enlace de afiliado: puedo ganar una comisión."}]}
+        self.assertEqual(audio_track_problems(ok, "es"), [])
+        self.assertEqual(audio_track_problems({"fiction": False, "scenes": [{"narration": "Hola."}]}, "es"), [])
+
+    def test_sentences(self):
+        from voicelib.pipeline import sentence_chunks, sentence_spans
+
+        self.assertEqual(sentence_chunks("ab cd. ef? gh"), ["ab cd.", "ef?", "gh"])
+        toks = [("a", 0.1, 0.2), (" ", 0.2, 0.25), ("b", 0.25, 0.4), (".", 0.4, 0.5), (" ", 0.5, 0.6), ("c", 0.6, 0.9), ("?", 0.9, 1.0)]
+        self.assertEqual(sentence_spans(toks), [(0.1, 0.4), (0.6, 0.9)])

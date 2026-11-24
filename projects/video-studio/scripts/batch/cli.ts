@@ -3,7 +3,7 @@
  *
  *   node scripts/batch/cli.ts plan --week 2026-W49 [--dry-run]
  *   node scripts/batch/cli.ts review --week 2026-W49 [--copy-media]
- *   node scripts/batch/cli.ts approve --week 2026-W49 --items all|ai1,ai1-s1 [--reply "APPROVE 2026-W49 all"]
+ *   node scripts/batch/cli.ts approve --week 2026-W49 --items all|ai1,ai1-s1 [--reply "APPROVE 2026-W49 all #<page code>"]
  *   node scripts/batch/cli.ts status --week 2026-W49
  *   node scripts/batch/cli.ts calendar --from 2026-W49 --weeks 4 [--out docs/CONTENT_CALENDAR.md | --check]
  *
@@ -40,11 +40,14 @@ Commands
                           --dry-run prints the plan and writes nothing; --no-pin writes the files but leaves the
                           backlogs unchanged (a preview).
   review --week <w>       Builds the ONE weekly approval page: out/approval/week-<w>/index.html (+ review.json, the
-                          hashes approve checks). --copy-media copies the previews next to the page.
+                          hashes approve checks, kept as review-<page code>.json too). Every reply on the page ends
+                          with its page code. --copy-media copies the previews next to the page.
   approve --week <w> --items <ids|all>
                           The OWNER's approval: writes the uploader's approval record (approval-<render>.json next to
                           each publish kit) with publishAt = the item's slot. Never uploads. At a terminal it asks the
-                          owner to type the week; otherwise --reply "<the owner's own reply, verbatim>".
+                          owner to type the page code of the page he reviewed; otherwise --reply "<the owner's own
+                          reply, verbatim>" ("APPROVE <w> <ids|all> #<page code>"). A code that is not the current
+                          page's is refused.
   status --week <w>       Where each item stands (the page's checks, printed; nothing written).
   calendar --from <w> --weeks <n>
                           The content calendar (Markdown) from the backlogs and settings. --out <file> writes it;

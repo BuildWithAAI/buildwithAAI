@@ -131,7 +131,12 @@ export const encodeMp3 = (master: string, out: string): void => {
 	);
 };
 
-const ffmetaEscape = (s: string) => s.replace(/[\\=;#\n]/g, (c) => (c === '\n' ? '\\\n' : `\\${c}`));
+/**
+ * One ffmetadata value. ffmpeg ends a line at \n AND at \r, so a carriage return (or a NUL) in a title could start a
+ * new key or a whole [CHAPTER] block: both become spaces first; then = ; # \ and \n are escaped.
+ */
+// eslint-disable-next-line no-control-regex
+export const ffmetaEscape = (s: string): string => s.replace(/[\r\0]/g, ' ').replace(/[\\=;#\n]/g, (c) => (c === '\n' ? '\\\n' : `\\${c}`));
 
 export type M4aMeta = {title: string; artist: string; album: string; genre: string; date: string; comment: string; copyright: string};
 

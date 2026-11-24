@@ -1,0 +1,167 @@
+{
+  "schema": "zoora-security/radar@1",
+  "radarVersion": "0.1",
+  "runDate": "2026-11-24",
+  "generatedUtc": "2026-11-24T06:00:00Z",
+  "mode": "fixture",
+  "about": "Test fixture only: invented incidents, publishers and links on reserved .test domains. Not real events.",
+  "sources": [
+    {"id": "fixture-db", "name": "Fixture DB", "tier": "A"},
+    {"id": "fixture-firm", "name": "Fixture Firm Hacked", "tier": "A"},
+    {"id": "example-wire", "name": "Example Wire", "tier": "B"},
+    {"id": "sample-daily", "name": "Sample Daily", "tier": "B"},
+    {"id": "aggregator", "name": "Aggregator Today", "tier": "C"}
+  ],
+  "top": [
+    {
+      "id": "2026-11-23-fixtureswap",
+      "title": "FixtureSwap: key compromise",
+      "protocol": "FixtureSwap",
+      "chains": ["Ethereum", "Base"],
+      "type": "key-compromise",
+      "dateUtc": "2026-11-23",
+      "reportedLosses": [
+        {"amountUsd": 5000000, "by": "aggregator", "url": "https://agg.example.test/fixtureswap", "quote": "$5M", "field": "title", "tier": "C"},
+        {"amountUsd": 4800000, "by": "example-wire", "url": "https://wire.example.test/news/fixtureswap-drained", "quote": "$4.8 Million", "field": "title", "tier": "B"},
+        {"amountUsd": 4200000, "by": "fixture-db", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23", "quote": "reported loss $4,200,000", "field": "excerpt", "tier": "A"},
+        {"amountUsd": 4200000, "by": "fixture-firm", "url": "https://firm.fixture.test/#FixtureSwap@2026-11-23", "quote": "reported loss $4,200,000", "field": "excerpt", "tier": "A"},
+        {"amountUsd": 9900000, "by": "sample-daily", "url": "https://daily.sample.test/fixtureswap", "quote": "$1.2 million", "field": "excerpt", "tier": "B"}
+      ],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): fixture-db, fixture-firm",
+      "sources": [
+        {"id": "fixture-db", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23", "title": "Fixture DB hacks: FixtureSwap (2026-11-23)", "excerpt": "FixtureSwap · 2026-11-23 · reported loss $4,200,000 · Key Compromise / Private Key Compromised · chains: Ethereum, Base", "publishedUtc": null, "tier": "A", "publisher": "Fixture DB", "kind": "structured"},
+        {"id": "fixture-firm", "url": "https://firm.fixture.test/#FixtureSwap@2026-11-23", "title": "Fixture Firm Hacked: FixtureSwap (2026-11-23)", "excerpt": "FixtureSwap · reported loss $4,200,000 · attack method: Private Key Leak", "publishedUtc": null, "tier": "A", "publisher": "Fixture Firm", "kind": "structured"},
+        {"id": "example-wire", "url": "https://wire.example.test/news/fixtureswap-drained", "title": "FixtureSwap Drained of $4.8 Million After Key Leak", "excerpt": "The protocol paused its contracts.", "publishedUtc": "2026-11-23T10:00:00Z", "tier": "B", "publisher": "Example Wire", "kind": "news"},
+        {"id": "example-wire", "url": "https://wire.example.test/newsletters/daily-2026-11-24", "title": "FixtureSwap hack, a token rally, and more", "excerpt": "Today's roundup.", "publishedUtc": "2026-11-24T05:00:00Z", "tier": "B", "publisher": "Example Wire", "kind": "news"},
+        {"id": "sample-daily", "url": "https://daily.sample.test/fixtureswap", "title": "CEO John Smith says FixtureSwap users will be repaid", "excerpt": "The founder spoke on a call.", "publishedUtc": "2026-11-23T12:00:00Z", "tier": "B", "publisher": "Sample Daily", "kind": "news"},
+        {"id": "aggregator", "url": "https://agg.example.test/fixtureswap", "title": "FixtureSwap loses $5M", "excerpt": "Short entry.", "publishedUtc": "2026-11-23T18:00:00Z", "tier": "C", "publisher": "Aggregator Today", "kind": "news"},
+        {"id": "plain-http", "url": "http://insecure.example.test/fixtureswap", "title": "FixtureSwap incident", "excerpt": "", "publishedUtc": "2026-11-23T19:00:00Z", "tier": "C", "publisher": "Plain HTTP Blog", "kind": "news"}
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "key-management",
+      "notes": ["Sources state different figures (3 distinct). Quote each with its source; never average."],
+      "mechanismKnown": true,
+      "facts": [
+        {"text": "Fixture DB lists a loss of $4,200,000.", "sourceId": "fixture-db", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23", "quote": "reported loss $4,200,000", "field": "excerpt"},
+        {"text": "Fixture DB classifies it as Key Compromise / Private Key Compromised.", "sourceId": "fixture-db", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23", "quote": "Key Compromise / Private Key Compromised", "field": "excerpt"},
+        {"text": "Fixture DB dates it 2026-11-23.", "sourceId": "fixture-db", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23", "quote": "2026-11-23", "field": "excerpt"},
+        {"text": "Fixture DB lists the chains as Ethereum, Base.", "sourceId": "fixture-db", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23", "quote": "chains: Ethereum, Base", "field": "excerpt"},
+        {"text": "Fixture Firm Hacked lists the attack method as Private Key Leak.", "sourceId": "fixture-firm", "url": "https://firm.fixture.test/#FixtureSwap@2026-11-23", "quote": "attack method: Private Key Leak", "field": "excerpt"},
+        {"text": "Example Wire headline, 2026-11-23:", "sourceId": "example-wire", "url": "https://wire.example.test/news/fixtureswap-drained", "quote": "FixtureSwap Drained of $4.8 Million After Key Leak", "field": "title"}
+      ],
+      "score": {"total": 80}
+    },
+    {
+      "id": "2026-11-24-mock-bridge",
+      "title": "Mock Bridge: reported bridge exploit (developing)",
+      "protocol": "Mock Bridge",
+      "chains": [],
+      "type": "bridge",
+      "dateUtc": "2026-11-24",
+      "reportedLosses": [
+        {"amountUsd": 700000, "by": "aggregator", "url": "https://agg.example.test/mock-bridge", "quote": "$700K", "field": "title", "tier": "C"}
+      ],
+      "status": "developing",
+      "statusReason": "developing: only 1 unhedged tier-B outlet (sample-daily); tier-C sources do not count",
+      "sources": [
+        {"id": "sample-daily", "url": "https://daily.sample.test/mock-bridge-ceo", "title": "CEO Jane Doe denies Mock Bridge exploit", "excerpt": "", "publishedUtc": "2026-11-24T02:00:00Z", "tier": "B", "publisher": "Sample Daily", "kind": "news"},
+        {"id": "aggregator", "url": "https://agg.example.test/mock-bridge", "title": "Mock Bridge exploited for $700K", "excerpt": "", "publishedUtc": "2026-11-24T03:00:00Z", "tier": "C", "publisher": "Aggregator Today", "kind": "news"}
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "bridge-security",
+      "notes": ["Label as developing. Attribute every line to its source."],
+      "mechanismKnown": true,
+      "facts": [
+        {"text": "Sample Daily headline, 2026-11-24:", "sourceId": "sample-daily", "url": "https://daily.sample.test/mock-bridge-ceo", "quote": "CEO Jane Doe denies Mock Bridge exploit", "field": "title"},
+        {"text": "Aggregator Today headline, 2026-11-24:", "sourceId": "aggregator", "url": "https://agg.example.test/mock-bridge", "quote": "Mock Bridge exploited for $700K", "field": "title"}
+      ],
+      "score": {"total": 50}
+    },
+    {
+      "id": "2026-11-23-sample-wallet",
+      "title": "Sample Wallet users: phishing",
+      "protocol": "Sample Wallet",
+      "chains": [],
+      "type": "phishing",
+      "dateUtc": "2026-11-23",
+      "reportedLosses": [],
+      "status": "confirmed",
+      "statusReason": "confirmed: 2+ independent unhedged tier-B outlets: example-wire, sample-daily",
+      "sources": [
+        {"id": "example-wire", "url": "https://wire.example.test/news/sample-wallet-ads", "title": "Fake ads lure Sample Wallet users to a phishing site, researchers find", "excerpt": "", "publishedUtc": "2026-11-23T08:00:00Z", "tier": "B", "publisher": "Example Wire", "kind": "news"},
+        {"id": "sample-daily", "url": "https://daily.sample.test/sample-wallet", "title": "Sample Wallet price crashes 40% after phishing wave", "excerpt": "", "publishedUtc": "2026-11-23T09:00:00Z", "tier": "B", "publisher": "Sample Daily", "kind": "news"}
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "phishing",
+      "notes": [],
+      "mechanismKnown": true,
+      "facts": [
+        {"text": "Sample Daily headline, 2026-11-23:", "sourceId": "sample-daily", "url": "https://daily.sample.test/sample-wallet", "quote": "Sample Wallet price crashes 40% after phishing wave", "field": "title"},
+        {"text": "Example Wire headline, 2026-11-23:", "sourceId": "example-wire", "url": "https://wire.example.test/news/sample-wallet-ads", "quote": "Fake ads lure Sample Wallet users to a phishing site, researchers find", "field": "title"}
+      ],
+      "score": {"total": 45}
+    },
+    {
+      "id": "2026-11-22-quiet-dao",
+      "title": "Quiet DAO: reported security incident (mechanism not classified) (developing)",
+      "protocol": "Quiet DAO",
+      "chains": [],
+      "type": "other",
+      "dateUtc": "2026-11-22",
+      "reportedLosses": [],
+      "status": "developing",
+      "statusReason": "developing: only 1 unhedged tier-B outlet (example-wire)",
+      "sources": [
+        {"id": "example-wire", "url": "https://wire.example.test/news/quiet-dao", "title": "Quiet DAO pauses its forum", "excerpt": "", "publishedUtc": "2026-11-22T08:00:00Z", "tier": "B", "publisher": "Example Wire", "kind": "news"}
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": null,
+      "notes": [],
+      "mechanismKnown": false,
+      "facts": [
+        {"text": "Example Wire headline, 2026-11-22:", "sourceId": "example-wire", "url": "https://wire.example.test/news/quiet-dao", "quote": "Quiet DAO pauses its forum", "field": "title"}
+      ],
+      "score": {"total": 30}
+    }
+  ],
+  "alsoSeen": [
+    {
+      "id": "2026-11-20-old-farm",
+      "title": "Old Farm: exploit",
+      "protocol": "Old Farm",
+      "chains": [],
+      "type": "exploit",
+      "dateUtc": "2026-11-20",
+      "reportedLosses": [],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): fixture-db",
+      "sources": [
+        {"id": "fixture-db", "url": "https://db.fixture.test/hacks#Old%20Farm@2026-11-20", "title": "Fixture DB hacks: Old Farm (2026-11-20)", "excerpt": "", "publishedUtc": null, "tier": "A", "publisher": "Fixture DB", "kind": "structured"}
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": null,
+      "notes": [],
+      "mechanismKnown": true,
+      "facts": [],
+      "score": {"total": 20}
+    },
+    {"id": "", "title": "", "protocol": ""},
+    "not an incident"
+  ],
+  "unclustered": [],
+  "corrections": [
+    {
+      "incidentId": "2026-11-23-fixtureswap",
+      "protocol": "FixtureSwap",
+      "previousRadarDate": "2026-11-23",
+      "changes": [
+        "status developing -> confirmed",
+        "example-wire now states 4,800,000 USD (previously 4,500,000 USD)",
+        "new figure from fixture-firm: 4,200,000 USD",
+        "something the radar never writes"
+      ]
+    }
+  ],
+  "seenRecordKeys": []
+}

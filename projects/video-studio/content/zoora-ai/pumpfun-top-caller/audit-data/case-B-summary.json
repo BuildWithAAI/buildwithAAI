@@ -1,12 +1,13 @@
 {
  "case": "Case B",
+ "checked": "Independently re-derived by a checker on 2026-11-24. Where this file and ../audit.md differ, ../audit.md (checker-corrected) wins. Claim figures are banded on purpose: exact allegation figures would let a reader map this case to a named person.",
  "status": "OUR ESTIMATE from public Solana data. Allegation by an analytics firm; not a finding about any person. Timing and funding links do not prove common ownership.",
  "claim_summary": {
-  "claimed": "A caller's public wallet plus 3 side wallets bought before callouts and sold about 3 minutes later; 49 tokens; ~$125K total (~$45K trading + ~$80K callout rewards).",
-  "source": "Analytics firm's X thread (Oct 2026) as quoted by news outlets; the thread itself could not be opened from this session."
+  "claimed": "A caller's public wallet plus 3 side wallets bought around callouts and began selling within a few minutes; on the order of 50 called tokens; a low-six-figure USD total, roughly one third trading profit and two thirds callout rewards (exact figures withheld: they identify the case).",
+  "source": "An analytics firm's public thread, as quoted by news outlets; the thread itself could not be opened from this session."
  },
  "sample": {
-  "window_utc": "2026-08-12 to 2026-10-11 (claimed period, start of paid callout rewards to 2 days after the thread); joint trading by all three side wallets only from 2026-09-22",
+  "window_utc": "about two months: from the start of paid callout rewards to two days after the allegation; joint trading by all three side wallets only in its last ~3 weeks (3 of the 27 sampled tokens were traded after the allegation)",
   "wallets": "1 public + 3 side wallets (resolved from the 6-character prefixes the analytics firm published)",
   "selection": "Slots where all three side wallets had a successful transaction (544) -> every 10th read (55) -> 44 distinct tokens -> first 9 kept + every 2nd of the remaining 35 -> 27 tokens rebuilt in full (25 with buys by both the public and side wallets)",
   "signatures_in_window": "each side wallet had roughly 6,000-8,000 signatures in the window, 75-82% of them failed transactions",
@@ -73,7 +74,8 @@
    "p75": 735,
    "min": 6,
    "max": 14817
-  }
+  },
+  "note": "Unweighted sample statistics below over-sample staged multi-tranche exits (a token is more likely to be picked the more joint slots it has). Use timing_design_weighted_pre_allegation for the typical token."
  },
  "pnl": {
   "side_wallets_total_sol_sample": 151.7,
@@ -106,26 +108,6 @@
    "min": -2.99,
    "max": 31.57
   },
-  "weighted_estimate_sep22_oct11": {
-   "tokens": 200,
-   "tokens_90pct": [
-    150,
-    250
-   ],
-   "group_sol": 460,
-   "group_sol_90pct": [
-    80,
-    980
-   ],
-   "group_usd": 55000,
-   "group_usd_90pct": [
-    10000,
-    118000
-   ],
-   "side_usd": 71000,
-   "public_sol": -130,
-   "method": "Each sampled token weighted by 1 / (chance it was picked): joint slots were read 1 in 10, so a token with k joint slots counts 10/k (capped at 1 chance), times 2 for tokens kept 1 in 2. 90% range from 2,000 bootstrap resamples of the 27 tokens."
-  },
   "public_sent_tokens_to_sides_in_tokens": 9,
   "share_tokens_side_profitable": 0.68,
   "share_tokens_public_profitable": 0.12,
@@ -133,24 +115,57 @@
    107,
    122
   ],
-  "note": "PnL = SOL in minus SOL out per wallet per token, fees, tips and account rent included. USD uses an on-chain SOL/USDC price per day (median of 2-4 swap legs; 3 days interpolated from neighbours). Side-wallet PnL includes tokens the public wallet moved to them for free, so the group (public + sides) figure is the fair one."
+  "note": "PnL = SOL in minus SOL out per wallet per token, fees, tips and account rent included. USD uses an on-chain SOL/USDC price per day (median of 2-4 swap legs; 3 days interpolated from neighbours). Side-wallet PnL includes tokens the public wallet moved to them for free, so the group (public + sides) figure is the fair one.",
+  "weighted_estimate_joint_trading_before_allegation": {
+   "tokens": 175,
+   "tokens_90pct": [
+    126,
+    228
+   ],
+   "group_sol": 480,
+   "group_sol_90pct": [
+    90,
+    980
+   ],
+   "group_usd": 57000,
+   "group_usd_90pct": [
+    10000,
+    118000
+   ],
+   "side_usd": 74000,
+   "public_sol": -126,
+   "method": "Each sampled token weighted by 1 / (chance it was picked), counting only joint slots that can reveal a token; tokens traded after the allegation excluded; 90% range from 2,000 bootstrap resamples. Our estimate; the range is wide."
+  },
+  "fee_distribution_credits_not_in_pnl": "Platform fee-to-holder SOL credits (about +1.6% of group PnL) are not included.",
+  "usdc_credits_to_public_wallet": {
+   "what": "USDC credits from one daily mass-payout address (consistent with callout rewards; payer not confirmed as the platform)",
+   "payout_days": 36,
+   "total_usdc": 91000,
+   "before_allegation_usdc": 87600,
+   "median_per_payout_day_usdc": 1800
+  }
  },
  "links_anonymized": [
   "One side wallet was the first source of value for both other side wallets (SOL for one, USDC for the other).",
   "The other first SOL funding came from two different one-off intermediary wallets (no shared funder at hop 1).",
   "The public wallet sent tokens directly to the side wallets: in 9 of the 25 sampled tokens, and in one transaction to all three at once.",
-  "Side wallets sent USDC to the public wallet 6 times (about 2,700 USDC in total, late Sep to early Oct).",
+  "Side wallets sent USDC to the public wallet 6 times (about 2,700 USDC in total, in the weeks before the allegation).",
   "These links fit common control but do not prove who controls the wallets."
  ],
  "claim_vs_measured": [
   {
    "claim": "Public wallet belongs to the caller",
-   "measured": "The caller's public platform profile lists a wallet with the published prefix.",
-   "verdict": "matches"
+   "measured": "The caller's public platform profile lists a wallet with the published prefix (the platform's attribution, not proof of control).",
+   "verdict": "confirmed"
   },
   {
-   "claim": "Public + 3 side wallets bought in the same second",
-   "measured": "Same block (same second) in 25 of 25 sampled tokens. A side wallet was earlier in the block in 23 of 25; all three side wallets were ahead in 11 of 25; the public wallet was first in 2 of 25.",
+   "claim": "Public wallet + 3 side wallets trade the called tokens together",
+   "measured": "Same block in 25 of 25 sampled tokens; direct token transfers (public to side, 9 of 25 tokens) and USDC transfers (side to public, 6) link them. Which tokens were called is not visible on-chain.",
+   "verdict": "confirmed"
+  },
+  {
+   "claim": "Public wallet bought, then the 3 others bought in the same second",
+   "measured": "Same block (same second) in 25 of 25, but the order is mostly reversed: a side wallet was earlier in the block in 23 of 25; all three ahead in 11 of 25; median 7 transactions ahead.",
    "verdict": "partly"
   },
   {
@@ -159,28 +174,28 @@
    "verdict": "could_not_check"
   },
   {
-   "claim": "Side wallets sold about 3 min after the callout (average)",
-   "measured": "Relative to the public buy: first side sell median 93 s, mean 165 s; SOL-weighted median 262 s; last side sell median 424 s.",
+   "claim": "Side wallets began selling about 3 minutes after the callout (average)",
+   "measured": "Relative to the public buy, design-weighted: first side sell median ~45 s (IQR ~20 s to ~1.5 min), mean ~1.6 min; last side sell median ~2 min, mean ~6 min.",
    "verdict": "partly"
   },
   {
-   "claim": "49 tokens",
-   "measured": "About 199 tokens traded jointly by all three side wallets from Sep 22 to Oct 11 (90% range 151-252); which of them were callouts cannot be told from chain data.",
+   "claim": "On the order of 50 called tokens",
+   "measured": "About 170-180 tokens traded jointly by all three side wallets before the allegation (90% range ~130-230); callouts cannot be identified on-chain.",
    "verdict": "partly"
   },
   {
-   "claim": "About $45K trading profit",
-   "measured": "Four wallets combined, weighted estimate for Sep 22 - Oct 11: about 460 SOL, about $55,000 (90% range $10,000-$118,000). Side wallets alone about $71,000; public wallet negative.",
+   "claim": "Trading profit in the tens of thousands of USD",
+   "measured": "Four wallets combined, weighted estimate: about 480 SOL, about $57,000 (90% range ~$10,000-$118,000). Side wallets alone ~$72,000-77,000; public wallet negative.",
    "verdict": "partly"
   },
   {
-   "claim": "About $80K callout rewards",
-   "measured": "USDC credits to the public wallet from one daily mass-payout wallet, Sep 14 - Oct 9: about 55,000 USDC on 22 days; Aug 14 - Sep 13 not checked; payer not confirmed as the platform.",
+   "claim": "Callout rewards in the tens of thousands of USD",
+   "measured": "USDC credits to the public wallet from one daily mass-payout address: about 91,000 USDC on 36 payout days (about 87,600 before the allegation); payer not confirmed as the platform.",
    "verdict": "partly"
   },
   {
    "claim": "Follower count given in coverage",
-   "measured": "Not checkable for October 2026; the public profile count today differs and is not comparable in time.",
+   "measured": "Not checkable for the time of the allegation.",
    "verdict": "could_not_check"
   },
   {
@@ -193,13 +208,35 @@
   "entry": "All four wallets buy in one block (~0.4 s), side wallets usually a few positions ahead of the public wallet (median 7 transactions).",
   "entry_size_sol": "About 0.9-1.6 SOL per wallet (median ~1.3).",
   "public_entry_price_premium": "The public wallet paid a median ~9% more per token than the first side wallet in the same block (IQR ~8-15%).",
-  "exit": "First side sell median ~1.5 min after the public buy (IQR ~20 s - 3 min); last side sell median ~7 min (IQR ~1-11 min); winners were sold in many small pieces (up to ~30 sells per wallet).",
-  "public_wallet_exit": "The public wallet usually sold in the same block as the side wallets' final sell (median hold ~7 min).",
+  "exit": "Typical token (design-weighted): first side sell ~45 s after the public buy, last ~2 min; staged exits (first sell ~1.5 min, last ~7 min, winners sold in up to ~30 pieces per wallet) are the minority that carries most of the profit.",
+  "public_wallet_exit": "The public wallet sold in the same block as the side wallets' final sell in about half the tokens (12 of 25; 14 of 25 within 2 s); typical public hold ~2 min (design-weighted).",
   "pnl_shape": "Group result per token: median about +0.6 SOL, IQR about -0.4 to +7 SOL; a few big winners (up to ~+30 SOL) carry the total. The public wallet lost on most tokens (profitable on 3 of 25).",
   "token_age_example": "Token age when the group bought, in the three charted examples: about 10 s, 70 s and 270 s after creation.",
   "charted_examples": "Peak after the public buy in the three charts: about 1.6x, 2.9x and 2.2x the public wallet's entry price; each ended below the public entry (lows about 0.53x, 0.40x and 0.57x within 30 min).",
   "bots": "Around these launches most transactions were failed or no-op bot attempts: in one 40-minute window, about 5,600 transactions touched the curve, about 1,500 succeeded and only about 480 actually traded.",
   "public_wallet_behaviour": "In the staged-exit example the public wallet added three more buys (at about +1, +5 and +9 min) while the side wallets were selling, then sold everything in the same block as the side wallets' last sell."
  },
- "script_note": "The claim figures above (token count, dollar totals) identify the real case. Do not put them on screen; the story uses fictional composites."
+ "script_note": "Claim figures here are banded on purpose: the exact figures identify the real case. Do not put case figures on screen; the story uses fictional composites.",
+ "timing_design_weighted_pre_allegation": {
+  "tokens": 22,
+  "side_first_sell_after_public_buy_s": {
+   "median": 43,
+   "p25": 18,
+   "p75": 93,
+   "mean": 96
+  },
+  "side_last_sell_after_public_buy_s": {
+   "median": 109,
+   "p25": 33,
+   "p75": 456,
+   "mean": 363
+  },
+  "public_hold_s": {
+   "median": 118,
+   "p25": 33,
+   "p75": 456,
+   "mean": 542
+  },
+  "public_sold_in_same_block_as_side_final_sell": "12 of 25 tokens (14 of 25 within 2 s)"
+ }
 }

@@ -23,7 +23,8 @@ npm run newsletter -- lint out/newsletter/<slug>.md      # re-check a draft afte
 | `--hub <origin>` | Hub origin for relative offer links, e.g. `https://go.zoora.ai`. Default `PUBLIC_BASE_URL` if it is https. |
 | `--youtube-id <id>` | The video's YouTube id, when `kit.json` does not have one yet. |
 | `--brand <name>` | Brand name. Default `BRAND_NAME` or `Zoora AI`. |
-| `--kit-draft` | Also create a draft broadcast in Kit (needs `KIT_API_KEY`). It is never sent or scheduled. |
+| `--kit-draft` | Also create a draft broadcast in Kit (needs `KIT_API_KEY`). It is never sent or scheduled. You must choose its recipients: `KIT_SUBSCRIBER_FILTER=tag:<id>` (or `segment:<id>`, or `tag:12,34` for subscribers with every listed tag), or `--all-subscribers`. |
+| `--all-subscribers` | With `--kit-draft`: no subscriber filter. Kit then addresses all subscribers, so use it only if every subscriber on the account agreed to episode emails with affiliate links. |
 
 Exit codes: `0` ok, `1` problems found (nothing written), `2` usage error.
 
@@ -39,7 +40,8 @@ Exit codes: `0` ok, `1` problems found (nothing written), `2` usage error.
 
 ## What the lint blocks
 
-- Income, return or guarantee claims, even when quoting a scam: *guaranteed*, *risk-free*, *get rich*, *passive income*, multipliers such as *100x*, *double your money*, *financial freedom*, *to the moon*, price targets and similar. Describe the trick without repeating its pitch. Softer words (*returns*, *profit*, *invest*, urgency) only print warnings.
+- Income, return, price or guarantee claims, even when quoting a scam: *guaranteed*, *risk-free*, *get rich*, *passive income*, multipliers such as *100x* or *easy 2x in a month*, earnings figures in any currency or coin (*I made $5,000*, *earn £300 a week*, *earned 5 ETH*), percentage returns (*20% monthly returns*, *300% APY*), price targets (*could hit $500*, *to $250k by December*, *heading to $1*), *turn $100 into $10,000*, *you can't lose*, *100% safe*, *profit every day*, buy calls (*buy now*, *ape in*, *get in early*), *double your money*, *financial freedom*, *to the moon* and similar. The rules live in `src/claims.ts` (shared with the studio's config check) and mirror the publish kit's. Describe the trick without repeating its pitch. Softer words without figures (*returns*, *profit*, *invest*, urgency) only print warnings.
+- A publish kit that failed its own `income-claims`, `restricted-offers` or any disclosure check: fix the kit first. Other failed kit checks (title length, captions...) are printed as warnings.
 - An offer with no disclosure, or a disclosure that does not say what the relationship is.
 - A rendered offer link without its disclosure right above it.
 - Hub links not tagged `v=<slug>&s=email`.
@@ -47,16 +49,17 @@ Exit codes: `0` ok, `1` problems found (nothing written), `2` usage error.
 
 ## Kit setup (owner)
 
-- The hub page posts `email_address` to `KIT_FORM_ACTION`. The default is the zoora.ai form `10168331`. Kit runs double opt-in and unsubscribe, and the hub never receives the address.
-- The zoora.ai form promises "product and build updates". The hub page promises "new episodes and occasional recommendations" with labelled affiliate links. A separate Kit form for the hub, set through `KIT_FORM_ACTION`, keeps those two consents apart. Only send episode emails to people who signed up for them.
+- The hub page posts `email_address` to `KIT_FORM_ACTION`. Kit handles unsubscribes, and the hub never receives the address.
+- `KIT_FORM_ACTION` is required in production. The zoora.ai form `10168331` promises "product and build updates", while the hub page promises "new episodes and occasional recommendations" with labelled affiliate links, so create a separate Kit form for the hub (development falls back to `10168331`, and the hub warns if production uses it). Give that form's subscribers a tag and set `KIT_SUBSCRIBER_FILTER=tag:<id>`, so `--kit-draft` addresses only them.
+- Turn on double opt-in for the hub's form (in Kit, the form's "incentive email"). The signup page and the email footer no longer promise a confirmation step, because nobody has checked the form's setting; once it is on, you may say so again.
 - In the Kit form's settings, after subscribing either show Kit's success message or redirect to `https://<hub>/subscribe/thanks`. The hub's Content-Security-Policy only allows forms to post to itself and to Kit, so browsers can block a redirect to any other site, such as zoora.ai/success.html.
 - Set a real postal address in Kit. Kit prints it in every email footer, and anti-spam law (CAN-SPAM) requires one.
 
 ## Kit API (optional)
 
-`--kit-draft` calls `POST https://api.kit.com/v4/broadcasts` with the `X-Kit-Api-Key` header, `send_at: null` and `public: false`, which creates a draft. Docs: <https://developers.kit.com/api-reference/broadcasts/create-a-broadcast>. Create a v4 API key in Kit under Settings > Developer and export it as `KIT_API_KEY`. Never commit it. The client never retries, because a retry could create a duplicate draft.
+`--kit-draft` calls `POST https://api.kit.com/v4/broadcasts` with the `X-Kit-Api-Key` header, `send_at: null` and `public: false`, which creates a draft. With `KIT_SUBSCRIBER_FILTER=tag:123` the body also carries `"subscriber_filter": [{"all": [{"type": "tag", "ids": [123]}]}]`. Docs: <https://developers.kit.com/api-reference/broadcasts/create-a-broadcast>. According to that page (read through search extracts, not opened), a broadcast without a filter goes to all subscribers, which is why the CLI refuses to create a draft until you choose. Create a v4 API key in Kit under Settings > Developer and export it as `KIT_API_KEY`. Never commit it. The client never retries, because a retry could create a duplicate draft.
 
-**Not tested live.** api.kit.com was unreachable from the build machine, so the client has only been tested against a mocked `fetch` (`kit-api.test.ts`). Make one test call on the real account before relying on it. Review the draft and choose its recipients in Kit, then send it from Kit.
+**Not tested live.** api.kit.com and developers.kit.com were unreachable from the build machine, so the client, including the `subscriber_filter` shape, has only been tested against a mocked `fetch` (`kit-api.test.ts`). Make one test call on the real account before relying on it, and check the draft's recipients in Kit before you send it.
 
 ## Tests
 

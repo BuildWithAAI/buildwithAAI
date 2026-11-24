@@ -36,7 +36,7 @@ for (const s of spans) {
 		fps: 30,
 		frames: s.durationInFrames,
 		seed: `${sb.slug}:${sc.id}:${format}`,
-		zooView: sc.type === 'chart' ? 'threeQuarter' : 'front',
+		zooView: sc.type === 'chart' ? (format === 'vertical' ? 'threeQuarter' : 'front') : 'front',
 		badgerPlace: sc.badger?.present ? ((L.badger ?? LAYOUTS.hook[format].badger) as never) : null,
 		badgerInsert: insert,
 	});

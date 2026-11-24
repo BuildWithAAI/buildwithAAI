@@ -33,7 +33,51 @@ export type Direction = {
 	reactionAt: number;
 	press: number | null; // CTA button press frame
 	insert: {from: number; to: number} | null; // vertical Badger insert window [from, to)
+	/** The scene's key visual beats [from, to): an insert never covers them (and Badger's reaction never hides them). */
+	beats: Beat[];
 	speechEnd: number;
+};
+
+/** A key visual beat of a scene, as a half-open frame window. A soft beat is kept clear only when there is room. */
+export type Beat = {from: number; to: number; what: string; soft?: boolean};
+
+/**
+ * Badger's insert shot in Shorts (a hard cut to Badger alone). Fixed 2026-11-24 (review): it used to cut 10 f before
+ * Badger's reaction, which in a chart scene is 2 f BEFORE the rug candle completes and in a CTA 1-7 f before the
+ * button press, so the narrated payoff played over the dog. Now it comes after the scene's key beat, lasts about 1.5 s,
+ * and cuts back to the main shot for at least 1 s when the scene has room (else it holds to the end of the scene).
+ */
+export const INSERT = {
+	lead: 10, // frames from the cut to Badger's reaction
+	len: 45, // about 1.5 s of Badger, then back to the main shot
+	minLen: 24, // a reaction needs an action and an 8-15 f hold (MO17): shorter than this, no insert
+	backMin: 30, // the main shot comes back for at least 1 s, or the insert holds to the cut
+} as const;
+
+/**
+ * Where the insert goes: the first window at or after `desired` whose first INSERT.minLen frames cover no key beat; it
+ * ends after INSERT.len frames or at the next key beat. With no later beat and less than INSERT.backMin frames left
+ * after it, it holds to the end of the scene (and under the next scene's transition). Soft beats (ZOO's turn to camera
+ * after the rug) are kept clear when that still leaves room; otherwise only the hard beats are. null: no room for a
+ * readable reaction after the key beats.
+ */
+export const placeInsert = (desired: number, frames: number, beats: Beat[]): {from: number; to: number} | null => {
+	const hard = beats.filter((b) => !b.soft);
+	return placeAfter(desired, frames, beats) ?? (hard.length < beats.length ? placeAfter(desired, frames, hard) : null);
+};
+
+const placeAfter = (desired: number, frames: number, beats: Beat[]): {from: number; to: number} | null => {
+	let from = Math.max(0, Math.round(desired));
+	for (;;) {
+		const hit = beats.find((b) => from < b.to && b.from < from + INSERT.minLen);
+		if (!hit) break;
+		from = hit.to;
+	}
+	if (from + INSERT.minLen > frames) return null;
+	const next = Math.min(Infinity, ...beats.filter((b) => b.from >= from + INSERT.minLen).map((b) => b.from));
+	const to = Math.min(from + INSERT.len, next);
+	if (next === Infinity && frames - to < INSERT.backMin) return {from, to: frames + 1000};
+	return {from, to};
 };
 
 const list = (sc: StoryboardScene, k: string): string[] => (Array.isArray(sc.onScreen?.[k]) ? (sc.onScreen?.[k] as string[]) : []);
@@ -83,6 +127,8 @@ export const directScene = (d: DirectionInput): Direction => {
 	const longBlinks: number[] = [];
 	let reveals: number[] = [];
 	let press: number | null = null;
+	const beats: Beat[] = [];
+	let insertAt: number | null = null; // where an insert would like to start (null: before the default reaction beat)
 	let reactionAt = defaultReactionFrame(frames, speechEnd);
 	let baseLook: {lookX: number; lookY: number} | undefined;
 	let startExpression: Expression = expression;
@@ -98,6 +144,7 @@ export const directScene = (d: DirectionInput): Direction => {
 				startExpression = 'neutral';
 				changes.push({frame: land + 10, expression});
 			} else browBeats.push(land + 4);
+			beats.push({from: 0, to: land + 18, what: 'title lands, ZOO reacts'});
 			break;
 		}
 		case 'talk': {
@@ -107,13 +154,17 @@ export const directScene = (d: DirectionInput): Direction => {
 				const point = canPoint && (i === 0 || (i === bullets.length - 1 && bullets.length >= 3));
 				if (point) gestures.push({frame: f, hold: 42});
 				else glances.push(landscape ? {frame: Math.max(0, f - 2), lookX: 0.65, lookY: 0.1, hold: 16} : {frame: Math.max(0, f - 2), lookX: 0, lookY: -0.75, hold: 14});
+				beats.push({from: f - 2, to: f + 12, what: `bullet ${i + 1} appears`});
 			});
 			break;
 		}
 		case 'steps': {
 			const steps = list(sc, 'steps');
 			reveals = toFrames(revealTimes(steps, tl.words, list(sc, 'cues').length ? list(sc, 'cues') : undefined, {lang, speechMs: tl.speechMs, firstMinMs: 500}));
-			for (const f of reveals) glances.push(landscape ? {frame: Math.max(0, f - 2), lookX: -0.7, lookY: 0.15, hold: 16} : {frame: Math.max(0, f - 2), lookX: 0, lookY: -0.75, hold: 14});
+			reveals.forEach((f, i) => {
+				glances.push(landscape ? {frame: Math.max(0, f - 2), lookX: -0.7, lookY: 0.15, hold: 16} : {frame: Math.max(0, f - 2), lookX: 0, lookY: -0.75, hold: 14});
+				beats.push({from: f - 2, to: f + 12, what: `step ${i + 1} appears`});
+			});
 			break;
 		}
 		case 'quote': {
@@ -121,20 +172,40 @@ export const directScene = (d: DirectionInput): Direction => {
 			const last = reveals.length ? reveals[reveals.length - 1] : 30;
 			if (landscape) glances.push({frame: 4, lookX: -0.55, lookY: 0.05, hold: Math.max(10, last + 14 - 4)});
 			browBeats.push(Math.min(frames - 34, last + 20));
+			// the quote builds word by word, then its attribution and source draw on (Quote.tsx: last + 8 .. last + 24)
+			beats.push({from: (reveals[0] ?? 0) - 2, to: last + 24, what: 'the quote builds, attribution and source appear'});
 			break;
 		}
 		case 'chart': {
 			const p = d.chart;
-			// he watches the chart: to his right in landscape (the 3/4 view already faces it), above him in Shorts
-			baseLook = landscape ? (d.zooView === 'front' ? {lookX: 0.6, lookY: 0} : undefined) : {lookX: 0, lookY: -0.6};
-			if (p?.rugDone !== null && p?.rugDone !== undefined) {
-				// MO17 reaction beat: the rug completes, ZOO holds, then turns to camera (swap on a blink) for a deadpan beat
-				const turn = Math.min(frames - 20, p.rugDone + 16);
-				if (d.zooView !== 'front') changes.push({frame: turn, view: 'front', expression});
-				else if (expression !== 'neutral') changes.push({frame: turn, expression});
-				if (expression !== 'neutral' && d.zooView === 'front') startExpression = 'neutral';
+			const turn = p?.rugDone !== null && p?.rugDone !== undefined ? Math.min(frames - 20, p.rugDone + 16) : null;
+			if (d.zooView === 'front') {
+				// landscape: he watches the chart (eyes on it), points as the pump completes, then darts to camera for the
+				// deadpan beat after the rug (MO17), with the expression swap hidden in that blink
+				const watchEnd = turn ?? frames;
+				glances.push(landscape ? {frame: 2, lookX: 0.6, lookY: 0, hold: Math.max(4, watchEnd - 4)} : {frame: 2, lookX: 0, lookY: -0.6, hold: Math.max(4, watchEnd - 4)});
+				if (canPoint && p?.pumpDone !== null && p?.pumpDone !== undefined) gestures.push({frame: p.pumpDone, hold: 40});
+				if (turn !== null) {
+					if (expression !== 'neutral') {
+						startExpression = 'neutral';
+						changes.push({frame: turn, expression});
+					} else changes.push({frame: turn}); // a blink with the gaze shift (LP7)
+				}
+			} else {
+				// 3/4 (Shorts): he watches the chart above him, then turns to camera on a blink and looks into the lens
+				glances.push({frame: 2, lookX: 0, lookY: -0.6, hold: Math.max(4, (turn ?? frames) - 4)});
+				if (turn !== null) changes.push({frame: turn, view: 'front', expression});
+			}
+			if (turn !== null && p?.rugDone !== null && p?.rugDone !== undefined) {
 				longBlinks.push(Math.min(frames - 20, turn + 30));
 				reactionAt = Math.min(frames - 20, p.rugDone + 8);
+				// key beats: the rug candle forms and the finished chart holds (the callout flips to the drop), then ZOO's
+				// turn to camera; Badger's insert comes after both (Shorts)
+				const rug = p.rugFrames ?? 12;
+				const hold = p.rugHold ?? 18;
+				beats.push({from: p.rugDone - rug, to: p.rugDone + hold, what: 'the rug candle forms and holds'});
+				beats.push({from: turn - 2, to: turn + 10, what: "ZOO's turn to camera", soft: true});
+				insertAt = p.rugDone + hold;
 			}
 			break;
 		}
@@ -145,6 +216,9 @@ export const directScene = (d: DirectionInput): Direction => {
 			press = subscribeMs !== null ? msToFrame(subscribeMs, fps) : Math.round(Math.max(speechEnd, 40) * 0.5);
 			if (canPoint) gestures.push({frame: Math.max(14, press - 6), hold: 30});
 			else glances.push({frame: Math.max(0, press - 8), lookX: landscape ? 0.6 : 0, lookY: landscape ? 0 : -0.7, hold: 20});
+			// the button press (Cta.tsx: scale down over 3 f, back over 7 f, fill turns dark)
+			beats.push({from: press - 6, to: press + 12, what: 'the button press'});
+			insertAt = press + 12;
 			break;
 		}
 		case 'endscreen': {
@@ -181,15 +255,13 @@ export const directScene = (d: DirectionInput): Direction => {
 			})
 		: null;
 	const badgerOn = !!sc.badger?.present && !!d.badgerPlace;
-	// insert shot (vertical): cut to Badger 10 f before his reaction, hold 1.5-2.5 s (to the end when that is close)
+	// insert shot (vertical): after the scene's key beats (an explicit badgerCue still decides when he reacts, unless
+	// that would cover a beat), Badger's reaction INSERT.lead frames after the cut
 	let insert: Direction['insert'] = null;
-	if (badgerOn && d.badgerInsert) {
-		const len = Math.max(45, Math.min(75, frames - reactionAt + 10));
-		const from = Math.max(0, Math.min(reactionAt - 10, frames - len));
-		insert = {from, to: from + len >= frames - 6 ? frames + 1000 : from + len};
-	}
-	const badger = badgerOn
-		? scheduleBadger({fps, frames, seed: `${seed}:badger`, reaction: sc.badger?.reaction ?? 'neutral', at: insert ? insert.from + 10 : reactionAt, place: d.badgerPlace as BadgerPlace})
-		: null;
-	return {zoo, badger, reveals, reactionAt, press, insert, speechEnd};
+	if (badgerOn && d.badgerInsert) insert = placeInsert(bc || insertAt === null ? reactionAt - INSERT.lead : insertAt, frames, beats);
+	const badger =
+		badgerOn && (insert || !d.badgerInsert)
+			? scheduleBadger({fps, frames, seed: `${seed}:badger`, reaction: sc.badger?.reaction ?? 'neutral', at: insert ? insert.from + INSERT.lead : reactionAt, place: d.badgerPlace as BadgerPlace})
+			: null;
+	return {zoo, badger, reveals, reactionAt: insert ? insert.from + INSERT.lead : reactionAt, press, insert, beats, speechEnd};
 };

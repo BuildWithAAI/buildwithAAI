@@ -1,8 +1,13 @@
 /**
  * review --week <w>: ONE mobile-first approval page for the whole week (out/approval/week-<w>/index.html) plus the
  * snapshot approve checks against (review.json): for every item, whether it was READY and the hashes of exactly what
- * the page showed. Thumbnails are copied next to the page; previews are relative links (or copies with --copy-media).
- * Nothing is uploaded, approved or sent.
+ * the page showed, the upload spec and the files it names included. Thumbnails are copied next to the page; previews
+ * are relative links (or copies with --copy-media). Nothing is uploaded, approved or sent.
+ *
+ * Every page has a page code: the first 8 hex characters of the SHA-256 of its snapshot (every hash, the readiness
+ * of every item and the build time). Each reply the page offers carries it ("APPROVE 2026-W49 ai1 #93770ddb"), and
+ * approve refuses a reply whose code is not the current page's, so a reply can only approve the page it answered.
+ * Every snapshot is also kept as review-<code>.json: a rebuild never erases the record of a page the owner saw.
  */
 import {copyFileSync, existsSync, mkdirSync} from 'node:fs';
 import {basename, join, relative} from 'node:path';
@@ -21,6 +26,8 @@ export type ReviewItem = {
 	state: ItemState;
 	preview: Media;
 	thumbs: Media[];
+	/** The upload spec's thumbnail override, copied next to the page; null when there is none. */
+	specThumb: Media | null;
 	claimReport: string | null;
 	reply: string;
 	edit: string;
@@ -42,6 +49,8 @@ export type ReviewModel = {
 	ownerInputs: string[];
 	replyAll: string;
 	planSha256: string;
+	/** The page code every reply carries: the first 8 hex characters of the snapshot's SHA-256. */
+	pageCode: string;
 };
 
 export type ReviewSnapshot = {
@@ -51,9 +60,33 @@ export type ReviewSnapshot = {
 	builtAt: string;
 	timeZone: string;
 	plan: {path: string; sha256: string};
-	page: {path: string; sha256: string};
-	items: Array<{id: string; ready: boolean; blockers: string[]; renderId: string; channel: string; slug: string; kit: string; slot: Slot; hashes: Record<string, string | null>; dubHashes: Record<string, string | null>; dubsReady: string[]}>;
+	/** code: what each reply on the page carries (see pageCodeOf); sha256: of the page's HTML. */
+	page: {path: string; sha256: string; code: string};
+	items: Array<{
+		id: string;
+		ready: boolean;
+		blockers: string[];
+		renderId: string;
+		channel: string;
+		slug: string;
+		kit: string;
+		slot: Slot;
+		hashes: Record<string, string | null>;
+		dubHashes: Record<string, string | null>;
+		dubsReady: string[];
+		/** The upload spec and the files it names, as shown (null = none: a spec added later is a change). */
+		specHashes: Record<string, string | null>;
+	}>;
 };
+
+/** "#" + 8 lowercase hex characters, as replies write it. */
+export const PAGE_CODE = /^#?([0-9a-f]{8})$/i;
+
+/** The page code: the first 8 hex characters of the SHA-256 of the snapshot (everything except the page itself). */
+export const pageCodeOf = (snapshot: Omit<ReviewSnapshot, 'page'>): string => sha256(JSON.stringify(snapshot)).slice(0, 8);
+
+/** The snapshot of every page built for a week, by code (review-<code>.json). */
+export const archivedSnapshotPath = (root: string, week: string, code: string): string => join(approvalDir(root, week), `review-${code.toLowerCase()}.json`);
 
 /** What stays a manual YouTube Studio step for an item (uploader README, "Studio steps"). */
 export const studioSteps = (item: PlanItem, state: ItemState, plan: WeekPlan): string[] => {
@@ -115,35 +148,26 @@ export const buildReview = async (o: ReviewOptions): Promise<{model: ReviewModel
 			const copied = copyInto(o.root, t.path, mediaDir, basename(t.path));
 			if (copied) thumbs.push({href: relative(pageDir, copied).split('\\').join('/'), label: basename(t.path)});
 		}
+		let specThumb: Media | null = null;
+		const override = state.spec?.thumbnail;
+		if (override?.path && override.file?.exists) {
+			const copied = copyInto(o.root, override.path, join(mediaDir, 'spec'), basename(override.path));
+			if (copied) specThumb = {href: relative(pageDir, copied).split('\\').join('/'), label: override.path};
+		}
 		const mdReport = state.claims.exists ? state.claims.path.replace(/\.json$/, '.md') : null;
 		items.push({
 			state,
 			preview: {href: previewHref, label: state.render.path},
 			thumbs,
+			specThumb,
 			claimReport: mdReport && existsSync(join(o.root, mdReport)) ? relative(pageDir, join(o.root, mdReport)).split('\\').join('/') : null,
-			reply: `APPROVE ${plan.week} ${item.id}`,
+			reply: '',
 			edit: `EDIT ${item.id}: <what to change>`,
 			studioSteps: studioSteps(item, state, plan),
 		});
 	}
 	const ready = items.filter((i) => i.state.ready).map((i) => i.state.item.id);
 	const builtAt = new Date(o.nowMs).toISOString();
-	const model: ReviewModel = {
-		week: plan.week,
-		weekStart: plan.weekStart,
-		weekEnd: plan.weekEnd,
-		timeZone: plan.timeZone,
-		builtAt,
-		builtAtLocal: formatLocal(o.nowMs, plan.timeZone),
-		status: plan.status,
-		items,
-		ready,
-		notReady: items.filter((i) => !i.state.ready).map((i) => i.state.item.id),
-		warnings: plan.warnings,
-		ownerInputs: uploaderInputs(o.root, o.hub, [...new Set(plan.items.map((i) => i.channel))], o.channelsPath ?? null),
-		replyAll: `APPROVE ${plan.week} all`,
-		planSha256: planSha,
-	};
 	const snapshot: Omit<ReviewSnapshot, 'page'> = {
 		version: 1,
 		kind: 'zoora-weekly-review',
@@ -163,7 +187,27 @@ export const buildReview = async (o: ReviewOptions): Promise<{model: ReviewModel
 			hashes: state.hashes,
 			dubHashes: state.dubHashes,
 			dubsReady: state.dubs.filter((d) => d.ready && d.reviewed).map((d) => d.lang),
+			specHashes: state.specHashes,
 		})),
+	};
+	const code = pageCodeOf(snapshot);
+	for (const r of items) r.reply = `APPROVE ${plan.week} ${r.state.item.id} #${code}`;
+	const model: ReviewModel = {
+		week: plan.week,
+		weekStart: plan.weekStart,
+		weekEnd: plan.weekEnd,
+		timeZone: plan.timeZone,
+		builtAt,
+		builtAtLocal: formatLocal(o.nowMs, plan.timeZone),
+		status: plan.status,
+		items,
+		ready,
+		notReady: items.filter((i) => !i.state.ready).map((i) => i.state.item.id),
+		warnings: plan.warnings,
+		ownerInputs: uploaderInputs(o.root, o.hub, [...new Set(plan.items.map((i) => i.channel))], o.channelsPath ?? null),
+		replyAll: `APPROVE ${plan.week} all #${code}`,
+		planSha256: planSha,
+		pageCode: code,
 	};
 	return {model, snapshot, pageDir};
 };
@@ -174,8 +218,11 @@ export const runReview = async (o: ReviewOptions): Promise<{model: ReviewModel; 
 	const pagePath = join(pageDir, 'index.html');
 	writeTextAtomic(pagePath, html);
 	const snapshotPath = join(pageDir, 'review.json');
-	writeJsonAtomic(snapshotPath, {...snapshot, page: {path: relative(o.root, pagePath).split('\\').join('/'), sha256: sha256(html)}} satisfies ReviewSnapshot);
-	o.log(`${model.items.length} item(s): ${model.ready.length} ready, ${model.notReady.length} not ready. Page: ${relative(o.root, pagePath)}`);
+	const full: ReviewSnapshot = {...snapshot, page: {path: relative(o.root, pagePath).split('\\').join('/'), sha256: sha256(html), code: model.pageCode}};
+	// the archive copy first: a page the owner may answer always has its record, whatever is built after it
+	writeJsonAtomic(archivedSnapshotPath(o.root, model.week, model.pageCode), full);
+	writeJsonAtomic(snapshotPath, full);
+	o.log(`${model.items.length} item(s): ${model.ready.length} ready, ${model.notReady.length} not ready. Page: ${relative(o.root, pagePath)} (page code #${model.pageCode})`);
 	for (const i of model.items) o.log(`${i.state.ready ? 'READY    ' : 'NOT READY'} ${i.state.item.id.padEnd(9)} ${i.state.item.slot.local}  ${i.state.blockers[0] ?? ''}`);
 	return {model, pagePath, snapshotPath};
 };

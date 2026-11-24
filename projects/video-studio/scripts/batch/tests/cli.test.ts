@@ -58,7 +58,10 @@ test('the whole week from the command line: plan, status, review, approve; nothi
 	assert.match(noOwner.out, /Without a terminal, pass the owner's own reply/);
 	const typed = await run(['approve', '--week', '2026-W49', '--items', 'ai1-s2', ...base], {prompt: async () => 'no'});
 	assert.equal(typed.code, EXIT.notApproved);
-	const ok = await run(['approve', '--week', '2026-W49', '--items', 'ai1,ai1-s1', '--reply', 'APPROVE 2026-W49 ai1 ai1-s1', ...base]);
+	const pageCode = (JSON.parse(readFileSync(join(ws.root, 'out/approval/week-2026-W49/review.json'), 'utf8')) as {page: {code: string}}).page.code;
+	const noCode = await run(['approve', '--week', '2026-W49', '--items', 'ai1,ai1-s1', '--reply', 'APPROVE 2026-W49 ai1 ai1-s1', ...base]);
+	assert.equal(noCode.code, EXIT.notApproved, 'a reply without the page code approves nothing');
+	const ok = await run(['approve', '--week', '2026-W49', '--items', 'ai1,ai1-s1', '--reply', `APPROVE 2026-W49 ai1 ai1-s1 #${pageCode}`, ...base]);
 	assert.equal(ok.code, EXIT.ok, ok.out + ok.err);
 	assert.match(ok.out, /Nothing was uploaded/);
 	assert.ok(existsSync(join(ws.root, 'out/publish/zoora-ai/alpha/approval-long.json')));

@@ -54,7 +54,11 @@ In YouTube Studio, open **Insights** (formerly Analytics), then **Advanced Mode*
 Pick the date range, usually Lifetime. Add the columns you want, then use **Export current view** and
 choose CSV. The download is a zip; pass its `Table data.csv`.
 
-- Set YouTube Studio to English. Headers are matched loosely: case, spaces, hyphens and soft hyphens
+- Set YouTube Studio to English, and do not re-save the CSV in a spreadsheet set to a decimal-comma
+  locale. Studio writes revenue with three decimals, so in such a file "31,200" (31.20 USD) looks like
+  31,200 dollars. A file with any decimal-comma number (for example "41,3") is refused with an error that
+  says so, and a video earning more than 50 per 1,000 views is flagged as a likely number-format problem.
+- Headers are matched loosely: case, spaces, hyphens and soft hyphens
   are ignored. Both old and new metric names work: `Impressions` or `Thumbnail impressions`, and
   `Impressions click-through rate (%)` or `Thumbnail impressions click-through rate (%)`.
 - Columns that are read: `Content` (the video id, required), `Video title`, `Video publish time`,
@@ -102,7 +106,8 @@ a payout is tied to a video. A missing part is `none`. If a network lower-cases 
 case-insensitive match is used, and the run says so.
 
 Without a `conversions` column, each row counts as one conversion, and a negative amount counts as a
-reversal (-1). **Currencies are never converted silently.** USD is added up. Any other currency is
+reversal (-1). Negative amounts may be written `-12.50`, `(12.50)`, `12.50-` or with the Unicode minus
+sign `−12.50`. **Currencies are never converted silently.** USD is added up. Any other currency is
 reported separately (for example "plus EUR 19.75 not converted"). It is converted only if you add a
 rate with its date: `"rates": {"EUR": {"usdPerUnit": …, "asOf": "YYYY-MM-DD", "source": "…"}}`.
 
@@ -209,3 +214,11 @@ Premium, net), which is what the Studio Content export and the API's `estimatedR
   no official page lists them. One example is an English/German mapping that includes the `Total` row
   and soft hyphens in headers. Treat the header list as best effort, and check it against your first
   real export.
+
+## Offers restricted by region
+
+The dashboard reads the hub's offer registry (`--offers <file>`, default `config/offers.json`). An offer
+with country lists or `unknownCountry: "block"` never gets a "double down" or "test" call, however well
+it earns: it is restricted by region, so it stays on the hub page only and is never named in videos,
+posts or emails. Without a registry, a "double down" call carries that reminder instead. A broken
+registry prints a warning, and the region rule is then not applied.

@@ -56,6 +56,31 @@ test('artifact patterns cannot match another request whose id extends this one',
 	assert.ok(!glob.test(voiceArtifact('ep1-es', 0)));
 });
 
+test('buildPlan: dubs (fitTo) wait for their master in a second voice matrix and know its artifact', () => {
+	const raw = {
+		id: 'ep2',
+		entry: 'src/episode/index.ts',
+		voice: [
+			{channel: 'zoora-ai', slug: 'ep2', lang: 'en', voice: 'im_nicola'},
+			{channel: 'zoora-ai', slug: 'ep2', lang: 'es', voice: 'im_nicola', fitTo: 'en'},
+			{channel: 'zoora-ai', slug: 'ep2', lang: 'pt-br', voice: 'im_nicola', fitTo: 'en'},
+		],
+		jobs: [
+			{composition: 'Episode', props: {channel: 'zoora-ai', slug: 'ep2', lang: 'en'}, output: 'out/ep2/en/episode.mp4', kind: 'video'},
+			{composition: 'Episode', props: {channel: 'zoora-ai', slug: 'ep2', lang: 'es'}, output: 'out/ep2/es/dub-track.wav', kind: 'audio'},
+		],
+	};
+	const {plan, errors} = buildPlan([req(raw)]);
+	assert.deepEqual(errors, []);
+	assert.deepEqual(plan.voice.map((v) => [v.lang, v.fitTo, v.masterArtifact]), [['en', '', '']]);
+	assert.deepEqual(plan.voiceDub.map((v) => [v.lang, v.vindex, v.fitTo, v.masterArtifact, v.artifact]), [
+		['es', 1, 'en', 'voice_ep2_0', 'voice_ep2_1'],
+		['pt-br', 2, 'en', 'voice_ep2_0', 'voice_ep2_2'],
+	]);
+	const audio = plan.render.find((c) => c.index === 1);
+	assert.deepEqual([audio?.kind, audio?.voicePattern, audio?.voiceExpect], ['audio', 'voice_ep2_1', 1], 'the dub track render downloads only the fitted es narration');
+});
+
 test('voiceNeeds: none without voice entries', () => {
 	const r = req({id: 't', entry: 'src/index.ts', encrypt: false, jobs: [{composition: 'TestCard', props: {}, output: 'out/t.mp4', kind: 'video'}]});
 	assert.deepEqual(voiceNeeds(r, 0), []);

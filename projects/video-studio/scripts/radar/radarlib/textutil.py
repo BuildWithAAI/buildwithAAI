@@ -157,14 +157,15 @@ _DATE_IN_TEXT = re.compile(
 )
 
 
-def dates_in_text(text, ref_date, max_back_days=400):
+def dates_in_text(text, ref_date, max_back_days=400, with_spans=False):
     """Calendar dates mentioned in text, years inferred so they are <= ref_date.
 
     Returns a list of datetime.date. A date without a year takes the latest year
-    that keeps it on or before ref_date. Dates after ref_date or more than
-    max_back_days before it are dropped (they are previews or history, not the
-    event). "May" alone is ambiguous, so it needs a following day number (the
-    regex already requires one).
+    that keeps it on or before ref_date, and only if that lands within 200 days
+    (otherwise it is more likely an upcoming date, such as "a Dec. 1 hearing").
+    Dates after ref_date or more than max_back_days before it are dropped (they
+    are previews or history, not the event). "May" alone is ambiguous, so the
+    regex requires a day number.
     """
     found = []
     for match in _DATE_IN_TEXT.finditer(text or ""):
@@ -172,13 +173,15 @@ def dates_in_text(text, ref_date, max_back_days=400):
         day = int(match.group(2))
         year = int(match.group(3)) if match.group(3) else None
         candidates = [year] if year else [ref_date.year, ref_date.year - 1]
+        limit = max_back_days if year else min(max_back_days, 200)
         for y in candidates:
             try:
                 value = dt.date(y, month, day)
             except ValueError:
                 continue
-            if value <= ref_date and (ref_date - value).days <= max_back_days:
-                found.append(value)
+            if value <= ref_date:
+                if (ref_date - value).days <= limit:
+                    found.append((value, match.start(), match.end()) if with_spans else value)
                 break
     return found
 

@@ -6,7 +6,7 @@
  * session's HTTPS proxy it re-runs itself with NODE_USE_ENV_PROXY=1, because Node's fetch ignores HTTPS_PROXY otherwise.
  */
 import {spawnSync} from 'node:child_process';
-import {quietTypelessWarning} from '../claims/lib/quiet.ts';
+import {quietTypelessWarning} from './lib/detectors.ts';
 
 const argv = process.argv.slice(2);
 const proxied = Boolean(process.env.HTTPS_PROXY || process.env.https_proxy);

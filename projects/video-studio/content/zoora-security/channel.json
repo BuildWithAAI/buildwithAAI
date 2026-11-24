@@ -1,0 +1,335 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "zoora-security",
+  "displayName": "The Zoo & Badger Show",
+  "displayNameStatus": "TBD: placeholder. The owner has not chosen this channel's display name; the show name stands in until he does (CLAUDE.md, Channel 2: 'display name TBD').",
+  "handle": null,
+  "showName": "The Zoo & Badger Show",
+  "scope": "Crypto security and AI security news: hacks, exploits, drainers, phishing, key compromises, AI-agent exploits and prompt injection incidents, malicious AI tools, deepfake and voice-clone scams, AI-powered phishing and AI-washing frauds (owner, 2026-11-24).",
+  "timezone": "America/Chicago",
+  "zooVoice": {
+    "engine": "kokoro-onnx 0.6.1 / kokoro-v1.0.int8",
+    "default": "im_nicola",
+    "byLang": {
+      "en": "im_nicola",
+      "es": "im_nicola",
+      "pt-br": "im_nicola",
+      "hi": "im_nicola",
+      "it": "im_nicola",
+      "zh": "im_nicola"
+    },
+    "speed": 1.0,
+    "decidedBy": "owner",
+    "decidedAt": "2026-11-24",
+    "note": "Same decision as content/zoora-ai/channel.json: Kokoro im_nicola for every language. The voice step always gets --voice im_nicola."
+  },
+  "badger": {
+    "voice": null,
+    "nonverbal": true,
+    "reactions": [
+      "neutral",
+      "happy",
+      "worried",
+      "shocked",
+      "judge",
+      "lookUp"
+    ],
+    "beatsPerShort": [
+      2,
+      3
+    ],
+    "sounds": {
+      "status": "not supplied",
+      "source": "Real dog sounds recorded from the owner's dog (clips the owner will supply). No words, no synthesized dog voice, no music, app sounds or other voices.",
+      "maxPerShort": 3,
+      "placement": "As punchlines after Zoo's lines, never over his speech."
+    },
+    "jokeCaptions": "Only with the owner's OK (e.g. \"[Badger: absolutely not]\").",
+    "showBeats": [
+      "judge",
+      "lookUp",
+      "earsBack",
+      "slowBlink",
+      "happy",
+      "shocked"
+    ]
+  },
+  "segments": [
+    {
+      "id": "cold-open",
+      "name": "Cold open",
+      "sceneType": "hook",
+      "showSegment": "coldOpen",
+      "seconds": [
+        4,
+        7
+      ],
+      "required": true,
+      "what": "The story in one attributed line. onScreen.kicker is \"Threat Brief\" (no date: the news gate reads on-screen dates as figures). When developing: DEVELOPING on screen (onScreen.title) and said aloud."
+    },
+    {
+      "id": "rekt-meter",
+      "name": "Rekt Meter",
+      "sceneType": "talk",
+      "showSegment": "headline",
+      "seconds": [
+        8,
+        12
+      ],
+      "required": true,
+      "what": "What happened: who, when and the reported loss. onScreen.title and onScreen.loss (as the source writes it) with scene.rekt {usd, source}; a second outlet's different figure goes in lossAlt + rekt.alt, never merged."
+    },
+    {
+      "id": "how-it-worked",
+      "name": "How it worked",
+      "sceneType": "talk",
+      "showSegment": "howItWorked",
+      "seconds": [
+        8,
+        12
+      ],
+      "required": true,
+      "what": "The mechanism at concept level, attributed: a 2-5 node diagram (onScreen.nodes, onScreen.links, scene.diagram.nodes). No code, addresses, function names or step lists."
+    },
+    {
+      "id": "our-check",
+      "name": "Our check",
+      "sceneType": "talk",
+      "showSegment": "desk",
+      "seconds": [
+        8,
+        12
+      ],
+      "required": true,
+      "what": "The real analysis this video adds (storyboard.analysis): the 30-day tracker comparison, the radar pattern or a fund-flow trace. Required in every daily video."
+    },
+    {
+      "id": "badgers-red-flag",
+      "name": "Badger's Red Flag",
+      "sceneType": "talk",
+      "showSegment": "badgerRedFlag",
+      "seconds": [
+        4,
+        7
+      ],
+      "required": false,
+      "what": "The warning sign a viewer could have spotted (onScreen.flag). Badger's nonverbal reaction carries the joke."
+    },
+    {
+      "id": "zoos-one-fix",
+      "name": "Zoo's One Fix",
+      "sceneType": "talk",
+      "showSegment": "zooOneFix",
+      "seconds": [
+        6,
+        10
+      ],
+      "required": true,
+      "what": "One defensive action (onScreen.fix, optional onScreen.detail). Defensive checklists are fine; attack steps are not."
+    },
+    {
+      "id": "outro",
+      "name": "Subscribe",
+      "sceneType": "cta",
+      "showSegment": "desk",
+      "seconds": [
+        3,
+        5
+      ],
+      "required": true,
+      "what": "Subscribe for tomorrow's Threat Brief. With a published evergreen explainer, use the outroEndScreen segment (onScreen.explainer) instead."
+    },
+    {
+      "id": "beat",
+      "name": "Badger beat",
+      "sceneType": "talk",
+      "showSegment": "beat",
+      "seconds": [
+        1,
+        2
+      ],
+      "required": false,
+      "what": "A silent reaction insert: empty narration, minDurationSec 1.2-1.4, badgerBeats [{reaction}]."
+    },
+    {
+      "id": "scam-of-the-week",
+      "name": "Scam of the Week",
+      "sceneType": "talk",
+      "showSegment": "scamOfTheWeek",
+      "seconds": [
+        20,
+        60
+      ],
+      "required": false,
+      "what": "Weekly long-form round-up only."
+    },
+    {
+      "id": "correction",
+      "name": "Correction",
+      "sceneType": "talk",
+      "showSegment": "correction",
+      "seconds": [
+        6,
+        12
+      ],
+      "required": false,
+      "what": "An on-air correction (onScreen.correct, onScreen.date), when one applies; it is also pinned."
+    }
+  ],
+  "cadence": {
+    "dailyShort": {
+      "format": "daily-short",
+      "perDay": 1,
+      "lengthSec": [
+        45,
+        60
+      ],
+      "condition": "Only when a confirmed story exists AND the video adds real analysis. Otherwise publish nothing that day (owner rule: don't publish daily unless each video adds real analysis)."
+    },
+    "whatWeKnow": {
+      "format": "what-we-know",
+      "when": "Major incidents only, on the owner's call. Labelled DEVELOPING until confirmed; corrections pinned."
+    },
+    "weeklyLongForm": {
+      "format": "weekly-roundup",
+      "perWeek": 1,
+      "day": "TBD (owner)",
+      "condition": "Must include a fund-flow analysis (news gate rule R7)."
+    },
+    "evergreenExplainers": {
+      "what": "Every news video links the explainer for its topic once that explainer is published.",
+      "status": "none published yet"
+    },
+    "proposedDailyRun": {
+      "cron": "CRON_TZ=America/Chicago 43 4 * * *",
+      "local": "04:43 America/Chicago every day, so the approval packet is ready by about 06:00",
+      "status": "proposed, not scheduled: created only after the daily system passes its proof run and the owner OKs the time (CLAUDE.md, Owner decisions)"
+    }
+  },
+  "cta": {
+    "default": "Subscribe for tomorrow's Threat Brief.",
+    "spoken": "Subscribe for tomorrow's Threat Brief.",
+    "explainerLine": "Explainer: {title} {url}",
+    "noExplainer": "No explainer is linked until the topic's evergreen explainer is published (url is null below)."
+  },
+  "evergreen": {
+    "drainers": {
+      "title": "How wallet drainers work, and how to spot one",
+      "url": null,
+      "status": "planned"
+    },
+    "address-poisoning": {
+      "title": "Address poisoning: the copy-paste trap",
+      "url": null,
+      "status": "planned"
+    },
+    "phishing": {
+      "title": "Crypto phishing: the signs that never change",
+      "url": null,
+      "status": "planned"
+    },
+    "key-management": {
+      "title": "Keys, multisigs and why one leaked key can empty a vault",
+      "url": null,
+      "status": "planned"
+    },
+    "bridge-security": {
+      "title": "Why bridges get hacked",
+      "url": null,
+      "status": "planned"
+    },
+    "oracle-manipulation": {
+      "title": "Price oracles, explained without the jargon",
+      "url": null,
+      "status": "planned"
+    },
+    "rug-pulls": {
+      "title": "Rug pulls: what the warning signs look like",
+      "url": null,
+      "status": "planned"
+    },
+    "social-engineering": {
+      "title": "Social engineering: the hack that targets people",
+      "url": null,
+      "status": "planned"
+    },
+    "fake-job-malware": {
+      "title": "Fake job interviews that install malware",
+      "url": null,
+      "status": "planned"
+    },
+    "ai-security": {
+      "title": "AI agents, prompt injection and malicious plugins",
+      "url": null,
+      "status": "planned"
+    }
+  },
+  "offers": [],
+  "offersNote": "None until the owner adds security affiliates (creator-hub/config/offers.json). With offers, the paid-promotion box is ticked and the disclosure is spoken and shown.",
+  "hashtags": [
+    "CryptoSecurity",
+    "ThreatBrief",
+    "Shorts"
+  ],
+  "publish": {
+    "madeForKids": {
+      "value": false,
+      "reason": "Adult crypto and AI security news; not child-directed (studio default, docs/research/platform-facts-2026-11-23.md)."
+    },
+    "containsSyntheticMedia": {
+      "value": false,
+      "reason": "Clearly animated show with a generic synthetic voice for a fictional host; no realistic depiction of a real person."
+    },
+    "paidPromotion": "Only when the episode lists offers (offers is empty, so No).",
+    "upload": "Manual in YouTube Studio by the owner, after APPROVE. The daily tools never upload or call the YouTube API (PROJECT_INSTRUCTIONS: do not upload or publish unless the owner requests it separately).",
+    "privacyAtUpload": "private, then schedule or publish after the checklist"
+  },
+  "postApproval": {
+    "announcer": {
+      "tool": "../creator-hub/tools/announcer",
+      "platforms": [
+        "x",
+        "telegram",
+        "youtube-community"
+      ],
+      "credentialEnv": [
+        "ANNOUNCER_X_TOKEN",
+        "ANNOUNCER_TELEGRAM_TOKEN"
+      ],
+      "mode": "dry-run unless the tool exists, its credentials are set and the video is public",
+      "credentialEnvNote": "Proposed names: the hub announcer does not exist yet (2026-11-24); its own README decides the real ones."
+    },
+    "threatBrief": {
+      "tool": "../creator-hub/tools/threat-brief",
+      "credentialEnv": [
+        "KIT_API_KEY"
+      ],
+      "mode": "draft only: never sent or scheduled by a tool; the owner sends it from Kit"
+    }
+  },
+  "rules": {
+    "owner": [
+      "Label developing stories \"developing\" and pin corrections.",
+      "Don't redraw or speculate about others' material; attribute every fact.",
+      "Don't publish daily unless each video adds real analysis.",
+      "A strike on either channel endangers both, so accuracy comes first."
+    ],
+    "accuracy": [
+      "Every fact traces to a stored source excerpt that contains it.",
+      "Loss amounts are \"reported by X\" and never averaged.",
+      "Unconfirmed incidents are labelled \"developing\".",
+      "No suspect or individual names, except officials named in law-enforcement or regulator releases.",
+      "No exploit how-tos: mechanisms at concept level, with no code, function names or step lists.",
+      "No price or investment talk."
+    ],
+    "references": [
+      "projects/video-studio/CLAUDE.md#channel-2-crypto--ai-security-news-working-slug-zoora-security-display-name-tbd--owner-rules-2026-11-24-binding",
+      "projects/video-studio/docs/PROJECT_INSTRUCTIONS.md",
+      "projects/video-studio/docs/research/platform-facts-2026-11-23.md",
+      "projects/video-studio/scripts/radar/README.md",
+      "projects/video-studio/scripts/news/README.md",
+      "projects/video-studio/docs/DAILY_BRIEF.md"
+    ]
+  }
+}

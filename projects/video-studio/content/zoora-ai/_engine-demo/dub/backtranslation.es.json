@@ -1,0 +1,150 @@
+{
+  "about": "Literal back-translation of the Spanish storyboard of content/zoora-ai/_engine-demo (snapshot in this folder), made 2026-11-24 by a Claude session (wave 3) for the proof run. NOT blind: this session had read the English storyboard first. Each item keeps the Spanish text it was made from, so a change to the episode shows up as stale.",
+  "lang": "es",
+  "method": "claude-session",
+  "by": "wave-3 proof session",
+  "blind": false,
+  "date": "2026-11-24",
+  "items": {
+    "title": {
+      "text": "Por qué la mayoría de las memecoins nuevas mueren el primer día",
+      "bt": "Why most of the new memecoins die on the first day"
+    },
+    "s01.narration": {
+      "text": "La mayoría de las memecoins nuevas en Pump.fun nunca llegan al segundo día. [src:cg-cryptonews,cg-cryptobriefing]",
+      "bt": "Most of the new memecoins on Pump.fun never reach the second day. [src:cg-cryptonews,cg-cryptobriefing]"
+    },
+    "s01.onScreen.kicker": {
+      "text": "Explicado",
+      "bt": "Explained"
+    },
+    "s01.onScreen.title": {
+      "text": "Muertas el primer día",
+      "bt": "Dead on the first day"
+    },
+    "s01.onScreen.subtitle": {
+      "text": "Lo que muestran los datos de lanzamiento",
+      "bt": "What the launch data show"
+    },
+    "s02.narration": {
+      "text": "CoinGecko rastreó 18,67 millones de ellas. [src:cg-cryptonews,cg-cryptobriefing] El 68,67% hizo su última operación en la curva de lanzamiento el primer día. [src:cg-cryptonews,cg-cryptobriefing] Noventa días después, solo el 4,55% seguía cotizando. [src:cg-cryptonews,cg-cryptobriefing]",
+      "bt": "CoinGecko tracked 18.67 million of them. [src:cg-cryptonews,cg-cryptobriefing] The 68.67% made its last trade/operation on the launch curve on the first day. [src:cg-cryptonews,cg-cryptobriefing] Ninety days later, only 4.55% was still trading/listed. [src:cg-cryptonews,cg-cryptobriefing]"
+    },
+    "s02.onScreen.title": {
+      "text": "Los números del lanzamiento",
+      "bt": "The launch numbers"
+    },
+    "s02.onScreen.bullets.0": {
+      "text": "18,67 millones de tokens rastreados",
+      "bt": "18.67 million tokens tracked"
+    },
+    "s02.onScreen.bullets.1": {
+      "text": "68,67%: última operación en curva, día uno",
+      "bt": "68.67%: last trade/operation on curve, day one"
+    },
+    "s02.onScreen.bullets.2": {
+      "text": "4,55% seguía cotizando a los 90 días",
+      "bt": "4.55% was still trading/listed at 90 days"
+    },
+    "s02.onScreen.lowerThird.0": {
+      "text": "Zoo",
+      "bt": "Zoo"
+    },
+    "s02.onScreen.lowerThird.1": {
+      "text": "Presentador · Zoora AI",
+      "bt": "Presenter · Zoora AI"
+    },
+    "s03.narration": {
+      "text": "Así luce el primer día, en una moneda inventada. Un lanzamiento, una ráfaga de compras, luego una venta masiva, y una lenta agonía.",
+      "bt": "This is how the first day looks, on an invented coin. A launch, a burst of purchases, then a massive sale, and a slow agony."
+    },
+    "s03.onScreen.pair": {
+      "text": "$EXAMPLE / SOL",
+      "bt": "$EXAMPLE / SOL"
+    },
+    "s04.narration": {
+      "text": "Antes de tocar una moneda nueva, pregúntate: ¿quién tiene el suministro? ¿Qué más lanzó su creador? ¿Y quién cobra por promocionarla?",
+      "bt": "Before touching a new coin, ask yourself: who has the supply? What else did its creator launch? And who charges/gets paid for promoting it?"
+    },
+    "s04.onScreen.title": {
+      "text": "Antes de tocar una moneda nueva",
+      "bt": "Before touching a new coin"
+    },
+    "s04.onScreen.steps.0": {
+      "text": "¿Quién tiene el suministro?",
+      "bt": "Who has the supply?"
+    },
+    "s04.onScreen.steps.1": {
+      "text": "¿Qué más lanzó su creador?",
+      "bt": "What else did its creator launch?"
+    },
+    "s04.onScreen.steps.2": {
+      "text": "¿Quién cobra por promocionarla?",
+      "bt": "Who charges/gets paid for promoting it?"
+    },
+    "s05.narration": {
+      "text": "Porque los analistas on-chain de Bubblemaps advirtieron: las billeteras secundarias se han convertido en un modelo de negocio. [src:bm-side-wallets]",
+      "bt": "Because the on-chain analysts of Bubblemaps warned: the secondary wallets have become a business model. [src:bm-side-wallets]"
+    },
+    "s05.onScreen.quote": {
+      "text": "Las billeteras secundarias se han convertido en un modelo de negocio.",
+      "bt": "The secondary wallets have become a business model."
+    },
+    "s05.onScreen.attribution": {
+      "text": "Bubblemaps, firma de análisis on-chain",
+      "bt": "Bubblemaps, on-chain analysis firm"
+    },
+    "s06.narration": {
+      "text": "Si prefieres leer los datos en vez de perseguir la euforia, suscríbete.",
+      "bt": "If you prefer to read the data instead of chasing the euphoria, subscribe."
+    },
+    "s06.onScreen.title": {
+      "text": "Lee los datos, no la euforia",
+      "bt": "Read the data, not the euphoria"
+    },
+    "s07.narration": {
+      "text": "Lo que viene: ¿quién está realmente del otro lado de tu operación?",
+      "bt": "What comes next: who is really on the other side of your trade/operation?"
+    },
+    "s07.onScreen.title": {
+      "text": "Próximo: ¿quién está del otro lado de tu operación?",
+      "bt": "Next: who is on the other side of your trade/operation?"
+    },
+    "shorts.short1.title": {
+      "text": "La mayoría de las memecoins nunca llega al día dos",
+      "bt": "Most of the memecoins never reach day two"
+    },
+    "thumbnails.a.text": {
+      "text": "MUERTAS EL DÍA UNO",
+      "bt": "DEAD ON DAY ONE"
+    },
+    "thumbnails.b.text": {
+      "text": "¿POR QUÉ MUEREN?",
+      "bt": "WHY DO THEY DIE?"
+    },
+    "thumbnails.c.text": {
+      "text": "SIN SEGUNDO DÍA",
+      "bt": "WITHOUT A SECOND DAY"
+    },
+    "ui.sources": {
+      "text": "Fuente",
+      "bt": "Source"
+    },
+    "ui.illustrative": {
+      "text": "Ilustrativo · token ficticio",
+      "bt": "Illustrative · fictional token"
+    },
+    "ui.subscribe": {
+      "text": "Suscríbete",
+      "bt": "Subscribe"
+    },
+    "ui.watchNext": {
+      "text": "A continuación",
+      "bt": "Next/Coming up"
+    },
+    "ui.subscribeSlot": {
+      "text": "Suscríbete",
+      "bt": "Subscribe"
+    }
+  }
+}

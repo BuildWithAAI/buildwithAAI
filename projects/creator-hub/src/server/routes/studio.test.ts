@@ -111,8 +111,9 @@ const TERMS = [
 	'We do not guarantee views, subscribers, sales or revenue.',
 	'You are responsible for the claims you ask us to make about your product, for any regulatory approvals it needs, and for the disclosures required on the platforms where you publish the video.',
 	'We do not make videos that promise investment returns, predict prices or promote unlicensed financial products.',
-	'We decline crypto financial promotions aimed at regions where they are restricted, unless you show us the required approval.',
+	'We decline crypto financial promotions that will be visible in regions where they are restricted (a public YouTube or social video counts), unless you show us the required approval.',
 	'Paid client videos are never posted on our channels without a clear disclosure that they are paid.',
+	'We never publish crypto financial promotions for clients on our own channels.',
 ];
 
 test('GET /studio renders the offer page with every section, binding terms and an accessible form', async () => {

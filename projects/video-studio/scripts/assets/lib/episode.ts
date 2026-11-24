@@ -45,6 +45,8 @@ export type Episode = {
 	narrationPath: string | null; // null when the file does not exist
 	kit: PublishKit | null;
 	kitPath: string | null;
+	/** The language the kit was written for: this episode's language, or the source language a dub borrowed it from. */
+	kitLang: Lang | null;
 	sidecar: AssetsSidecar;
 	sidecarPaths: string[];
 	corrections: Correction[];
@@ -151,6 +153,45 @@ const checkTimeline = (raw: unknown, path: string, sb: EpisodeStoryboard): Episo
 	return raw as unknown as EpisodeTimeline;
 };
 
+const SIDECAR_KEYS = ['summary', 'takeaways', 'youtubeVideoId', 'publishedAt', 'podcast', 'social'];
+const PODCAST_KEYS = ['skip', 'season', 'episode', 'title'];
+const SOCIAL_KEYS = ['hook', 'hashtags'];
+const isPositiveInt = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v > 0;
+
+/**
+ * Every sidecar field has a type, and a value of the wrong type is refused, not passed on: these values reach the
+ * podcast feed and the item.json the feed builder reads (on the security channel the content is drafted from outside
+ * news text, so a sidecar is untrusted input).
+ */
+export const checkSidecar = (raw: Record<string, unknown>, file: string): void => {
+	const bad = (msg: string) => {
+		throw new InputError(`${file}: ${msg}`);
+	};
+	for (const k of Object.keys(raw)) if (!SIDECAR_KEYS.includes(k)) bad(`unknown key "${k}" (allowed: ${SIDECAR_KEYS.join(', ')})`);
+	if (raw.takeaways !== undefined && !(Array.isArray(raw.takeaways) && raw.takeaways.every((t) => typeof t === 'string'))) bad('"takeaways" must be a list of strings');
+	for (const key of ['summary', 'youtubeVideoId', 'publishedAt'] as const) if (raw[key] !== undefined && typeof raw[key] !== 'string') bad(`"${key}" must be a string`);
+	if (raw.podcast !== undefined) {
+		const pc = raw.podcast;
+		if (!isRecord(pc)) bad('"podcast" must be an object');
+		else {
+			for (const k of Object.keys(pc)) if (!PODCAST_KEYS.includes(k)) bad(`unknown key "podcast.${k}" (allowed: ${PODCAST_KEYS.join(', ')})`);
+			if (pc.skip !== undefined && typeof pc.skip !== 'boolean') bad('"podcast.skip" must be true or false');
+			if (pc.season !== undefined && !isPositiveInt(pc.season)) bad('"podcast.season" must be a positive whole number');
+			if (pc.episode !== undefined && !isPositiveInt(pc.episode)) bad('"podcast.episode" must be a positive whole number');
+			if (pc.title !== undefined && typeof pc.title !== 'string') bad('"podcast.title" must be a string');
+		}
+	}
+	if (raw.social !== undefined) {
+		const so = raw.social;
+		if (!isRecord(so)) bad('"social" must be an object');
+		else {
+			for (const k of Object.keys(so)) if (!SOCIAL_KEYS.includes(k)) bad(`unknown key "social.${k}" (allowed: ${SOCIAL_KEYS.join(', ')})`);
+			if (so.hook !== undefined && typeof so.hook !== 'string') bad('"social.hook" must be a string');
+			if (so.hashtags !== undefined && !(Array.isArray(so.hashtags) && so.hashtags.every((h) => typeof h === 'string'))) bad('"social.hashtags" must be a list of strings');
+		}
+	}
+};
+
 const loadSidecar = (dir: string, lang: Lang): {sidecar: AssetsSidecar; paths: string[]} => {
 	const paths: string[] = [];
 	let merged: AssetsSidecar = {};
@@ -159,8 +200,7 @@ const loadSidecar = (dir: string, lang: Lang): {sidecar: AssetsSidecar; paths: s
 		if (!existsSync(file)) continue;
 		const raw = readJson(file, 'asset sidecar');
 		if (!isRecord(raw)) throw new InputError(`${file}: must be a JSON object`);
-		if (raw.takeaways !== undefined && !(Array.isArray(raw.takeaways) && raw.takeaways.every((t) => typeof t === 'string'))) throw new InputError(`${file}: "takeaways" must be a list of strings`);
-		for (const key of ['summary', 'youtubeVideoId', 'publishedAt'] as const) if (raw[key] !== undefined && typeof raw[key] !== 'string') throw new InputError(`${file}: "${key}" must be a string`);
+		checkSidecar(raw, file);
 		merged = {...merged, ...(raw as AssetsSidecar), podcast: {...merged.podcast, ...(raw.podcast as AssetsSidecar['podcast'])}, social: {...merged.social, ...(raw.social as AssetsSidecar['social'])}};
 		paths.push(file);
 	}
@@ -172,9 +212,12 @@ const loadCorrections = (roots: Roots, channel: string, slug: string): {correcti
 	if (!existsSync(file)) return {corrections: [], path: null};
 	const raw = readJson(file, 'corrections file');
 	if (!isRecord(raw) || !Array.isArray(raw.corrections)) throw new InputError(`${file}: expected {"version": 1, "corrections": [...]}`);
-	const corrections = raw.corrections.filter(
-		(c): c is Correction => isRecord(c) && c.slug === slug && typeof c.correct === 'string' && typeof c.date === 'string' && (c.status === 'pending' || c.status === 'pinned'),
-	);
+	const corrections = raw.corrections
+		.filter((c): c is Correction => isRecord(c) && c.slug === slug && typeof c.correct === 'string' && typeof c.date === 'string' && (c.status === 'pending' || c.status === 'pinned'))
+		.map((c) => {
+			const langs = isRecord(c.languages) ? Object.fromEntries(Object.entries(c.languages).filter((e): e is [string, string] => typeof e[1] === 'string' && !!e[1].trim())) : undefined;
+			return {...c, languages: langs};
+		});
 	return {corrections, path: file};
 };
 
@@ -215,11 +258,23 @@ export const loadEpisode = (roots: Roots, channel: string, slug: string, lang: L
 	}
 
 	let kitPath: string | null = opts.kitPath ?? null;
+	let kitLang: Lang | null = opts.kitPath ? lang : null;
 	if (!kitPath) {
 		const base = join(roots.publish, channel, slug);
-		const candidates = lang === sb.sourceLang ? [join(base, lang, 'kit.json'), join(base, `kit.${lang}.json`), join(base, 'kit.json')] : [join(base, lang, 'kit.json'), join(base, `kit.${lang}.json`)];
-		kitPath = candidates.find((p) => existsSync(p)) ?? null;
-		if (!kitPath) notes.push(`no publish kit (looked at ${candidates.join(', ')})`);
+		const src = sb.sourceLang;
+		const own = lang === src ? [join(base, lang, 'kit.json'), join(base, `kit.${lang}.json`), join(base, 'kit.json')] : [join(base, lang, 'kit.json'), join(base, `kit.${lang}.json`)];
+		kitPath = own.find((p) => existsSync(p)) ?? null;
+		if (kitPath) kitLang = lang;
+		else if (lang !== src) {
+			// scripts/publish-kit writes one kit, for the source language: a dub borrows it (the video id, chapters and
+			// offers), and build.ts translates its disclosure lines with owner-approved text or blocks the asset
+			const source = [join(base, src, 'kit.json'), join(base, `kit.${src}.json`), join(base, 'kit.json')];
+			kitPath = source.find((p) => existsSync(p)) ?? null;
+			if (kitPath) {
+				kitLang = src;
+				notes.push(`no ${lang} publish kit: borrowed the ${src} kit (${kitPath}) for the video id, chapters, offers and disclosures`);
+			} else notes.push(`no publish kit (looked at ${[...own, ...source].join(', ')})`);
+		} else notes.push(`no publish kit (looked at ${own.join(', ')})`);
 	}
 	let kit: PublishKit | null = null;
 	if (kitPath) {
@@ -233,7 +288,7 @@ export const loadEpisode = (roots: Roots, channel: string, slug: string, lang: L
 	const {corrections, path: correctionsPath} = loadCorrections(roots, channel, slug);
 	const languages = [...byLang.values()].map((e) => ({lang: e.sb.lang, reviewed: isReviewed(e.sb)})).sort((a, b) => LANGS.indexOf(a.lang) - LANGS.indexOf(b.lang));
 
-	return {channel, slug, lang, dir, storyboard: sb, storyboardPath: own.file, timeline, timelinePath, narrationPath, kit, kitPath, sidecar, sidecarPaths, corrections, correctionsPath, languages, notes};
+	return {channel, slug, lang, dir, storyboard: sb, storyboardPath: own.file, timeline, timelinePath, narrationPath, kit, kitPath, kitLang: kit ? kitLang : null, sidecar, sidecarPaths, corrections, correctionsPath, languages, notes};
 };
 
 /** Languages that have a storyboard for this episode. */

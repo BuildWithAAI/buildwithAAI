@@ -14,6 +14,7 @@ import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 import {sourceIds, UNSPACED} from '../markup';
 import {quoteBlock} from '../layout/blocks';
+import {badgerFace} from '../layout/faces';
 
 export const domainOf = (url: string): string => {
 	const m = /^[a-z]+:\/\/([^/?#]+)/i.exec(url);
@@ -38,17 +39,22 @@ export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const quote = str(ctx.sc, 'quote') ?? '';
 	const attribution = str(ctx.sc, 'attribution') ?? '';
 	const source = quoteSource(ctx);
-	const qFit = useFit(quote, L.quote, ctx.lang);
-	const aFit = useFit(attribution ? `\u2014 ${attribution}` : '', L.attribution, ctx.lang);
-	const sFit = useFit(source, L.source, ctx.lang);
+	// with Badger in the shot (landscape, beside ZOO), the card and its text narrow so the card ends 16 px before his head
+	const narrow = badgerPlace && !vertical ? Math.max(0, L.card.x + L.card.w - (badgerFace(badgerPlace).x - 16)) : 0;
+	const qSpec = narrow ? {...L.quote, box: {...L.quote.box, w: L.quote.box.w - narrow}} : L.quote;
+	const aSpec = narrow ? {...L.attribution, box: {...L.attribution.box, w: L.attribution.box.w - narrow}} : L.attribution;
+	const sSpec = narrow ? {...L.source, box: {...L.source.box, w: L.source.box.w - narrow}} : L.source;
+	const qFit = useFit(quote, qSpec, ctx.lang);
+	const aFit = useFit(attribution ? `\u2014 ${attribution}` : '', aSpec, ctx.lang);
+	const sFit = useFit(source, sSpec, ctx.lang);
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
 	const g = quoteBlock(L, {quote: qFit.height, attribution: attribution ? aFit.height : 0, source: source ? sFit.height : 0});
 	if (!g.fits) throw new Error(`quote ${ctx.sc.id}: the quote card needs ${g.cardH}px; the column has ${L.column.bottom - L.column.top}px. Shorten the quote.`);
-	const card: Box = {x: L.card.x, y: g.cardY, w: L.card.w, h: g.cardH};
+	const card: Box = {x: L.card.x, y: g.cardY, w: L.card.w - narrow, h: g.cardH};
 	const unspaced = UNSPACED.has(ctx.lang);
 	const font = fontFor(ctx.lang, L.quote.role, L.quote.weight);
-	const lh = qFit.fontSize * L.quote.lineHeight;
+	const lh = qFit.fontSize * qFit.lineHeight;
 	const last = dir.reveals.length ? dir.reveals[dir.reveals.length - 1] : 0;
 	const after = entry(frame, last + 8, 10);
 	const mark = fontFor(ctx.lang, 'heading', 900);
@@ -90,7 +96,7 @@ export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 								position: 'absolute',
 								left: L.quote.box.x,
 								top: g.quoteY + i * lh,
-								width: L.quote.box.w,
+								width: qSpec.box.w,
 								height: lh,
 								lineHeight: `${lh}px`,
 								fontFamily: font.fontFamily,
@@ -101,6 +107,7 @@ export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 							}}
 						>
 							{parts.map((word, k) => {
+								if (unspaced && /^\s$/.test(word)) return <span key={k}> </span>; // a real space in mixed text: no reveal slot
 								const at = dir.reveals[w++] ?? 0;
 								const p = entry(frame, at, 6);
 								return (
@@ -115,12 +122,12 @@ export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				})}
 				{attribution ? (
 					<div style={{position: 'absolute', inset: 0, clipPath: `inset(0 ${(1 - after) * 100}% 0 0)`}}>
-						<Lines fit={aFit} spec={L.attribution} lang={ctx.lang} color={C.ink} box={{...L.attribution.box, y: g.attrY, h: Math.ceil(aFit.height)}} />
+						<Lines fit={aFit} spec={aSpec} lang={ctx.lang} color={C.ink} box={{...aSpec.box, y: g.attrY, h: Math.ceil(aFit.height)}} />
 					</div>
 				) : null}
 				{source ? (
 					<div style={{position: 'absolute', inset: 0, clipPath: `inset(0 ${(1 - entry(frame, last + 14, 10)) * 100}% 0 0)`}}>
-						<Lines fit={sFit} spec={L.source} lang={ctx.lang} color={C.inkMuted} box={{...L.source.box, y: g.srcY, h: Math.ceil(sFit.height)}} />
+						<Lines fit={sFit} spec={sSpec} lang={ctx.lang} color={C.inkMuted} box={{...sSpec.box, y: g.srcY, h: Math.ceil(sFit.height)}} />
 					</div>
 				) : null}
 			</div>

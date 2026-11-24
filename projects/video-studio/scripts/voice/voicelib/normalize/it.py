@@ -5,6 +5,7 @@ a final "tre" in a compound takes the accent ("ventitré", "centotré"); "un mil
 
 import re
 
+from ..lexicon import PRONUNCIATIONS
 from .common import SpacedNormalizer, split_punct
 
 UNITS = [
@@ -79,15 +80,22 @@ class Italian(SpacedNormalizer):
         "£": ("sterlina", "sterline", None, None),
         "¥": ("yen", "yen", None, None),
         "₹": ("rupia", "rupie", None, None),
+        "US$": ("dollaro", "dollari", "centesimo", "centesimi"),
+        "R$": ("real brasiliano", "real brasiliani", "centavo", "centavos"),
+        "A$": ("dollaro australiano", "dollari australiani", "centesimo", "centesimi"),
+        "C$": ("dollaro canadese", "dollari canadesi", "centesimo", "centesimi"),
+        "MX$": ("peso messicano", "pesos messicani", "centavo", "centavos"),
     }
     scales = {"k": ("mila", "mila"), "m": ("milione", "milioni"), "b": ("miliardo", "miliardi"), "t": ("bilione", "bilioni")}
     scale_words = frozenset({"mila", "mille", "milione", "milioni", "miliardo", "miliardi"})
     connector_after_scale = "di"
     big_scale_words = frozenset({"milione", "milioni", "miliardo", "miliardi", "bilione", "bilioni"})
     tickers = {"BTC": "bitcoin", "ETH": "ether", "SOL": "sol", "USDC": "U S D C", "USDT": "U S D T"}
-    symbols = {"&": "e", "+": "più", "=": "uguale a", "@": "chiocciola", "%": "per cento", "~": "circa", "×": "per"}
+    symbols = {"&": "e", "+": "più", "=": "uguale a", "@": "chiocciola", "%": "per cento", "~": "circa", "×": "per", "#": "numero", "nº": "numero", "n°": "numero", "N°": "numero"}
     months = MONTHS
     month_lookup = {m: i + 1 for i, m in enumerate(MONTHS)}
+    lexicon = PRONUNCIATIONS["it"]
+    number_word = "numero"
 
     def cardinal(self, n: int) -> str:
         return cardinal(n)
@@ -121,6 +129,16 @@ class Italian(SpacedNormalizer):
 
     def time(self, h: int, mi: int) -> str:
         return cardinal(h) + (f" e {cardinal(mi)}" if mi else " in punto")
+
+    def percent_range(self, a: str, b: str) -> str:
+        return f"da {self.number(a)} a {self.number(b)} {self.percent_word}"
+
+    def hours(self, h: int, mi: int | None) -> str | None:
+        return f"{cardinal(h)} e {cardinal(mi)}" if mi else f"{cardinal(h)} {'ora' if h == 1 else 'ore'}"
+
+    def fraction_words(self, n: int, d: int) -> str | None:
+        one = {2: "mezzo", 3: "terzo", 4: "quarto", 5: "quinto", 6: "sesto", 7: "settimo", 8: "ottavo", 9: "nono", 10: "decimo"}[d]
+        return f"un {one}" if n == 1 else f"{cardinal(n)} {one[:-1]}i"
 
     def ordinal_token(self, core: str) -> str | None:
         m = re.fullmatch(r"(\d+)\.?[ºª°]", core)

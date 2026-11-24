@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "thumb-demo",
+  "lang": "zh",
+  "sourceLang": "en",
+  "title": "POV：你成了顶级喊单人（缩略图测试数据）",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "你发了一张图。一小时内，一万个陌生人买了你的币。",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "你成了顶级喊单人"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    }
+  ],
+  "sources": [],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "顶级\n喊单人？"
+    },
+    {
+      "id": "b",
+      "text": "地板没了"
+    },
+    {
+      "id": "c",
+      "text": "谁先卖的？"
+    }
+  ],
+  "translation": {
+    "status": "machine"
+  }
+}

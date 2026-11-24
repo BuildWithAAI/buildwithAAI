@@ -27,11 +27,14 @@ Production in the days before; review sitting by Sun 29 Nov.
 | Tue 1 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s2` | Short 2 of `ai1` | Who really pays the caller | `memecoin-callers` | en, es, pt-br |  |
 | Wed 2 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s3` | Short 3 of `ai1` | Treat every call as an ad | `memecoin-callers` | en, es, pt-br |  |
 | Thu 3 Dec | 11:00 | 17:00 | Zoora AI | `ai2` | POV story | POV: You created an autonomous AI trading agent hedge fund | `ai-trading-agents` | en, es, pt-br | research file; 7 of 11 in the fact bank; 1 still to research |
-| Thu 3 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s1` | Short 1 of `ai2` | Four of six AI traders lost real money | `ai-trading-agents` | en, es, pt-br |  |
-| Fri 4 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s2` | Short 2 of `ai2` | The agent that paid out after one clever message | `ai-trading-agents` | en, es, pt-br |  |
+| Thu 3 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s1` | Short 1 of `ai2` | The AI that finished last lost more than half | `ai-trading-agents` | en, es, pt-br |  |
+| Fri 4 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s2` | Short 2 of `ai2` | The agent that paid out after 482 attempts | `ai-trading-agents` | en, es, pt-br |  |
 | Sat 5 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec2` | Scam of the Week | Scam of the Week: the 'support agent' who messages you first | `social-engineering` | en, es, pt-br | research first: 2 facts to find |
 | Sat 5 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s3` | Short 3 of `ai2` | Why 'AI-powered' is not a track record | `ai-trading-agents` | en, es, pt-br |  |
 | Sun 6 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s4` | Short 4 of `ai2` | Backtests that looked great until they did not | `ai-trading-agents` | en, es, pt-br |  |
+| Day TBD (owner) | TBD | TBD | The Zoo & Badger Show | reserved | Weekly round-up (news, made in-week) | Made in-week, not by the batch | | en | |
+
+**Pilot:** `ai1` is the pilot. CLAUDE.md (Status, Phase 2) defines the pilot as a 60–90 s video with 1 Short, 3 thumbnails and publish.md, then an owner review; this calendar plans it as a POV story (6-10 min) with 3 Short(s). The owner decides which (see the decisions at the end).
 
 **Shorts map:** `ai1` → `ai1-s1` (Mon), `ai1-s2` (Tue), `ai1-s3` (Wed) · `ai2` → `ai2-s1` (Thu), `ai2-s2` (Fri), `ai2-s3` (Sat), `ai2-s4` (Sun)
 
@@ -52,6 +55,7 @@ Production in the days before; review sitting by Sun 6 Dec.
 | Sat 12 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec2` | Scam of the Week | Scam of the Week: the deepfake giveaway livestream | `ai-security` | en, es, pt-br | research first: 3 facts to find |
 | Sat 12 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s3` | Short 3 of `ai2` | Your agent's plugins can read your keys | `ai-security` | en, es, pt-br |  |
 | Sun 13 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s4` | Short 4 of `ai2` | Experiments and savings on different machines | `ai-security` | en, es, pt-br |  |
+| Day TBD (owner) | TBD | TBD | The Zoo & Badger Show | reserved | Weekly round-up (news, made in-week) | Made in-week, not by the batch | | en | |
 
 **Shorts map:** `ai1` → `ai1-s1` (Mon), `ai1-s2` (Tue), `ai1-s3` (Wed) · `ai2` → `ai2-s1` (Thu), `ai2-s2` (Fri), `ai2-s3` (Sat), `ai2-s4` (Sun)
 
@@ -72,6 +76,7 @@ Production in the days before; review sitting by Sun 13 Dec.
 | Sat 19 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec2` | Scam of the Week | Scam of the Week: the 'recovery expert' who can get your crypto back | `social-engineering` | en, es, pt-br | research first: 2 facts to find |
 | Sat 19 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s3` | Short 3 of `ai2` | The withdrawal 'tax' is the tell | `social-engineering` | en, es, pt-br |  |
 | Sun 20 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s4` | Short 4 of `ai2` | Never invest where a new friend points | `social-engineering` | en, es, pt-br |  |
+| Day TBD (owner) | TBD | TBD | The Zoo & Badger Show | reserved | Weekly round-up (news, made in-week) | Made in-week, not by the batch | | en | |
 
 **Shorts map:** `ai1` → `ai1-s1` (Mon), `ai1-s2` (Tue), `ai1-s3` (Wed) · `ai2` → `ai2-s1` (Thu), `ai2-s2` (Fri), `ai2-s3` (Sat), `ai2-s4` (Sun)
 
@@ -82,7 +87,7 @@ Production in the days before; review sitting by Sun 20 Dec.
 | Date | Time | UTC | Channel | Item | What | Title or angle | Topic | Languages | Facts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Mon 21 Dec | 11:00 | 17:00 | Zoora AI | `ai1` | POV story | POV: A famous founder goes live and promises to double your coins | `ai-security` | en, es, pt-br | research first: 3 facts to find |
-| Mon 21 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s1` | Short 1 of `ai1` | Send one, get two: the oldest trick | `ai-security` | en, es, pt-br |  |
+| Mon 21 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s1` | Short 1 of `ai1` | The giveaway that asks you to send first | `ai-security` | en, es, pt-br |  |
 | Tue 22 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec1` | Explainer | Crypto phishing: the signs that never change | `phishing` | en, es, pt-br | research first: 3 facts to find |
 | Tue 22 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s2` | Short 2 of `ai1` | The livestream that was not live | `ai-security` | en, es, pt-br |  |
 | Wed 23 Dec | 17:00 | 23:00 | Zoora AI | `ai1-s3` | Short 3 of `ai1` | Check the channel before the giveaway | `ai-security` | en, es, pt-br |  |
@@ -92,6 +97,7 @@ Production in the days before; review sitting by Sun 20 Dec.
 | Sat 26 Dec | 13:00 | 19:00 | The Zoo & Badger Show | `sec2` | Scam of the Week | Scam of the Week: a cloned voice asks for money | `ai-security` | en, es, pt-br | research first: 2 facts to find |
 | Sat 26 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s3` | Short 3 of `ai2` | When the recruiter found you first | `fake-job-malware` | en, es, pt-br |  |
 | Sun 27 Dec | 17:00 | 23:00 | Zoora AI | `ai2-s4` | Short 4 of `ai2` | Your work laptop is not a wallet | `fake-job-malware` | en, es, pt-br |  |
+| Day TBD (owner) | TBD | TBD | The Zoo & Badger Show | reserved | Weekly round-up (news, made in-week) | Made in-week, not by the batch | | en | |
 
 **Shorts map:** `ai1` → `ai1-s1` (Mon), `ai1-s2` (Tue), `ai1-s3` (Wed) · `ai2` → `ai2-s1` (Thu), `ai2-s2` (Fri), `ai2-s3` (Sat), `ai2-s4` (Sun)
 
@@ -128,3 +134,5 @@ Production in the days before; review sitting by Sun 20 Dec.
 - The YouTube category for each channel (`categoryId` in creator-hub/tools/uploader/channels.json): approve is refused until it is set.
 - The security channel's display name (TBD; the show name stands in).
 - Who reviews the Spanish and Brazilian Portuguese dubs natively before their tracks go up.
+- The day and time of The Zoo & Badger Show's weekly round-up: every week above keeps a reserved row for it. The binding cadence includes a weekly long-form round-up with fund-flow analysis (CLAUDE.md, Channel 2). It is made in the week from that week's news (scripts/daily), never in the batch, so every week keeps room for it. The owner picks its day (content/zoora-security/channel.json cadence.weeklyLongForm: day TBD).
+- The pilot's format (`pumpfun-top-caller`): CLAUDE.md's Phase 2 is a 60–90 s pilot with 1 Short, 3 thumbnails and publish.md, followed by an owner review before the next phase. This calendar plans it as a full POV story with daily Shorts. Either keep the short pilot first (this calendar then starts after its review), or approve the full-length version.

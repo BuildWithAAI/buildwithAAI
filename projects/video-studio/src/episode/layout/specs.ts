@@ -6,6 +6,7 @@
  * Character placements use ONE scale and ONE ground line per shot, so ZOO and Badger keep their relative size.
  */
 import type {BadgerHead, BadgerPose, BadgerView, ZooView} from '../../characters/types';
+import type {SceneType} from '../types.ts';
 import type {FontRole} from '../i18n/fonts';
 
 export type Format = 'landscape' | 'vertical';
@@ -29,6 +30,7 @@ export type TextSpec = {
 	uppercase?: boolean;
 	balance?: boolean;
 	ellipsis?: boolean; // shorten with an ellipsis instead of failing (sources lines only)
+	phrase?: boolean; // phrase-aware line ends (captions; text/fit.ts rephrase)
 };
 
 const t = (box: Box, role: FontRole, weight: number, maxSize: number, minSize: number, maxLines: number, lineHeight: number, align: TextSpec['align'], extra: Partial<TextSpec> = {}): TextSpec => ({
@@ -48,13 +50,19 @@ export const SAFE: Record<Format, {left: number; right: number; top: number; bot
 	landscape: {left: 96, right: 1824, top: 54, bottom: 1026},
 	vertical: {left: 54, right: 1026, top: 192, bottom: 1536},
 };
+/**
+ * The Shorts action-button column (like, dislike, comments, share, remix): text whose box reaches below `top` must end
+ * at x <= `left` (the same zone as scripts/qa/lib/zones.ts; checked by the layout test).
+ */
+export const SHORTS_BUTTONS = {left: 950, top: 960} as const;
 
 /** Burned-in captions: one or two short lines on a plate, away from every face (checked by the layout test). */
 export const CAPTIONS: Record<Format, TextSpec> = {
 	// 800 px wide so a left or right position clears a peeking Badger when the centre does not
-	landscape: t({x: 560, y: 900, w: 800, h: 126}, 'heading', 900, 54, 40, 2, 1.15, 'center', {valign: 'bottom'}),
+	// balance + phrase (2026-11-24, review): two-line pages are evened out and never break after "de", "the", "on"...
+	landscape: t({x: 560, y: 900, w: 800, h: 126}, 'heading', 900, 54, 40, 2, 1.15, 'center', {valign: 'bottom', balance: true, phrase: true}),
 	// right edge 920: clear of the Shorts button column (x > ~950 in the lower half)
-	vertical: t({x: 160, y: 1312, w: 760, h: 188}, 'heading', 900, 66, 46, 2, 1.12, 'center', {valign: 'center'}),
+	vertical: t({x: 160, y: 1312, w: 760, h: 188}, 'heading', 900, 66, 46, 2, 1.12, 'center', {valign: 'center', balance: true, phrase: true}),
 };
 /** Plate padding around caption text. */
 export const CAPTION_PAD = {x: 28, y: 14} as const;
@@ -87,7 +95,7 @@ export type ChartLayout = {
 	chart: Box;
 	solo: {zoo: ZooPlace};
 	pair: {zoo: ZooPlace; badger: BadgerPlace} | null; // null: Badger reacts in an insert shot instead
-	chip: TextSpec; // illustrative label outside the chart panel (right-aligned)
+	chip: TextSpec; // illustrative label outside the chart panel (on the spec's side of its box)
 	sources: TextSpec;
 };
 export type StepsLayout = {zoo: ZooPlace; badger: BadgerPlace; column: Column; title: TextSpec; list: {x: number; w: number}; item: TextSpec; badge: number; gap: number; sources: TextSpec};
@@ -132,7 +140,13 @@ export const BADGER_INSERT: Record<Format, BadgerPlace> = {
 
 /** The small sources line: one line, ellipsized if a long title does not fit (the full source is in the description). */
 const src = (box: Box, align: TextSpec['align']): TextSpec => t(box, 'body', 600, 26, 24, 1, 1.0, align, {valign: 'center', ellipsis: true});
-const SRC_V = src({x: 426, y: 1242, w: 600, h: 40}, 'right'); // above the caption band, right of any face
+/**
+ * Vertical: in the free band between the Shorts top UI (y 192) and the content column (top 290), full width, centred.
+ * Fixed 2026-11-24 (engine demo): it was {x: 426, y: 1242, w: 600}, which in every vertical template (ZOO stands centred
+ * at x 540) lay across ZOO's chest and pin, and ellipsized the source's domain away. A fiction Short's fiction card uses
+ * the same band for its first seconds; SourcesCard then steps the line below it (Overlays.tsx).
+ */
+const SRC_V = src({x: 54, y: 206, w: 972, h: 40}, 'center');
 
 export const LAYOUTS = {
 	hook: {
@@ -166,7 +180,8 @@ export const LAYOUTS = {
 			itemPad: {x: 28, y: 24},
 			marker: 40,
 			gap: 22,
-			sources: src({x: 96, y: 60, w: 860, h: 40}, 'left'),
+			// in the text column, above the title (fixed 2026-11-24, review: at x 96 it sat on ZOO's hair, against CV4c)
+			sources: src({x: 1010, y: 60, w: 814, h: 40}, 'left'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2160, scale: 1.3},
@@ -184,17 +199,25 @@ export const LAYOUTS = {
 	chart: {
 		landscape: {
 			chart: {x: 880, y: 96, w: 944, h: 840},
-			solo: {zoo: {x: 420, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'threeQuarter'}},
-			pair: {zoo: {x: 250, y: 1000, scale: 0.84, view: 'threeQuarter'}, badger: {x: 610, y: 1000, scale: 0.84, view: 'right', pose: 'sit', inFront: true}},
+			// front view: ZOO watches the chart and points at it when the pump completes (his fingertip stops short of the panel)
+			solo: {zoo: {x: 320, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'front'}},
+			// pair: 560 units apart (decision INT-P2), so the point passes above the sitting Badger's head
+			pair: {zoo: {x: 230, y: 1000, scale: 0.84, view: 'front'}, badger: {x: 700, y: 1000, scale: 0.84, view: 'right', pose: 'sit', inFront: true}},
 			chip: t({x: 880, y: 956, w: 944, h: 56}, 'body', 700, 30, 24, 1, 1.0, 'right'),
 			sources: src({x: 880, y: 964, w: 520, h: 40}, 'left'),
 		},
 		vertical: {
-			chart: {x: 54, y: 290, w: 972, h: 740},
-			solo: {zoo: {x: 470, y: 2060, scale: 1.1, view: 'threeQuarter'}},
+			// Fixed 2026-11-24 (review): the panel spanned x 54-1026 down to y 1030 and the chip (y 1046-1096) was
+			// right-aligned to x 1026, so the chart's own "Illustrative · fictional token" footer and the localized chip
+			// sat under the Shorts button column (x > 950, y > 960). The panel now ends at x 930 (its footer label ends at
+			// about x 894), and the chip sits above the panel, left-aligned (y 290-340, below a two-line fiction card). The
+			// panel keeps 700 px of height (CHART_SPEC: the price pane must be >= 55% of the inner height); ZOO stands 20 px
+			// lower so his hair clears the panel.
+			chart: {x: 54, y: 354, w: 876, h: 700},
+			solo: {zoo: {x: 470, y: 2080, scale: 1.1, view: 'threeQuarter'}},
 			pair: null,
-			chip: t({x: 54, y: 1046, w: 972, h: 50}, 'body', 700, 28, 24, 1, 1.0, 'right'),
-			sources: {...SRC_V, box: {x: 476, y: 1110, w: 550, h: 40}},
+			chip: t({x: 54, y: 290, w: 972, h: 50}, 'body', 700, 28, 24, 1, 1.0, 'left'),
+			sources: SRC_V,
 		},
 	} satisfies Record<Format, ChartLayout>,
 	steps: {
@@ -207,7 +230,8 @@ export const LAYOUTS = {
 			item: t({x: 0, y: 0, w: 900 - 80 - 28, h: 150}, 'heading', 800, 58, 32, 2, 1.16, 'left', {balance: true}),
 			badge: 80,
 			gap: 28,
-			sources: src({x: 1000, y: 60, w: 824, h: 40}, 'right'),
+			// in the text column (ZOO stands right at x 1500; top-right put the line over his head, against CV4c)
+			sources: src({x: 96, y: 60, w: 900, h: 40}, 'left'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2170, scale: 1.3},
@@ -223,8 +247,10 @@ export const LAYOUTS = {
 	} satisfies Record<Format, StepsLayout>,
 	quote: {
 		landscape: {
-			zoo: {x: 1620, y: ZOO_MED_Y, scale: ZOO_MED_S},
-			badger: {x: 985, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'right', head: 'front', inFront: true},
+			// the same placement as steps (fixed 2026-11-24, review: ZOO popped 120 px sideways on a steps -> quote cut,
+			// which read as a glitch); with Badger in the shot the card narrows to clear his head (Quote.tsx)
+			zoo: {x: 1500, y: ZOO_MED_Y, scale: ZOO_MED_S},
+			badger: {x: 885, y: ZOO_MED_Y, scale: ZOO_MED_S, view: 'right', head: 'front', inFront: true},
 			column: {top: 110, bottom: 970},
 			card: {x: 96, w: 1000},
 			pad: 56,
@@ -256,7 +282,8 @@ export const LAYOUTS = {
 			button: {w: 568, h: 112},
 			buttonLabel: t({x: 0, y: 0, w: 568, h: 112}, 'heading', 900, 48, 30, 1, 1.0, 'center', {valign: 'center', uppercase: true}),
 			disclosure: t({x: 1168, y: 0, w: 608, h: 200}, 'body', 700, 34, 26, 4, 1.25, 'center', {balance: true}),
-			sources: src({x: 96, y: 60, w: 860, h: 40}, 'left'),
+			// above the card (fixed 2026-11-24, review: at x 96 it sat on ZOO's hair, against CV4c)
+			sources: src({x: 1120, y: 60, w: 704, h: 40}, 'left'),
 		},
 		vertical: {
 			zoo: {x: 540, y: 2170, scale: 1.3},
@@ -306,6 +333,15 @@ export const LOWER_THIRD: Record<Format, {box: Box; name: TextSpec; role: TextSp
 	},
 	vertical: null, // Shorts carry no lower third: the top and bottom of the frame belong to the Shorts UI
 };
+/** Plate padding: the teal bar and gaps left of the text (40 + 12) and the right padding (40). */
+export const LOWER_THIRD_PAD = {left: 52, right: 40} as const;
+/**
+ * Where the plate starts, per template (landscape). Templates with ZOO standing on the left (talk, cta: x 440, his
+ * hanging hands at about x 240-315 and 560-640, y 850-990) start it right of his right hand, between ZOO and the text
+ * column; the others keep x 96. Fixed 2026-11-24 (review: at x 96 the plate hid ZOO's hand in the talk scene).
+ */
+export const LOWER_THIRD_X: Partial<Record<SceneType, number>> = {talk: 680, cta: 680};
+export const lowerThirdX = (type: SceneType): number => LOWER_THIRD_X[type] ?? (LOWER_THIRD.landscape as {box: Box}).box.x;
 export const FICTION_CARD: Record<Format, TextSpec> = {
 	// the text box (the plate adds 12 px above and below); two lines allowed for long translations
 	landscape: t({x: 96, y: 56, w: 1100, h: 64}, 'body', 700, 28, 24, 2, 1.15, 'left'),
@@ -313,6 +349,6 @@ export const FICTION_CARD: Record<Format, TextSpec> = {
 };
 /** Dev / review badges (English by design: they are markers for the owner, never viewer copy). */
 export const BADGE_AREA: Record<Format, {right: number; y: number}> = {
-	landscape: {right: 1824, y: 6},
-	vertical: {right: 1026, y: 140},
+	landscape: {right: 1824, y: 6}, // one row above the 54 px margin
+	vertical: {right: 1026, y: 40}, // stacked inside the Shorts top-UI zone (never published)
 };

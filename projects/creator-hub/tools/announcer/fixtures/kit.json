@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "fixture-signature",
+  "youtubeVideoId": "Zb7xq2Ph0aA",
+  "title": "POV: You almost sign a wallet drainer",
+  "titleOptions": ["POV: You almost sign a wallet drainer"],
+  "summary": "A stranger offers you a free airdrop and a claim link. We follow this fictional scam and end with one fix: read every signature request.",
+  "chapters": [{"start": "00:00", "title": "The offer"}],
+  "sources": [
+    {"title": "FTC: What To Know About Cryptocurrency and Scams", "url": "https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams"}
+  ],
+  "offers": [
+    {"id": "hardware-wallet", "hubUrl": "https://go.zoora.ai/go/hardware-wallet?v=fixture-signature&s=yt", "disclosure": "Affiliate link: I may earn a commission if you buy. It costs you nothing extra."},
+    {"id": "exchange-demo", "hubUrl": "https://go.zoora.ai/go/exchange-demo?v=fixture-signature&s=yt", "disclosure": "Referral link: I earn a share of fees if you sign up and trade. Crypto trading is high risk. Not financial advice."},
+    {"id": "paused-tool", "hubUrl": "https://go.zoora.ai/go/paused-tool?v=fixture-signature&s=yt", "disclosure": "Affiliate link: I may earn a commission."}
+  ],
+  "disclosures": [
+    "Disclosure: some links for this video are affiliate or referral links. If you use them, I may earn money. Each one is labelled next to the link.",
+    "Affiliate link: I may earn a commission if you buy. It costs you nothing extra.",
+    "Fictional story: the people, chats and wallets in this video are made up and animated.",
+    "Education only, not financial advice."
+  ],
+  "posts": {
+    "youtube": {"text": "Test fixture.", "charCount": 13, "limit": 5000, "notes": []},
+    "shorts": {"text": "Test fixture.", "charCount": 13, "limit": 5000, "notes": []},
+    "tiktok": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "reels": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "instagram": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "x": {"text": "The airdrop is free. The signature is not.\nFull episode: https://www.youtube.com/@ZooraTechnologies\n#CryptoSecurity #WalletDrainer", "charCount": 111, "limit": 280, "notes": []}
+  },
+  "captions": {"srt": null, "vtt": null},
+  "renders": [],
+  "settings": {"madeForKids": false, "containsSyntheticMedia": false, "paidPromotion": true, "reasons": []},
+  "checks": [
+    {"id": "disclosures", "ok": true, "detail": "fixture"},
+    {"id": "income-claims", "ok": true, "detail": "fixture"},
+    {"id": "chapters", "ok": false, "detail": "not blocking for announcements"}
+  ],
+  "generatedAt": "2026-11-24T07:00:00.000Z"
+}

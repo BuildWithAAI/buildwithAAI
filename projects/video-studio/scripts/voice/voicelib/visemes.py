@@ -11,15 +11,26 @@ Fold ː ʰ ʲ ̃ ᵝ and tone arrows into the previous phone, ˈ ˌ into the nex
 (aɪ = ah, ee), which Kokoro's per-character tokens give automatically.
 
 Track rules (LP3, binding), in this order:
+  0. snap to the audio (2026-11-24, VCD fix; needs the take's 5 ms energy envelope): Kokoro gives the last phone
+     before punctuation 300-400 ms although the voice stops about 250 ms earlier, so the phrase-final phone ends
+     where the energy falls more than VOICED_DB (28 dB) under the phrase peak; a space or pause token before a phone
+     also carries that phone's onset, so the phone starts where the energy rises (at most ONSET_REACH_S earlier).
+     The timings were already moved 47 ms earlier (takes.TIMING_LAG_S: Kokoro's edges lag the sound);
   1. sample each frame 1 frame AHEAD of the audio (the mouth leads the sound by 1 f);
   2. every mbp phone of 15 ms or more gets at least one frame (a /p/ is never dropped);
-  3. RMS gate: a run of 4+ frames whose audio RMS is more than 40 dB below the scene's loudest frame
-     counts as a pause even if a phone is nominally there ("closed in silence");
+  3. RMS gate: a run of 4+ frames whose audio RMS is more than 32 dB below the scene's loudest frame
+     counts as a pause even if a phone is nominally there ("closed in silence"). It was 40 dB, which never
+     fired: the residual after a phrase sits 34-39 dB under the peak (the mouth stayed open 5-10 frames);
   4. pauses: under 4 f hold the previous shape, 4-10 f relax to slightlyOpen, 11 f or more close;
      before the first and after the last phone the mouth is closed;
   5. ah -> closed/mbp gets a slightlyOpen in-between where there is room;
   6. every shape is held at least 2 frames: a 1-frame shape merges into its longer neighbour, except
-     mbp, which is extended instead.
+     mbp, which is extended instead, and a 1-frame opening right after a closed run (a phrase onset), which
+     takes the closed frame before it: the mouth opens a frame early rather than a frame late (2026-11-24: a
+     50 ms first phone, "a" or "l", was dropped and the es demo opened 1 frame after the voice).
+Ties: a frame window split evenly between a pause and a phone shows the phone. Every take's first phone starts
+exactly LEAD_KEEP_S = 150 ms = 4.5 frames in, so this tie came up at every scene start and was settled by float
+rounding.
 Decision (recorded): LP3's in-between is "1 f", but LP3, the QA checklist (ART_GUIDE 10.8) and the
 task all forbid 1-frame shapes, so the in-between is 2 frames and only inserted when both sides keep
 2 or more. Rule 4 also refines the task's "pauses give closed": short pauses relax rather than snap.
@@ -29,6 +40,13 @@ import math
 from collections.abc import Sequence
 
 SHAPES = ("closed", "slightlyOpen", "ah", "ee", "oh", "mbp")
+SILENCE_DB = -32.0  # RMS gate (rule 3), relative to the scene's loudest frame
+VOICED_DB = 28.0  # rule 0 and the sync check: within this many dB of the phrase peak counts as voiced
+HOP_S = 0.005  # energy envelope hop for rule 0
+MIN_PHONE_S = 0.03  # a phrase-final phone keeps at least this much
+END_PAD_S = 0.015  # a phrase-final phone ends this long after its last voiced hop (half a frame: frame RMS lags hops)
+ONSET_REACH_S = 0.12  # how far back a phone may start to meet its onset
+PHRASE_MARKS = frozenset(',.!?;:—…“”"()«»¡¿')  # punctuation ends a phrase; a space does not
 PAUSE = "pause"
 FOLD_PREV = "fold_prev"
 FOLD_NEXT = "fold_next"
@@ -110,6 +128,95 @@ def intervals(tokens: Sequence[tuple[str, float, float]], lang: str = "en") -> l
     return [(a, b, s) for a, b, s in out if b > a or s != PAUSE]
 
 
+def phrase_spans(tokens: Sequence[tuple[str, float, float]]) -> list[tuple[float, float]]:
+    """(start s, end s) of every phrase: the tokens between punctuation marks (spaces join words inside a phrase)."""
+    spans: list[tuple[float, float]] = []
+    cur: list[float] | None = None
+    for ch, a, b in tokens:
+        if ch in PHRASE_MARKS:
+            if cur:
+                spans.append((cur[0], cur[1]))
+            cur = None
+            continue
+        if ch.isspace():
+            continue
+        if cur is None:
+            cur = [min(a, b), max(a, b)]
+        else:
+            cur[1] = max(cur[1], a, b)
+    if cur:
+        spans.append((cur[0], cur[1]))
+    return spans
+
+
+def refine(ivs: Sequence[Interval], spans: Sequence[tuple[float, float]], env_db: Sequence[float] | None, hop_s: float = HOP_S, voiced_db: float = VOICED_DB) -> list[Interval]:
+    """Rule 0: snap phrase-final phone ends and phone onsets to the take's energy envelope (dB per `hop_s`).
+
+    Pauses are rebuilt as the gaps between phones, so a trimmed phone leaves a pause behind it."""
+    phones = sorted(([a, b, s] for a, b, s in ivs if s != PAUSE), key=lambda x: (x[0], x[1]))
+    if not env_db or not phones:
+        return list(ivs)
+    n = len(env_db)
+
+    def hop(t: float) -> int:
+        return min(n, max(0, int(t / hop_s)))
+
+    def hop_up(t: float) -> int:
+        return min(n, max(0, int(math.ceil(t / hop_s - 1e-9))))
+
+    def threshold(a: float, b: float) -> float | None:
+        lo, hi = hop(a), max(hop(a) + 1, hop_up(b))
+        seg = env_db[lo:hi]
+        return (max(seg) - voiced_db) if seg else None
+
+    phrase_thr = [(a, b, threshold(a, b)) for a, b in spans]
+
+    def thr_at(t: float) -> float | None:
+        for a, b, th in phrase_thr:
+            if a - 1e-9 <= t <= b + 1e-9:
+                return th
+        return None
+
+    # phrase ends: the last phone of each phrase stops where the voice does
+    for a, b, th in phrase_thr:
+        if th is None:
+            continue
+        inside = [p for p in phones if p[0] < b - 1e-9 and p[1] > a + 1e-9]
+        if not inside:
+            continue
+        last = max(inside, key=lambda p: p[1])
+        s0, e0 = last[0], last[1]
+        voiced = [h for h in range(hop(s0), hop_up(e0)) if env_db[h] > th]
+        end = (voiced[-1] + 1) * hop_s + END_PAD_S if voiced else s0
+        end = max(end, s0 + min(MIN_PHONE_S, e0 - s0))
+        if end < e0:
+            last[1] = end
+    # onsets: a phone after a pause starts where its sound starts (the space or mark token carried it)
+    prev_end = 0.0
+    for p in phones:
+        s0 = p[0]
+        if s0 - prev_end > hop_s:
+            th = thr_at(s0)
+            if th is not None:
+                lo = max(prev_end, s0 - ONSET_REACH_S)
+                for h in range(hop_up(lo), hop(s0)):
+                    if env_db[h] > th and (h + 1 >= n or env_db[h + 1] > th):
+                        p[0] = max(lo, h * hop_s)
+                        break
+        prev_end = max(prev_end, p[1])
+    # pauses fill every gap, before the first phone and after the last too, so a frame that only grazes a phone
+    # still shows the pause (raw_frames takes the shape with the largest overlap)
+    out: list[Interval] = []
+    t = 0.0
+    for a, b, s in phones:
+        if a > t + 1e-9:
+            out.append((t, a, PAUSE))
+        out.append((a, b, s))
+        t = max(t, b)
+    out.append((t, t + 3600.0, PAUSE))
+    return out
+
+
 def _runs(track: Sequence[str]) -> list[list]:
     runs: list[list] = []
     for i, s in enumerate(track):
@@ -148,7 +255,8 @@ def raw_frames(ivs: Sequence[Interval], n_frames: int, fps: int, lead_frames: in
                 overlap[shape] = overlap.get(shape, 0.0) + o
             j += 1
         if overlap:
-            best = max(overlap.items(), key=lambda kv: (kv[1], kv[0] != PAUSE))
+            # overlaps equal to the microsecond are a tie, and a tie shows the phone (see the module docstring)
+            best = max(overlap.items(), key=lambda kv: (round(kv[1] * 1e6), kv[0] != PAUSE))
             track[f] = best[0]
     # every mbp of 15 ms+ gets a frame
     for s0, s1, shape in sorted_ivs:
@@ -170,7 +278,7 @@ def raw_frames(ivs: Sequence[Interval], n_frames: int, fps: int, lead_frames: in
     return track
 
 
-def apply_rms_gate(track: list[str], rms: Sequence[float] | None, lead_frames: int = 1, silence_db: float = -40.0, min_run: int = 4) -> list[str]:
+def apply_rms_gate(track: list[str], rms: Sequence[float] | None, lead_frames: int = 1, silence_db: float = SILENCE_DB, min_run: int = 4) -> list[str]:
     if not rms:
         return track
     peak = max(rms) if rms else 0.0
@@ -251,6 +359,10 @@ def enforce_min_hold(track: list[str], min_hold: int = 2) -> list[str]:
             f = a - 1 if donor is left else b
             out[f] = "mbp"
             continue
+        if shape != "closed" and left and left[0] == "closed" and left[2] - left[1] > min_hold:
+            # a phrase onset: open one frame early (LP3 leads the sound) instead of dropping the opening
+            out[a - 1] = shape
+            continue
         target = max((r for r in (left, right) if r), key=lambda r: r[2] - r[1])
         for f in range(a, b):
             out[f] = target[0]
@@ -264,12 +376,18 @@ def mouth_track(
     rms: Sequence[float] | None = None,
     lang: str = "en",
     lead_frames: int = 1,
-    silence_db: float = -40.0,
+    silence_db: float = SILENCE_DB,
+    env_db: Sequence[float] | None = None,
+    hop_s: float = HOP_S,
 ) -> list[str]:
-    """The full LP3 pipeline. `tokens` are scene-relative seconds; `rms` is one value per video frame."""
+    """The full LP3 pipeline. `tokens` are scene-relative seconds; `rms` is one value per video frame; `env_db` is the
+    take's energy envelope in dB, one value per `hop_s` (rule 0; without it the token timings are used as they are)."""
     if n_frames <= 0:
         return []
-    track = raw_frames(intervals(tokens, lang), n_frames, fps, lead_frames)
+    ivs = intervals(tokens, lang)
+    if env_db:
+        ivs = refine(ivs, phrase_spans(tokens), env_db, hop_s)
+    track = raw_frames(ivs, n_frames, fps, lead_frames)
     track = apply_rms_gate(track, rms, lead_frames, silence_db)
     track = resolve_pauses(track)
     track = add_tweens(track)
@@ -281,3 +399,45 @@ def changes_per_second(track: Sequence[str], fps: int = 30) -> float:
     if len(track) < 2:
         return 0.0
     return sum(1 for a, b in zip(track, track[1:]) if a != b) / (len(track) / fps)
+
+
+def sync_landmarks(track: Sequence[str], frame_db: Sequence[float], voiced_db: float = VOICED_DB) -> dict:
+    """Phrase-level lip-sync check against the audio (frame_db: each video frame's RMS in dB).
+
+    Voiced = within `voiced_db` of the scene's loudest frame; phrases are voiced runs, bridging gaps under 4 frames.
+    onsets: mouth-open frame minus audio-onset frame, for phrases the mouth was closed before (LP3 wants -1).
+    mbpOnsets: the same for phrases that start with m/b/p: the lips press (mbp) before the sound, and LP3 starts mbp
+    1-4 frames before the release, so these are kept apart (the review's landmarks.py counted them as onsets).
+    offsets: last open frame minus last voiced frame, for phrases followed by 11+ quiet frames (the mouth must close).
+    The same measure the 2026-11-24 review used (review-audio/landmarks.py)."""
+    n = min(len(track), len(frame_db))
+    out: dict = {"onsets": [], "mbpOnsets": [], "offsets": []}
+    if not n:
+        return out
+    peak = max(frame_db[:n])
+    voiced = [v > peak - voiced_db for v in frame_db[:n]]
+    ph: list[list[int]] = []
+    f = 0
+    while f < n:
+        if not voiced[f]:
+            f += 1
+            continue
+        g = f
+        while g < n and voiced[g]:
+            g += 1
+        if ph and f - ph[-1][1] < 4:
+            ph[-1][1] = g
+        else:
+            ph.append([f, g])
+        f = g
+    for k, (a, b) in enumerate(ph):
+        if all(m == "closed" for m in track[max(0, a - 6) : max(0, a - 3)]):
+            mo = next((i for i in range(max(0, a - 6), min(n, a + 10)) if track[i] != "closed"), None)
+            if mo is not None:
+                out["mbpOnsets" if track[mo] == "mbp" else "onsets"].append(mo - a)
+        nxt = ph[k + 1][0] if k + 1 < len(ph) else n
+        if nxt - b >= 11:
+            mc = next((i for i in range(max(0, b - 8), min(n, nxt)) if all(m == "closed" for m in track[i : min(n, i + 3)])), None)
+            if mc is not None:
+                out["offsets"].append((mc - 1) - (b - 1))
+    return out

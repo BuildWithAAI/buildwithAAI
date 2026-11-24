@@ -6,12 +6,11 @@
 import test, {describe} from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync, readFileSync, writeFileSync, mkdirSync} from 'node:fs';
+import {existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {fileURLToPath} from 'node:url';
-import {EMPTY_NAMES, loadNames} from '../../claims/lib/names.ts';
-import {checkEpisode} from '../../claims/lib/check.ts';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import {EMPTY_NAMES, findNames, findWallets, loadNames, namePatterns, parseNames, quietTypelessWarning} from '../lib/detectors.ts';
 import {factFromInput, promptFact} from '../lib/add.ts';
 import {addDays} from '../lib/dates.ts';
 import {main} from '../lib/main.ts';
@@ -29,6 +28,10 @@ const HERE = fileURLToPath(new URL('.', import.meta.url));
 const FIX = join(HERE, 'fixtures');
 const PAGES = join(FIX, 'pages');
 const STUDIO = join(HERE, '..', '..', '..');
+/** The claim gate (scripts/claims) is another workflow's tool and may be missing from a checkout: tests that need it skip. */
+const CLAIMS_LIB = join(STUDIO, 'scripts', 'claims', 'lib');
+const claimGate = async <T>(file: string): Promise<T | null> => (existsSync(join(CLAIMS_LIB, file)) ? ((await import(pathToFileURL(join(CLAIMS_LIB, file)).href)) as T) : null);
+type CheckEpisode = (o: {dir: string; today: string; namesPath: string | null; offersPath: string | null; now?: string}) => {pass: boolean; findings: Array<{level: string}>; claims: Array<{ids: string[]}>};
 const TODAY = '2026-11-24';
 const NAMES = loadNames(join(FIX, 'names.txt'));
 const CTX = {today: TODAY, names: NAMES};
@@ -431,7 +434,10 @@ describe('to-storyboard', () => {
 		assert.deepEqual(JSON.parse(out), r.storyboard);
 		assert.deepEqual(topLevelValueSpan('{"a": {"sources": 1}, "sources": [1, "]"]}', 'sources'), {start: 33, end: 41, keyStart: 22});
 	});
-	test('the resolved storyboard passes the existing claim gate unchanged', () => {
+	test('the resolved storyboard passes the existing claim gate unchanged', async (t) => {
+		const gate = await claimGate<{checkEpisode: CheckEpisode}>('check.ts');
+		if (!gate) return t.skip('scripts/claims (the claim gate workflow\'s tool) is not in this checkout');
+		const {checkEpisode} = gate;
 		const dir = join(mkdtempSync(join(tmpdir(), 'facts-')), 'zoora-test', 'fact-demo');
 		mkdirSync(dir, {recursive: true});
 		writeFileSync(join(dir, 'research.md'), '# Research\n\n## Must not say (binding for the script)\n\n- (none)\n');
@@ -612,5 +618,52 @@ describe('the committed bank', () => {
 			assert.ok(f.verification !== 'unverified' || f.verifiedAt === null);
 			if (f.verification === 'direct-read') assert.ok(f.sources.some((s) => s.checks.some((c) => c.result === 'found' && (c.by === 'verify' || c.by === 'person'))), `${f.id} has a direct read on record`);
 		}
+	});
+});
+
+describe('the claim gate detectors copied in lib/detectors.ts', () => {
+	type NamesModule = {parseNames: typeof parseNames; namePatterns: typeof namePatterns; findNames: typeof findNames};
+	type WalletsModule = {findWallets: typeof findWallets};
+	const SAMPLES = [
+		'Ada Lovelace and @satoshi_fan met Grace Hopper.',
+		'Send it to 0x52908400098527886E0F7030069857D2E4169EE7 now.',
+		'tx 0x' + 'ab'.repeat(32) + ' landed.',
+		'Solana: 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU, short 7xKX…gAsU and 0x12ab...89ef.',
+		'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq and vitalik.eth',
+		'No address here, only 2026 and 68.67%.',
+		'Ünïcödé Ada  Lovelace, ada lovelace and ADA LOVELACE.',
+	];
+	test('match the claim gate (scripts/claims/lib) exactly, whenever it is in the checkout', async (t) => {
+		const names = await claimGate<NamesModule>('names.ts');
+		const wallets = await claimGate<WalletsModule>('wallets.ts');
+		if (!names || !wallets) return t.skip('scripts/claims (the claim gate workflow\'s tool) is not in this checkout');
+		const list = '# test list\nAda Lovelace\n@satoshi_fan\nGrace  Hopper\nxy\n';
+		assert.deepEqual(parseNames(list), names.parseNames(list));
+		const mine = {path: 'x', count: 3, patterns: namePatterns(parseNames(list))};
+		const theirs = {path: 'x', count: 3, patterns: names.namePatterns(names.parseNames(list))};
+		assert.deepEqual(mine.patterns.map(String), theirs.patterns.map(String));
+		for (const s of SAMPLES) {
+			assert.deepEqual(findNames(s, mine), names.findNames(s, theirs), s);
+			assert.deepEqual(findWallets(s), wallets.findWallets(s), s);
+		}
+	});
+	test('work without the claim gate: names, wallets and the one quieted warning', () => {
+		const list = {path: 'x', count: 2, patterns: namePatterns(parseNames('Ada Lovelace\n@satoshi_fan\n'))};
+		assert.deepEqual(findNames(SAMPLES[0], list), [1, 2]);
+		assert.deepEqual(findNames(SAMPLES[5], list), []);
+		assert.deepEqual(findWallets(SAMPLES[1]).map((h) => h.kind), ['evm-address']);
+		assert.deepEqual(findWallets(SAMPLES[4]).map((h) => [h.kind, h.level]), [['bech32', 'error'], ['ens', 'warning']]);
+		assert.deepEqual(findWallets(SAMPLES[5]), []);
+		const seen: string[] = [];
+		const original = process.emitWarning;
+		process.emitWarning = ((w: string | Error) => void seen.push(String(w))) as typeof process.emitWarning;
+		try {
+			quietTypelessWarning();
+			process.emitWarning('typeless', {code: 'MODULE_TYPELESS_PACKAGE_JSON'});
+			process.emitWarning('other', {code: 'SOMETHING_ELSE'});
+		} finally {
+			process.emitWarning = original;
+		}
+		assert.deepEqual(seen, ['other']);
 	});
 });

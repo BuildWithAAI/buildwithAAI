@@ -4,10 +4,11 @@
  * still does not fit, the result says `overflow` and the validator fails the render (text is never clipped silently).
  * The width measure is injected: canvas measureText in the browser, real font tables in the Node tests.
  */
+import {leansNext, leansPrev} from './phrasing.ts';
 
 /** Whitespace-normalised text, upper-cased with the language's own rules when the spec asks for it. */
 export const prepText = (text: string, spec: {uppercase?: boolean}, lang: string): string => {
-	const s = text.replace(/\s+/g, ' ').trim();
+	const s = text.replace(/[^\S\u200B]+/g, ' ').trim();
 	return spec.uppercase ? s.toLocaleUpperCase(lang === 'pt-br' ? 'pt-BR' : lang) : s;
 };
 
@@ -21,13 +22,20 @@ export type FitSpec = {
 	minSize: number;
 	maxLines: number; // preferred line count while shrinking
 	lineHeight: number; // multiple of the font size
-	unspaced?: boolean; // zh/ja: break between characters (with kinsoku rules)
+	unspaced?: boolean; // zh/ja: break between words found by Intl.Segmenter (kinsoku rules; real spaces kept)
+	lang?: string; // segmentation language for unspaced text (default 'zh')
 	balance?: boolean; // even out line lengths (titles)
 	ellipsis?: boolean; // at the floor, cut the text with "…" instead of overflowing (source lines only)
+	/**
+	 * Added 2026-11-24 (captions): never end a line on a word that leans on the next one, or start one with a word that
+	 * leans on the previous one (text/phrasing.ts, by `lang`), when moving that word keeps the line within the width.
+	 */
+	phrase?: boolean;
 };
 
 export type FitResult = {
 	fontSize: number;
+	lineHeight: number; // the multiple of fontSize the lines were fitted with (render with exactly this)
 	lines: string[];
 	width: number; // widest line, px
 	height: number; // lines × size × lineHeight
@@ -41,19 +49,43 @@ export type FitResult = {
 const NO_START = '、。，．・：；？！ー）」』】〕〉》｝’”…,.!?:;)%';
 const NO_END = '（「『【〔〈《｛‘“(';
 
-/** Break units: words with their trailing space for spaced text; characters (kinsoku-glued) for unspaced text. */
-const units = (text: string, unspaced: boolean): string[] => {
+/** Word segments of unspaced text (Intl.Segmenter: ICU's CJK dictionary in Chrome and Node), whitespace included. */
+const segmenters = new Map<string, Intl.Segmenter>();
+const segmentsOf = (text: string, lang: string): string[] => {
+	let seg = segmenters.get(lang);
+	if (!seg) {
+		seg = new Intl.Segmenter(lang, {granularity: 'word'});
+		segmenters.set(lang, seg);
+	}
+	return Array.from(seg.segment(text), (x) => x.segment);
+};
+
+/**
+ * Break units. Spaced text: words. Unspaced text: dictionary words, with closing punctuation glued to the word before
+ * it and opening punctuation to the word after (kinsoku), and real spaces (around Latin words) kept on the unit before.
+ */
+const units = (text: string, unspaced: boolean, lang = 'zh'): string[] => {
 	if (!unspaced) return text.split(/\s+/).filter(Boolean);
 	const out: string[] = [];
-	for (const ch of Array.from(text.replace(/\s+/g, ''))) {
+	let glueNext = false;
+	// An editor can mark the ONLY break points of a CJK string with zero-width spaces (U+200B), e.g. "你成了\u200B顶级喊单人",
+	// where the dictionary does not know a compound; otherwise Intl.Segmenter finds the words.
+	const t = text.replace(/\s+/g, ' ').trim();
+	const segs = t.includes('\u200B') ? t.split('\u200B').filter(Boolean) : segmentsOf(t, lang);
+	for (const s of segs) {
+		if (/^\s+$/.test(s)) {
+			if (out.length) out[out.length - 1] += ' ';
+			continue;
+		}
 		const last = out.length - 1;
-		if (last >= 0 && (NO_START.includes(ch) || NO_END.includes(out[last].slice(-1)) || /[A-Za-z0-9$%.,]/.test(ch) && /[A-Za-z0-9$]$/.test(out[last]))) out[last] += ch;
-		else out.push(ch);
+		if (last >= 0 && (glueNext || NO_START.includes(s[0]) || NO_END.includes(out[last].trimEnd().slice(-1)))) out[last] += s;
+		else out.push(s);
+		glueNext = NO_END.includes(s.slice(-1));
 	}
 	return out;
 };
 
-const joinUnits = (u: string[], unspaced: boolean) => u.join(unspaced ? '' : ' ');
+const joinUnits = (u: string[], unspaced: boolean) => (unspaced ? u.join('').trim() : u.join(' '));
 
 /** Split one too-wide word into pieces that fit (last resort). */
 const breakWord = (w: string, maxWidth: number, size: number, measure: Measure): string[] => {
@@ -70,8 +102,8 @@ const breakWord = (w: string, maxWidth: number, size: number, measure: Measure):
 };
 
 /** Greedy wrap at `size`. Returns the lines and whether a word had to be broken. */
-export const wrapText = (text: string, maxWidth: number, size: number, measure: Measure, unspaced = false): {lines: string[]; broke: boolean} => {
-	const us = units(text.trim(), unspaced);
+export const wrapText = (text: string, maxWidth: number, size: number, measure: Measure, unspaced = false, lang?: string): {lines: string[]; broke: boolean} => {
+	const us = units(text.trim(), unspaced, lang);
 	const lines: string[] = [];
 	let cur: string[] = [];
 	let broke = false;
@@ -98,17 +130,17 @@ export const wrapText = (text: string, maxWidth: number, size: number, measure: 
 const result = (lines: string[], size: number, spec: FitSpec, measure: Measure, broke: boolean, past: boolean): FitResult => {
 	const height = lines.length * size * spec.lineHeight;
 	const width = Math.max(0, ...lines.map((l) => measure(l, size)));
-	return {fontSize: size, lines, width, height, wrappedPastPreferred: past, brokeWord: broke, truncated: false, overflow: height > spec.maxHeight + 0.5 || width > spec.maxWidth + 0.5};
+	return {fontSize: size, lineHeight: spec.lineHeight, lines, width, height, wrappedPastPreferred: past, brokeWord: broke, truncated: false, overflow: height > spec.maxHeight + 0.5 || width > spec.maxWidth + 0.5};
 };
 
 /** Even out the lines: the narrowest width that still wraps into the same number of lines. */
 const balanced = (text: string, n: number, size: number, spec: FitSpec, measure: Measure): string[] => {
 	let lo = spec.maxWidth * 0.45;
 	let hi = spec.maxWidth;
-	let best = wrapText(text, hi, size, measure, spec.unspaced).lines;
+	let best = wrapText(text, hi, size, measure, spec.unspaced, spec.lang).lines;
 	for (let k = 0; k < 14; k++) {
 		const mid = (lo + hi) / 2;
-		const w = wrapText(text, mid, size, measure, spec.unspaced);
+		const w = wrapText(text, mid, size, measure, spec.unspaced, spec.lang);
 		if (w.lines.length <= n && !w.broke) {
 			best = w.lines;
 			hi = mid;
@@ -117,13 +149,39 @@ const balanced = (text: string, n: number, size: number, spec: FitSpec, measure:
 	return best;
 };
 
+/**
+ * Phrase-aware line ends (spec.phrase): move a word that leans on the next one ("de", "the", "on") down to the next line,
+ * and a word that leans on the previous one (Hindi postpositions) up, while the receiving line still fits. The number of
+ * lines never changes, so the fitted size and height stay valid.
+ */
+export const rephrase = (lines: string[], spec: FitSpec, size: number, measure: Measure): string[] => {
+	if (!spec.phrase || spec.unspaced || lines.length < 2) return lines;
+	const lang = spec.lang ?? 'en';
+	const ws = lines.map((l) => l.split(' ').filter(Boolean));
+	for (let i = 0; i + 1 < ws.length; i++) {
+		while (ws[i].length > 1 && leansNext(ws[i][ws[i].length - 1], lang)) {
+			const down = [ws[i][ws[i].length - 1], ...ws[i + 1]];
+			if (measure(down.join(' '), size) > spec.maxWidth) break;
+			ws[i + 1] = down;
+			ws[i] = ws[i].slice(0, -1);
+		}
+		while (ws[i + 1].length > 1 && leansPrev(ws[i + 1][0], lang)) {
+			const up = [...ws[i], ws[i + 1][0]];
+			if (measure(up.join(' '), size) > spec.maxWidth) break;
+			ws[i] = up;
+			ws[i + 1] = ws[i + 1].slice(1);
+		}
+	}
+	return ws.map((w) => w.join(' '));
+};
+
 /** A fit with fewer lines wins if it needs at most this much smaller type (e.g. one line at 46 px beats two at 48). */
 export const FEWER_LINES_TOLERANCE = 0.86;
 
 /** Largest size (>= floor) at which the text wraps into at most `n` lines within the box, or null. */
 const largestFor = (t: string, n: number, spec: FitSpec, measure: Measure, from: number): {size: number; lines: string[]} | null => {
 	for (let size = from; size >= spec.minSize; size--) {
-		const w = wrapText(t, spec.maxWidth, size, measure, spec.unspaced);
+		const w = wrapText(t, spec.maxWidth, size, measure, spec.unspaced, spec.lang);
 		if (w.broke) continue; // prefer shrinking over splitting a word
 		if (w.lines.length <= n && w.lines.length * size * spec.lineHeight <= spec.maxHeight) return {size, lines: w.lines};
 	}
@@ -132,7 +190,7 @@ const largestFor = (t: string, n: number, spec: FitSpec, measure: Measure, from:
 
 export const fitText = (text: string, spec: FitSpec, measure: Measure): FitResult => {
 	const t = text.trim();
-	if (!t) return {fontSize: spec.maxSize, lines: [], width: 0, height: 0, wrappedPastPreferred: false, brokeWord: false, truncated: false, overflow: false};
+	if (!t) return {fontSize: spec.maxSize, lineHeight: spec.lineHeight, lines: [], width: 0, height: 0, wrappedPastPreferred: false, brokeWord: false, truncated: false, overflow: false};
 	const maxSize = Math.max(spec.minSize, Math.floor(spec.maxSize));
 	const best = largestFor(t, spec.maxLines, spec, measure, maxSize);
 	if (best) {
@@ -146,18 +204,18 @@ export const fitText = (text: string, spec: FitSpec, measure: Measure): FitResul
 			}
 		}
 		const lines = spec.balance && pick.lines.length > 1 ? balanced(t, pick.lines.length, pick.size, spec, measure) : pick.lines;
-		return result(lines, pick.size, spec, measure, false, false);
+		return result(rephrase(lines, spec, pick.size, measure), pick.size, spec, measure, false, false);
 	}
 	// floor reached: wrap onto more lines while the box height allows
-	const w = wrapText(t, spec.maxWidth, spec.minSize, measure, spec.unspaced);
-	const lines = spec.balance && w.lines.length > 1 && !w.broke ? balanced(t, w.lines.length, spec.minSize, spec, measure) : w.lines;
+	const w = wrapText(t, spec.maxWidth, spec.minSize, measure, spec.unspaced, spec.lang);
+	const lines = spec.balance && w.lines.length > 1 && !w.broke ? rephrase(balanced(t, w.lines.length, spec.minSize, spec, measure), spec, spec.minSize, measure) : w.lines;
 	const r = result(lines, spec.minSize, spec, measure, w.broke, lines.length > spec.maxLines);
 	if (!r.overflow || !spec.ellipsis) return r;
 	// ellipsis: keep the lines that fit, then shorten the last one word by word until "…" fits
 	const keep = Math.max(1, Math.min(spec.maxLines, Math.floor(spec.maxHeight / (spec.minSize * spec.lineHeight))));
 	const kept = w.lines.slice(0, keep);
 	const sep = spec.unspaced ? '' : ' ';
-	let last = units(kept[keep - 1] + sep + w.lines.slice(keep).join(sep), spec.unspaced ?? false);
+	let last = units(kept[keep - 1] + sep + w.lines.slice(keep).join(sep), spec.unspaced ?? false, spec.lang);
 	while (last.length > 1 && measure(joinUnits(last, spec.unspaced ?? false) + '…', spec.minSize) > spec.maxWidth) last = last.slice(0, -1);
 	kept[keep - 1] = joinUnits(last, spec.unspaced ?? false).replace(/[\s,;:·-]+$/u, '') + '…';
 	return {...result(kept, spec.minSize, spec, measure, w.broke, false), truncated: true};

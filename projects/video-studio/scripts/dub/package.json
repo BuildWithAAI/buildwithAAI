@@ -1,0 +1,6 @@
+{
+  "name": "zoora-dub-tools",
+  "private": true,
+  "type": "module",
+  "description": "Dubbing tools: translation sheets, import and validation (scripts/dub). Run with node directly; see README.md. No dependencies."
+}

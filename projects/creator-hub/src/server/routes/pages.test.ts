@@ -116,8 +116,13 @@ describe('information pages and core responses', () => {
 		const html = await (await t.request('/disclosures', {headers: {'CF-IPCountry': 'GB'}})).text();
 		assert.match(html, /Test Wallet/);
 		assert.match(html, /Affiliate: we may earn a commission/);
-		assert.match(html, /Test Exchange<\/h3>\n<p>Referral: [^<]+<\/p>\n<p class="disclosure">Not shown in your region\.<\/p>/);
+		assert.match(html, /Test Exchange<\/h3>\n<p>Referral relationship\.<\/p>\n<p class="disclosure">Not offered in your region\.<\/p>/);
 		assert.doesNotMatch(html, /share of fees if you sign up and trade/);
+		assert.doesNotMatch(html, /Test Exchange<\/h3>\n<p>[^<]*sign up/, 'no sign-up wording for an offer this visitor cannot use');
+		const unknown = await (await t.request('/disclosures')).text();
+		assert.match(unknown, /Test Exchange<\/h3>\n<p>Referral relationship\.<\/p>\n<p class="disclosure">Not shown here: we could not confirm your country\.<\/p>/);
+		const de = await (await t.request('/disclosures', {headers: {'CF-IPCountry': 'DE'}})).text();
+		assert.match(de, /Test Exchange<\/h3>\n<p>Referral: we may earn a reward or a share of fees when you sign up through our link\.<\/p>/);
 		assert.doesNotMatch(html, /href="\/go\//, 'the disclosures page links to no offers');
 		assert.doesNotMatch(html, /Paused Tool|Old Deal/);
 		assert.match(html, /hello@hub\.test/);
@@ -128,6 +133,16 @@ describe('information pages and core responses', () => {
 		for (const text of [/set no cookies/, /13 months/, /We never store your IP address/, /visitor code/, /studio order form/, /Kit/]) {
 			assert.match(html, text);
 		}
+	});
+
+	it('/privacy states what the secret key, the order form and rate limiting actually allow', async () => {
+		const html = await (await t.request('/privacy')).text();
+		assert.match(html, /browser details \(the user-agent text your browser sends\)/);
+		assert.match(html, /pseudonymous: without our secret key it cannot be turned back into an IP address or matched across days/);
+		assert.match(html, /held briefly in our server's memory to limit abuse \(rate limiting\)\. It is never written to disk/);
+		assert.match(html, /can be linked to the clicks and page visits made from the same browser on the same day/);
+		assert.match(html, /This site is run by Zoora AI\./);
+		assert.doesNotMatch(html, /codes from different days cannot be matched|we cannot look up one person's clicks/);
 	});
 
 	it('/healthz reports ok as JSON', async () => {

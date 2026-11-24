@@ -4,7 +4,7 @@
  * nothing else, so changing a slot here moves it in the plan, the review page and the calendar alike.
  */
 import {DAYS, isDate, parseWeek, type Weekday} from './week.ts';
-import type {BatchConfig, ChannelBatchConfig, FormatSpec, SlotSpec} from './types.ts';
+import type {BatchConfig, ChannelBatchConfig, FormatSpec, ReservedSlot, SlotSpec} from './types.ts';
 import {isRecord, readJson, rel, str, UsageError} from './util.ts';
 import {isTimeZone, isWallTime} from './zone.ts';
 
@@ -101,7 +101,19 @@ export const parseConfig = (data: unknown, source: string, root: string, path: s
 				if (noShorts.some((id) => slotFormats.includes(id))) bad(`${at}: Shorts are cut from every long-form slot, so its formats need a shortComposition (${noShorts.join(', ')} has none)`);
 			}
 		}
-		channels.push({channel, name: str(raw.name) ?? channel, prefix, backlog, long, shorts, formats});
+		const reserved: ReservedSlot[] = [];
+		if (raw.reserved !== undefined && !Array.isArray(raw.reserved)) bad(`${at}.reserved must be a list of {label, day, time, note}`);
+		for (const [k, r] of (Array.isArray(raw.reserved) ? raw.reserved : []).entries()) {
+			const label = isRecord(r) ? str(r.label) : null;
+			const day = isRecord(r) ? r.day : undefined;
+			const time = isRecord(r) ? r.time : undefined;
+			if (!isRecord(r) || !label || !(day === null || isDay(day)) || !(time === null || (typeof time === 'string' && isWallTime(time)))) {
+				bad(`${at}.reserved[${k}] needs {label, day: Mon..Sun or null (not chosen), time: "HH:MM" or null, note}`);
+				continue;
+			}
+			reserved.push({label, day: day as ReservedSlot['day'], time: time as string | null, note: str(r.note) ?? ''});
+		}
+		channels.push({channel, name: str(raw.name) ?? channel, prefix, backlog, long, shorts, formats, ...(reserved.length ? {reserved} : {})});
 	}
 	const dup = <T>(xs: T[]) => xs.filter((x, i) => xs.indexOf(x) !== i);
 	for (const d of dup(channels.map((c) => c.channel))) bad(`channel "${d}" is listed twice`);

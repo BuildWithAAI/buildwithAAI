@@ -6,6 +6,7 @@ below one hundred or a round hundred ("mil e quinhentos", "dois mil e vinte e se
 
 import re
 
+from ..lexicon import PRONUNCIATIONS
 from .common import SpacedNormalizer, split_punct
 
 UNITS = [
@@ -20,6 +21,15 @@ HUNDREDS = {
 SCALES = [(10**12, "trilhão", "trilhões"), (10**9, "bilhão", "bilhões"), (10**6, "milhão", "milhões"), (1000, "mil", "mil")]
 ORDINALS = ["", "primeiro", "segundo", "terceiro", "quarto", "quinto", "sexto", "sétimo", "oitavo", "nono", "décimo"]
 MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
+
+
+def _feminine(words: str) -> str:
+    """'um' -> 'uma', 'dois' -> 'duas' at the end of a number before a feminine noun (horas)."""
+    if words == "um" or words.endswith(" um"):
+        return words[:-2] + "uma"
+    if words == "dois" or words.endswith(" dois"):
+        return words[:-4] + "duas"
+    return words
 
 
 def under_100(n: int) -> str:
@@ -85,15 +95,22 @@ class BrazilianPortuguese(SpacedNormalizer):
         "£": ("libra", "libras", None, None),
         "¥": ("iene", "ienes", None, None),
         "₹": ("rupia", "rupias", None, None),
+        "US$": ("dólar", "dólares", "centavo", "centavos"),
+        "R$": ("real", "reais", "centavo", "centavos"),
+        "A$": ("dólar australiano", "dólares australianos", "centavo", "centavos"),
+        "C$": ("dólar canadense", "dólares canadenses", "centavo", "centavos"),
+        "MX$": ("peso mexicano", "pesos mexicanos", "centavo", "centavos"),
     }
     scales = {"k": ("mil", "mil"), "m": ("milhão", "milhões"), "b": ("bilhão", "bilhões"), "t": ("trilhão", "trilhões")}
     scale_words = frozenset({"mil", "milhão", "milhões", "bilhão", "bilhões", "trilhão", "trilhões"})
     connector_after_scale = "de"
     big_scale_words = frozenset({"milhão", "milhões", "bilhão", "bilhões", "trilhão", "trilhões"})
     tickers = {"BTC": "bitcoin", "ETH": "ether", "SOL": "sol", "USDC": "U S D C", "USDT": "U S D T"}
-    symbols = {"&": "e", "+": "mais", "=": "igual a", "@": "arroba", "%": "por cento", "~": "cerca de", "×": "vezes"}
+    symbols = {"&": "e", "+": "mais", "=": "igual a", "@": "arroba", "%": "por cento", "~": "cerca de", "×": "vezes", "#": "número", "nº": "número", "n.º": "número", "Nº": "número", "N.º": "número"}
     months = MONTHS
     month_lookup = {m: i + 1 for i, m in enumerate(MONTHS)} | {"marco": 3}
+    lexicon = PRONUNCIATIONS["pt-br"]
+    number_word = "número"
 
     def cardinal(self, n: int) -> str:
         return cardinal(n)
@@ -119,6 +136,17 @@ class BrazilianPortuguese(SpacedNormalizer):
 
     def time(self, h: int, mi: int) -> str:
         return cardinal(h) + (f" e {cardinal(mi)}" if mi else " em ponto")
+
+    def hours(self, h: int, mi: int | None) -> str | None:
+        # "10h30" -> "dez e trinta"; "2h" -> "duas horas" (hora is feminine: uma, duas, vinte e uma)
+        fem = _feminine(cardinal(h))
+        if mi:
+            return f"{fem} e {cardinal(mi)}"
+        return f"{fem} {'hora' if h == 1 else 'horas'}"
+
+    def fraction_words(self, n: int, d: int) -> str | None:
+        name = {2: "meio", 3: "terço", 4: "quarto", 5: "quinto", 6: "sexto", 7: "sétimo", 8: "oitavo", 9: "nono", 10: "décimo"}[d]
+        return f"{cardinal(n)} {name}{'s' if n > 1 else ''}"
 
     def ordinal_token(self, core: str) -> str | None:
         m = re.fullmatch(r"(\d+)\.?[ºª°]", core)

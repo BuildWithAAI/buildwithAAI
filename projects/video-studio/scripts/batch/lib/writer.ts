@@ -69,7 +69,7 @@ export const storyboardSkeleton = (c: ChannelBatchConfig, idea: Idea, shorts: Pl
 		scenes: [
 			{id: 's01', type: 'hook', narration: 'TODO the hook: second person, to the point in the first 3 seconds.', onScreen: {title: 'TODO 4-6 words'}, zoo: {expression: 'neutral'}, badger: {present: true, reaction: 'lookUp'}},
 			{id: 's02', type: 'talk', narration: 'TODO story beat; every real-world fact ends with [src:TODO-source-id].', onScreen: {title: 'TODO', bullets: ['TODO']}, badger: {present: true, reaction: 'judge'}},
-			{id: 's03', type: 'chart', narration: 'TODO optional (delete the scene if the story needs no chart): synthetic data only, labelled illustrative.', chart: {seed: 1, illustrative: true}, onScreen: {pair: 'TODO a fictional ticker, e.g. $ZOO / SOL'}},
+			{id: 's03', type: 'chart', narration: 'TODO optional (delete the scene if the story needs no chart): synthetic data only, labelled illustrative.', chart: {seed: 1, illustrative: true}, onScreen: {pair: 'TODO an invented ticker that a web search shows is no live token, e.g. $QZLX / SOL'}},
 			{id: 's04', type: 'steps', narration: 'TODO the viewer checks (defensive, not a how-to).', onScreen: {title: 'TODO', steps: ['TODO', 'TODO', 'TODO']}},
 			{id: 's05', type: 'cta', narration: 'TODO subscribe line. No product pitch.', onScreen: {button: 'Subscribe'}},
 			{id: 's06', type: 'endscreen', narration: 'TODO a short outro line.', minDurationSec: 20, onScreen: {title: 'TODO'}},
@@ -244,15 +244,15 @@ export const renderWriter = (w: WriterInput): string => {
 		...(dubs.length
 			? [
 					`2. Dubs, per language (${dubs.join(', ')}): \`node scripts/dub/cli.ts prepare ${content} --lang <lang>\`, translate the sheet, \`node scripts/dub/cli.ts import ${content} --lang <lang>\`, then \`node scripts/claims/check.ts ${content} --lang <lang>\`. A dub stays machine-translated (badged) until a native review; the owner decides whether its track goes up.`,
-					`3. Voice: \`python scripts/voice/build.py ${content} --lang en --voice im_nicola\`, then each dub with \`--lang <lang> --fit-to en --voice im_nicola\` (exit 3 = the translation is too long for a scene: shorten it).`,
+					`3. Voice: \`python scripts/voice/build.py ${content} --lang en --voice im_nicola\`, then each dub with \`--lang <lang> --fit-to en --voice im_nicola\` (exit 3 = the translation is too long for a scene: shorten it). The farm draft does the same in parallel: the English master first, then every dub fitted to it, plus an audio-only dub track per video (\`media/dubs/<lang>/\`).`,
 				]
 			: ['2. No dubs for this item.', `3. Voice: \`python scripts/voice/build.py ${content} --lang en --voice im_nicola\`.`]),
 		`4. Publish kit: \`node scripts/publish-kit/cli.ts ${slugPath}\` until every check passes (it reads the voice timeline and writes render-plan.sh).`,
-		`5. Render the English master. In parallel on the render farm: the draft request is \`out/batch/${w.week}/${item.id}/render-request.json\` (copy it to \`render-requests/<its id>.json\` and push; docs/RENDER_FARM.md), then download and decrypt into the kit's media paths. Or locally: \`bash out/publish/${slugPath}/render-plan.sh long\`${shorts.length ? ' and `shorts`' : ''}. Pushing makes the storyboard public before the video is: render locally if that matters for this item.`,
+		`5. Render the English master and the dub tracks. In parallel on the render farm: the draft request is \`out/batch/${w.week}/${item.id}/render-request.json\`. GATE BEFORE PUSH: pushing makes every storyboard it names public for good, so first \`node scripts/farm/farm.ts validate out/batch/${w.week}/${item.id}/render-request.json\` (it re-runs the claim gate on each script and refuses a failing one), then copy it to \`render-requests/<its id>.json\` and push (docs/RENDER_FARM.md); download and decrypt into the kit's media paths with the owner's key. Or locally: \`bash out/publish/${slugPath}/render-plan.sh long\`${shorts.length ? ' and `shorts`' : ''}. Render locally if the script should stay private until the video is public.`,
 		`6. Thumbnails: \`node scripts/thumbnails.ts ${slugPath} --lang ${['en', ...dubs].join(',')} --out out/publish/${slugPath}/media/thumbnails\` (localized thumbnails are a Studio step).`,
 		`7. The weekly approval page: \`node scripts/batch/cli.ts review --week ${w.week}\`.`,
 		'',
-		'Never upload, publish or post anything. `approve` runs only on the owner\'s own reply (`APPROVE <week> <items>`), never on an agent\'s initiative.',
+		'Never upload, publish or post anything. `approve` runs only on the owner\'s own reply (`APPROVE <week> <items> #<page code>`, the code of the page he saw), never on an agent\'s initiative.',
 		'',
 	);
 	out.push(`Time zone for every slot: ${config.timeZone} (owner, CLAUDE.md).`, '');

@@ -39,6 +39,8 @@ let TICKERS = new Set(
 export const setKnownTickers = (extra: Iterable<string>): void => {
 	TICKERS = new Set([...TICKERS, ...[...extra].map((t) => t.toUpperCase())]);
 };
+/** The ticker symbols in use (built-in list plus the allowlist's). */
+export const knownTickers = (): Set<string> => TICKERS;
 
 const SCALE: Record<string, number> = {
 	thousand: 1e3, k: 1e3, million: 1e6, mln: 1e6, mn: 1e6, m: 1e6, billion: 1e9, bn: 1e9, b: 1e9, trillion: 1e12, tn: 1e12, t: 1e12,
@@ -124,6 +126,7 @@ export const extractNumbers = (text: string, opts: ExtractOpts = {}): Num[] => {
 	const out: Num[] = [];
 	mask(work, /0x[0-9a-fA-F]+/g); // addresses and hashes are not numbers (R5 bans them separately)
 	mask(work, /\b\d+(?:\.\d+)?\s?\/\s?10\b|\b\d+(?:\.\d+)?\s+out of\s+10\b|\b24\/7\b/gi); // editorial ratings (Rekt Meter) and 24/7
+	mask(work, /(?:^|\n)\s*\d{1,2}[.)](?=\s)/g); // list markers ("1. Verify the address")
 
 	const pushDate = (m: RegExpMatchArray, year: string | undefined, month: string, day: string | undefined) => {
 		const mo = MONTHS[month.toLowerCase().replace(/\.$/, '')];

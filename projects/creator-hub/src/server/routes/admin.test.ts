@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {after, before, describe, it} from 'node:test';
 import {hashPassword} from '../auth.ts';
+import {mailtoHref} from './admin.ts';
 import {startTestHub, type TestHub} from '../test-helpers.ts';
 
 const PASSWORD = 'correct horse battery staple';
@@ -89,6 +90,61 @@ describe('admin sign-in rate limit', () => {
 	});
 });
 
+describe('admin sign-in under concurrent guessing', () => {
+	it('checks at most 10 passwords when 50 wrong guesses arrive at once, and still locks the client out', async () => {
+		const t = await startTestHub({env: await adminEnv()});
+		try {
+			const guesses = await Promise.all(
+				Array.from({length: 50}, (_, i) => t.request('/admin', {headers: {authorization: basic('owner', `parallel-guess-${i}`)}})),
+			);
+			const statuses = guesses.map((r) => r.status);
+			assert.ok(statuses.every((s) => s === 401 || s === 429), String(statuses));
+			assert.ok(statuses.filter((s) => s === 401).length <= 10, `${statuses.filter((s) => s === 401).length} passwords were checked`);
+			// keep guessing one at a time until the client's 10 failures are used up
+			for (let i = 0; i < 10; i++) await t.request('/admin', {headers: {authorization: basic('owner', `serial-guess-${i}`)}});
+			assert.equal((await t.request('/admin', {headers: {authorization: OWNER}})).status, 429);
+		} finally {
+			await t.close();
+		}
+	});
+
+	it('gives the failure token back after a right password, and skips scrypt for a header it already checked', async () => {
+		const t = await startTestHub({env: await adminEnv()});
+		try {
+			for (let i = 0; i < 9; i++) assert.equal((await t.request('/admin', {headers: {authorization: basic('owner', `typo-${i}`)}})).status, 401);
+			assert.equal((await t.request('/admin', {headers: {authorization: OWNER}})).status, 200);
+			// the owner's success did not use up the last token
+			assert.equal((await t.request('/admin', {headers: {authorization: basic('owner', 'typo-9')}})).status, 401);
+			// parallel requests with the already-checked header are not held up by the password-check limit
+			const parallel = await Promise.all(Array.from({length: 6}, () => t.request('/admin/links', {headers: {authorization: OWNER}})));
+			assert.deepEqual(parallel.map((r) => r.status), [200, 200, 200, 200, 200, 200]);
+		} finally {
+			await t.close();
+		}
+	});
+
+	it('locks admin for everyone after 50 failures from many clients, and logs it once', async () => {
+		const t = await startTestHub({env: await adminEnv({TRUST_PROXY: 'header', IP_HEADER: 'X-Test-Client'})});
+		const warnings: string[] = [];
+		const warn = console.warn;
+		console.warn = (...args: unknown[]) => void warnings.push(args.join(' '));
+		try {
+			for (let client = 0; client < 6; client++) {
+				for (let i = 0; i < 10; i++) {
+					await t.request('/admin', {headers: {authorization: basic('owner', `spray-${client}-${i}`), 'x-test-client': `198.51.100.${client + 1}`}});
+				}
+			}
+			const owner = await t.request('/admin', {headers: {authorization: OWNER, 'x-test-client': '203.0.113.9'}});
+			assert.equal(owner.status, 429);
+			assert.match(await owner.text(), /Sign-in is locked/);
+			assert.equal(warnings.filter((w) => /admin sign-in locked/.test(w)).length, 1);
+		} finally {
+			console.warn = warn;
+			await t.close();
+		}
+	});
+});
+
 describe('admin pages', () => {
 	let t: TestHub;
 	before(async () => {
@@ -137,10 +193,25 @@ describe('admin pages', () => {
 		assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 	});
 
-	it('builds tracked links with each disclosure next to its link', async () => {
+	it('percent-encodes reply links, so an address cannot add cc, bcc or body fields', async () => {
+		assert.equal(mailtoHref('ada@client.test'), 'mailto:ada@client.test');
+		assert.equal(mailtoHref('x?cc=attacker@evil.example'), 'mailto:x%3Fcc%3Dattacker@evil.example');
+		insertOrder(t, {email: 'sales%40real-client.com?bcc=spy%40evil.example&x=@evil.example'});
+		const html = await (await t.request('/admin', {headers: {authorization: OWNER}})).text();
+		assert.match(html, /href="mailto:sales%2540real-client\.com%3Fbcc%3Dspy%2540evil\.example%26x%3D@evil\.example"/);
+		assert.doesNotMatch(html, /href="mailto:[^"]*[?&]bcc=/);
+	});
+
+	it('builds tracked links with each disclosure next to its link, and never names a restricted offer in them', async () => {
 		const html = await (await t.request('/admin/links?v=dQw4w9WgXcQ&s=x', {headers: {authorization: OWNER}})).text();
-		assert.match(html, /Test Wallet: http:\/\/hub\.test\/go\/wallet\?v=dQw4w9WgXcQ&amp;s=x\nAffiliate link: I may earn a commission if you buy\./);
-		assert.match(html, /Test Exchange: http:\/\/hub\.test\/go\/exchange\?v=dQw4w9WgXcQ&amp;s=x\nReferral link: [^\n]+\nCrypto assets are high risk/);
+		const text = /<textarea id="out" readonly>([\s\S]*?)<\/textarea>/.exec(html)?.[1] ?? '';
+		assert.match(text, /^Disclosure: some links for this video are affiliate or referral links\. If you use them, I may earn money\./);
+		assert.match(text, /Test Wallet: http:\/\/hub\.test\/go\/wallet\?v=dQw4w9WgXcQ&amp;s=x\nAffiliate link: I may earn a commission if you buy\./);
+		// the exchange (blocked in US and GB) and the EU-only course are visible only through the region-filtered page
+		assert.doesNotMatch(text, /Test Exchange|\/go\/exchange|EU Course|\/go\/eu-course|sign up and trade/);
+		assert.match(text, /More partner links, only where they are available in your country: http:\/\/hub\.test\/\?v=dQw4w9WgXcQ&amp;s=x\nSome of them are affiliate or referral links/);
+		assert.match(html, /Hub page only: do not name these/);
+		assert.match(html, /<li>Test Exchange <span class="muted small">\(blocked in US GB; hidden when the country is unknown\)<\/span><\/li>/);
 		assert.doesNotMatch(html, /Paused Tool: http/);
 		assert.match(html, /<td>old-deal<\/td><td>Old Deal<\/td><td>expired<\/td>/);
 		const invalid = await (await t.request('/admin/links?v=%3Cx%3E', {headers: {authorization: OWNER}})).text();

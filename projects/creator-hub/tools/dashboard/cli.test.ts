@@ -63,6 +63,18 @@ describe('dashboard CLI', () => {
 		assert.equal(state.channels['zoora-ai'].videoCount, 12);
 	});
 
+	it('reads the offer registry for its region rules, and warns instead of failing on a broken one', async () => {
+		const registry = fileURLToPath(new URL('../newsletter/fixtures/offers.json', import.meta.url));
+		const ok = await run([...allInputs('with-offers'), '--offers', registry, '--force']);
+		assert.equal(ok.code, 0, ok.err);
+		assert.match(ok.out, /input: offer registry: .*offers\.json \(1 offer\(s\) restricted by region\)/);
+		const broken = join(dir, 'broken-offers.json');
+		writeFileSync(broken, JSON.stringify({version: 1, offers: [{id: 'x'}]}));
+		const bad = await run([...allInputs('bad-offers'), '--offers', broken, '--force']);
+		assert.equal(bad.code, 0, bad.err);
+		assert.match(bad.out, /warning: .*broken-offers\.json: the offer registry has problems .*region rules are not applied/);
+	});
+
 	it('leaves recommendations.md alone until the next 10 videos, unless --force', async () => {
 		const file = join(dir, 'full', 'recommendations.md');
 		writeFileSync(file, 'kept\n');

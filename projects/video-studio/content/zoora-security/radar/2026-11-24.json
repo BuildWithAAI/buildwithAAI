@@ -1,0 +1,2491 @@
+{
+  "schema": "zoora-security/radar@1",
+  "radarVersion": "0.1",
+  "parserVersion": "2026-11-24.1",
+  "runDate": "2026-11-24",
+  "generatedUtc": "2026-11-24T06:46:54Z",
+  "mode": "live",
+  "userAgent": "NewsRadar/0.1",
+  "httpRequests": 0,
+  "window": {
+    "freshFrom": "2026-11-22T00:00:00Z",
+    "freshTo": "2026-11-25T00:00:00Z",
+    "days": 3,
+    "lookbackDays": 14,
+    "clusterLookbackDays": 120
+  },
+  "scoring": {
+    "weights": {
+      "loss": 25,
+      "recency": 20,
+      "sources": 20,
+      "novelty": 15,
+      "evergreen": 10,
+      "audience": 10
+    },
+    "method": "see scripts/radar/README.md#ranking"
+  },
+  "rules": [
+    "Every fact traces to a stored source excerpt or title that contains it (facts[].quote).",
+    "Loss amounts are reported by a named source and never averaged.",
+    "Unconfirmed incidents are labelled developing.",
+    "No suspect or individual names; names in source text are redacted.",
+    "Mechanisms at concept level only: no code, function names, addresses or step lists.",
+    "No price or investment talk."
+  ],
+  "history": {
+    "files": [],
+    "previousIncidents": 0
+  },
+  "counts": {
+    "sourcesTotal": 16,
+    "sourcesOk": 15,
+    "items": 556,
+    "securityRelevant": 261,
+    "incidentsBuilt": 182,
+    "candidates": 11,
+    "unclustered": 7
+  },
+  "sources": [
+    {
+      "id": "defillama-hacks",
+      "name": "DefiLlama",
+      "tier": "A",
+      "kind": "json-api",
+      "url": "https://api.llama.fi/hacks",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 167,
+      "relevant": 167,
+      "incidentItems": 167,
+      "warnings": []
+    },
+    {
+      "id": "slowmist-hacked",
+      "name": "SlowMist Hacked",
+      "tier": "A",
+      "kind": "html",
+      "url": "https://hacked.slowmist.io/",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 20,
+      "relevant": 20,
+      "incidentItems": 20,
+      "warnings": []
+    },
+    {
+      "id": "rekt-news",
+      "name": "rekt.news",
+      "tier": "A",
+      "kind": "html",
+      "url": "https://rekt.news/",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 12,
+      "relevant": 9,
+      "incidentItems": 9,
+      "warnings": []
+    },
+    {
+      "id": "chainalysis-blog",
+      "name": "Chainalysis",
+      "tier": "A",
+      "kind": "rss",
+      "url": "https://www.chainalysis.com/blog/feed/",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 10,
+      "relevant": 3,
+      "incidentItems": 3,
+      "warnings": []
+    },
+    {
+      "id": "certik-blog",
+      "name": "CertiK",
+      "tier": "A",
+      "kind": "html",
+      "url": "https://www.certik.com/blog",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 9,
+      "relevant": 2,
+      "incidentItems": 2,
+      "warnings": []
+    },
+    {
+      "id": "trm-blog",
+      "name": "TRM Labs",
+      "tier": "A",
+      "kind": "html",
+      "url": "https://www.trmlabs.com/resources/blog",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 6,
+      "relevant": 0,
+      "incidentItems": 0,
+      "warnings": []
+    },
+    {
+      "id": "coindesk",
+      "name": "CoinDesk",
+      "tier": "B",
+      "kind": "rss",
+      "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 25,
+      "relevant": 3,
+      "incidentItems": 3,
+      "warnings": []
+    },
+    {
+      "id": "decrypt",
+      "name": "Decrypt",
+      "tier": "B",
+      "kind": "rss",
+      "url": "https://decrypt.co/feed",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 37,
+      "relevant": 3,
+      "incidentItems": 3,
+      "warnings": []
+    },
+    {
+      "id": "cointelegraph",
+      "name": "Cointelegraph",
+      "tier": "B",
+      "kind": "rss",
+      "url": "https://cointelegraph.com/rss",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 30,
+      "relevant": 3,
+      "incidentItems": 3,
+      "warnings": []
+    },
+    {
+      "id": "theblock",
+      "name": "The Block",
+      "tier": "B",
+      "kind": "rss",
+      "url": "https://www.theblock.co/rss.xml",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 20,
+      "relevant": 3,
+      "incidentItems": 2,
+      "warnings": []
+    },
+    {
+      "id": "thedefiant",
+      "name": "The Defiant",
+      "tier": "B",
+      "kind": "rss",
+      "url": "https://thedefiant.io/feed",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 100,
+      "relevant": 16,
+      "incidentItems": 12,
+      "warnings": []
+    },
+    {
+      "id": "dlnews",
+      "name": "DL News",
+      "tier": "B",
+      "kind": "rss",
+      "url": "https://www.dlnews.com/arc/outboundfeeds/rss/",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 40,
+      "relevant": 9,
+      "incidentItems": 9,
+      "warnings": []
+    },
+    {
+      "id": "blockworks",
+      "name": "Blockworks",
+      "tier": "B",
+      "kind": "rss",
+      "url": "https://blockworks.co/feed",
+      "status": "skipped",
+      "httpStatus": null,
+      "fetchedUtc": null,
+      "items": 0,
+      "relevant": 0,
+      "incidentItems": 0,
+      "warnings": [
+        "robots: robots.txt unreachable (proxy-refused): network policy refused blockworks.co: Tunnel connection failed: 403 Forbidden (agent proxy: no rule or network setting allows this host)"
+      ]
+    },
+    {
+      "id": "web3isgoinggreat",
+      "name": "Web3 is Going Just Great",
+      "tier": "C",
+      "kind": "atom",
+      "url": "https://www.web3isgoinggreat.com/feed.xml",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 20,
+      "relevant": 15,
+      "incidentItems": 15,
+      "warnings": []
+    },
+    {
+      "id": "cryptonews",
+      "name": "crypto.news",
+      "tier": "C",
+      "kind": "rss",
+      "url": "https://crypto.news/feed/",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 50,
+      "relevant": 4,
+      "incidentItems": 3,
+      "warnings": []
+    },
+    {
+      "id": "coinedition",
+      "name": "Coin Edition",
+      "tier": "C",
+      "kind": "rss",
+      "url": "https://coinedition.com/feed/",
+      "status": "cached",
+      "httpStatus": 200,
+      "fetchedUtc": "2026-11-24T06:44:26Z",
+      "items": 10,
+      "relevant": 4,
+      "incidentItems": 4,
+      "warnings": []
+    }
+  ],
+  "top": [
+    {
+      "id": "2026-10-29-binance",
+      "title": "Binance: social engineering",
+      "protocol": "Binance",
+      "chains": [
+        "Ethereum",
+        "Bitcoin",
+        "TRON",
+        "Avalanche",
+        "Optimism",
+        "Arbitrum",
+        "Base"
+      ],
+      "type": "social-engineering",
+      "dateUtc": "2026-10-29",
+      "reportedLosses": [
+        {
+          "amountUsd": 6360000000.0,
+          "by": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+          "quote": "reported loss $6,360,000,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 6400000000.0,
+          "by": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/",
+          "quote": "$6.4 Billion",
+          "field": "title",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 6000000000.0,
+          "by": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-hack-dprk-employment-fraud/",
+          "quote": "$6 billion",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 6400000000.0,
+          "by": "decrypt",
+          "url": "https://decrypt.co/383844/north-korea-247-million-binance-hack-bitcoin-mixers",
+          "quote": "$6.4 billion",
+          "field": "excerpt",
+          "tier": "B"
+        }
+      ],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): chainalysis-blog, defillama-hacks, rekt-news",
+      "sources": [
+        {
+          "id": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+          "title": "DefiLlama hacks: Binance CEX (2026-10-29)",
+          "excerpt": "Binance CEX · 2026-10-29 · reported loss $6,360,000,000 · Frontend & Infrastructure / Key Leaked via Infrastructure · target: CEX · chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base · On October 29, attackers exploited Binance’s operational infrastructure to…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "DefiLlama",
+          "kind": "structured",
+          "eventDate": "2026-10-29",
+          "eventDateFrom": "structured"
+        },
+        {
+          "id": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/",
+          "title": "The $6.4 Billion Binance Hack: Tracing the North Korea Link",
+          "excerpt": "Key takeaways Around 4:20 p.m. ET on October 29, 2026, funds began leaving Binance hot wallets across multiple blockchains. Unauthorized… The post The $6.4 Billion Binance Hack: Tracing the North Korea Link appeared first on Chainalysis.",
+          "publishedUtc": "2026-10-30T09:34:29Z",
+          "tier": "A",
+          "publisher": "Chainalysis",
+          "kind": "news",
+          "eventDate": "2026-10-29",
+          "eventDateFrom": "text"
+        },
+        {
+          "id": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-hack-dprk-employment-fraud/",
+          "title": "DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance",
+          "excerpt": "Summary Binance disclosed that a DPRK fake employment scheme was behind its $6 billion hack: Attackers used a fabricated job… The post DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance appeared first on Chainalysis.",
+          "publishedUtc": "2026-11-03T19:43:21Z",
+          "tier": "A",
+          "publisher": "Chainalysis",
+          "kind": "news"
+        },
+        {
+          "id": "rekt-news",
+          "url": "https://rekt.news/binance-rekt",
+          "title": "Binance - Rekt",
+          "excerpt": "A fake job interview led to Binance’s signing service, and $6.43 billion left across 11 chains. About $2.85 billion was frozen or intercepted; one delegation kept sweeping after withdrawals stopped. Whose wallet is at the end of the next job interview?",
+          "publishedUtc": "2026-11-06T00:00:00Z",
+          "tier": "A",
+          "publisher": "rekt.news",
+          "kind": "postmortem"
+        },
+        {
+          "id": "coindesk",
+          "url": "https://www.coindesk.com/business/2026/11/23/binance-hackers-push-usd247-million-through-transactions-designed-to-cloud-the-source",
+          "title": "Binance hackers push $247 million through transactions designed to cloud the source",
+          "excerpt": "Elliptic found that nearly all the mixing transactions, known as coinjoins, were coordinated by an entity called Kruw during fixed daily hours, suggesting potential handoffs to China-based money launderers.",
+          "publishedUtc": "2026-11-23T15:29:01Z",
+          "tier": "B",
+          "publisher": "CoinDesk",
+          "kind": "news",
+          "hedge": "potential"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/elliptic-traces-about-247m-in-binance-theft-linked-bitcoin-to-coinjoins",
+          "title": "Elliptic Traces About $247M in Binance Theft-Linked Bitcoin to Coinjoins",
+          "excerpt": "Elliptic says almost all of the theft-linked coinjoins were coordinated by Kruw, which organizes transactions without taking custody of users’ funds.",
+          "publishedUtc": "2026-11-23T16:07:46Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/regulation/us-court-extends-binance-account-freeze-to-dec-17",
+          "title": "US Court Extends Binance Account Freeze to Dec. 17",
+          "excerpt": "Binance says it cannot release affected funds on its own. The plaintiffs' notice still lists Nov. 24 as the requested date to contact counsel.",
+          "publishedUtc": "2026-11-23T18:00:29Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/doj-seeks-over-1-1-billion-in-usdc-tied-to-binance-hack",
+          "title": "DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack",
+          "excerpt": "The civil case concerns previously frozen tokens. Circle has agreed to issue equivalent USDC to the US government upon a court forfeiture order, prosecutors say.",
+          "publishedUtc": "2026-11-23T19:00:04Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        },
+        {
+          "id": "theblock",
+          "url": "https://www.theblock.co/news/regulation/2026-11-23-doj-1-17-billion-usdc-binance-hack-circle-replacement-tokens-445398",
+          "title": "DOJ seeks $1.17 billion in USDC tied to Binance hack; Circle could issue replacement tokens",
+          "excerpt": "The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack.",
+          "publishedUtc": "2026-11-23T20:00:34Z",
+          "tier": "B",
+          "publisher": "The Block",
+          "kind": "news",
+          "eventDate": "2026-10-29",
+          "eventDateFrom": "text"
+        },
+        {
+          "id": "decrypt",
+          "url": "https://decrypt.co/383844/north-korea-247-million-binance-hack-bitcoin-mixers",
+          "title": "North Korea Moves $247 Million of Binance Hack Loot Through Bitcoin Mixers",
+          "excerpt": "Roughly a month after the $6.4 billion hack, Elliptic says nearly all of the coinjoin mixing was coordinated by one person who “refuses to block funds such as these.\"",
+          "publishedUtc": "2026-11-23T20:36:02Z",
+          "tier": "B",
+          "publisher": "Decrypt",
+          "kind": "news"
+        },
+        {
+          "id": "cointelegraph",
+          "url": "https://cointelegraph.com/news/us-seeks-11b-crypto-stolen-north-korea-binance-hack",
+          "title": "US seeks to recover $1.1B in crypto stolen in North Korea-linked Binance hack",
+          "excerpt": "US prosecutors are seeking control of stolen USDC, while Elliptic says hackers have moved $247 million through Bitcoin mixers.",
+          "publishedUtc": "2026-11-23T21:04:03Z",
+          "tier": "B",
+          "publisher": "Cointelegraph",
+          "kind": "news"
+        },
+        {
+          "id": "dlnews",
+          "url": "https://www.dlnews.com/articles/regulation/binance-obtains-usd65-billion-freezing-order-for-stolen-crypto/",
+          "title": "Binance obtains $6.5 billion freezing order for stolen crypto",
+          "excerpt": "Binance says it secured a $6.5 billion worldwide freezing order from Abu Dhabi courts to recover crypto stolen in the October 29 hack.",
+          "publishedUtc": "2026-11-23T22:08:13Z",
+          "tier": "B",
+          "publisher": "DL News",
+          "kind": "news",
+          "eventDate": "2026-10-29",
+          "eventDateFrom": "text"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/reuters-circle-world-liberty-ordered-to-keep-tokens-frozen",
+          "title": "Reuters: Circle, World Liberty Ordered to Keep Tokens Frozen",
+          "excerpt": "An ADGM order requires 18 firms to preserve Binance hack-linked tokens, Reuters reported. A Dec. 1 hearing will consider whether the restrictions continue.",
+          "publishedUtc": "2026-11-24T05:19:20Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        },
+        {
+          "id": "theblock",
+          "url": "https://www.theblock.co/newsletters/the-daily/2026-11-24-doj-binance-hack-strategy-bitcoin-more-crypto-news-445430",
+          "title": "DOJ moves to recover $1.17 billion from Binance hack, Strategy buys another 457 BTC, and more",
+          "excerpt": "In today's newsletter, DOJ moves to recover $1.17 billion from Binance hack; Strategy buys another 457 BTC as Saylor says 'the dots aren't done'; and more.",
+          "publishedUtc": "2026-11-24T05:40:00Z",
+          "tier": "B",
+          "publisher": "The Block",
+          "kind": "news"
+        },
+        {
+          "id": "coinedition",
+          "url": "https://coinedition.com/crypto-live-news/us-doj-moves-to-recover-1-1-billion-in-usdc-linked-to-6-3-billion-binance-hack/",
+          "title": "US DOJ Moves to Recover $1.1 Billion in USDC Linked to $6.3 Billion Binance Hack",
+          "excerpt": "The U.S. Department of Justice (DOJ) has filed a civil forfeiture action seeking more than $1.1 billion in USDC linked to North Korea’s $6.3 billion cryptocurrency theft from Binance. The latest move targets funds allegedly stolen during the October 29 breach. Moreover, it…",
+          "publishedUtc": "2026-11-23T19:25:49Z",
+          "tier": "C",
+          "publisher": "Coin Edition",
+          "kind": "news",
+          "eventDate": "2026-10-29",
+          "eventDateFrom": "text"
+        },
+        {
+          "id": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/binance-hack",
+          "title": "North Korea hacks Binance for around $6.3 billion, some frozen",
+          "excerpt": "Binance has confirmed that an attacker exploited the exchange, stealing around $6.3 billion from multiple hot wallets. The theft has set the new record for the largest crypto theft. Luckily for Binance, Tether and Circle quickly began freezing some of the exploiter's wallets.…",
+          "publishedUtc": "2026-10-29T21:42:37Z",
+          "tier": "C",
+          "publisher": "Web3 is Going Just Great",
+          "kind": "news"
+        },
+        {
+          "id": "cryptonews",
+          "url": "https://crypto.news/binance-hack-usdc-forfeiture/",
+          "title": "DOJ seeks about $1B in USDC from Binance hack",
+          "excerpt": "The U.S. Justice Department has filed a civil forfeiture complaint seeking about $1 billion in USDC tied to the October hack of Binance, a theft federal investigators have attributed to North Korean hackers. The verified complaint, filed Nov. 23 in…",
+          "publishedUtc": "2026-11-23T19:30:00Z",
+          "tier": "C",
+          "publisher": "crypto.news",
+          "kind": "news",
+          "eventDate": "2026-11-23",
+          "eventDateFrom": "text"
+        },
+        {
+          "id": "coinedition",
+          "url": "https://coinedition.com/crypto-live-news/doj-moves-to-seize-1b-in-usdc-linked-to-binance-hack/",
+          "title": "DOJ Targets $1B in USDC Tied to North Korea’s Binance Hack",
+          "excerpt": "The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…",
+          "publishedUtc": "2026-11-23T20:36:44Z",
+          "tier": "C",
+          "publisher": "Coin Edition",
+          "kind": "news",
+          "eventDate": "2026-11-23",
+          "eventDateFrom": "text"
+        }
+      ],
+      "postMortemUrl": "https://rekt.news/binance-rekt",
+      "evergreenTopic": "fake-job-malware",
+      "notes": [
+        "Sources state different figures (3 distinct). Quote each with its source; never average.",
+        "Legal matter (allegedly, forfeiture, freezing order, plaintiffs, prosecutors, seize): allegations and filings are not findings; name no individuals."
+      ],
+      "typeReason": "text 'Fake Interview' via chainalysis-blog; tier-A votes: key-compromise (chainalysis-blog), key-compromise (defillama-hacks), social-engineering (chainalysis-blog), social-engineering (rekt-news)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "DefiLlama lists a loss of $6,360,000,000.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+          "quote": "reported loss $6,360,000,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama classifies it as Frontend & Infrastructure / Key Leaked via Infrastructure.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+          "quote": "Frontend & Infrastructure / Key Leaked via Infrastructure",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama dates it 2026-10-29.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+          "quote": "2026-10-29",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the chains as Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+          "quote": "chains: Ethereum, Bitcoin, TRON, Avalanche, Optimism, Arbitrum, Base",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the target type as CEX.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29",
+          "quote": "target: CEX",
+          "field": "excerpt"
+        },
+        {
+          "text": "Chainalysis headline, 2026-10-30:",
+          "sourceId": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/",
+          "quote": "The $6.4 Billion Binance Hack: Tracing the North Korea Link",
+          "field": "title"
+        },
+        {
+          "text": "Chainalysis states a figure of $6,400,000,000.",
+          "sourceId": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/",
+          "quote": "$6.4 Billion",
+          "field": "title"
+        },
+        {
+          "text": "Chainalysis headline, 2026-11-03:",
+          "sourceId": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-hack-dprk-employment-fraud/",
+          "quote": "DPRK Hackers Perfected Their Fake Interview Playbook Over Dozens of Attacks Before Binance",
+          "field": "title"
+        },
+        {
+          "text": "Chainalysis states a figure of $6,000,000,000.",
+          "sourceId": "chainalysis-blog",
+          "url": "https://www.chainalysis.com/blog/binance-hack-dprk-employment-fraud/",
+          "quote": "$6 billion",
+          "field": "excerpt"
+        },
+        {
+          "text": "rekt.news post-mortem, 2026-11-06:",
+          "sourceId": "rekt-news",
+          "url": "https://rekt.news/binance-rekt",
+          "quote": "Binance - Rekt",
+          "field": "title"
+        },
+        {
+          "text": "CoinDesk headline, 2026-11-23:",
+          "sourceId": "coindesk",
+          "url": "https://www.coindesk.com/business/2026/11/23/binance-hackers-push-usd247-million-through-transactions-designed-to-cloud-the-source",
+          "quote": "Binance hackers push $247 million through transactions designed to cloud the source",
+          "field": "title"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-23:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/elliptic-traces-about-247m-in-binance-theft-linked-bitcoin-to-coinjoins",
+          "quote": "Elliptic Traces About $247M in Binance Theft-Linked Bitcoin to Coinjoins",
+          "field": "title"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-23:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/regulation/us-court-extends-binance-account-freeze-to-dec-17",
+          "quote": "US Court Extends Binance Account Freeze to Dec. 17",
+          "field": "title"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-23:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/doj-seeks-over-1-1-billion-in-usdc-tied-to-binance-hack",
+          "quote": "DOJ Seeks Over $1.1 Billion in USDC Tied to Binance Hack",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 91.0,
+        "factors": {
+          "loss": {
+            "value": 1.0,
+            "weight": 25,
+            "points": 25.0,
+            "reason": "lowest tier-A figure $6B (chainalysis-blog); 4 figure(s) from 3 source(s), range $6B to $6.4B"
+          },
+          "recency": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "freshest source 2026-11-24T05:40:00Z (theblock), 18 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "12 independent publisher(s): Ax3 (Chainalysis, DefiLlama, rekt.news); Bx6 (CoinDesk, Cointelegraph, DL News, Decrypt, The Block, The Defiant); Cx3 (Coin Edition, Web3 is Going Just Great, crypto.news)"
+          },
+          "novelty": {
+            "value": 0.4,
+            "weight": 15,
+            "points": 6.0,
+            "reason": "follow-up to an incident from 2026-10-29 (26 days ago); 0 other social-engineering incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 1.0,
+            "weight": 10,
+            "points": 10.0,
+            "reason": "social-engineering -> fake-job-malware (direct: the incident is the topic)"
+          },
+          "audience": {
+            "value": 1.0,
+            "weight": 10,
+            "points": 10.0,
+            "reason": "target CEX (base 0.85); retail cues: account, users"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": true,
+        "missing": []
+      }
+    },
+    {
+      "id": "2026-11-21-chainflip",
+      "title": "Chainflip: key compromise",
+      "protocol": "Chainflip",
+      "chains": [
+        "Ethereum",
+        "Bitcoin"
+      ],
+      "type": "key-compromise",
+      "dateUtc": "2026-11-21",
+      "reportedLosses": [
+        {
+          "amountUsd": 11960000.0,
+          "by": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Chainflip%20AMM%402026-11-21",
+          "quote": "reported loss $11,960,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 12000000.0,
+          "by": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Chainflip%402026-11-21",
+          "quote": "reported loss $12,000,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 12600000.0,
+          "by": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/chainflip-suspects-key-theft-in-12-6-million-vault-hack",
+          "quote": "$12.6 Million",
+          "field": "title",
+          "tier": "B"
+        },
+        {
+          "amountUsd": 12000000.0,
+          "by": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/chainflip-loses-12-million-to-apparent-key-compromise",
+          "quote": "$12 million",
+          "field": "title",
+          "tier": "C"
+        },
+        {
+          "amountUsd": 12600000.0,
+          "by": "coinedition",
+          "url": "https://coinedition.com/crypto-live-news/chainflip-loses-12-6m-as-validator-flaw-exposes-bitcoin/",
+          "quote": "$12.6M",
+          "field": "title",
+          "tier": "C"
+        }
+      ],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): defillama-hacks, slowmist-hacked",
+      "sources": [
+        {
+          "id": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Chainflip%20AMM%402026-11-21",
+          "title": "DefiLlama hacks: Chainflip AMM (2026-11-21)",
+          "excerpt": "Chainflip AMM · 2026-11-21 · reported loss $11,960,000 · Key Compromise / Validator Key Compromised · target: DeFi Protocol · chains: Ethereum, Bitcoin · bridge hack: yes · An attacker exploited a vulnerability affecting Chainflip's aggregate validator signing system to…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "DefiLlama",
+          "kind": "structured",
+          "eventDate": "2026-11-21",
+          "eventDateFrom": "structured"
+        },
+        {
+          "id": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Chainflip%402026-11-21",
+          "title": "SlowMist Hacked: Chainflip (2026-11-21)",
+          "excerpt": "Chainflip · 2026-11-21 · reported loss $12,000,000 · attack method: Private Key Leak · Cross-chain swap protocol Chainflip was attacked on November 21, 2026. The attacker, through a suspected compromise of the aggregate signing key, drained 122.86 BTC, 520.22 ETH, approximately…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "SlowMist",
+          "kind": "structured",
+          "eventDate": "2026-11-21",
+          "eventDateFrom": "structured",
+          "referenceUrl": "https://x.com/Chainflip/status/2124068986845532605",
+          "referenceNote": "link cited by the source; not fetched by the radar"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/chainflip-founder-weighs-compensation-after-vault-hack",
+          "title": "Chainflip Founder Weighs Compensation After Vault Hack",
+          "excerpt": "[named person] said liquidity providers faced significant losses. Checks before the Nov. 23 bounty deadline showed neither requested return payment had arrived.",
+          "publishedUtc": "2026-11-23T14:01:12Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news",
+          "eventDate": "2026-11-23",
+          "eventDateFrom": "text",
+          "redacted": {
+            "names": 1,
+            "code": 0
+          }
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/chainflip-suspects-key-theft-in-12-6-million-vault-hack",
+          "title": "Chainflip Suspects Key Theft in $12.6 Million Vault Hack",
+          "excerpt": "The first report identifies validly signed transfers outside the protocol but leaves parts of the suspected key theft unconfirmed. Services remain paused.",
+          "publishedUtc": "2026-11-24T04:36:59Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news",
+          "hedge": "suspected"
+        },
+        {
+          "id": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/chainflip-loses-12-million-to-apparent-key-compromise",
+          "title": "Chainflip loses $12 million to apparent key compromise",
+          "excerpt": "An attacker drained $12 million from the Chainflip cross-chain swap protocol. They then immediately swapped the tokens to ETH and then laundered the assets through Tornado Cash to make them impossible for stablecoin issuers to freeze and more challenging for investigators to…",
+          "publishedUtc": "2026-11-22T08:28:32Z",
+          "tier": "C",
+          "publisher": "Web3 is Going Just Great",
+          "kind": "news",
+          "hedge": "apparent"
+        },
+        {
+          "id": "coinedition",
+          "url": "https://coinedition.com/crypto-live-news/chainflip-loses-12-6m-as-validator-flaw-exposes-bitcoin/",
+          "title": "Chainflip Loses $12.6M as Validator Flaw Exposes Bitcoin, Ethereum Vaults",
+          "excerpt": "Chainflip has lost approximately $12.6 million after an attacker exploited its validator network and drained funds from its Bitcoin and Ethereum vaults on November 21. The cross-chain protocol confirmed the theft in an incident report published November 23. Chainflip Labs said…",
+          "publishedUtc": "2026-11-23T19:54:04Z",
+          "tier": "C",
+          "publisher": "Coin Edition",
+          "kind": "news",
+          "eventDate": "2026-11-23",
+          "eventDateFrom": "text"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "key-management",
+      "notes": [
+        "Sources state different figures (3 distinct). Quote each with its source; never average.",
+        "Personal names were redacted from source text."
+      ],
+      "typeReason": "DefiLlama technique 'Validator Key Compromised' via defillama-hacks; tier-A votes: key-compromise (defillama-hacks), key-compromise (slowmist-hacked)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "DefiLlama lists a loss of $11,960,000.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Chainflip%20AMM%402026-11-21",
+          "quote": "reported loss $11,960,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama classifies it as Key Compromise / Validator Key Compromised.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Chainflip%20AMM%402026-11-21",
+          "quote": "Key Compromise / Validator Key Compromised",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama dates it 2026-11-21.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Chainflip%20AMM%402026-11-21",
+          "quote": "2026-11-21",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the chains as Ethereum, Bitcoin.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Chainflip%20AMM%402026-11-21",
+          "quote": "chains: Ethereum, Bitcoin",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the target type as DeFi Protocol.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Chainflip%20AMM%402026-11-21",
+          "quote": "target: DeFi Protocol",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists a loss of $12,000,000.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Chainflip%402026-11-21",
+          "quote": "reported loss $12,000,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists the attack method as Private Key Leak.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Chainflip%402026-11-21",
+          "quote": "attack method: Private Key Leak",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked dates it 2026-11-21.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Chainflip%402026-11-21",
+          "quote": "2026-11-21",
+          "field": "excerpt"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-23:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/chainflip-founder-weighs-compensation-after-vault-hack",
+          "quote": "Chainflip Founder Weighs Compensation After Vault Hack",
+          "field": "title"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-24:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/chainflip-suspects-key-theft-in-12-6-million-vault-hack",
+          "quote": "Chainflip Suspects Key Theft in $12.6 Million Vault Hack",
+          "field": "title"
+        },
+        {
+          "text": "The Defiant states a figure of $12,600,000.",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/chainflip-suspects-key-theft-in-12-6-million-vault-hack",
+          "quote": "$12.6 Million",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great headline, 2026-11-22:",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/chainflip-loses-12-million-to-apparent-key-compromise",
+          "quote": "Chainflip loses $12 million to apparent key compromise",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great states a figure of $12,000,000.",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/chainflip-loses-12-million-to-apparent-key-compromise",
+          "quote": "$12 million",
+          "field": "title"
+        },
+        {
+          "text": "Coin Edition headline, 2026-11-23:",
+          "sourceId": "coinedition",
+          "url": "https://coinedition.com/crypto-live-news/chainflip-loses-12-6m-as-validator-flaw-exposes-bitcoin/",
+          "quote": "Chainflip Loses $12.6M as Validator Flaw Exposes Bitcoin, Ethereum Vaults",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 69.9,
+        "factors": {
+          "loss": {
+            "value": 0.616,
+            "weight": 25,
+            "points": 15.4,
+            "reason": "lowest tier-A figure $11.96M (defillama-hacks); 5 figure(s) from 5 source(s), range $11.96M to $12.6M"
+          },
+          "recency": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "freshest source 2026-11-24T04:36:59Z (thedefiant), 19 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "5 independent publisher(s): Ax2 (DefiLlama, SlowMist); Bx1 (The Defiant); Cx2 (Coin Edition, Web3 is Going Just Great)"
+          },
+          "novelty": {
+            "value": 0.6,
+            "weight": 15,
+            "points": 9.0,
+            "reason": "incident from 2026-11-21 (3 days ago), new coverage in the window; 8 other key-compromise incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.4,
+            "weight": 10,
+            "points": 4.0,
+            "reason": "key-compromise -> key-management (weak: protocol infrastructure key, not a user wallet)"
+          },
+          "audience": {
+            "value": 0.15,
+            "weight": 10,
+            "points": 1.5,
+            "reason": "target DeFi Protocol (base 0.35); institutional cues: liquidity providers, validator"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": false,
+        "missing": [
+          "no strong 'one fix' explainer link"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-16-lighter",
+      "title": "Lighter: key compromise",
+      "protocol": "Lighter",
+      "chains": [
+        "zkLighter",
+        "Ethereum"
+      ],
+      "type": "key-compromise",
+      "dateUtc": "2026-11-16",
+      "reportedLosses": [
+        {
+          "amountUsd": 10393057.0,
+          "by": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16",
+          "quote": "reported loss $10,393,057",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 10393057.0,
+          "by": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Lighter%402026-11-16",
+          "quote": "reported loss $10,393,057",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 10390000.0,
+          "by": "rekt-news",
+          "url": "https://rekt.news/lighter-rekt",
+          "quote": "$10.39 million",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 15000000.0,
+          "by": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/lighter-exploit",
+          "quote": "$15 million",
+          "field": "title",
+          "tier": "C"
+        }
+      ],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): defillama-hacks, rekt-news, slowmist-hacked",
+      "sources": [
+        {
+          "id": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16",
+          "title": "DefiLlama hacks: Lighter Perps (2026-11-16)",
+          "excerpt": "Lighter Perps · 2026-11-16 · reported loss $10,393,057 · Frontend & Infrastructure / API Key Compromised · target: DeFi Protocol · chains: zkLighter · On November 16, 2026, an attacker exploited a leaked API key belonging to a trader on Lighter, enabling unauthorized activity…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "DefiLlama",
+          "kind": "structured",
+          "eventDate": "2026-11-16",
+          "eventDateFrom": "structured"
+        },
+        {
+          "id": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Lighter%402026-11-16",
+          "title": "SlowMist Hacked: Lighter (2026-11-16)",
+          "excerpt": "Lighter · 2026-11-16 · reported loss $10,393,057 · attack method: API key leakage · On November 16, 2026, Lighter (a perpetual futures DEX on an Ethereum ZK rollup) suffered an incident due to a leaked trader API key (caused by unsafe non-official SDK signing code that reused…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "SlowMist",
+          "kind": "structured",
+          "eventDate": "2026-11-16",
+          "eventDateFrom": "structured",
+          "referenceUrl": "https://x.com/Lighter_xyz/status/2122311006604984497",
+          "referenceNote": "link cited by the source; not fetched by the radar"
+        },
+        {
+          "id": "rekt-news",
+          "url": "https://rekt.news/lighter-rekt",
+          "title": "Lighter - Rekt",
+          "excerpt": "Reuse a nonce, lose the keys. An attacker withdrew $10.39 million USDC from Lighter after unofficial signing code reused nonces, exposing API private keys through public signatures, according to Lighter. Public pools became the exit.",
+          "publishedUtc": "2026-11-23T00:00:00Z",
+          "tier": "A",
+          "publisher": "rekt.news",
+          "kind": "postmortem"
+        },
+        {
+          "id": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/lighter-exploit",
+          "title": "Lighter user(s) exploited for $15 million",
+          "excerpt": "An attacker drained at least one market maker account on the perpetual futures exchange Lighter. One account was emptied of around $10.4 million, and another may have lost about $5.1 million, according to blockchain researchers. Lighter has attributed the theft to a \"leaked API…",
+          "publishedUtc": "2026-11-22T07:25:00Z",
+          "tier": "C",
+          "publisher": "Web3 is Going Just Great",
+          "kind": "news"
+        }
+      ],
+      "postMortemUrl": "https://rekt.news/lighter-rekt",
+      "evergreenTopic": "key-management",
+      "notes": [
+        "Sources state different figures (3 distinct). Quote each with its source; never average."
+      ],
+      "typeReason": "DefiLlama technique 'API Key Compromised' via defillama-hacks; tier-A votes: key-compromise (defillama-hacks), key-compromise (rekt-news), key-compromise (slowmist-hacked)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "DefiLlama lists a loss of $10,393,057.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16",
+          "quote": "reported loss $10,393,057",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama classifies it as Frontend & Infrastructure / API Key Compromised.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16",
+          "quote": "Frontend & Infrastructure / API Key Compromised",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama dates it 2026-11-16.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16",
+          "quote": "2026-11-16",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the chains as zkLighter.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16",
+          "quote": "chains: zkLighter",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the target type as DeFi Protocol.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16",
+          "quote": "target: DeFi Protocol",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists a loss of $10,393,057.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Lighter%402026-11-16",
+          "quote": "reported loss $10,393,057",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists the attack method as API key leakage.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Lighter%402026-11-16",
+          "quote": "attack method: API key leakage",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked dates it 2026-11-16.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Lighter%402026-11-16",
+          "quote": "2026-11-16",
+          "field": "excerpt"
+        },
+        {
+          "text": "rekt.news post-mortem, 2026-11-23:",
+          "sourceId": "rekt-news",
+          "url": "https://rekt.news/lighter-rekt",
+          "quote": "Lighter - Rekt",
+          "field": "title"
+        },
+        {
+          "text": "rekt.news states a figure of $10,390,000.",
+          "sourceId": "rekt-news",
+          "url": "https://rekt.news/lighter-rekt",
+          "quote": "$10.39 million",
+          "field": "excerpt"
+        },
+        {
+          "text": "Web3 is Going Just Great headline, 2026-11-22:",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/lighter-exploit",
+          "quote": "Lighter user(s) exploited for $15 million",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great states a figure of $15,000,000.",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/lighter-exploit",
+          "quote": "$15 million",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 68.9,
+        "factors": {
+          "loss": {
+            "value": 0.603,
+            "weight": 25,
+            "points": 15.1,
+            "reason": "lowest tier-A figure $10.39M (rekt-news); 4 figure(s) from 4 source(s), range $10.39M to $15M"
+          },
+          "recency": {
+            "value": 0.667,
+            "weight": 20,
+            "points": 13.3,
+            "reason": "freshest source 2026-11-23T00:00:00Z (rekt-news), 48 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "4 independent publisher(s): Ax3 (DefiLlama, SlowMist, rekt.news); Cx1 (Web3 is Going Just Great)"
+          },
+          "novelty": {
+            "value": 0.6,
+            "weight": 15,
+            "points": 9.0,
+            "reason": "incident from 2026-11-16 (8 days ago), new coverage in the window; 8 other key-compromise incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.7,
+            "weight": 10,
+            "points": 7.0,
+            "reason": "key-compromise -> key-management (custody keys of a user-facing service)"
+          },
+          "audience": {
+            "value": 0.45,
+            "weight": 10,
+            "points": 4.5,
+            "reason": "target DeFi Protocol (base 0.35); retail cues: account, user; institutional cues: market maker"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": true,
+        "missing": []
+      }
+    },
+    {
+      "id": "2026-11-22-endurance-bridge",
+      "title": "Endurance Bridge: key compromise",
+      "protocol": "Endurance Bridge",
+      "chains": [
+        "BNB Chain"
+      ],
+      "type": "key-compromise",
+      "dateUtc": "2026-11-22",
+      "reportedLosses": [
+        {
+          "amountUsd": 1040000.0,
+          "by": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Endurance%20Bridge%402026-11-22",
+          "quote": "reported loss $1,040,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 5700000.0,
+          "by": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Endurance%20Bridge%402026-11-22",
+          "quote": "reported loss $5,700,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 1870000.0,
+          "by": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/fusionist-exploit",
+          "quote": "$1.87 million",
+          "field": "title",
+          "tier": "C"
+        }
+      ],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): defillama-hacks, slowmist-hacked",
+      "sources": [
+        {
+          "id": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Endurance%20Bridge%402026-11-22",
+          "title": "DefiLlama hacks: Endurance Bridge (2026-11-22)",
+          "excerpt": "Endurance Bridge · 2026-11-22 · reported loss $1,040,000 · Bridge & Cross-Chain / Unbacked Cross-Chain Mint · target: DeFi Protocol · chains: BSC · bridge hack: yes · An attacker exploited privileged minting authority associated with Fusionist's Endurance Bridge to create…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "DefiLlama",
+          "kind": "structured",
+          "eventDate": "2026-11-22",
+          "eventDateFrom": "structured"
+        },
+        {
+          "id": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Endurance%20Bridge%402026-11-22",
+          "title": "SlowMist Hacked: Endurance Bridge (2026-11-22)",
+          "excerpt": "Endurance Bridge · 2026-11-22 · reported loss $5,700,000 · attack method: Private Key Leakage · Fusionist’s Endurance Bridge (ACE cross-chain bridge) was exploited on November 22, 2026. An attacker used privileged minting authority to create large amounts of unbacked ACE tokens…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "SlowMist",
+          "kind": "structured",
+          "eventDate": "2026-11-22",
+          "eventDateFrom": "structured",
+          "referenceUrl": "https://x.com/fusionistio/status/2124586293812461578",
+          "referenceNote": "link cited by the source; not fetched by the radar"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/fusionist-urges-ace-trading-pause-after-exploit-alert",
+          "title": "Fusionist Urges ACE Trading Pause After Exploit Alert",
+          "excerpt": "Blockaid estimated about $1.04 million in USDT had been extracted as Fusionist asked users to pause ACE transfers, trades and bridging on BSC.",
+          "publishedUtc": "2026-11-22T20:13:12Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        },
+        {
+          "id": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/fusionist-exploit",
+          "title": "Fusionist exploited for $1.87 million",
+          "excerpt": "An attacker has exploited the bridge belonging to the Fusionist blockchain gaming project. They were able to mint around 10 quadrillion of the project's ACE token on BNB chain, then cash out to approximately $1 million USDT, crashing the ACE token price to fractions of a cent…",
+          "publishedUtc": "2026-11-22T21:54:09Z",
+          "tier": "C",
+          "publisher": "Web3 is Going Just Great",
+          "kind": "news"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "key-management",
+      "notes": [
+        "Also reported as: Fusionist.",
+        "Sources state different figures (3 distinct). Quote each with its source; never average.",
+        "Some source text discusses token prices; do not repeat price talk."
+      ],
+      "typeReason": "SlowMist attack method 'Private Key Leakage' via slowmist-hacked; tier-A votes: bridge (defillama-hacks), key-compromise (slowmist-hacked)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "DefiLlama lists a loss of $1,040,000.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Endurance%20Bridge%402026-11-22",
+          "quote": "reported loss $1,040,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama classifies it as Bridge & Cross-Chain / Unbacked Cross-Chain Mint.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Endurance%20Bridge%402026-11-22",
+          "quote": "Bridge & Cross-Chain / Unbacked Cross-Chain Mint",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama dates it 2026-11-22.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Endurance%20Bridge%402026-11-22",
+          "quote": "2026-11-22",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the chains as BSC.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Endurance%20Bridge%402026-11-22",
+          "quote": "chains: BSC",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the target type as DeFi Protocol.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Endurance%20Bridge%402026-11-22",
+          "quote": "target: DeFi Protocol",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists a loss of $5,700,000.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Endurance%20Bridge%402026-11-22",
+          "quote": "reported loss $5,700,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists the attack method as Private Key Leakage.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Endurance%20Bridge%402026-11-22",
+          "quote": "attack method: Private Key Leakage",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked dates it 2026-11-22.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Endurance%20Bridge%402026-11-22",
+          "quote": "2026-11-22",
+          "field": "excerpt"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-22:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/fusionist-urges-ace-trading-pause-after-exploit-alert",
+          "quote": "Fusionist Urges ACE Trading Pause After Exploit Alert",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great headline, 2026-11-22:",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/fusionist-exploit",
+          "quote": "Fusionist exploited for $1.87 million",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great states a figure of $1,870,000.",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/fusionist-exploit",
+          "quote": "$1.87 million",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 68.9,
+        "factors": {
+          "loss": {
+            "value": 0.403,
+            "weight": 25,
+            "points": 10.1,
+            "reason": "lowest tier-A figure $1.04M (defillama-hacks); 3 figure(s) from 3 source(s), range $1.04M to $5.7M"
+          },
+          "recency": {
+            "value": 0.614,
+            "weight": 20,
+            "points": 12.3,
+            "reason": "freshest source 2026-11-22T20:13:12Z (thedefiant), 52 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "4 independent publisher(s): Ax2 (DefiLlama, SlowMist); Bx1 (The Defiant); Cx1 (Web3 is Going Just Great)"
+          },
+          "novelty": {
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "reason": "incident date inside the fresh window; 8 other key-compromise incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.7,
+            "weight": 10,
+            "points": 7.0,
+            "reason": "key-compromise -> key-management (custody keys of a user-facing service)"
+          },
+          "audience": {
+            "value": 0.45,
+            "weight": 10,
+            "points": 4.5,
+            "reason": "target DeFi Protocol (base 0.35); retail cues: users"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": true,
+        "missing": []
+      }
+    },
+    {
+      "id": "2026-11-21-cyber-bridge",
+      "title": "Cyber Bridge: bridge exploit",
+      "protocol": "Cyber Bridge",
+      "chains": [
+        "Solana",
+        "Ethereum"
+      ],
+      "type": "bridge",
+      "dateUtc": "2026-11-21",
+      "reportedLosses": [
+        {
+          "amountUsd": 968000.0,
+          "by": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#CyberConnect%402026-11-21",
+          "quote": "reported loss $968,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 1100000.0,
+          "by": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Cyber%20Bridge%402026-11-21",
+          "quote": "reported loss $1,100,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 1000000.0,
+          "by": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/cyber-bridge-exploit",
+          "quote": "$1 million",
+          "field": "title",
+          "tier": "C"
+        }
+      ],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): defillama-hacks",
+      "sources": [
+        {
+          "id": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#CyberConnect%402026-11-21",
+          "title": "DefiLlama hacks: CyberConnect (2026-11-21)",
+          "excerpt": "CyberConnect · 2026-11-21 · reported loss $968,000 · Bridge & Cross-Chain / Cross-Chain Message Spoofing · target: DeFi Protocol · chains: Solana, Ethereum · bridge hack: yes · An attacker exploited an as-yet-unidentified authorization vulnerability affecting Cyber's…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "DefiLlama",
+          "kind": "structured",
+          "eventDate": "2026-11-21",
+          "eventDateFrom": "structured"
+        },
+        {
+          "id": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Cyber%20Bridge%402026-11-21",
+          "title": "SlowMist Hacked: Cyber Bridge (2026-11-21)",
+          "excerpt": "Cyber Bridge · 2026-11-21 · reported loss $1,100,000 · attack method: Unknown · On November 21, 2026, Cyber’s cross-chain bridge experienced an anomaly: approximately 5.213 million CYBER tokens were unexpectedly minted on Solana, followed shortly by the transfer of the same…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "SlowMist",
+          "kind": "structured",
+          "eventDate": "2026-11-21",
+          "eventDateFrom": "structured",
+          "referenceUrl": "https://x.com/BuildOnCyber/status/2124207519581327394",
+          "referenceNote": "link cited by the source; not fetched by the radar",
+          "hedge": "anomaly"
+        },
+        {
+          "id": "cointelegraph",
+          "url": "https://cointelegraph.com/news/upbit-bithumb-suspend-cyber-transfers-bridge-exploit",
+          "title": "South Korean exchanges halt CYBER transfers amid suspected bridge exploit",
+          "excerpt": "Cyber reported unexpected minting of CYBER tokens on Solana, followed by tokens moving out of its Ethereum bridge lockbox, prompting an investigation.",
+          "publishedUtc": "2026-11-22T07:24:05Z",
+          "tier": "B",
+          "publisher": "Cointelegraph",
+          "kind": "news",
+          "hedge": "suspected"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/cyber-bridge-hack-followed-layerzero-s-support-exit",
+          "title": "Cyber Bridge Hack Followed LayerZero's Support Exit",
+          "excerpt": "AstraSec said 5.213 million unbacked CYBER were minted. LayerZero's CEO suspects Cyber's replacement infrastructure was compromised.",
+          "publishedUtc": "2026-11-23T19:57:17Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        },
+        {
+          "id": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/cyber-bridge-exploit",
+          "title": "Cyber bridge exploited for almost $1 million",
+          "excerpt": "Cyber, an Ethereum layer-2 network formerly known as CyberConnect and built for social applications, said it is investigating an apparent bridge exploit. An attacker was able to mint CYBER tokens on the Solana chain, then unlock approximately 5.21 million corresponding CYBER…",
+          "publishedUtc": "2026-11-22T21:45:08Z",
+          "tier": "C",
+          "publisher": "Web3 is Going Just Great",
+          "kind": "news",
+          "hedge": "investigating"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "bridge-security",
+      "notes": [
+        "Also reported as: CyberConnect.",
+        "Sources state different figures (3 distinct). Quote each with its source; never average."
+      ],
+      "typeReason": "DefiLlama technique 'Cross-Chain Message Spoofing' via defillama-hacks; tier-A votes: bridge (defillama-hacks), bridge (slowmist-hacked)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "DefiLlama lists a loss of $968,000.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#CyberConnect%402026-11-21",
+          "quote": "reported loss $968,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama classifies it as Bridge & Cross-Chain / Cross-Chain Message Spoofing.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#CyberConnect%402026-11-21",
+          "quote": "Bridge & Cross-Chain / Cross-Chain Message Spoofing",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama dates it 2026-11-21.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#CyberConnect%402026-11-21",
+          "quote": "2026-11-21",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the chains as Solana, Ethereum.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#CyberConnect%402026-11-21",
+          "quote": "chains: Solana, Ethereum",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the target type as DeFi Protocol.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#CyberConnect%402026-11-21",
+          "quote": "target: DeFi Protocol",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists a loss of $1,100,000.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Cyber%20Bridge%402026-11-21",
+          "quote": "reported loss $1,100,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists the attack method as Unknown.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Cyber%20Bridge%402026-11-21",
+          "quote": "attack method: Unknown",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked dates it 2026-11-21.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Cyber%20Bridge%402026-11-21",
+          "quote": "2026-11-21",
+          "field": "excerpt"
+        },
+        {
+          "text": "Cointelegraph headline, 2026-11-22:",
+          "sourceId": "cointelegraph",
+          "url": "https://cointelegraph.com/news/upbit-bithumb-suspend-cyber-transfers-bridge-exploit",
+          "quote": "South Korean exchanges halt CYBER transfers amid suspected bridge exploit",
+          "field": "title"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-23:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/cyber-bridge-hack-followed-layerzero-s-support-exit",
+          "quote": "Cyber Bridge Hack Followed LayerZero's Support Exit",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great headline, 2026-11-22:",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/cyber-bridge-exploit",
+          "quote": "Cyber bridge exploited for almost $1 million",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great states a figure of $1,000,000.",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/cyber-bridge-exploit",
+          "quote": "$1 million",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 68.3,
+        "factors": {
+          "loss": {
+            "value": 0.397,
+            "weight": 25,
+            "points": 9.9,
+            "reason": "lowest tier-A figure $968K (defillama-hacks); 3 figure(s) from 3 source(s), range $968K to $1.1M"
+          },
+          "recency": {
+            "value": 0.944,
+            "weight": 20,
+            "points": 18.9,
+            "reason": "freshest source 2026-11-23T19:57:17Z (thedefiant), 28 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "5 independent publisher(s): Ax2 (DefiLlama, SlowMist); Bx2 (Cointelegraph, The Defiant); Cx1 (Web3 is Going Just Great)"
+          },
+          "novelty": {
+            "value": 0.6,
+            "weight": 15,
+            "points": 9.0,
+            "reason": "incident from 2026-11-21 (3 days ago), new coverage in the window; 2 other bridge incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.7,
+            "weight": 10,
+            "points": 7.0,
+            "reason": "bridge -> bridge-security (direct mechanism, but it is protocol risk rather than a user action)"
+          },
+          "audience": {
+            "value": 0.35,
+            "weight": 10,
+            "points": 3.5,
+            "reason": "target DeFi Protocol (base 0.35)"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": true,
+        "missing": []
+      }
+    }
+  ],
+  "alsoSeen": [
+    {
+      "id": "2026-11-23-moldyroost",
+      "title": "MoldyRoost: phishing",
+      "protocol": "MoldyRoost",
+      "chains": [],
+      "type": "phishing",
+      "dateUtc": "2026-11-23",
+      "reportedLosses": [],
+      "status": "confirmed",
+      "statusReason": "confirmed: 2+ independent unhedged tier-B outlets: coindesk, cointelegraph",
+      "sources": [
+        {
+          "id": "coindesk",
+          "url": "https://www.coindesk.com/tech/2026/11/23/moldyroost-malvertizing-campaign-uses-one-tap-iphone-hacks-to-hunt-crypto-wallet-keys-research-shows",
+          "title": "Crypto thieves are using online ads to infect iPhones with a single tap, research finds",
+          "excerpt": "A malicious ad campaign known as MoldyRoost can compromise vulnerable iPhones with a single tap, putting cryptocurrency wallet seed phrases at risk, according to cybersecurity firm Confiant.",
+          "publishedUtc": "2026-11-23T07:45:30Z",
+          "tier": "B",
+          "publisher": "CoinDesk",
+          "kind": "news"
+        },
+        {
+          "id": "cointelegraph",
+          "url": "https://cointelegraph.com/news/moldyroost-malware-drain-iphone-wallets-one-tap",
+          "title": "‘MoldyRoost’ ads can steal crypto wallet recovery phrases from iPhones",
+          "excerpt": "The campaign used at least 480 ad domains to target users in more than 47 countries and could infect a vulnerable iPhone with a single tap.",
+          "publishedUtc": "2026-11-23T09:05:44Z",
+          "tier": "B",
+          "publisher": "Cointelegraph",
+          "kind": "news"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "phishing",
+      "notes": [],
+      "typeReason": "text 'online ads' via coindesk; tier-B votes: phishing (coindesk), phishing (cointelegraph)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "CoinDesk headline, 2026-11-23:",
+          "sourceId": "coindesk",
+          "url": "https://www.coindesk.com/tech/2026/11/23/moldyroost-malvertizing-campaign-uses-one-tap-iphone-hacks-to-hunt-crypto-wallet-keys-research-shows",
+          "quote": "Crypto thieves are using online ads to infect iPhones with a single tap, research finds",
+          "field": "title"
+        },
+        {
+          "text": "Cointelegraph headline, 2026-11-23:",
+          "sourceId": "cointelegraph",
+          "url": "https://cointelegraph.com/news/moldyroost-malware-drain-iphone-wallets-one-tap",
+          "quote": "‘MoldyRoost’ ads can steal crypto wallet recovery phrases from iPhones",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 60.5,
+        "factors": {
+          "loss": {
+            "value": 0.0,
+            "weight": 25,
+            "points": 0.0,
+            "reason": "no USD figure reported"
+          },
+          "recency": {
+            "value": 0.793,
+            "weight": 20,
+            "points": 15.9,
+            "reason": "freshest source 2026-11-23T09:05:44Z (cointelegraph), 39 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 0.48,
+            "weight": 20,
+            "points": 9.6,
+            "reason": "2 independent publisher(s): Bx2 (CoinDesk, Cointelegraph)"
+          },
+          "novelty": {
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "reason": "incident date inside the fresh window; 1 other phishing incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 1.0,
+            "weight": 10,
+            "points": 10.0,
+            "reason": "phishing -> phishing (direct: the incident is the topic)"
+          },
+          "audience": {
+            "value": 1.0,
+            "weight": 10,
+            "points": 10.0,
+            "reason": "target not stated (base 0.85); retail cues: iphone, iphones, online ads, recovery phrases, seed phrases, users"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": true,
+        "missing": []
+      }
+    },
+    {
+      "id": "2026-11-19-fluidkey",
+      "title": "Fluidkey: exploit",
+      "protocol": "Fluidkey",
+      "chains": [
+        "Ethereum",
+        "Base",
+        "BNB Chain",
+        "Polygon",
+        "Optimism",
+        "Arbitrum"
+      ],
+      "type": "exploit",
+      "dateUtc": "2026-11-19",
+      "reportedLosses": [
+        {
+          "amountUsd": 1600000.0,
+          "by": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Fluidkey%402026-11-19",
+          "quote": "reported loss $1,600,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 1600000.0,
+          "by": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Fluidkey%402026-11-19",
+          "quote": "reported loss $1,600,000",
+          "field": "excerpt",
+          "tier": "A"
+        },
+        {
+          "amountUsd": 1600000.0,
+          "by": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/fluidkey-says-unpatched-tool-enabled-1-6-million-hack",
+          "quote": "$1.6 Million",
+          "field": "title",
+          "tier": "B"
+        }
+      ],
+      "status": "confirmed",
+      "statusReason": "confirmed: unhedged tier-A source(s): defillama-hacks, slowmist-hacked",
+      "sources": [
+        {
+          "id": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Fluidkey%402026-11-19",
+          "title": "DefiLlama hacks: Fluidkey (2026-11-19)",
+          "excerpt": "Fluidkey · 2026-11-19 · reported loss $1,600,000 · Frontend & Infrastructure / Database Breach · target: Wallet · chains: Ethereum, Base, Binance, Polygon, Optimism, Arbitrum · An attacker exploited two vulnerabilities in Fluidkey's self-hosted SigNoz logging infrastructure to…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "DefiLlama",
+          "kind": "structured",
+          "eventDate": "2026-11-19",
+          "eventDateFrom": "structured"
+        },
+        {
+          "id": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Fluidkey%402026-11-19",
+          "title": "SlowMist Hacked: Fluidkey (2026-11-19)",
+          "excerpt": "Fluidkey · 2026-11-19 · reported loss $1,600,000 · attack method: Supply Chain Attack · Privacy wallet Fluidkey was attacked on November 19, 2026. The attacker exploited vulnerabilities in the third-party logging tool SigNoz to read internal logs, obtain user session tokens…",
+          "publishedUtc": null,
+          "tier": "A",
+          "publisher": "SlowMist",
+          "kind": "structured",
+          "eventDate": "2026-11-19",
+          "eventDateFrom": "structured",
+          "referenceUrl": "https://x.com/fluidkey/status/2124318988566208871",
+          "referenceNote": "link cited by the source; not fetched by the radar"
+        },
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/fluidkey-says-unpatched-tool-enabled-1-6-million-hack",
+          "title": "Fluidkey Says Unpatched Tool Enabled $1.6 Million Hack",
+          "excerpt": "Its post-mortem says stolen session tokens let an attacker stage transfers that users' apps signed. Personal data and viewing keys were also exposed.",
+          "publishedUtc": "2026-11-22T02:49:00Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": null,
+      "notes": [],
+      "typeReason": "text 'Hacked' via slowmist-hacked; tier-A votes: exploit (slowmist-hacked), other (defillama-hacks)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "DefiLlama lists a loss of $1,600,000.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Fluidkey%402026-11-19",
+          "quote": "reported loss $1,600,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama classifies it as Frontend & Infrastructure / Database Breach.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Fluidkey%402026-11-19",
+          "quote": "Frontend & Infrastructure / Database Breach",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama dates it 2026-11-19.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Fluidkey%402026-11-19",
+          "quote": "2026-11-19",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the chains as Ethereum, Base, Binance, Polygon, Optimism, Arbitrum.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Fluidkey%402026-11-19",
+          "quote": "chains: Ethereum, Base, Binance, Polygon, Optimism, Arbitrum",
+          "field": "excerpt"
+        },
+        {
+          "text": "DefiLlama lists the target type as Wallet.",
+          "sourceId": "defillama-hacks",
+          "url": "https://api.llama.fi/hacks#Fluidkey%402026-11-19",
+          "quote": "target: Wallet",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists a loss of $1,600,000.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Fluidkey%402026-11-19",
+          "quote": "reported loss $1,600,000",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked lists the attack method as Supply Chain Attack.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Fluidkey%402026-11-19",
+          "quote": "attack method: Supply Chain Attack",
+          "field": "excerpt"
+        },
+        {
+          "text": "SlowMist Hacked dates it 2026-11-19.",
+          "sourceId": "slowmist-hacked",
+          "url": "https://hacked.slowmist.io/#Fluidkey%402026-11-19",
+          "quote": "2026-11-19",
+          "field": "excerpt"
+        },
+        {
+          "text": "The Defiant headline, 2026-11-22:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/fluidkey-says-unpatched-tool-enabled-1-6-million-hack",
+          "quote": "Fluidkey Says Unpatched Tool Enabled $1.6 Million Hack",
+          "field": "title"
+        },
+        {
+          "text": "The Defiant states a figure of $1,600,000.",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/fluidkey-says-unpatched-tool-enabled-1-6-million-hack",
+          "quote": "$1.6 Million",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 57.5,
+        "factors": {
+          "loss": {
+            "value": 0.441,
+            "weight": 25,
+            "points": 11.0,
+            "reason": "lowest tier-A figure $1.6M (defillama-hacks); 3 figure(s) from 3 source(s), range $1.6M"
+          },
+          "recency": {
+            "value": 0.372,
+            "weight": 20,
+            "points": 7.4,
+            "reason": "freshest source 2026-11-22T02:49:00Z (thedefiant), 69 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 1.0,
+            "weight": 20,
+            "points": 20.0,
+            "reason": "3 independent publisher(s): Ax2 (DefiLlama, SlowMist); Bx1 (The Defiant)"
+          },
+          "novelty": {
+            "value": 0.6,
+            "weight": 15,
+            "points": 9.0,
+            "reason": "incident from 2026-11-19 (5 days ago), new coverage in the window; 16 other exploit incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.0,
+            "weight": 10,
+            "points": 0.0,
+            "reason": "exploit: no explainer topic fits"
+          },
+          "audience": {
+            "value": 1.0,
+            "weight": 10,
+            "points": 10.0,
+            "reason": "target Wallet (base 0.90); retail cues: user, users"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": false,
+        "missing": [
+          "no strong 'one fix' explainer link"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-23-trezor-and-exodus",
+      "title": "Trezor and Exodus users: reported theft (developing)",
+      "protocol": "Trezor and Exodus",
+      "chains": [],
+      "type": "exploit",
+      "dateUtc": "2026-11-23",
+      "reportedLosses": [
+        {
+          "amountUsd": 600000.0,
+          "by": "cryptonews",
+          "url": "https://crypto.news/trezor-exodus-user-reports-600k-crypto-theft/",
+          "quote": "$600K",
+          "field": "title",
+          "tier": "C"
+        }
+      ],
+      "status": "developing",
+      "statusReason": "developing: no unhedged tier-A or tier-B source; tier-C sources do not count",
+      "sources": [
+        {
+          "id": "cryptonews",
+          "url": "https://crypto.news/trezor-exodus-user-reports-600k-crypto-theft/",
+          "title": "Trezor and Exodus wallets lose $600K in reported theft",
+          "excerpt": "A crypto wallet user reported losing more than $600,000 from a Trezor Safe 7 and an Exodus wallet used with the same iPhone, according to a Nov. 23 investigation by blockchain analytics account Onchain Lens. The user told Onchain Lens…",
+          "publishedUtc": "2026-11-23T16:39:16Z",
+          "tier": "C",
+          "publisher": "crypto.news",
+          "kind": "news",
+          "eventDate": "2026-11-23",
+          "eventDateFrom": "text"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": null,
+      "notes": [
+        "Label as developing. Attribute every line to its source.",
+        "A source describes user-side losses: do not imply the named vendor was breached unless a source says so."
+      ],
+      "typeReason": "text 'theft' via cryptonews; tier-C votes: exploit (cryptonews)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "crypto.news headline, 2026-11-23:",
+          "sourceId": "cryptonews",
+          "url": "https://crypto.news/trezor-exodus-user-reports-600k-crypto-theft/",
+          "quote": "Trezor and Exodus wallets lose $600K in reported theft",
+          "field": "title"
+        },
+        {
+          "text": "crypto.news states a figure of $600,000.",
+          "sourceId": "cryptonews",
+          "url": "https://crypto.news/trezor-exodus-user-reports-600k-crypto-theft/",
+          "quote": "$600K",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 46.2,
+        "factors": {
+          "loss": {
+            "value": 0.356,
+            "weight": 25,
+            "points": 8.9,
+            "reason": "lowest tier-C figure $600K (cryptonews); 1 figure(s) from 1 source(s), range $600K"
+          },
+          "recency": {
+            "value": 0.667,
+            "weight": 20,
+            "points": 13.3,
+            "reason": "freshest source 2026-11-23T00:00:00Z (cryptonews), 48 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 0.1,
+            "weight": 20,
+            "points": 2.0,
+            "reason": "1 independent publisher(s): Cx1 (crypto.news)"
+          },
+          "novelty": {
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "reason": "incident date inside the fresh window; 16 other exploit incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.0,
+            "weight": 10,
+            "points": 0.0,
+            "reason": "exploit: no explainer topic fits"
+          },
+          "audience": {
+            "value": 0.7,
+            "weight": 10,
+            "points": 7.0,
+            "reason": "target not stated (base 0.40); retail cues: account, iphone, user"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "no strong 'one fix' explainer link"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-23-dcent",
+      "title": "DCENT: reported exploit (developing)",
+      "protocol": "DCENT",
+      "chains": [
+        "Bitcoin",
+        "Ethereum"
+      ],
+      "type": "exploit",
+      "dateUtc": "2026-11-23",
+      "reportedLosses": [],
+      "status": "developing",
+      "statusReason": "developing: no unhedged tier-A or tier-B source; tier-C sources do not count",
+      "sources": [
+        {
+          "id": "cryptonews",
+          "url": "https://crypto.news/dcent-wallet-shutdown-september-crypto-hack/",
+          "title": "South Korean crypto wallet DCENT to shut down app service after September hack",
+          "excerpt": "South Korean crypto wallet DCENT will end its phone-only App Wallet after a September hack, while hardware services continue and victims pursue claims.",
+          "publishedUtc": "2026-11-23T12:18:54Z",
+          "tier": "C",
+          "publisher": "crypto.news",
+          "kind": "news"
+        },
+        {
+          "id": "coinedition",
+          "url": "https://coinedition.com/south-koreas-dcent-to-shut-app-wallet-after-crypto-theft/",
+          "title": "South Korea’s DCENT to Shut App Wallet After Crypto Theft Reports Surface",
+          "excerpt": "South Korean crypto wallet provider DCENT is ending its smartphone-only App Wallet service following a September hack that led to unauthorized cryptocurrency transfers. Its operator, IoTrust, has urged customers to move their Bitcoin, Ethereum, XRP and other assets to…",
+          "publishedUtc": "2026-11-23T22:09:57Z",
+          "tier": "C",
+          "publisher": "Coin Edition",
+          "kind": "news"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": null,
+      "notes": [
+        "Label as developing. Attribute every line to its source."
+      ],
+      "typeReason": "text 'hack' via cryptonews; tier-C votes: exploit (coinedition), exploit (cryptonews)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "crypto.news headline, 2026-11-23:",
+          "sourceId": "cryptonews",
+          "url": "https://crypto.news/dcent-wallet-shutdown-september-crypto-hack/",
+          "quote": "South Korean crypto wallet DCENT to shut down app service after September hack",
+          "field": "title"
+        },
+        {
+          "text": "Coin Edition headline, 2026-11-23:",
+          "sourceId": "coinedition",
+          "url": "https://coinedition.com/south-koreas-dcent-to-shut-app-wallet-after-crypto-theft/",
+          "quote": "South Korea’s DCENT to Shut App Wallet After Crypto Theft Reports Surface",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 44.5,
+        "factors": {
+          "loss": {
+            "value": 0.0,
+            "weight": 25,
+            "points": 0.0,
+            "reason": "no USD figure reported"
+          },
+          "recency": {
+            "value": 0.975,
+            "weight": 20,
+            "points": 19.5,
+            "reason": "freshest source 2026-11-23T22:09:57Z (coinedition), 26 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 0.2,
+            "weight": 20,
+            "points": 4.0,
+            "reason": "2 independent publisher(s): Cx2 (Coin Edition, crypto.news)"
+          },
+          "novelty": {
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "reason": "incident date inside the fresh window; 16 other exploit incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.0,
+            "weight": 10,
+            "points": 0.0,
+            "reason": "exploit: no explainer topic fits"
+          },
+          "audience": {
+            "value": 0.6,
+            "weight": 10,
+            "points": 6.0,
+            "reason": "target not stated (base 0.40); retail cues: customers, victims"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": false,
+        "missing": [
+          "not confirmed",
+          "no strong 'one fix' explainer link"
+        ]
+      }
+    },
+    {
+      "id": "2026-11-23-stake-dao",
+      "title": "Stake DAO: reported security incident (mechanism not classified) (developing)",
+      "protocol": "Stake DAO",
+      "chains": [],
+      "type": "other",
+      "dateUtc": "2026-11-23",
+      "reportedLosses": [],
+      "status": "developing",
+      "statusReason": "developing: only 1 unhedged tier-B outlet (thedefiant)",
+      "sources": [
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/stake-dao-warns-of-forum-breach-says-funds-unaffected",
+          "title": "Stake DAO Warns of Forum Breach, Says Funds Unaffected",
+          "excerpt": "The copied database may contain emails, hashed passwords, 2FA secrets and private messages. Stake DAO urged forum users to reset access and watch for phishing.",
+          "publishedUtc": "2026-11-23T18:35:01Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": null,
+      "notes": [
+        "Label as developing. Attribute every line to its source."
+      ],
+      "typeReason": "no source states a mechanism",
+      "mechanismKnown": false,
+      "facts": [
+        {
+          "text": "The Defiant headline, 2026-11-23:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/stake-dao-warns-of-forum-breach-says-funds-unaffected",
+          "quote": "Stake DAO Warns of Forum Breach, Says Funds Unaffected",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 43.3,
+        "factors": {
+          "loss": {
+            "value": 0.0,
+            "weight": 25,
+            "points": 0.0,
+            "reason": "no USD figure reported"
+          },
+          "recency": {
+            "value": 0.925,
+            "weight": 20,
+            "points": 18.5,
+            "reason": "freshest source 2026-11-23T18:35:01Z (thedefiant), 29 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 0.24,
+            "weight": 20,
+            "points": 4.8,
+            "reason": "1 independent publisher(s): Bx1 (The Defiant)"
+          },
+          "novelty": {
+            "value": 1.0,
+            "weight": 15,
+            "points": 15.0,
+            "reason": "incident date inside the fresh window; 2 other other incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.0,
+            "weight": 10,
+            "points": 0.0,
+            "reason": "other: no explainer topic fits"
+          },
+          "audience": {
+            "value": 0.5,
+            "weight": 10,
+            "points": 5.0,
+            "reason": "target not stated (base 0.40); retail cues: users"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": false,
+        "missing": [
+          "not confirmed",
+          "fewer than 2 independent sources",
+          "mechanism not stated by any source",
+          "no strong 'one fix' explainer link"
+        ]
+      }
+    },
+    {
+      "id": "2026-10-28-cysic",
+      "title": "Cysic: reported bridge exploit (developing)",
+      "protocol": "Cysic",
+      "chains": [
+        "BNB Chain"
+      ],
+      "type": "bridge",
+      "dateUtc": "2026-10-28",
+      "reportedLosses": [],
+      "status": "developing",
+      "statusReason": "developing: only 1 unhedged tier-B outlet (thedefiant); tier-C sources do not count",
+      "sources": [
+        {
+          "id": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/cysic-bridge-exploit-minted-10-million-tokens-on-bnb",
+          "title": "Cysic Bridge Exploit Minted 10 Million Tokens on BNB",
+          "excerpt": "Cysic said transfers resumed by Oct. 28 after the attack. PeckShield tracked roughly $744,000 sent to Tornado Cash.",
+          "publishedUtc": "2026-11-22T04:10:34Z",
+          "tier": "B",
+          "publisher": "The Defiant",
+          "kind": "news",
+          "eventDate": "2026-10-28",
+          "eventDateFrom": "text"
+        },
+        {
+          "id": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/cysic-bridge-exploited",
+          "title": "Cysic bridge exploited",
+          "excerpt": "A bug with the Cysic bridge let an attacker mint 10 million Cysic (CYS) tokens on BNB Chain. Cysic suspended the bridge and blacklisted the recipient address, freezing about 2.8 million of the minted tokens. The project attempted to recoup some of the stolen assets by offering…",
+          "publishedUtc": "2026-11-22T03:01:44Z",
+          "tier": "C",
+          "publisher": "Web3 is Going Just Great",
+          "kind": "news"
+        }
+      ],
+      "postMortemUrl": null,
+      "evergreenTopic": "bridge-security",
+      "notes": [
+        "Label as developing. Attribute every line to its source."
+      ],
+      "typeReason": "text 'Bridge' via thedefiant; tier-B votes: bridge (thedefiant)",
+      "mechanismKnown": true,
+      "facts": [
+        {
+          "text": "The Defiant headline, 2026-11-22:",
+          "sourceId": "thedefiant",
+          "url": "https://thedefiant.io/news/hacks/cysic-bridge-exploit-minted-10-million-tokens-on-bnb",
+          "quote": "Cysic Bridge Exploit Minted 10 Million Tokens on BNB",
+          "field": "title"
+        },
+        {
+          "text": "Web3 is Going Just Great headline, 2026-11-22:",
+          "sourceId": "web3isgoinggreat",
+          "url": "https://web3isgoinggreat.com/single/cysic-bridge-exploited",
+          "quote": "Cysic bridge exploited",
+          "field": "title"
+        }
+      ],
+      "score": {
+        "total": 31.6,
+        "factors": {
+          "loss": {
+            "value": 0.0,
+            "weight": 25,
+            "points": 0.0,
+            "reason": "no USD figure reported"
+          },
+          "recency": {
+            "value": 0.391,
+            "weight": 20,
+            "points": 7.8,
+            "reason": "freshest source 2026-11-22T04:10:34Z (thedefiant), 68 h before the end of 2026-11-24"
+          },
+          "sources": {
+            "value": 0.34,
+            "weight": 20,
+            "points": 6.8,
+            "reason": "2 independent publisher(s): Bx1 (The Defiant); Cx1 (Web3 is Going Just Great)"
+          },
+          "novelty": {
+            "value": 0.4,
+            "weight": 15,
+            "points": 6.0,
+            "reason": "follow-up to an incident from 2026-10-28 (27 days ago); 3 other bridge incident(s) in the 14 days before 2026-11-24"
+          },
+          "evergreen": {
+            "value": 0.7,
+            "weight": 10,
+            "points": 7.0,
+            "reason": "bridge -> bridge-security (direct mechanism, but it is protocol risk rather than a user action)"
+          },
+          "audience": {
+            "value": 0.4,
+            "weight": 10,
+            "points": 4.0,
+            "reason": "target not stated (base 0.40)"
+          }
+        }
+      },
+      "shortReady": {
+        "ready": false,
+        "missing": [
+          "not confirmed"
+        ]
+      }
+    }
+  ],
+  "unclustered": [
+    {
+      "sourceId": "thedefiant",
+      "tier": "B",
+      "title": "RAILGUN Community Account Touts Post-Quantum Prototype",
+      "url": "https://thedefiant.io/news/security/railgun-community-account-touts-post-quantum-prototype",
+      "publishedUtc": "2026-11-22T18:50:09Z",
+      "excerpt": "ZKNOX's wallet proof of concept demonstrates new note encryption on Sepolia, but does not make RAILGUN's spending system quantum-resistant.",
+      "reason": "security topic, not an incident report"
+    },
+    {
+      "sourceId": "thedefiant",
+      "tier": "B",
+      "title": "Blur Disables Upgrades, Removing an ETH Rescue Route",
+      "url": "https://thedefiant.io/news/security/blur-disables-upgrades-removing-an-eth-rescue-route",
+      "publishedUtc": "2026-11-22T19:15:44Z",
+      "excerpt": "Developer Quit identified 545.6 ETH in 315 contracts lacking a direct withdrawal path. Ordinary wallet withdrawals remain available.",
+      "reason": "security topic, not an incident report"
+    },
+    {
+      "sourceId": "coindesk",
+      "tier": "B",
+      "title": "South Korea to expand cryptocurrency account freezes and curb illicit transfers abroad",
+      "url": "https://www.coindesk.com/policy/2026/11/23/south-korea-to-expand-cryptocurrency-account-freezes-and-curb-illicit-transfers-abroad",
+      "publishedUtc": "2026-11-23T10:53:19Z",
+      "excerpt": "The proposed measures would also expand a June phishing-account suspension system, which has already frozen more than 11,500 accounts, to cover other serious financial crimes.",
+      "reason": "no confident subject in the headline"
+    },
+    {
+      "sourceId": "theblock",
+      "tier": "B",
+      "title": "Pump.fun draws criticism over private key imports as it retires external wallet sign-in on web",
+      "url": "https://www.theblock.co/news/ecosystems/2026-11-23-pump-fun-draws-criticism-over-private-key-imports-as-it-retires-external-wallet-sign-in-on-web-444926",
+      "publishedUtc": "2026-11-23T13:54:54Z",
+      "excerpt": "Pump.fun is retiring external web wallet logins and asking users to import private keys to keep existing wallet-linked accounts.",
+      "reason": "security topic, not an incident report"
+    },
+    {
+      "sourceId": "thedefiant",
+      "tier": "B",
+      "title": "Pump.fun to End External Wallet Login on Nov. 30",
+      "url": "https://thedefiant.io/news/security/pump-fun-to-end-external-wallet-login-on-nov-30",
+      "publishedUtc": "2026-11-24T03:13:22Z",
+      "excerpt": "Pump.fun's recommended web import flow asks for a private key. Users can instead start with a new wallet and transfer funds.",
+      "reason": "security topic, not an incident report"
+    },
+    {
+      "sourceId": "thedefiant",
+      "tier": "B",
+      "title": "CFTC Alleges Backward Hat Ran Forex Ponzi Using Crypto",
+      "url": "https://thedefiant.io/news/regulation/cftc-alleges-backward-hat-ran-forex-ponzi-using-crypto",
+      "publishedUtc": "2026-11-24T04:08:29Z",
+      "excerpt": "The agency says the forex investment pool sent about $91 million to a Coinbase account. A court has frozen assets and appointed a receiver.",
+      "reason": "no confident subject in the headline"
+    },
+    {
+      "sourceId": "thedefiant",
+      "tier": "B",
+      "title": "Ten Under Formal Investigation in Paris Gold-Crypto Probe",
+      "url": "https://thedefiant.io/news/security/ten-under-formal-investigation-in-paris-gold-crypto-probe",
+      "publishedUtc": "2026-11-24T05:09:53Z",
+      "excerpt": "Investigators say stolen customer records were used to solicit asset transfers and home collections under the guise of safekeeping.",
+      "reason": "no confident subject in the headline"
+    }
+  ],
+  "corrections": [],
+  "seenRecordKeys": [
+    "defillama:Across@2026-11-10",
+    "defillama:Arcus Perps@2026-11-10",
+    "defillama:B18 TimeBank@2026-11-17",
+    "defillama:CALC@2026-11-19",
+    "defillama:Chain Games@2026-11-15",
+    "defillama:Chainflip AMM@2026-11-21",
+    "defillama:Curve Finance (CowSwapBurner)@2026-11-10",
+    "defillama:CyberConnect@2026-11-21",
+    "defillama:Edel@2026-11-12",
+    "defillama:Endurance Bridge@2026-11-22",
+    "defillama:Fluidkey@2026-11-19",
+    "defillama:Gonka AI@2026-11-18",
+    "defillama:Hyprearn Perps@2026-11-14",
+    "defillama:Initia@2026-11-10",
+    "defillama:K3 Capital@2026-11-18",
+    "defillama:Kava Lend@2026-11-14",
+    "defillama:LUKSO@2026-11-18",
+    "defillama:Lighter Perps@2026-11-16",
+    "defillama:Luxor Commander@2026-11-15",
+    "defillama:MORE Markets@2026-11-16",
+    "defillama:Optimizely (OPTIMJACK)@2026-11-16",
+    "defillama:Peapods Finance@2026-11-18",
+    "defillama:Pennysia@2026-11-13",
+    "defillama:RNT Lend@2026-11-18",
+    "defillama:Rujira AMM Strategies@2026-11-11",
+    "defillama:The Moats@2026-11-19",
+    "defillama:Wagyu (XMR1)@2026-11-20",
+    "slowmist:Aramid Bridge@2026-11-21",
+    "slowmist:B18 TimeBank@2026-11-17",
+    "slowmist:CALC@2026-11-19",
+    "slowmist:Chain Games@2026-11-15",
+    "slowmist:Chainflip@2026-11-21",
+    "slowmist:Cyber Bridge@2026-11-21",
+    "slowmist:Endurance Bridge@2026-11-22",
+    "slowmist:Fluidkey@2026-11-19",
+    "slowmist:Gonka AI@2026-11-18",
+    "slowmist:K3 Capital@2026-11-18",
+    "slowmist:Kava Lend@2026-11-14",
+    "slowmist:LUKSO@2026-11-17",
+    "slowmist:Lighter@2026-11-16",
+    "slowmist:Luxor@2026-11-14",
+    "slowmist:MORE Markets@2026-11-16",
+    "slowmist:Moats App@2026-11-19",
+    "slowmist:Paytaca@2026-11-17",
+    "slowmist:Peapods Finance@2026-11-18",
+    "slowmist:RNT Lend@2026-11-18",
+    "slowmist:Wagyu (XMR1)@2026-11-20"
+  ]
+}

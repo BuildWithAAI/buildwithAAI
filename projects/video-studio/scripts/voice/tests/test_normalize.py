@@ -108,7 +108,9 @@ class English(unittest.TestCase):
                 self.assertEqual(n(text, "en"), want)
 
     def test_untouched(self):
-        for text in ("Pump.fun", "don't", "U.S.", "hello, world.", "1.2.3"):
+        # "Pump.fun" left this list on 2026-11-24: espeak read its dot as a sentence break, so the channel lexicon
+        # now says "Pump dot fun" (Lexicon.test_english)
+        for text in ("don't", "U.S.", "hello, world.", "1.2.3"):
             with self.subTest(text=text):
                 self.assertEqual(n(text, "en"), text)
 
@@ -230,6 +232,108 @@ class Japanese(unittest.TestCase):
         from voicelib.normalize import ja
 
         self.assertEqual(ja.spans("0.25 SOL")[0][0], "0.25")
+
+
+class ReviewCases(unittest.TestCase):
+    """Every form the 2026-11-24 review found reaching espeak unnormalized (often with the meaning reversed)."""
+
+    CASES = {
+        "pt-br": {
+            "R$ 40 mil": "quarenta mil reais",  # was 'real dólar quarenta mil'
+            "US$40 mil": "quarenta mil dólares",
+            "US$ 40 mil": "quarenta mil dólares",
+            "R$1": "um real",
+            "R$ 1,50": "um real e cinquenta centavos",
+            "R$ 2 milhões": "dois milhões de reais",
+            "Taxas de 5-10%.": "Taxas de cinco a dez por cento.",  # was 'five MINUS ten'
+            "Às 10h30": "Às dez e trinta",  # was 'dez aga trinta'
+            "às 2h": "às duas horas",
+            "Perdeu € 200.": "Perdeu duzentos euros.",  # was 'euro duzentos'
+            "#1": "número um",
+            "nº 1": "número um",
+            "1/3": "um terço",
+            "2/3": "dois terços",
+        },
+        "es": {
+            "US$ 40.000": "cuarenta mil dólares",
+            "del 5-10%": "del cinco a diez por ciento",  # was 'cinco diez' (no 'a')
+            "#1": "número uno",  # was 'almohadilla uno'
+            "nº1": "número uno",
+            "€ 200": "doscientos euros",
+            "MX$200": "doscientos pesos mexicanos",
+            "1/3": "un tercio",
+            "10h30": "diez y treinta",
+        },
+        "en": {
+            "5-10%": "five to ten percent",  # was 'five dash ten percent'
+            "5%-10%": "five to ten percent",
+            "5-10 %": "five to ten percent",
+            "#1": "number one",  # was 'hash one'
+            "US$40,000": "forty thousand U S dollars",  # was 'U S dollar forty thousand'
+            "A$5": "five Australian dollars",
+            "C$10": "ten Canadian dollars",
+            "$ 40": "forty dollars",
+            "1/3": "one third",  # was 'one three'
+            "3/4": "three quarters",
+            "1/2": "one half",
+            "24/7": "twenty four seven",
+            "50/50": "fifty fifty",
+        },
+        "it": {"5-10%": "da cinque a dieci per cento", "#1": "numero uno", "US$40.000": "quarantamila dollari", "2/3": "due terzi"},
+        "hi": {"5-10%": "पाँच से दस प्रतिशत", "#1": "नंबर एक", "1/2": "आधा", "US$40": "चालीस अमेरिकी डॉलर"},
+        "zh": {"US$40": "四十美元", "#1": "一号", "5-10%": "百分之五到百分之十"},
+    }
+
+    def test_cases(self):
+        for lang, cases in self.CASES.items():
+            for text, want in cases.items():
+                with self.subTest(lang=lang, text=text):
+                    self.assertEqual(" ".join(n(text, lang).split()), want)
+
+    def test_nothing_unspoken_is_left(self):
+        for lang, cases in self.CASES.items():
+            if lang == "zh":
+                continue
+            for text in cases:
+                with self.subTest(lang=lang, text=text):
+                    self.assertEqual(common.unspoken(n(text, lang)), [])
+
+    def test_the_build_warns_about_leftovers(self):
+        from voicelib.pipeline import leftover_symbols
+        from voicelib.words import build_words
+
+        self.assertEqual(leftover_symbols(build_words("Fees run 5/12 of x2y3 #a, see go.zoora.ai/check.", "en"), "en"), ["#a,", "go.zoora.ai/check."])
+        self.assertEqual(leftover_symbols(build_words("Fees of {5-10%|five to ten percent}.", "en"), "en"), [])
+        self.assertEqual(leftover_symbols(build_words("価格は40000ドル", "ja"), "ja"), [])
+
+
+class Lexicon(unittest.TestCase):
+    """Channel pronunciation lexicon (voicelib/lexicon.py), applied before G2P; captions keep the written form."""
+
+    def test_english(self):
+        cases = {
+            "Most new memecoins": "Most new meme coins",  # espeak: MEM-ih-coins
+            "Memecoins die.": "Meme coins die.",
+            "DeFi": "Dee fye",
+            "CEX": "C E X",
+            "KOL": "K O L",
+            "KOLs": "K O L's",
+            "on Pump.fun.": "on Pump dot fun.",  # espeak read the dot as a sentence break
+        }
+        for text, want in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(n(text, "en"), want)
+
+    def test_spanish_and_portuguese_respellings(self):
+        self.assertEqual(n("analistas on-chain", "es"), "analistas onchéin")  # espeak es: on-cháin
+        self.assertEqual(n("analistas on-chain", "pt-br"), "analistas onchêin")
+
+    def test_captions_keep_the_written_form(self):
+        from voicelib.words import build_words
+
+        words = build_words("Most new memecoins on Pump.fun never see day two.", "en")
+        self.assertEqual([w.display[0] for w in words][2:5], ["memecoins", "on", "Pump.fun"])
+        self.assertEqual(words[2].spoken, "meme coins")
 
 
 class ParseNum(unittest.TestCase):

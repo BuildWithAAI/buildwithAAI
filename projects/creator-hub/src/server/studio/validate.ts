@@ -54,7 +54,11 @@ const DAY_MS = 86_400_000;
 const CONTROL_CHARS = /[\u0000-\u001F\u007F-\u009F‪-‮⁦-⁩]/;
 /** The same, but tab and newline are allowed (the message is multi-line; CR was normalized to LF). */
 const CONTROL_CHARS_MULTILINE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F‪-‮⁦-⁩]/;
-const EMAIL_LOCAL = /^[\p{L}\p{N}!#$%&'*+/=?^_`{|}~-]+(?:\.[\p{L}\p{N}!#$%&'*+/=?^_`{|}~-]+)*$/u;
+/**
+ * RFC 5322 atoms without # % & / = ?: real customer addresses practically never use them, and they are the
+ * characters that turn an address into extra fields (?cc=, &bcc=, #...) inside a mailto: link.
+ */
+const EMAIL_LOCAL = /^[\p{L}\p{N}!$'*+^_`{|}~-]+(?:\.[\p{L}\p{N}!$'*+^_`{|}~-]+)*$/u;
 const DOMAIN_LABEL = /^[\p{L}\p{N}](?:[\p{L}\p{N}-]{0,61}[\p{L}\p{N}])?$/u;
 
 /** UTC calendar day, YYYY-MM-DD. */

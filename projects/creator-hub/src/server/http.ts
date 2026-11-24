@@ -16,6 +16,8 @@ export type HubConfig = {
 	adminUser: string;
 	adminPasswordHash: string; // scrypt hash string, never a plain password
 	hashSecret: string; // server secret for visitor hashing (rotated daily salt derives from it)
+	/** Added 2026-11-24 (optional): the person or business that runs the site, named on /privacy (OPERATOR_NAME). */
+	operatorName?: string;
 };
 
 export type Ctx = {

@@ -1,0 +1,26 @@
+{
+  "id": "crypto-security-checklist",
+  "title": "The Crypto Security Checklist",
+  "copyrightHolder": "Zoora AI",
+  "contact": null,
+  "fullEditionUrl": null,
+  "licence": {
+    "free": "You may share this free edition unchanged.",
+    "full": "Licensed for personal use. Please don't share or resell the full edition."
+  },
+  "pdfInfo": {
+    "author": "Zoo & Badger (The Zoo & Badger Show)",
+    "keywords": ["crypto security", "seed phrase", "hardware wallet", "token approvals", "phishing", "address poisoning", "SIM swap", "2FA", "security keys", "scams", "AI scams", "incident response"],
+    "creator": "Zoora AI product build (scripts/product)"
+  },
+  "editions": {
+    "free": {"source": "free.md", "output": "crypto-security-checklist-free.pdf", "minPages": 1, "maxPages": 2},
+    "full": {"source": "full.md", "output": "crypto-security-checklist-full.pdf", "minPages": 15, "maxPages": 25}
+  },
+  "ownerInputs": {
+    "copyrightHolder": "Confirm the legal name for the copyright line (currently \"Zoora AI\").",
+    "contact": "A public email for corrections, printed on the About page (null hides the line).",
+    "fullEditionUrl": "The hub link where the full edition is sold or delivered, printed in the free edition (null hides the link).",
+    "price": "The full edition's price and where it is sold (Kit Commerce, Gumroad or similar); not printed in the PDFs."
+  }
+}

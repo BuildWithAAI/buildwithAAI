@@ -5,9 +5,10 @@ with a reason string. Total is out of 100.
                  ($10K -> 0, $1B -> 1). Conservative on purpose; figures are
                  never averaged.
   recency    20  age of the freshest source at the end of the run date
-                 (<= 24 h -> 1, then linear to 0 at 96 h).
+                 (<= 24 h -> 1, then linear to 0 at 96 h). Newsletter round-ups
+                 never make an incident look fresh.
   sources    20  independent publishers weighted by tier (A 1.0, B 0.6, C 0.25),
-                 saturating at 2.5.
+                 saturating at 2.5. Round-ups do not count.
   novelty    15  new in the fresh window (1.0); recent incident with new
                  coverage (0.6); follow-up to an older incident (0.4); already in
                  a radar run of the last 14 days with new items (0.5) or without
@@ -54,7 +55,8 @@ def loss_factor(incident):
 
 
 def recency_factor(members, run_date):
-    latest = max(members, key=lambda m: m.fresh)
+    from .cluster import freshest_member
+    latest = freshest_member(members)
     end = day_start(run_date) + dt.timedelta(days=1)
     age = max(0.0, (end - latest.fresh).total_seconds() / 3600.0)
     value = _clamp(1.0 - max(0.0, age - 24.0) / 72.0)
@@ -64,6 +66,8 @@ def recency_factor(members, run_date):
 def sources_factor(members):
     publishers = {}
     for m in members:
+        if m.roundup:
+            continue  # a weekly round-up repeats other outlets' reports; it is not a source of its own
         weight = TIER_WEIGHT[m.tier]
         if weight > publishers.get(m.publisher, (0, None))[0]:
             publishers[m.publisher] = (weight, m.tier)
@@ -76,7 +80,7 @@ def sources_factor(members):
 
 
 def novelty_factor(incident, previous, run_date, window_start, type_counts):
-    date = dt.date.fromisoformat(incident["dateUtc"])
+    date = dt.date.fromisoformat(incident.get("dateUtc") or incident["firstSeenUtc"])
     others = type_counts.get(incident["type"], 0)
     pattern = f"; {others} other {incident['type']} incident(s) in the 14 days before {run_date}"
     if previous:
@@ -108,9 +112,16 @@ def evergreen_factor(incident, members):
     if topic == "drainers":
         return 0.6, f"{kind} -> {topic} (related: approvals or a hijacked front end expose users to drainers)"
     if topic == "key-management":
-        if targets & {"Wallet", "CEX"} or retail:
-            return 0.7, f"{kind} -> {topic} (custody keys of a user-facing service)"
-        return 0.4, f"{kind} -> {topic} (weak: protocol infrastructure key, not a user wallet)"
+        # A strong "one fix" needs keys a viewer holds or trusts directly: the users' own keys (user-side theft), or
+        # the custody keys of a wallet or exchange. A protocol's, bridge's or validator's signing key is not one,
+        # whatever "users" cue the text has; institutional cues veto the custody reading.
+        institutional = sorted({c for m in members for c in m.institutional})
+        if incident.get("userSide"):
+            return 0.7, f"{kind} -> {topic} (user-side: the users' own keys or seed phrases)"
+        if targets & {"Wallet", "CEX"} and not institutional:
+            return 0.7, f"{kind} -> {topic} (custody keys of a user-facing wallet or exchange)"
+        why = ("institutional cues: " + ", ".join(institutional[:3])) if institutional else "protocol infrastructure key, not a user wallet"
+        return 0.4, f"{kind} -> {topic} (weak: {why})"
     return 0.5, f"{kind} -> {topic}"
 
 
@@ -154,12 +165,14 @@ def score(incident, members, run_date, window_start, previous, type_counts):
     return {"total": total, "factors": factors}
 
 
-def analysis_bar(incident, score_doc):
-    """Does this incident support a daily Short with real analysis? (owner rule)"""
+def sourcing_bar(incident, score_doc):
+    """Is this incident sourced well enough to be a daily Short candidate? Confirmed, two independent publishers, a
+    mechanism a source states, and a strong "one fix" explainer link. This is NOT the owner's "real analysis" rule:
+    the analysis is checked later, by the daily system (scripts/daily) and by the owner on the approval page."""
     missing = []
     if incident["status"] != "confirmed":
         missing.append("not confirmed")
-    publishers = {s.get("publisher") for s in incident["sources"]}
+    publishers = {s.get("publisher") for s in incident["sources"] if not s.get("roundup")}
     if len(publishers) < 2:
         missing.append("fewer than 2 independent sources")
     if not incident.get("mechanismKnown"):
@@ -167,3 +180,7 @@ def analysis_bar(incident, score_doc):
     if score_doc["factors"]["evergreen"]["value"] < 0.6:
         missing.append("no strong 'one fix' explainer link")
     return {"ready": not missing, "missing": missing}
+
+
+# Older name, kept so existing callers keep working. The check is about sourcing, not analysis.
+analysis_bar = sourcing_bar

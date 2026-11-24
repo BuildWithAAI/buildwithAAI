@@ -75,7 +75,20 @@ export type BriefSource = {
 	publishedAt?: string;
 	/** Stored excerpts of this source (each at most 280 characters by policy). */
 	excerpts: string[];
+	/**
+	 * The radar's source tier: A (trackers, security firms, post-mortems, primary statements), B (established outlets),
+	 * C (aggregators: never carry a claim or a figure alone). Undefined when the brief does not say.
+	 */
+	tier?: 'A' | 'B' | 'C';
+	/** The hedge word the radar found in this source's title or lead ("suspected", "potential"), if any. */
+	hedge?: string;
 };
+
+/** An analysis the daily brief proposes, with the figures it computed (the news gate checks own-data numbers). */
+export type BriefOpportunity = {id: string; basis: string; available: boolean; numbers: number[]; detail?: string};
+
+/** One "must not say" entry of the brief (rule ids: names, figures, hedge, legal, attribution, tier-c...). */
+export type BriefMustNotSay = {rule: string; text: string};
 
 export type BriefExcerpt = {sourceId: string | null; text: string};
 
@@ -107,6 +120,9 @@ export type Brief = {
 	facts: BriefFact[];
 	sources: BriefSource[];
 	entities: BriefEntity[];
+	/** The daily brief's analysis opportunities (scripts/daily), with their computed numbers. */
+	opportunities: BriefOpportunity[];
+	mustNotSay: BriefMustNotSay[];
 };
 
 // ---------------------------------------------------------------------------------------------------------------

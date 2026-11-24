@@ -61,7 +61,7 @@
           "status": "fact-bank"
         },
         {
-          "need": "How many Pump.fun tokens stopped trading on their launch day (CoinGecko)",
+          "need": "How many Pump.fun tokens made their last bonding-curve trade on launch day (CoinGecko)",
           "factId": "pumpfun-coingecko-launch-day-deaths",
           "status": "fact-bank"
         },
@@ -82,7 +82,7 @@
           "status": "fact-bank"
         },
         {
-          "need": "What followers of small-cap callers lost after the calls (Sparsity Research)",
+          "need": "How far followers of small-cap callers were down one day after the calls (Sparsity Research)",
           "factId": "pumpfun-caller-followers-losses",
           "status": "fact-bank"
         },
@@ -173,7 +173,7 @@
           "status": "fact-bank"
         },
         {
-          "need": "Alpha Arena Season 1: how it ended (most models lost money)",
+          "need": "Alpha Arena Season 1: who finished first and last (OpenAI's model lost more than half of its stake)",
           "factId": "alpha-arena-season-1-result",
           "status": "fact-bank"
         },
@@ -195,17 +195,17 @@
           "status": "fact-bank"
         },
         {
-          "need": "aixbt: an attacker with dashboard access made the agent send ETH from its wallet",
+          "need": "aixbt: the agent sent ETH from its wallet after an attacker breached its dashboard and queued prompts",
           "factId": "aixbt-dashboard-breach",
           "status": "fact-bank"
         },
         {
-          "need": "Memory injection can make agents built on ElizaOS send crypto (a research demonstration)",
+          "need": "Memory injection: researchers showed that crypto AI agents built on ElizaOS can be manipulated through malicious instructions planted in their stored memory (a research demonstration)",
           "factId": "elizaos-memory-injection-study",
           "status": "fact-bank"
         },
         {
-          "need": "The SEC's first AI-washing cases against two investment advisers (March 2024)",
+          "need": "The SEC's March 2024 AI-washing charges against two investment advisers, which settled",
           "factId": "sec-ai-washing-first-cases",
           "status": "fact-bank"
         },
@@ -243,8 +243,8 @@
         ]
       },
       "shortIdeas": [
-        "Four of six AI traders lost real money",
-        "The agent that paid out after one clever message",
+        "The AI that finished last lost more than half",
+        "The agent that paid out after 482 attempts",
         "Why 'AI-powered' is not a track record",
         "Backtests that looked great until they did not"
       ],
@@ -343,7 +343,7 @@
           "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: the audit counts hold; the crypto-share claims are unverified"
         },
         {
-          "need": "Memory injection can make AI agents send crypto (a research demonstration)",
+          "need": "Memory injection: researchers showed that crypto AI agents built on ElizaOS can be manipulated through malicious instructions planted in their stored memory (a research demonstration)",
           "factId": "elizaos-memory-injection-study",
           "status": "fact-bank"
         },
@@ -420,7 +420,7 @@
           "lead": "content/zoora-ai/ai-agent-hedge-fund/research.md: unsupported; a civil default judgment is never 'convicted'"
         },
         {
-          "need": "The SEC's first AI-washing cases (March 2024)",
+          "need": "The SEC's March 2024 AI-washing charges against two investment advisers, which settled",
           "factId": "sec-ai-washing-first-cases",
           "status": "fact-bank"
         }
@@ -553,7 +553,7 @@
         ]
       },
       "shortIdeas": [
-        "Send one, get two: the oldest trick",
+        "The giveaway that asks you to send first",
         "The livestream that was not live",
         "Check the channel before the giveaway",
         "No real giveaway asks you to send first"
@@ -776,7 +776,7 @@
         ]
       },
       "shortIdeas": [
-        "'No service' was the first sign",
+        "'No service' was the warning sign",
         "Text-message codes are the weak link",
         "Set a carrier PIN",
         "Security keys beat SMS codes"
@@ -806,7 +806,7 @@
       "research": null,
       "facts": [
         {
-          "need": "How many new tokens stopped trading on their launch day (CoinGecko, Pump.fun tokens)",
+          "need": "How many Pump.fun tokens made their last bonding-curve trade on launch day (CoinGecko)",
           "factId": "pumpfun-coingecko-launch-day-deaths",
           "status": "fact-bank"
         },
@@ -839,7 +839,7 @@
         "Who bought before you did",
         "The chart that was a trap",
         "Check the holders first",
-        "How most new tokens end"
+        "How most Pump.fun tokens end"
       ],
       "notes": null
     },
@@ -905,7 +905,7 @@
         ]
       },
       "shortIdeas": [
-        "Four of six AI traders lost real money",
+        "The AI that finished last lost more than half",
         "Company-reported is not audited",
         "The backtest trap",
         "How to read an AI fund pitch"
@@ -935,7 +935,7 @@
       "research": null,
       "facts": [
         {
-          "need": "CoinGecko: how many Pump.fun tokens stopped trading on launch day",
+          "need": "CoinGecko: how many Pump.fun tokens made their last bonding-curve trade on launch day",
           "factId": "pumpfun-coingecko-launch-day-deaths",
           "status": "fact-bank"
         },
@@ -969,7 +969,7 @@
         ]
       },
       "shortIdeas": [
-        "Most new tokens stop trading on day one",
+        "Most Pump.fun tokens make their last curve trade on launch day",
         "Graduation is rare",
         "What these studies cannot see",
         "The odds, not a strategy"
@@ -998,7 +998,7 @@
       "research": null,
       "facts": [
         {
-          "need": "The SEC's first AI-washing cases (March 2024)",
+          "need": "The SEC's March 2024 AI-washing charges against two investment advisers, which settled",
           "factId": "sec-ai-washing-first-cases",
           "status": "fact-bank"
         },
@@ -1029,7 +1029,7 @@
       },
       "shortIdeas": [
         "What 'powered by AI' should mean",
-        "The settlement that named AI-washing",
+        "What the SEC charged as 'AI washing'",
         "Three questions for any AI pitch",
         "Regulators already warned about this"
       ],

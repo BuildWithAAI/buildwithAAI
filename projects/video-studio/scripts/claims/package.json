@@ -1,0 +1,6 @@
+{
+  "name": "zoora-claim-gate",
+  "private": true,
+  "type": "module",
+  "description": "Claim gate for every episode script (scripts/claims). Run with node directly; see README.md. No dependencies."
+}

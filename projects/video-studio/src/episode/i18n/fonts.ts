@@ -65,6 +65,12 @@ export const fontFor = (lang: Lang, role: FontRole, weight: number): FontSpec =>
 	return {fontFamily: script ? `${base}, "${script}"` : base, fontWeight: weight};
 };
 
+/**
+ * Line-height factor per script: Devanagari stacks vowel signs above the headline and below the baseline, and CJK
+ * glyphs fill the whole em box, so both need more air between lines than Latin at the same nominal line height.
+ */
+export const lineFactor = (lang: Lang): number => (lang === 'hi' ? 1.16 : lang === 'zh' || lang === 'ja' ? 1.1 : 1);
+
 /** Canvas font shorthand for measuring: "800 48px Montserrat, \"Noto Sans SC\"". */
 export const canvasFont = (f: FontSpec, size: number): string => `${f.fontWeight} ${size}px ${f.fontFamily}`;
 

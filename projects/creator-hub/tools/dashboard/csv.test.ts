@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {describe, it} from 'node:test';
-import {CsvError, csvCell, findColumn, normalizeHeader, parseCount, parseCsv, parseDate, parseDuration, parseNumber, parsePercent, toCsv, unprotectCell} from './csv.ts';
+import {CsvError, csvCell, findColumn, isDecimalCommaOnly, normalizeHeader, parseCount, parseCsv, parseDate, parseDuration, parseNumber, parsePercent, toCsv, unprotectCell} from './csv.ts';
 
 describe('parseCsv', () => {
 	it('reads quoted fields with delimiters, doubled quotes and line breaks', () => {
@@ -54,6 +54,22 @@ describe('value parsers', () => {
 		assert.equal(parseNumber('12,5', ','), 12.5);
 		for (const empty of ['', '—', '-', 'n/a']) assert.equal(parseNumber(empty), null, `"${empty}" is empty`);
 		for (const bad of ['12,34', '1,2345', 'abc', '1.2.3', '12abc']) assert.equal(parseNumber(bad), null, `"${bad}" is rejected`);
+	});
+
+	it('parseNumber reads accounting negatives, a trailing minus and the Unicode minus sign', () => {
+		assert.equal(parseNumber('(12.50)'), -12.5);
+		assert.equal(parseNumber('($1,005.50)'), -1005.5);
+		assert.equal(parseNumber('12.50-'), -12.5);
+		assert.equal(parseNumber('\u221212.50'), -12.5);
+		assert.equal(parseNumber('-$12.50'), -12.5);
+		assert.equal(parseNumber('(12,30)', ','), -12.3);
+		assert.equal(parseNumber('\u2212'), null, 'a lone minus sign is an empty cell');
+		for (const bad of ['(-12.50)', '-12.50-', '()', '(12.50']) assert.equal(parseNumber(bad), null, `"${bad}" is rejected`);
+	});
+
+	it('isDecimalCommaOnly spots cells that only make sense with a decimal comma', () => {
+		for (const cell of ['41,3', '1074,7', '0,5', '1.234,56', '6,1 %']) assert.equal(isDecimalCommaOnly(cell), true, cell);
+		for (const cell of ['31,200', '1,234', '41.3', '12', '', 'abc']) assert.equal(isDecimalCommaOnly(cell), false, cell);
 	});
 
 	it('parseCount accepts only whole numbers of zero or more', () => {

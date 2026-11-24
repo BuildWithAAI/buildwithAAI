@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "thumb-demo",
+  "lang": "ja",
+  "sourceLang": "en",
+  "title": "POV：あなたはトップコーラーになる（サムネイル用テストデータ）",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "チャートを一枚投稿する。一時間で一万人の見知らぬ人があなたのコインを買う。",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "あなたはトップコーラーになる"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    }
+  ],
+  "sources": [],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "トップ\nコーラー？"
+    },
+    {
+      "id": "b",
+      "text": "床が消えた"
+    },
+    {
+      "id": "c",
+      "text": "誰が先に\n売った？"
+    }
+  ],
+  "translation": {
+    "status": "machine"
+  }
+}

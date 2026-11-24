@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "2026-11-24-binance",
+  "lang": "en",
+  "titleOptions": [
+    "DOJ moves to recover Binance hack funds"
+  ],
+  "title": "DOJ moves to recover Binance hack funds",
+  "summary": "According to The Block, the Justice Department is seeking to recover about $1.17 billion in USDC tied to the October 29 Binance hack. DefiLlama lists the loss at $6,360,000,000. Chainalysis puts it at $6.4 billion.",
+  "youtubeVideoId": null,
+  "scenes": [
+    {
+      "id": "s01",
+      "durationSec": 9.5
+    },
+    {
+      "id": "s02",
+      "durationSec": 5.1
+    },
+    {
+      "id": "s03",
+      "durationSec": 8
+    },
+    {
+      "id": "s04",
+      "durationSec": 13.2
+    },
+    {
+      "id": "s05",
+      "durationSec": 6.4
+    },
+    {
+      "id": "s06",
+      "durationSec": 7.6
+    },
+    {
+      "id": "s07",
+      "durationSec": 2.4
+    }
+  ],
+  "sources": [
+    {
+      "title": "DOJ seeks $1.17 billion in USDC tied to Binance hack; Circle could issue replacement tokens (The Block)",
+      "url": "https://www.theblock.co/news/regulation/2026-11-23-doj-1-17-billion-usdc-binance-hack-circle-replacement-tokens-445398"
+    },
+    {
+      "title": "DefiLlama hacks: Binance CEX (2026-10-29) (DefiLlama)",
+      "url": "https://api.llama.fi/hacks#Binance%20CEX%402026-10-29"
+    },
+    {
+      "title": "The $6.4 Billion Binance Hack: Tracing the North Korea Link (Chainalysis)",
+      "url": "https://www.chainalysis.com/blog/binance-exploit-latest-findings-and-response/"
+    },
+    {
+      "title": "Binance - Rekt (rekt.news)",
+      "url": "https://rekt.news/binance-rekt"
+    },
+    {
+      "title": "DefiLlama hacks: incidents dated 2026-10-26 to 2026-11-24 (DefiLlama)",
+      "url": "https://api.llama.fi/hacks"
+    }
+  ],
+  "offers": [],
+  "hashtags": [
+    "CryptoSecurity",
+    "ThreatBrief",
+    "Shorts"
+  ],
+  "tags": [
+    "crypto security",
+    "security news",
+    "social engineering",
+    "The Zoo and Badger Show"
+  ],
+  "cta": "Subscribe for tomorrow's Threat Brief.",
+  "disclosures": [
+    "News and education only. Not financial advice."
+  ],
+  "madeForKids": {
+    "value": false,
+    "reason": "Adult crypto and AI security news; not child-directed (studio default, docs/research/platform-facts-2026-11-23.md)."
+  },
+  "containsSyntheticMedia": {
+    "value": false,
+    "reason": "Clearly animated show with a generic synthetic voice for a fictional host; no realistic depiction of a real person."
+  },
+  "paidPromotion": {
+    "value": false,
+    "reason": "No offers, sponsors or free products in this video."
+  },
+  "shortCuts": [
+    {
+      "id": "short1",
+      "from": "s01",
+      "to": "s07",
+      "title": "DOJ moves to recover Binance hack funds"
+    }
+  ],
+  "render": {
+    "entry": "src/show/index.ts",
+    "composition": "ShowEpisode",
+    "shortComposition": "ShowShort",
+    "thumbnailComposition": "Thumbnail",
+    "thumbnails": 3
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "thumb-demo",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "POV: Te vuelves un caller famoso (fixture de miniaturas)",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Publicas un gráfico. Diez mil desconocidos compran tu moneda en una hora.",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "Te vuelves un caller famoso"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    }
+  ],
+  "sources": [],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "¿EL MEJOR CALLER?"
+    },
+    {
+      "id": "b",
+      "text": "EL PISO DESAPARECIÓ"
+    },
+    {
+      "id": "c",
+      "text": "¿QUIÉN VENDIÓ PRIMERO?"
+    }
+  ],
+  "translation": {
+    "status": "machine"
+  }
+}

@@ -1,0 +1,96 @@
+# Episode engine: scene templates, Episode and EpisodeShort
+
+Renders a storyboard plus its voice timeline into a 1920×1080 episode and 1080×1920 Shorts, in any supported language. Binding rules: `docs/PROJECT_INSTRUCTIONS.md`, `docs/ART_GUIDE.md`, `docs/CHART_SPEC.md`. Contracts: `src/episode/types.ts`.
+
+## Commands (run from `projects/video-studio/`)
+
+| What | Command |
+| --- | --- |
+| Episode | `npx remotion render src/episode/index.ts Episode out/episodes/<slug>/<lang>/episode.mp4 --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en"}'` |
+| Short | `npx remotion render src/episode/index.ts EpisodeShort out/episodes/<slug>/<lang>/<shortId>.mp4 --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en","shortId":"<id>"}'` |
+| One frame | `npx remotion still src/episode/index.ts Episode out/x.png --frame=120 --props=...` |
+| Tests | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/tests/run.ts` |
+| Frames worth inspecting | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/dev/sampleFrames.ts <storyboard.json> [landscape\|vertical] [--props out.json]` |
+| Typecheck | `npx tsc --noEmit` |
+
+- Claim gate first: `node scripts/claims/check.ts content/<channel>/<slug> [--lang <lang>]` (exit 0) before the voice step and every render. Node tools check its report with `claimGateProblems()` (`src/episode/node/claimGate.ts`: the report exists, passed, names this episode and language, and is newer than the storyboard, the source storyboard and `research.md`); `scripts/thumbnails.ts` refuses to render without it. The Remotion bundle itself cannot read `out/` (a webpack context on a missing directory breaks the bundle), so `calculateMetadata` enforces what it can see: a spoken offer disclosure, verified https sources with an accessed date on real channels, and a timeline whose words are the storyboard's narration (an edit after the voice step fails the render).
+- Voice first: `python scripts/voice/build.py content/<channel>/<slug> --lang <lang> --voice im_nicola` writes `public/generated/<channel>/<slug>/<lang>/timeline.json` and `narration.wav`. Without a timeline the render stops with that instruction.
+- Bundle once to render many stills quickly: `npx remotion bundle src/episode/index.ts --out-dir=<dir>`, then pass `<dir>` instead of `src/episode/index.ts`.
+- The default props render the dev fixture `src/episode/dev/fixtures/engine-demo` (channel `_dev`). Only `_dev` falls back to a **mock timeline** when no voice output exists; the result is silent and carries a SILENT PREVIEW badge.
+
+## Props
+
+`{channel, slug, lang, shortId?, captions?, timelineOverride?}`
+
+- `lang`: `en | es | pt-br | hi | it | zh | ja`. French is rejected (Kokoro has no male French voice).
+- `captions`: burned-in captions. Default **off** for `Episode` (YouTube carries subtitles; PROJECT_INSTRUCTIONS: captions only when requested), **on** for `EpisodeShort`.
+- `shortId`: which `storyboard.shorts[]` entry; default the first.
+- `timelineOverride`: a `Timeline` object used instead of `timeline.json` (tests, mock renders).
+
+`calculateMetadata` loads `content/<channel>/<slug>/storyboard.json` (en) or `storyboard.<lang>.json`, then the timeline, validates both (every error is listed before frame 0), plans the charts, and sets the duration from `timeline.totalMs` (Short: the sum of its scenes).
+
+## Timing, audio and transitions
+
+- Every scene is a `<Sequence>` at its own audio frame (`startMs`). A `transitionIn` (`fade` 12 f, `slide` / `wipe` 18 f) **overlaps visuals only and runs in silence** (`timing.ts`): it starts after the outgoing scene's last voiced frame (+2 f for the sound's decay) and ends by the incoming scene's first voiced frame. It first uses the outgoing scene's silent tail: the incoming scene's visuals start `preroll` frames before its audio frame, held on its own frame 0 (`<Freeze>`); whatever is left runs in the incoming scene's leading silence over a `tail` of the outgoing scene. Less silence than 8 f (fade) or 12 f (slide, wipe): a hard cut. Total length and lip-sync are identical to hard cuts.
+- Curves (`transitionProgress`): fade = sine in-out; slide and wipe = a critically damped curve normalised to reach rest exactly at the end (no snap). A **slide** is a short push (12% of the width) under a fade, so its fastest frames are almost transparent; a **wipe**'s edge carries 180°/16-sample motion blur drawn as non-overlapping strips (`wipeStrips`). Stacking translucent full-frame copies for blur is avoided on purpose: in this headless Chrome 16 copies of `#E6E8EB` over itself came out 5 levels darker.
+- A scene with no `transitionIn` enters on a hard cut, except where that cut would be a landscape **jump cut** (ZOO on the same side, nearly the same size, moved under 300 px: `layout/faces.ts isJumpCut`), which gets a short fade. An explicit `transitionIn` always wins.
+- Episode: **one** `<Audio>` plays `timeline.narration` (default `generated/<channel>/<slug>/<lang>/narration.wav`).
+- Short: its scenes only, retimed from frame 0; each plays its own window of the same `narration.wav` (`trimBefore` = the scene's frame in the full episode).
+- ZOO's mouth is `timeline.mouth[frame]` of the scene; outside the track it is `closed`.
+
+## Scene templates and their `onScreen` keys
+
+All on-screen copy comes from `onScreen` in the storyboard's language. Text boxes shrink to a floor, then wrap; a list shares one size and shrinks as a block; anything that still does not fit **fails the render** and names the text (nothing is clipped silently).
+
+| `type` | Required | Optional | Notes |
+| --- | --- | --- | --- |
+| `hook` | `title` | `kicker`, `subtitle` | Display title (Anton; Montserrat 900 for hi/zh/ja). ZOO reacts after the title lands: a brow lift, or a swap to `zoo.expression` on a blink. |
+| `talk` | | `title`, `bullets` (≤ 4), `cues`, `lowerThird` | Bullets appear on their word timings: `cues[i]` is the word that reveals bullet i (default: its first 4+ letter word). ZOO points at the first (and last of 3+) bullet in landscape; the newest bullet is the dark card. |
+| `chart` | `chart`, `pair` for seeded data | `cues` (`[pumpWord, rugWord]`), `label` | `CandlestickChart` (src/charts). Seeded data is synthetic and must be `illustrative: true`. The rug completes on (or just before) `cues[1]`; ZOO points as the pump completes, then turns to camera for the deadpan beat. |
+| `steps` | `steps` (1–5) | `title`, `cues` | Numbered steps revealed on their words; ZOO glances at each. |
+| `quote` | `quote`, `attribution`, and `source` or a `[src:id]` | | Kinetic: each word appears as ZOO says it (spread evenly if the narration does not read it). |
+| `cta` | | `title`, `button`, `cues`, `disclosure` | Subscribe by default (`ui.subscribe`). With `storyboard.offers`, `disclosure` is **required**, shown for the whole scene, and must also be **said** in the narration (validated). |
+| `endscreen` | | `title` (outro line) | Must be the last scene and hold 20 s (`minDurationSec: 20`). Two empty 16:9 zones and one circle are laid out for YouTube's end-screen elements. In a Short it is a plain outro card. |
+
+Any scene: `zoo: {present, expression, pose, view}`, `badger: {present, reaction}`, `transitionIn`, `showSources`, `onScreen.badgerCue` (the word for Badger's reaction).
+
+## Performance
+
+- ZOO: seeded natural blinks every 2–6 s; extra blinks in phrase-end pauses (≥ 11 f) and on every expression/view swap (the swap lands on the closed frame); 1–2° head accents on stressed words (`TimelineWord.stressMs` from the voice step, else estimated), about half of the phrases; point gestures (front view only) with eyes leading, wind-up and a 12 f swing; 2-frame eye darts.
+- Badger: one reaction per scene (`judge`, `lookUp`, `happy`, `worried`, `shocked`, `neutral`) at the reaction beat (about 12 f after the last word, or after the rug, or `badgerCue`); swaps hidden in blinks. The validator requires Badger in at least one scene per episode.
+- Shorts: Badger's head sits at half ZOO's height, so a shared frame would put his face in the caption band. He reacts in an **insert shot** (a hard cut to Badger alone) instead. The insert never covers a scene's key beats (`direction.ts` `beats`, `placeInsert`): the chart's rug candle forming and holding (`[rugDone - RUG, rugDone + HOLD)`), ZOO's turn to camera after it (kept clear whenever a readable insert still fits), the CTA button press (`[press - 6, press + 12)`), bullet and step reveals, the quote building, the hook title landing. It lasts about 1.5 s (45 f), then cuts back to the main shot for at least 1 s, or holds to the scene's end when less than 1 s would be left; with less than 24 f after the beats there is no insert. Badger reacts 10 f after the cut.
+
+## Localization
+
+- Captions (`captions/pages.ts`): pages of 2-4 words chosen by phrase, not filled greedily: no one-word page (unless the sentence is one word), no page ending on a word that leans on the next one (`text/phrasing.ts`: articles, prepositions, conjunctions, auxiliaries, "never"... in en, es, pt-br, it; Hindi postpositions never start a page), breaks preferred at pauses and commas. Two-line pages are balanced and never end a line on such a word. Every page is clipped to the end of its scene.
+- Fonts: brand Inter / Montserrat / Anton; `hi` adds Noto Sans Devanagari, `zh` Noto Sans SC, `ja` Noto Sans JP (bundled from `@fontsource`, OFL). The brand family comes first, so Latin text keeps the brand look. Rendering waits until every face is loaded.
+- Devanagari and CJK get extra line height; CJK breaks between dictionary words (`Intl.Segmenter`) with kinsoku rules; the danda ends sentences. Where the dictionary splits a compound ("顶级"), mark the only allowed break points of that string with zero-width spaces (U+200B): `"你成了\u200B顶级喊单人"`.
+- UI labels (not scene copy) come from `storyboard.ui`; English has defaults. A non-English storyboard must carry every label its render shows, or validation fails: `fictionDisclaimer` (fiction), `sources`, `illustrative` (charts), `subscribe` (CTA without `button`), `watchNext` and `subscribeSlot` (end screen).
+- A storyboard whose `lang` differs from `sourceLang` renders with a **MACHINE TRANSLATION · needs native review** badge until `translation.status` is `native-reviewed`.
+- Known limit: the chart's own header, footer and callout text (src/charts, read-only here) are English; non-English renders add the localized illustrative chip under the panel.
+
+## Contract additions (types.ts; all optional)
+
+| Field | Meaning |
+| --- | --- |
+| `StoryboardScene.showSources` | Show the sources card for this scene's `[src:id]` claims. Default: on when the narration cites a source, except quotes. |
+| `Storyboard.ui` (`UiLabels`) | Localized UI labels (see above). |
+| `Storyboard.translation` | `{status: 'machine' \| 'native-reviewed', reviewer?, date?}` of this file. |
+| `TimelineWord.stressMs` | Onset of the word's primary-stress vowel; drives head accents. |
+| `Timeline.mock` | true for `dev/mockTimeline.ts` output: silent, badged, never called lip-synced. |
+
+The engine also reads the voice step's `Timeline.narration` (recorded in `scripts/voice/timeline-additions.ts`).
+
+Internal interfaces added 2026-11-24 (review fixes; not contract fields): `SceneSpan.preroll`; `ChartPlan.rugFrames` / `rugHold`; `Direction.beats` and the `Beat` type; `TextSpec.phrase` / `FitSpec.phrase`; `SHORTS_BUTTONS`, `LOWER_THIRD_X` / `lowerThirdX`, `LOWER_THIRD_PAD` (specs.ts); `zooPlacement`, `isJumpCut` (faces.ts); `defaultTransition`, `silentEdges`, `transitionProgress`, `wipeStrips`, `SLIDE_PUSH` (timing.ts); `captionTrack` moved to `captions/pages.ts` (re-exported by `Captions.tsx`); `useLowerThird` (Overlays.tsx); `claimGateProblems` (node/claimGate.ts).
+
+## Layout notes (2026-11-24 review)
+
+- Shorts: no text box reaches under the action-button column (x > 950 below y 960; `SHORTS_BUTTONS`, tested). The vertical chart panel ends at x 930 (its "Illustrative · fictional token" footer ends near x 894) and the localized chip sits above it, left-aligned.
+- Landscape sources lines sit in the text column, a head-width clear of ZOO (talk: x 1010; CTA: x 1120; steps: x 96).
+- The lower third starts right of ZOO's hanging hand in talk and CTA (x 680); a plate that reaches into the text column keeps the text block above it.
+- Quote uses the same ZOO and Badger placement as steps, so a steps -> quote cut does not jump; with Badger in the shot the quote card narrows to clear his head.
+- Character line weights follow ART_GUIDE SL5 at every placement scale (`lineScaleFor`).
+
+## Files
+
+`compositions.tsx` (Episode, EpisodeShort) · `Episode.tsx` (fonts gate, sequences, transitions, audio, captions, badges) · `load.ts` (storyboard registry, timeline, chart planning) · `validate.ts` · `timing.ts` · `cues.ts` · `markup.ts` (port of the voice step's markup) · `scenes/` (seven templates, overlays, insert, direction) · `perf/` (ZOO, Badger) · `layout/` (specs, block geometry, faces) · `text/` (fit, measure, FitText, phrasing) · `captions/` · `i18n/` (fonts, UI labels) · `chart/plan.ts` · `node/claimGate.ts` (Node tools only) · `dev/` (mock timeline, fixtures, sample frames) · `tests/` (`engine.test.ts`, `fit.test.ts`, `review.test.ts`).

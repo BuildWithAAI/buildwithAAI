@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>DL News</title>
+  <link>https://www.dlnews.com</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title>Binance obtains $6.5 billion freezing order for stolen crypto</title>
+    <link>https://www.dlnews.com/articles/regulation/binance-obtains-usd65-billion-freezing-order-for-stolen-crypto/</link>
+    <guid isPermaLink="true">https://www.dlnews.com/articles/regulation/binance-obtains-usd65-billion-freezing-order-for-stolen-crypto/</guid>
+    <pubDate>Mon, 23 Nov 2026 22:08:13 +0000</pubDate>
+    <description>Binance says it secured a $6.5 billion worldwide freezing order from Abu Dhabi courts to recover crypto stolen in the October 29 hack.</description>
+  </item>
+  <item>
+    <title>Drift to issue ‘recovery tokens’ in wake of $295m hack</title>
+    <link>https://www.dlnews.com/articles/defi/drift-to-issue-recovery-tokens-in-wake-of-295m-hack/</link>
+    <guid isPermaLink="true">https://www.dlnews.com/articles/defi/drift-to-issue-recovery-tokens-in-wake-of-295m-hack/</guid>
+    <pubDate>Tue, 05 May 2026 21:04:09 +0000</pubDate>
+    <description></description>
+  </item>
+</channel>
+</rss>

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "no-research",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Broken fixture: no research file",
+  "fiction": false,
+  "scenes": [
+    {"id": "s01", "type": "hook", "narration": "A quiet day on the chain.", "onScreen": {"title": "Quiet"}, "badger": {"present": true}}
+  ],
+  "sources": []
+}

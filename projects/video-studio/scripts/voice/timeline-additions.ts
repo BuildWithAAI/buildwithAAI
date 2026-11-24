@@ -14,6 +14,10 @@
  *   master scene even at speed 1.15. The translator must shorten the scene by about this much. The
  *   scene was lengthened (speech + 150 ms, on the 100 ms grid), so the track no longer lines up with
  *   the master video until it is fixed; build.py exits with code 3.
+ * - TimelineScene.sentences (added 2026-11-24, VCD fix): scene-relative ms of each sentence's speech,
+ *   first phone start to last phone end, split at . ! ? and in narration order. A fit-to-master dub
+ *   places each of its sentences at the master's sentence start and fits its length to the master's,
+ *   so talking and pauses line up with the master picture (not only the scene's total length).
  */
 import type {Timeline, TimelineScene} from '../../src/episode/types';
 
@@ -24,6 +28,7 @@ export type VoiceTimelineAdditions = {
 export type VoiceSceneAdditions = {
 	speed?: number;
 	overflowMs?: number;
+	sentences?: Array<{startMs: number; endMs: number}>;
 };
 
 export type VoiceTimelineScene = TimelineScene & VoiceSceneAdditions;

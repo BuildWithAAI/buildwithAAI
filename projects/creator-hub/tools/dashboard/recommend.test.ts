@@ -124,6 +124,24 @@ describe('recommendation rules', () => {
 		assert.match(md, /disclosure, and never present an offer as a way to make money/);
 	});
 
+	it('never tells the owner to double down on an offer restricted by region', () => {
+		const strong: OfferSummary = {offerId: 'exchange', clicks: 60, conversions: 4, revenueUsd: 60, revenueOther: [], requests: 100, blocked: 40};
+		const weak: OfferSummary = {offerId: 'wallet', clicks: 100, conversions: 3, revenueUsd: 12, revenueOther: [], requests: null, blocked: null};
+		const tiny: OfferSummary = {offerId: 'exchange-2', clicks: 10, conversions: 1, revenueUsd: 30, revenueOther: [], requests: null, blocked: null};
+		const report = buildReport(many(10, {revenueUsd: 10}), [strong, weak, tiny], {channel: 'zoora-ai', hubLoaded: true, restrictedOffers: new Set(['exchange', 'exchange-2'])});
+		const exchange = report.offers.find((o) => o.offerId === 'exchange');
+		assert.equal(exchange?.verdict, 'steady');
+		assert.match(exchange?.reason ?? '', /restricted by region, so keep it on the hub page only: do not name it in videos, posts or emails/);
+		assert.doesNotMatch(exchange?.reason ?? '', /Mention it where it genuinely fits/);
+		assert.equal(report.offers.find((o) => o.offerId === 'exchange-2')?.verdict, 'too-early', 'no "test" call either');
+		assert.ok(report.notes.some((n) => /Offer exchange: 40% .*keep it on the hub page only/.test(n)));
+		const md = renderRecommendations(report, {generatedAt: '2026-11-24', brandName: 'Zoora AI'});
+		assert.doesNotMatch(md, /\| exchange \| [^\n]*\| Double down \|/);
+		// without a registry, a double-down call reminds the owner of the region rule
+		const unknown = buildReport(many(10, {revenueUsd: 10}), [strong, weak], {channel: 'zoora-ai', hubLoaded: true});
+		assert.match(unknown.offers.find((o) => o.offerId === 'exchange')?.reason ?? '', /If the offer registry restricts it by region, keep it on the hub page only/);
+	});
+
 	it('mentions unconverted currencies instead of adding them', () => {
 		const offers: OfferSummary[] = [{offerId: 'eu', clicks: 5, conversions: 1, revenueUsd: 0, revenueOther: [{currency: 'EUR', amount: 19.75}], requests: null, blocked: null}];
 		const report = buildReport(many(10, {revenueUsd: 1}), offers, {channel: 'zoora-ai', hubLoaded: true});

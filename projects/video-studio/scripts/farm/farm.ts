@@ -1,24 +1,28 @@
 /**
  * Render farm CLI (docs/RENDER_FARM.md). Each step of .github/workflows/video-render.yml runs one subcommand:
  *
- *   plan             read the request files the push changed, validate them, emit the voice and render matrices
- *   voice-preflight  voice job: check the request, the voice entry and (when encrypting) the key
- *   voice-build      voice job: scripts/voice/build.py for one channel/slug/lang (Zoo = im_nicola)
- *   voice-pack       voice job: tar public/generated/<channel>/<slug>/<lang>, encrypt it, probe the narration
- *   preflight        render job: check the request, the job and the key; write the props file
- *   voice-unpack     render job: decrypt and unpack the narration this job needs into public/generated
- *   render           render job: npx remotion render|still
- *   probe            render job: ffprobe the output, write the job summary and the probe record
- *   pack             render job: encrypt the output (and the log) into the upload folder
- *   summary          summary job: one table for the whole run
+ *   plan                 read the request files the push changed, validate them, run the claim gates on every script
+ *                        they voice or render, emit the voice, dub and render matrices
+ *   voice-preflight      voice job: check the request, the voice entry and (when encrypting) the keys
+ *   voice-master-unpack  dub job: decrypt and unpack the master narration a dub is fitted to
+ *   voice-build          voice job: scripts/voice/build.py for one channel/slug/lang (Zoo = im_nicola; --fit-to for dubs)
+ *   voice-pack           voice job: tar public/generated/<channel>/<slug>/<lang>, encrypt it, probe the narration
+ *   preflight            render job: check the request, the job and the keys; write the props file
+ *   voice-unpack         render job: decrypt and unpack the narration this job needs into public/generated
+ *   render               render job: npx remotion render|still (audio jobs: an audio-only render)
+ *   probe                render job: ffprobe the output, write the job summary and the probe record
+ *   pack                 render job: encrypt the output (and the log) to the recipient's public key
+ *   summary              summary job: one table for the whole run
  *
- * and locally, before pushing:
+ * and locally, BEFORE pushing (a pushed storyboard is public for good, so the claim gate must already pass):
  *
  *   validate [render-requests/<id>.json ...]
  *
  * Run from projects/video-studio:  node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts <command>
  * Inputs arrive in environment variables (FARM_*), never interpolated into shell commands. Props, narration and keys
  * are never printed: encrypted requests write tool output to a log file that is encrypted into the artifact.
+ * Outputs and logs are encrypted to a PUBLIC key (crypto.ts), so no CI step can decrypt them; only the narration
+ * hand-off (1 day) uses the RENDER_HANDOFF_KEY secret.
  */
 import {spawn, spawnSync, execFileSync} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
@@ -38,7 +42,20 @@ import {
 import {tmpdir} from 'node:os';
 import {basename, dirname, join, relative, resolve, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {FarmError, decryptFile, encryptFile, isEncrypted, keyProblem, requireKey} from './crypto.ts';
+import {
+	FarmError,
+	HANDOFF_ENV,
+	decryptHandoff,
+	encryptHandoff,
+	encryptToRecipient,
+	isEncrypted,
+	keyProblem,
+	loadRecipient,
+	recipientProblem,
+	requireHandoffKey,
+	type Recipient,
+} from './crypto.ts';
+import {checkGates, spawnGateRunner, type GateRunner} from './gates.ts';
 import {kokoroCacheKey} from './kokoro.ts';
 import {
 	REQUESTS_DIR,
@@ -56,6 +73,7 @@ import {
 	COMPOSITION_RE,
 	ID_RE,
 	ZOO_VOICE,
+	audioCodec,
 	outputProblem,
 	parseRequest,
 	voiceContentDir,
@@ -72,6 +90,8 @@ export type Ctx = {
 	env: NodeJS.ProcessEnv;
 	temp: string; // per-job scratch: $RUNNER_TEMP/farm
 	log: (msg: string) => void;
+	/** Runs the claim and news gates (tests inject one; default: the real gate scripts). */
+	runGate?: GateRunner;
 };
 
 export const makeCtx = (env: NodeJS.ProcessEnv, project = PROJECT): Ctx => ({
@@ -157,8 +177,14 @@ export const checkoutProblems = (ctx: Ctx, req: RenderRequest): string[] => {
 		const has = existsSync(join(ctx.project, dir, `storyboard.${v.lang}.json`)) || existsSync(join(ctx.project, dir, 'storyboard.json'));
 		if (!has) errors.push(`voice[${i}]: no storyboard.json or storyboard.${v.lang}.json in ${dir}`);
 	});
+	if (req.encrypt) {
+		const problem = recipientProblem(ctx.project, req.recipient);
+		if (problem) errors.push(`recipient "${req.recipient}": ${problem}`);
+	}
 	return errors;
 };
+
+const gateRunner = (ctx: Ctx): GateRunner => ctx.runGate ?? spawnGateRunner(ctx.project, join(ctx.temp, 'gates'), ctx.env);
 
 type VoiceState = {
 	kind: 'voice';
@@ -166,12 +192,16 @@ type VoiceState = {
 	request: string;
 	vindex: number;
 	encrypt: boolean;
+	recipient: string;
 	channel: string;
 	slug: string;
 	lang: string;
 	contentDir: string;
 	outputDir: string; // relative to public/
 	artifact: string;
+	/** Dubs: the master language, its voice index, output folder and artifact. */
+	fitTo?: string;
+	master?: {vindex: number; outputDir: string; artifact: string};
 	exitCode?: number;
 	buildSeconds?: number;
 };
@@ -188,6 +218,7 @@ type RenderState = {
 	frame: number;
 	lang: string;
 	encrypt: boolean;
+	recipient: string;
 	artifact: string;
 	propsPath: string;
 	voice: {vindex: number; channel: string; slug: string; lang: string}[];
@@ -341,16 +372,22 @@ export const cmdPlan = (ctx: Ctx): void => {
 			errors.push(...cp.map((e) => `${REQUESTS_DIR}/${id}.json: ${e}`));
 			continue;
 		}
+		// gate before push: every script the request voices or renders must pass its claim gate (gates.ts)
+		const gates = checkGates(ctx.project, v.request, gateRunner(ctx));
+		if (gates.problems.length) {
+			errors.push(...gates.problems.map((e) => `${REQUESTS_DIR}/${id}.json: ${e}`));
+			continue;
+		}
 		requests.push(v.request);
 	}
-	// The key is checked here too, so a missing or weak key stops the run before any runner time is spent.
-	const encrypted = requests.filter((r) => r.encrypt).map((r) => r.id);
-	const keyIssue = encrypted.length ? keyProblem(env.RENDER_ARTIFACT_KEY) : null;
-	if (keyIssue) errors.push(`${encrypted.join(', ')} must be encrypted, but ${keyIssue}`);
+	// The hand-off key is checked here too, so a missing or weak key stops the run before any runner time is spent.
+	const handoff = requests.filter((r) => r.encrypt && r.voice.length).map((r) => r.id);
+	const keyIssue = handoff.length ? keyProblem(env[HANDOFF_ENV]) : null;
+	if (keyIssue) errors.push(`${handoff.join(', ')} hand narration from the voice jobs to the render jobs, but ${keyIssue}`);
 	const {plan, errors: planErrors} = buildPlan(requests);
 	errors.push(...planErrors);
 	let kokoroKey = '';
-	if (plan.voice.length) {
+	if (plan.voice.length || plan.voiceDub.length) {
 		try {
 			kokoroKey = kokoroCacheKey(readFileSync(join(ctx.project, 'scripts/voice/setup.sh'), 'utf8'));
 		} catch (e) {
@@ -372,18 +409,20 @@ export const cmdPlan = (ctx: Ctx): void => {
 		md.push('| Request | Job | Composition | Kind | Lang | Encrypted | Narration |', '| --- | --- | --- | --- | --- | --- | --- |');
 		for (const c of plan.render) md.push(`| ${c.request} | ${c.index} | ${c.composition} | ${c.kind} | ${c.lang} | ${c.encrypt ? 'yes' : 'no (test)'} | ${c.voiceExpect || '-'} |`);
 		md.push('');
-		if (plan.voice.length) {
-			md.push('| Request | Voice | Channel / slug | Lang |', '| --- | --- | --- | --- |');
-			for (const v of plan.voice) md.push(`| ${v.request} | ${v.vindex} | ${v.channel}/${v.slug} | ${v.lang} |`);
+		if (plan.voice.length || plan.voiceDub.length) {
+			md.push('| Request | Voice | Channel / slug | Lang | Fitted to |', '| --- | --- | --- | --- | --- |');
+			for (const v of [...plan.voice, ...plan.voiceDub]) md.push(`| ${v.request} | ${v.vindex} | ${v.channel}/${v.slug} | ${v.lang} | ${v.fitTo || '- (native)'} |`);
 			md.push('');
 		}
 	}
 	addSummary(ctx, md.join('\n'));
-	ctx.log(`plan: ${changes.how}; ${requests.length} request(s), ${plan.voice.length} voice job(s), ${plan.render.length} render job(s)`);
+	ctx.log(`plan: ${changes.how}; ${requests.length} request(s), ${plan.voice.length} voice job(s), ${plan.voiceDub.length} dub job(s), ${plan.render.length} render job(s)`);
 	setOutput(ctx, 'render_matrix', JSON.stringify({include: plan.render}));
 	setOutput(ctx, 'render_count', String(plan.render.length));
 	setOutput(ctx, 'voice_matrix', JSON.stringify({include: plan.voice}));
 	setOutput(ctx, 'voice_count', String(plan.voice.length));
+	setOutput(ctx, 'voice_dub_matrix', JSON.stringify({include: plan.voiceDub}));
+	setOutput(ctx, 'voice_dub_count', String(plan.voiceDub.length));
 	setOutput(ctx, 'kokoro_key', kokoroKey);
 };
 
@@ -396,9 +435,15 @@ export const cmdVoicePreflight = (ctx: Ctx): void => {
 	const req = loadRequest(ctx, id);
 	const v = req.voice[vindex];
 	if (!v) throw new FarmError(`${id} has no voice entry ${vindex}`);
-	if (req.encrypt) requireKey(ctx.env);
+	if (req.encrypt) {
+		requireHandoffKey(ctx.env);
+		loadRecipient(ctx.project, req.recipient);
+	}
 	const problems = checkoutProblems(ctx, {...req, jobs: [], voice: [v]});
 	if (problems.length) throw new FarmError(problems.join('; '));
+	const mindex = v.fitTo ? req.voice.findIndex((m) => m.channel === v.channel && m.slug === v.slug && m.lang === v.fitTo && !m.fitTo) : -1;
+	if (v.fitTo && mindex < 0) throw new FarmError(`${id}[${vindex}] has no native ${v.fitTo} master to fit to`);
+	const master = mindex >= 0 ? {vindex: mindex, outputDir: voiceOutputDir(req.voice[mindex]), artifact: voiceArtifact(id, mindex)} : undefined;
 	rmSync(ctx.temp, {recursive: true, force: true});
 	saveState(ctx, {
 		kind: 'voice',
@@ -406,31 +451,48 @@ export const cmdVoicePreflight = (ctx: Ctx): void => {
 		request: id,
 		vindex,
 		encrypt: req.encrypt,
+		recipient: req.recipient,
 		channel: v.channel,
 		slug: v.slug,
 		lang: v.lang,
 		contentDir: voiceContentDir(v),
 		outputDir: voiceOutputDir(v),
 		artifact: voiceArtifact(id, vindex),
+		...(v.fitTo && master ? {fitTo: v.fitTo, master} : {}),
 	});
-	ctx.log(`voice ${id}[${vindex}]: ${v.channel}/${v.slug} ${v.lang}, voice ${ZOO_VOICE}, ${req.encrypt ? 'encrypted' : 'not encrypted (test)'}`);
+	ctx.log(`voice ${id}[${vindex}]: ${v.channel}/${v.slug} ${v.lang}${v.fitTo ? ` fitted to ${v.fitTo}` : ''}, voice ${ZOO_VOICE}, ${req.encrypt ? 'encrypted' : 'not encrypted (test)'}`);
 	setOutput(ctx, 'artifact', voiceArtifact(id, vindex));
 	setOutput(ctx, 'probe_artifact', voiceProbeArtifact(id, vindex));
+	setOutput(ctx, 'master_artifact', master?.artifact ?? '');
+};
+
+/** Dub job: the master narration this dub is fitted to, unpacked into public/generated/<channel>/<slug>/<master>. */
+export const cmdVoiceMasterUnpack = async (ctx: Ctx): Promise<void> => {
+	const st = readState(ctx, 'voice');
+	if (!st.master) throw new FarmError('this voice entry is not a dub: it has no master narration to unpack');
+	const key = st.encrypt ? requireHandoffKey(ctx.env) : null;
+	const inDir = ctx.env.FARM_MASTER_IN || join(ctx.temp, 'master-in');
+	const src = join(inDir, `${st.master.artifact}.tar${key ? '.enc' : ''}`);
+	if (!existsSync(src)) throw new FarmError(`the master narration ${st.master.artifact} is missing: its voice job failed or was skipped (see that job in this run)`);
+	await unpackNarration(ctx, src, st.master.outputDir, st.master.artifact, key);
+	ctx.log(`unpacked the ${st.fitTo} master narration`);
 };
 
 export const cmdVoiceBuild = async (ctx: Ctx): Promise<void> => {
 	const st = readState(ctx, 'voice');
 	const python = ctx.env.FARM_PYTHON || 'python3';
-	const args = ['scripts/voice/build.py', st.contentDir, '--lang', st.lang, '--voice', ZOO_VOICE];
+	const args = ['scripts/voice/build.py', st.contentDir, '--lang', st.lang, '--voice', ZOO_VOICE, ...(st.fitTo ? ['--fit-to', st.fitTo] : [])];
 	const r = await runTool(ctx, python, args, {logFile: st.encrypt ? logPath(ctx) : null, label: 'voice build'});
 	saveState(ctx, {...st, exitCode: r.code, buildSeconds: r.seconds});
+	if (r.code === 3 && st.fitTo) throw new FarmError(`the ${st.lang} dub does not fit the ${st.fitTo} timeline (build.py exit 3): shorten the translation of the scenes it names${st.encrypt ? ' (in the encrypted log)' : ''}`);
 	if (r.code !== 0) throw new FarmError(`the voice build failed (exit ${r.code})${st.encrypt ? '; its log is encrypted into this job\'s artifact' : ''}`);
 	ctx.log(`voice build finished in ${r.seconds} s`);
 };
 
-export const cmdVoicePack = (ctx: Ctx): void => {
+export const cmdVoicePack = async (ctx: Ctx): Promise<void> => {
 	const st = readState(ctx, 'voice');
-	const key = st.encrypt ? requireKey(ctx.env) : null;
+	const key = st.encrypt ? requireHandoffKey(ctx.env) : null;
+	const recipient: Recipient | null = st.encrypt ? loadRecipient(ctx.project, st.recipient) : null;
 	const stage = join(ctx.temp, 'voice-out');
 	const probes = join(ctx.temp, 'probe-out');
 	rmSync(stage, {recursive: true, force: true});
@@ -443,15 +505,15 @@ export const cmdVoicePack = (ctx: Ctx): void => {
 		const tar = join(ctx.temp, `${st.artifact}.tar`);
 		execFileSync('tar', ['-cf', tar, '-C', publicDir, st.outputDir], {stdio: ['ignore', 'ignore', 'pipe']});
 		if (key) {
-			encryptFile(tar, join(stage, `${st.artifact}.tar.enc`), key);
+			await encryptHandoff(tar, join(stage, `${st.artifact}.tar.enc`), key);
 			rmSync(tar, {force: true});
 		} else {
 			renameSync(tar, join(stage, `${st.artifact}.tar`));
 		}
 	}
-	if (key && existsSync(logPath(ctx))) {
+	if (recipient && existsSync(logPath(ctx))) {
 		ensureDir(join(stage, 'logs'));
-		encryptFile(logPath(ctx), join(stage, 'logs', `${st.artifact}.log.enc`), key);
+		await encryptToRecipient(logPath(ctx), join(stage, 'logs', `${st.artifact}.log.enc`), recipient);
 	}
 	const files = verifyStaging(stage, st.encrypt);
 	const narration = join(genDir, 'narration.wav');
@@ -485,7 +547,10 @@ export const cmdPreflight = (ctx: Ctx): void => {
 	const req = loadRequest(ctx, id);
 	const job = req.jobs[index];
 	if (!job) throw new FarmError(`${id} has no job ${index}`);
-	if (req.encrypt) requireKey(ctx.env);
+	if (req.encrypt) {
+		loadRecipient(ctx.project, req.recipient);
+		if (voiceNeeds(req, index).length) requireHandoffKey(ctx.env);
+	}
 	const problems = checkoutProblems(ctx, {...req, jobs: [job], voice: []});
 	if (problems.length) throw new FarmError(problems.join('; '));
 	rmSync(ctx.temp, {recursive: true, force: true});
@@ -506,6 +571,7 @@ export const cmdPreflight = (ctx: Ctx): void => {
 		frame: job.frame,
 		lang: job.lang ?? '-',
 		encrypt: req.encrypt,
+		recipient: req.recipient,
 		artifact,
 		propsPath,
 		voice: needs.map((i) => ({vindex: i, channel: req.voice[i].channel, slug: req.voice[i].slug, lang: req.voice[i].lang})),
@@ -531,33 +597,38 @@ export const checkTarMembers = (tarPath: string, prefix: string): string[] => {
 	return names;
 };
 
-export const cmdVoiceUnpack = (ctx: Ctx): void => {
+/** Decrypts (when keyed) and unpacks one narration archive into public/<outputDir>, refusing anything outside it. */
+const unpackNarration = async (ctx: Ctx, src: string, outputDir: string, name: string, key: string | null): Promise<void> => {
+	const publicDir = join(ctx.project, 'public');
+	ensureDir(publicDir);
+	let tar = src;
+	if (key) {
+		tar = join(ctx.temp, `${name}.tar`);
+		await decryptHandoff(src, tar, key);
+	}
+	try {
+		checkTarMembers(tar, outputDir);
+		execFileSync('tar', ['-xf', tar, '-C', publicDir, '--no-same-owner', '--no-same-permissions'], {stdio: ['ignore', 'ignore', 'pipe']});
+	} finally {
+		if (key) rmSync(tar, {force: true});
+	}
+	if (!existsSync(join(publicDir, outputDir, 'timeline.json'))) throw new FarmError(`the narration ${name} has no timeline.json`);
+};
+
+export const cmdVoiceUnpack = async (ctx: Ctx): Promise<void> => {
 	const st = readState(ctx, 'render');
 	if (!st.voice.length) {
 		ctx.log('this job needs no narration');
 		return;
 	}
-	const key = st.encrypt ? requireKey(ctx.env) : null;
+	const key = st.encrypt ? requireHandoffKey(ctx.env) : null;
 	const inDir = ctx.env.FARM_VOICE_IN || join(ctx.temp, 'voice-in');
-	const publicDir = join(ctx.project, 'public');
-	ensureDir(publicDir);
 	const langs: string[] = [];
 	for (const v of st.voice) {
 		const name = voiceArtifact(st.request, v.vindex);
 		const src = join(inDir, `${name}.tar${key ? '.enc' : ''}`);
 		if (!existsSync(src)) throw new FarmError(`the narration ${name} is missing: its voice job failed or was skipped (see that job in this run)`);
-		let tar = src;
-		if (key) {
-			tar = join(ctx.temp, `${name}.tar`);
-			decryptFile(src, tar, key);
-		}
-		try {
-			checkTarMembers(tar, voiceOutputDir(v));
-			execFileSync('tar', ['-xf', tar, '-C', publicDir, '--no-same-owner', '--no-same-permissions'], {stdio: ['ignore', 'ignore', 'pipe']});
-		} finally {
-			if (key) rmSync(tar, {force: true});
-		}
-		if (!existsSync(join(publicDir, voiceOutputDir(v), 'timeline.json'))) throw new FarmError(`the narration ${name} has no timeline.json`);
+		await unpackNarration(ctx, src, voiceOutputDir(v), name, key);
 		langs.push(v.lang);
 	}
 	saveState(ctx, {...st, voiceTracks: langs.length});
@@ -565,10 +636,18 @@ export const cmdVoiceUnpack = (ctx: Ctx): void => {
 };
 
 /** The Remotion CLI arguments for a job (npx is the command). */
+/** The farm's Remotion config for audio-only jobs (the studio config's x264 preset is refused with audio codecs). */
+export const AUDIO_CONFIG = 'scripts/farm/remotion.audio.config.ts';
+
 export const remotionArgs = (st: Pick<RenderState, 'jobKind' | 'entry' | 'composition' | 'output' | 'propsPath' | 'frame'>): string[] => {
 	if (!COMPOSITION_RE.test(st.composition) || outputProblem(st.output, st.jobKind)) throw new FarmError('refusing to render an unvalidated job');
 	const args = ['--no-install', 'remotion', st.jobKind === 'still' ? 'still' : 'render', st.entry, st.composition, st.output, `--props=${st.propsPath}`];
 	if (st.jobKind === 'still') args.push(`--frame=${st.frame}`);
+	if (st.jobKind === 'audio') {
+		const codec = audioCodec(st.output);
+		if (!codec) throw new FarmError('refusing an audio job without a .wav, .m4a or .mp3 output');
+		args.push(`--codec=${codec}`, `--config=${AUDIO_CONFIG}`);
+	}
 	return args;
 };
 
@@ -622,7 +701,7 @@ export const cmdProbe = (ctx: Ctx): void => {
 
 export const cmdPack = async (ctx: Ctx): Promise<void> => {
 	const st = readState(ctx, 'render');
-	const key = st.encrypt ? requireKey(ctx.env) : null;
+	const recipient: Recipient | null = st.encrypt ? loadRecipient(ctx.project, st.recipient) : null;
 	const stage = join(ctx.temp, 'upload');
 	rmSync(stage, {recursive: true, force: true});
 	ensureDir(stage);
@@ -632,23 +711,23 @@ export const cmdPack = async (ctx: Ctx): Promise<void> => {
 		const sums = `${await sha256File(out)}  ${st.output}\n`;
 		const sumsName = `${st.artifact}.sha256`;
 		ensureDir(dirname(join(stage, st.output)));
-		if (key) {
-			encryptFile(out, join(stage, `${st.output}.enc`), key);
+		if (recipient) {
+			await encryptToRecipient(out, join(stage, `${st.output}.enc`), recipient);
 			const plainSums = join(ctx.temp, sumsName);
 			writeFileSync(plainSums, sums, {mode: 0o600});
-			encryptFile(plainSums, join(stage, `${sumsName}.enc`), key);
+			await encryptToRecipient(plainSums, join(stage, `${sumsName}.enc`), recipient);
 			rmSync(plainSums, {force: true});
 		} else {
 			copyFileSync(out, join(stage, st.output));
 			writeFileSync(join(stage, sumsName), sums);
 		}
 	}
-	if (key && existsSync(logPath(ctx))) {
+	if (recipient && existsSync(logPath(ctx))) {
 		ensureDir(join(stage, 'logs'));
-		encryptFile(logPath(ctx), join(stage, 'logs', `${st.artifact}.log.enc`), key);
+		await encryptToRecipient(logPath(ctx), join(stage, 'logs', `${st.artifact}.log.enc`), recipient);
 	}
 	const files = verifyStaging(stage, st.encrypt);
-	ctx.log(`pack: ${files.length} file(s) staged${key ? ', all encrypted' : ''}${rendered ? '' : ' (no output: the render failed)'}`);
+	ctx.log(`pack: ${files.length} file(s) staged${recipient ? `, all encrypted to the "${recipient.name}" public key` : ''}${rendered ? '' : ' (no output: the render failed)'}`);
 	setOutput(ctx, 'has_files', files.length ? 'true' : 'false');
 };
 
@@ -689,17 +768,24 @@ export const cmdValidate = (ctx: Ctx, files: string[]): void => {
 	for (const f of targets) {
 		const id = basename(f).replace(/\.json$/, '');
 		const v = parseRequest(readFileSync(f, 'utf8'), id);
-		const errors = v.ok ? checkoutProblems(ctx, v.request) : v.errors;
+		let errors = v.ok ? checkoutProblems(ctx, v.request) : v.errors;
+		let gated = 0;
+		if (v.ok && !errors.length) {
+			const g = checkGates(ctx.project, v.request, gateRunner(ctx));
+			errors = g.problems;
+			gated = g.verdicts.length;
+		}
 		if (errors.length) {
 			bad++;
 			console.error(`${f}:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
 		} else if (v.ok) {
 			const r = v.request;
-			ctx.log(`${f}: ok (${r.jobs.length} job(s), ${r.voice.length} voice, ${r.encrypt ? 'encrypted' : 'NOT encrypted (test)'}, kept ${r.retentionDays} days)`);
+			const dubs = r.voice.filter((x) => x.fitTo).length;
+			ctx.log(`${f}: ok (${r.jobs.length} job(s), ${r.voice.length} voice${dubs ? ` incl. ${dubs} dub(s)` : ''}, ${r.encrypt ? `encrypted to "${r.recipient}"` : 'NOT encrypted (test)'}, kept ${r.retentionDays} days; ${gated ? `${gated} gate check(s) pass` : 'no episode or show script to gate'})`);
 		}
 	}
 	if (!targets.length) ctx.log('no request files');
-	if (bad) throw new FarmError(`${bad} invalid request file(s)`);
+	if (bad) throw new FarmError(`${bad} invalid request file(s): do not push them (a pushed storyboard is public for good)`);
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -718,14 +804,17 @@ export const main = async (argv: string[], env: NodeJS.ProcessEnv = process.env)
 			case 'voice-build':
 				await cmdVoiceBuild(ctx);
 				break;
+			case 'voice-master-unpack':
+				await cmdVoiceMasterUnpack(ctx);
+				break;
 			case 'voice-pack':
-				cmdVoicePack(ctx);
+				await cmdVoicePack(ctx);
 				break;
 			case 'preflight':
 				cmdPreflight(ctx);
 				break;
 			case 'voice-unpack':
-				cmdVoiceUnpack(ctx);
+				await cmdVoiceUnpack(ctx);
 				break;
 			case 'render':
 				await cmdRender(ctx);
@@ -743,7 +832,7 @@ export const main = async (argv: string[], env: NodeJS.ProcessEnv = process.env)
 				cmdValidate(ctx, rest);
 				break;
 			default:
-				console.error('usage: farm.ts plan | voice-preflight | voice-build | voice-pack | preflight | voice-unpack | render | probe | pack | summary | validate [files...]');
+				console.error('usage: farm.ts plan | voice-preflight | voice-master-unpack | voice-build | voice-pack | preflight | voice-unpack | render | probe | pack | summary | validate [files...]');
 				return 2;
 		}
 		return 0;

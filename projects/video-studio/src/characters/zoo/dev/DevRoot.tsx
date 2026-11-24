@@ -179,12 +179,13 @@ export const ZooFrontDev: React.FC = () => (
 );
 
 const EXPRS: Expression[] = ['neutral', 'happy', 'worried', 'shocked'];
-export const ZooExpressionsDev: React.FC = () => (
+/** lineScale: 1 = LINE widths; ~0.55 reproduces the sheet's bust line weight at this framing. */
+export const ZooExpressionsDev: React.FC<{lineScale?: number; browLift?: number}> = ({lineScale = 1, browLift = 0}) => (
 	<Bg>
 		<div style={{display: 'flex', width: '100%', height: '100%'}}>
 			{EXPRS.map((e) => (
 				<svg key={e} width={400} height={400} viewBox={EXPR_VB}>
-					<ZooRig expression={e} />
+					<ZooRig expression={e} lineScale={lineScale} browLift={browLift} breathe={false} />
 				</svg>
 			))}
 		</div>
@@ -192,12 +193,12 @@ export const ZooExpressionsDev: React.FC = () => (
 );
 
 const MOUTHS: MouthShape[] = ['closed', 'slightlyOpen', 'ah', 'ee', 'oh', 'mbp'];
-export const ZooMouthsDev: React.FC = () => (
+export const ZooMouthsDev: React.FC<{lineScale?: number}> = ({lineScale = 1}) => (
 	<Bg>
 		<div style={{display: 'flex', flexWrap: 'wrap', width: '100%', height: '100%'}}>
 			{MOUTHS.map((m) => (
 				<svg key={m} width={340} height={220} viewBox={MOUTH_VB}>
-					<ZooRig mouth={m} />
+					<ZooRig mouth={m} lineScale={lineScale} breathe={false} />
 				</svg>
 			))}
 		</div>
@@ -253,8 +254,19 @@ export const ZooMatrixDev: React.FC = () => (
 	</Bg>
 );
 
+/** High-resolution head close-up for world-space overlays: 6 px per unit, world box x -100..90, y -905..-730. */
+const HEAD_VB = '-100 -905 190 175';
+export const ZooHeadDev: React.FC<React.ComponentProps<typeof ZooRig>> = (p) => (
+	<Bg>
+		<svg width="100%" height="100%" viewBox={HEAD_VB}>
+			<ZooRig breathe={false} {...p} />
+		</svg>
+	</Bg>
+);
+
 export const ZooDevRoot: React.FC = () => (
 	<>
+		<Composition id="ZooHead" component={ZooHeadDev} durationInFrames={1} fps={30} width={1140} height={1050} defaultProps={{lineScale: 0.55}} />
 		<Composition id="ZooFront" component={ZooFrontDev} durationInFrames={1} fps={30} width={600} height={1320} />
 		<Composition id="ZooExpressions" component={ZooExpressionsDev} durationInFrames={1} fps={30} width={1600} height={400} />
 		<Composition id="ZooMouths" component={ZooMouthsDev} durationInFrames={1} fps={30} width={1020} height={440} />

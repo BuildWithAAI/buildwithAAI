@@ -1,10 +1,10 @@
 import React from 'react';
-import {BADGER_COLORS, LINE} from '../../palette';
+import {BADGER_COLORS, BRAND, LINE} from '../../palette';
 import type {BadgerHead} from '../../types';
 import type {BadgerSpot} from '../spots';
 import {Head, HeadState} from './heads/Head';
 import {Leg, LegAngles, LegGeom} from './Leg';
-import {PartShape, Pt, STROKE, ShapeGeom, tr, useUid} from './shared';
+import {PartShape, Pt, ShapeGeom, tr, useStrokes, useUid} from './shared';
 import {SpotShapes} from './SpotShapes';
 import {Tail, TailGeom} from './Tail';
 
@@ -92,16 +92,17 @@ const NeckSide: React.FC<{geom: SideRig['neck']; uid: string; spots: readonly Ba
 /** Collar + tag for a side rig; the tag counter-rotates about its ring so it always hangs plumb. */
 const CollarSide: React.FC<{geom: SideRig['neck']; worldAngle: number}> = ({geom, worldAngle}) => {
 	const a = geom.tagAnchor;
+	const L = useStrokes();
 	return (
 		<g>
 			<path d={geom.collar} fill={BADGER_COLORS.collar} />
 			<path d={geom.collarShadow} fill={BADGER_COLORS.collarShadow} />
-			<path d={geom.collar} {...STROKE} />
+			<path d={geom.collar} {...L.stroke} />
 			<g transform={`rotate(${-worldAngle} ${a.x} ${a.y})`}>
-				<path d={geom.tagRing} {...STROKE} strokeWidth={LINE.detailWidth} />
+				<path d={`${geom.tagRing} Z`} {...L.stroke} fill={BRAND.silver} strokeWidth={LINE.detailWidth * L.k} />
 				<path d={geom.tag} fill={BADGER_COLORS.tag} />
 				<path d={geom.tagShadow} fill={BADGER_COLORS.tagShadow} />
-				<path d={geom.tag} {...STROKE} strokeWidth={LINE.detailWidth * 1.1} />
+				<path d={geom.tag} {...L.stroke} strokeWidth={LINE.detailWidth * 1.1 * L.k} />
 			</g>
 		</g>
 	);
@@ -139,7 +140,7 @@ export const SideBody: React.FC<{
 	const neckAngle = hm.neck - dir * (neckTurn + pose.neck);
 	const neckT = `${tr(M.neck, neckAngle)} translate(0 ${(-breath * 0.6).toFixed(2)})`;
 	const headT = `${neckT} translate(${R.neck.headMount.x + hm.dx} ${R.neck.headMount.y + hm.dy}) rotate(${hm.rot + headTilt * (dir === 1 ? -1 : 1)})`;
-	const breathT = `translate(0 ${backLineY}) scale(1 ${(1 + breath * 0.006).toFixed(4)}) translate(0 ${-backLineY})`;
+	const breathT = `translate(0 ${backLineY}) scale(1 ${(1 + breath * 0.015).toFixed(4)}) translate(0 ${-backLineY})`;
 	// restrained wag: a swing about the root plus follow-through curl toward the tip (asymmetric: up-and-out)
 	const ph = tailWag * Math.PI * 2;
 	const sw = Math.sin(ph);
@@ -166,6 +167,10 @@ export const SideBody: React.FC<{
 			<g transform={neckT}>
 				<NeckSide geom={R.neck} uid={uid} spots={spots.neck} />
 			</g>
+			{/* the near thigh's top edge, under the torso: outlined only where a swing pushes it out past the rump (D35) */}
+			{hindNearOverride ? null : (
+				<Leg geom={R.legHind} mount={mnt('hindNear', M.legHindNear)} angles={svgLeg(L.hindNear, dir)} uid={`${uid}-hnu`} pass="underlay" />
+			)}
 			<g transform={breathT}>
 				<PartShape geom={R.torso} clipId={`${uid}-torso`}>
 					<SpotShapes spots={spots.torso} />

@@ -4,7 +4,7 @@
  */
 import React, {useMemo} from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {Badger, ZooRig} from '../../characters';
+import {Badger, badgerLineScaleFor, lineScaleFor, ZooRig} from '../../characters';
 import type {Lang, Storyboard, StoryboardScene, TimelineScene} from '../types';
 import type {ChartPlan} from '../chart/plan';
 import {C, OUTLINE, R} from '../theme';
@@ -40,7 +40,9 @@ const Contact: React.FC<{x: number; y: number; rx: number; ry: number}> = ({x, y
 
 /**
  * ZOO and Badger in one SVG. Badger is drawn after ZOO when he stands in front (inFront), so overlap reads as depth.
- * Both use the placement's ground line and scale, so their relative size is the approved one.
+ * Both use the placement's ground line and scale, so their relative size is the approved one. Line weights follow
+ * ART_GUIDE SL5 at every placement scale (outline clamp(3.5 x scale, 3, 6) px; fixed 2026-11-24, review: at the end
+ * screen's 0.72 Badger's outlines measured 2.4-2.6 px).
  */
 export const CharacterLayer: React.FC<{
 	format: Format;
@@ -70,6 +72,7 @@ export const CharacterLayer: React.FC<{
 				lookX={z.lookX}
 				lookY={z.lookY}
 				headTilt={z.headTilt}
+				lineScale={lineScaleFor(zoo.place.scale)}
 			/>
 		) : null;
 	const badgerNode =
@@ -91,6 +94,7 @@ export const CharacterLayer: React.FC<{
 				neckTurn={b.neckTurn}
 				lookX={b.lookX}
 				lookY={b.lookY}
+				lineScale={badgerLineScaleFor(badger.place.scale)}
 			/>
 		) : null;
 	const shadows: React.ReactNode[] = [];

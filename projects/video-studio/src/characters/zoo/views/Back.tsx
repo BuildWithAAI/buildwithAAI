@@ -10,9 +10,12 @@
  * (decision ZOO-S1), never copied from another view.
  */
 import React from 'react';
-import {LINE, ZOO_COLORS} from '../../palette';
-import {line, mirrorX, smooth, type Pt} from '../geometry';
-import {Clipped, Shape, Stroke} from '../parts/Shape';
+import {ZOO_COLORS} from '../../palette';
+import {line, mirrorX, smooth, tapered, type Pt} from '../geometry';
+import {HandDrawing, type HandDrawingSpec} from '../parts/Hand';
+import {ZOO_LINE} from '../lines';
+import {Clipped, Outline, Shape, Stroke, useLineScale} from '../parts/Shape';
+import {Button} from './threeQuarter/Body34';
 import type {ViewBodyProps} from './types';
 
 /** Mirror axes for the unmarked pairs (measured centre lines of the sheet's back view). */
@@ -32,42 +35,56 @@ const HAIR: Pt[] = [
 	[-63.6, -856.4], [-60, -861.6], [-53, -868.6], [-46.6, -875], [-41, -877.6], [-34, -878], [-28, -878], [-24.4, -881.4], [-22, -887.2],
 	[-17.6, -892.4], [-12.4, -895.6], [-7, -898.6],
 ];
-/** One flat shadow tone: the lower half of the hair down to the nape, and the crown swirl's underside. */
+/**
+ * One flat shadow tone (repair round 2, zoo_turn_back.png): the underside of the S-shaped crown lock (a thin crescent
+ * under its sweep) and the nape below a WAVY edge that follows the lower ends of the locks. Round 1 used a straight
+ * band over the whole lower half plus an isolated oval under the right wing, which read as a two-tone helmet.
+ */
 const HAIR_SHADOW = [
-	// lower half, its upper boundary following the swirl
-	smooth([[-70, -830], [-56, -836], [-40, -838], [-24, -834], [-10, -826], [2, -822], [14, -826], [28, -832], [44, -834], [60, -828], [78, -820], [78, -740], [-70, -740]]),
-	// crescent under the top lock of the swirl
-	smooth([[-34, -848], [-26, -862], [-12, -872], [6, -876], [20, -872], [28, -860], [26, -848], [18, -842], [22, -852], [18, -862], [6, -866], [-10, -862], [-22, -854]]),
-	// groove under the right wing
-	smooth([[40, -862], [54, -858], [66, -850], [56, -846], [44, -850]]),
+	smooth([
+		[-80, -826], [-66, -824], [-54, -826.6], [-44, -821], [-34, -814.6], [-24, -810.4], [-12, -806.6], [0, -804.4], [12, -802],
+		[22, -806], [32, -813.4], [42, -822.6], [52, -828], [64, -829], [82, -824], [82, -740], [-80, -740],
+	]),
+	smooth([[-12.6, -866.6], [-2, -856.6], [14, -850.4], [30, -845.2], [38.6, -837.4], [33.4, -835.6], [22, -839], [8, -844.2], [-3.6, -850.4], [-10.4, -858]]),
 ].join(' ');
-const HAIR_STRANDS: Pt[][] = [
-	[[-40, -846], [-32, -864], [-16, -878], [4, -883], [20, -878], [30, -866], [30, -852], [20, -842], [8, -836], [4, -826], [12, -816]], // crown swirl
-	[[-24, -880], [-8, -888], [10, -890], [26, -884]], // top lock
-	[[36, -880], [50, -872], [62, -860], [72, -851]], // right wing
-	[[-58, -856], [-46, -864], [-34, -870]], // left lock
-	[[-54, -830], [-40, -836], [-26, -832]], // left lower lock
-	[[40, -834], [54, -830], [66, -822]], // right lower lock
+/**
+ * The lock edges that carry the hair's identity from behind (repair round 2): the S-shaped crown lock, the top lock's
+ * lower edge on the right, and the two left lock edges, as tapered dark-brown ink lines (ZOO_COLORS.brow, the hair ink
+ * already used for the front crown hollow, decision ZOO-H3), up to ZOO_LINE.detail wide. Round 1 drew them in the hair
+ * shadow tone at the fine width, which was invisible.
+ */
+const LOCK_LINES: Pt[][] = [
+	[[-15, -882], [-12.4, -868], [-2.4, -857.4], [13.4, -850.6], [29.6, -845.4], [38.6, -838.4], [40, -828.6], [34.4, -818.6], [25.4, -810.4], [16.6, -803]], // the S
+	[[12, -876], [28, -869.4], [44, -866.4], [55, -869]], // top lock's lower edge, into the right wave tip
+	[[-37, -868], [-42.4, -852], [-41.6, -836], [-35.6, -823], [-25, -813]], // left lock
+	[[-19, -856], [-16.6, -843], [-10.6, -832], [0, -825], [12, -821], [20, -813]], // lower edge of the S ribbon
 ];
 const EAR_L: Pt[] = [[-42, -806], [-49, -808.6], [-55, -804], [-56.6, -794], [-54.6, -784.6], [-49.6, -778], [-43, -776]];
 const EAR_SHADOW_L: Pt[] = [[-44, -804], [-50, -804], [-53, -794], [-51, -784], [-45, -780]];
 const NECK: Pt[] = [[-27, -764], [-26.4, -746], [-27, -732], [-20, -726], [34, -726], [35, -732], [34.4, -746], [34, -764]];
 const NECK_SHADOW = smooth([[-30, -760], [36, -760], [36, -744], [20, -742.6], [4, -745], [-12, -743], [-30, -745]]);
 
-const BackHead: React.FC = () => (
-	<g data-part="head" data-view="back">
-		{([1, -1] as const).map((s) => {
-			const m = (p: Pt[]) => (s === 1 ? p : mirrorX(p, ARM_AXIS));
-			return <Shape key={s} name={s === 1 ? 'earL' : 'earR'} d={smooth(m(EAR_L))} fill={ZOO_COLORS.skin} shadow={{d: smooth(m(EAR_SHADOW_L)), fill: ZOO_COLORS.skinShadow}} />;
-		})}
-		<g data-part="hair">
-			<Shape d={smooth(HAIR)} fill={ZOO_COLORS.hair} shadow={{d: HAIR_SHADOW, fill: ZOO_COLORS.hairShadow}} />
-			{HAIR_STRANDS.map((s, i) => (
-				<Stroke key={i} d={line(s)} width={LINE.detailWidth} />
-			))}
+const BackHead: React.FC = () => {
+	const ls = useLineScale();
+	const hair = smooth(HAIR);
+	return (
+		<g data-part="head" data-view="back">
+			{([1, -1] as const).map((s) => {
+				const m = (p: Pt[]) => (s === 1 ? p : mirrorX(p, ARM_AXIS));
+				return <Shape key={s} name={s === 1 ? 'earL' : 'earR'} d={smooth(m(EAR_L))} fill={ZOO_COLORS.skin} shadow={{d: smooth(m(EAR_SHADOW_L)), fill: ZOO_COLORS.skinShadow}} />;
+			})}
+			<g data-part="hair">
+				<Shape d={hair} fill={ZOO_COLORS.hair} shadow={{d: HAIR_SHADOW, fill: ZOO_COLORS.hairShadow}} stroke={0} />
+				<Clipped clip={hair}>
+					{LOCK_LINES.map((l, i) => (
+						<path key={i} data-part="lockLine" d={tapered(l, (t) => ZOO_LINE.detail * ls * (0.3 + 0.7 * Math.pow(Math.sin(Math.PI * t), 0.7)))} fill={ZOO_COLORS.brow} />
+					))}
+				</Clipped>
+				<Outline d={hair} />
+			</g>
 		</g>
-	</g>
-);
+	);
+};
 
 // ---------------------------------------------------------------- shirt
 const COLLAR = smooth([
@@ -88,47 +105,52 @@ const YOKE = line([[-88, -662], [-80, -657.4], [-40, -656.4], [2, -656.6], [44, 
 const COLLAR_SEAM = line([[-35, -725], [-20, -727.4], [2, -728], [24, -727.4], [39, -725]]);
 
 // ---------------------------------------------------------------- sleeves and hands (left authored, right mirrored)
+// Repair round 2 (row scans of zoo_turn_back.png): the forearms hang ~7 u further in than round 1 had them, against the
+// hips: cuff 128.6..91.4 between path edges (sheet outline edges ~131..89), cuff bottom -411, cuff seam -443.
 const SLEEVE_L: Pt[] = [
 	[-104, -690], [-112, -683], [-118, -670], [-120.6, -652], [-123.4, -625], [-127.4, -595], [-131.4, -565], [-135.2, -540],
-	[-138.6, -515], [-139.2, -500], [-137.8, -480], [-136.2, -462], [-135.4, -452], [-136, -440], [-135.6, -420, 'c'], [-118, -417],
-	[-100.4, -419, 'c'], [-99.8, -440], [-99.8, -452], [-90, -470], [-84, -500], [-80, -560], [-80, -620], [-84, -650], [-92, -670],
+	[-138.4, -515], [-139, -500], [-138, -484], [-136.2, -468], [-134, -456], [-131.4, -446], [-129.8, -436], [-129.2, -424],
+	[-128.6, -412.6, 'c'], [-110, -410.4], [-91.4, -412, 'c'], [-91.6, -424], [-91.8, -436], [-90.6, -450], [-88.4, -465],
+	[-86, -480], [-84, -500], [-80, -560], [-80, -620], [-84, -650], [-92, -670],
 ];
-const SLEEVE_SHADOW_L: Pt[] = [[-100, -690], [-82, -680], [-78, -560], [-80, -470], [-96, -450], [-98, -416], [-92, -416], [-70, -470], [-70, -690]];
-const CUFF_SEAM_L: Pt[] = [[-136, -453.4], [-118, -455.6], [-100.2, -453.4]];
-const SLEEVE_PLACKET_L: Pt[] = [[-129, -486], [-128.4, -470], [-128.6, -456]];
-const CUFF_BUTTON_L = {x: -126.6, y: -427} as const;
-/** Anatomical LEFT hand from behind: back of the hand outward, fingers curling toward the thigh. */
-const HAND_L: Pt[] = [
-	[-129, -418], [-129.8, -396], [-128.4, -376], [-125.4, -360], [-120, -349], [-112, -341.6], [-102, -336.8], [-92, -336.4],
-	[-86.6, -339.6, 'c'], [-90.4, -344], [-87.4, -348.6], [-85.4, -356], [-86.4, -366, 'c'], [-89.4, -374], [-90.6, -392], [-92.6, -418],
-];
-const HAND_SHADOW_L: Pt[] = [[-106, -380], [-90, -384], [-82, -334], [-110, -334], [-110, -356]];
-const HAND_LINES_L: Pt[][] = [
-	[[-116, -354], [-105, -347], [-93, -345]],
-	[[-110, -366], [-100, -358.6], [-89.6, -356.6]],
-	[[-87, -366], [-96, -366.4], [-103, -371]], // thumb tip tucked in front
-];
-
+const SLEEVE_SHADOW_L: Pt[] = [[-108, -690], [-96, -660], [-90, -600], [-91, -540], [-94, -490], [-98, -462], [-99.6, -440], [-99.6, -405], [-70, -405], [-70, -690]];
+const CUFF_SEAM_L: Pt[] = [[-129.8, -443.4], [-110.4, -444.8], [-91.4, -443.4]];
+const SLEEVE_PLACKET_L: Pt[] = [[-122, -484], [-121.4, -468], [-121.6, -455]];
+const CUFF_BUTTON_L = {x: -120.4, y: -424.6} as const;
+/**
+ * The back of the anatomical-LEFT hand seen from behind (repair round 2, skin edges row-scanned on zoo_turn_back.png;
+ * round 1 mapped the front palm drawing here, so its thumb hook showed from behind). The back of the hand tapers out of
+ * the cuff and the fingers curl toward the thigh: four tip lobes step up the inner edge (index highest, nearest the
+ * thigh; little finger lowest), parted by short warm-brown separations. The thumb is tucked out of view. The screen-right
+ * (anatomical right) hand is its mirror about the arm axis WITHIN this view (unmarked pair, ZOO-S1).
+ */
+const BACK_HAND_L: HandDrawingSpec = {
+	outline: [
+		[-121.4, -418], [-94, -418], [-92.4, -409], [-89.6, -402], [-88.2, -394], [-87.8, -385], [-87.8, -376], [-87.4, -368.6],
+		[-85.2, -364.6], [-83.8, -360], [-84.6, -355.8], [-87.8, -353.8], [-90.6, -353, 'c'], [-87.4, -350.2], [-85.2, -346.4],
+		[-84.2, -342.2], [-85.6, -339], [-89, -338, 'c'], [-87.2, -335.6], [-87.8, -332.6], [-91.2, -331], [-95.4, -331.6, 'c'],
+		[-98.6, -332.4], [-102.4, -335.2], [-106.2, -338.8], [-110, -343], [-113.6, -348], [-116.8, -354], [-119.2, -361],
+		[-120.6, -369], [-120.8, -380], [-120.6, -394], [-120.8, -408],
+	],
+	shadow: [[-70, -420], [-95.6, -418], [-93.4, -404], [-92.6, -392], [-92.6, -380], [-93.4, -370], [-70, -366]],
+	lines: [
+		// where the curled fingers fold under the back of the hand (sheet: a soft curve from the knuckles to the tips)
+		[[-104.6, -378], [-102.8, -366], [-99, -354.6], [-94.6, -345.4], [-90.6, -339.6]],
+		[[-90.6, -353], [-93.6, -359.4], [-96.6, -365.6]],
+		[[-95.4, -331.6], [-99.4, -336.8], [-103.6, -341.6]],
+	],
+};
 const Arm: React.FC<{side: 1 | -1}> = ({side}) => {
 	const m = (p: Pt[]) => (side === 1 ? p : mirrorX(p, ARM_AXIS));
 	const bx = side === 1 ? CUFF_BUTTON_L.x : 2 * ARM_AXIS - CUFF_BUTTON_L.x;
-	const hand = smooth(m(HAND_L));
+	const handMap = (p: Pt): Pt => (side === 1 ? p : mirrorX([p], ARM_AXIS)[0]);
 	return (
 		<g data-part={side === 1 ? 'armL' : 'armR'}>
-			<g data-part={side === 1 ? 'handL' : 'handR'}>
-				<path d={hand} fill={ZOO_COLORS.skin} />
-				<Clipped clip={hand}>
-					<path d={smooth(m(HAND_SHADOW_L))} fill={ZOO_COLORS.skinShadow} />
-				</Clipped>
-				<path d={hand} fill="none" stroke={LINE.color} strokeWidth={LINE.width} strokeLinejoin="round" />
-				{HAND_LINES_L.map((l, i) => (
-					<Stroke key={i} d={line(m(l))} width={LINE.detailWidth} />
-				))}
-			</g>
+			<HandDrawing hand={BACK_HAND_L} map={handMap} name={side === 1 ? 'handL' : 'handR'} />
 			<Shape name={side === 1 ? 'sleeveL' : 'sleeveR'} d={smooth(m(SLEEVE_L))} fill={ZOO_COLORS.overshirt} shadow={{d: smooth(m(SLEEVE_SHADOW_L)), fill: ZOO_COLORS.overshirtShadow}} />
-			<Stroke d={line(m(CUFF_SEAM_L))} width={LINE.detailWidth} />
-			<Stroke d={line(m(SLEEVE_PLACKET_L))} width={LINE.detailWidth * 0.8} />
-			<circle data-part="cuffButton" cx={bx} cy={CUFF_BUTTON_L.y} r={3.2} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1} />
+			<Stroke d={line(m(CUFF_SEAM_L))} width={ZOO_LINE.detail} />
+			<Stroke d={line(m(SLEEVE_PLACKET_L))} width={ZOO_LINE.fine} />
+			<Button x={bx} y={CUFF_BUTTON_L.y} r={3.2} />
 		</g>
 	);
 };
@@ -140,18 +162,21 @@ const LEG_L: Pt[] = [
 	[-80.9, -200], [-78.1, -240], [-78.1, -290], [-78.7, -330], [-80.5, -400],
 ];
 const LEG_SHADOWS_L: Pt[][] = [
-	[[-84.5, -446], [7.5, -446], [7.5, -400], [-84.5, -404]],
+	// a ~10 u curved terminator under the shirt hem (v1: a 40 u band that read as a belt)
+	[[-84.5, -446], [7.5, -446], [7.5, -425], [-40, -423.4], [-84.5, -428]],
 	[[2.1, -366], [-1.5, -340], [-9.5, -260], [-14.9, -180], [-19.5, -100], [-22.7, -40], [-32.5, -40], [-26.5, -140], [-18.5, -260], [-8.5, -360]],
 ];
-const POCKET_L: Pt[] = [[-60.5, -406, 'c'], [-18.5, -406, 'c'], [-20.9, -384], [-38.9, -377.4, 'c'], [-56.5, -384.6]];
+/** An open, curved jeans back-pocket line (repair round 1; v1 drew a closed flap rectangle). */
+const POCKET_L: Pt[] = [[-59.5, -409], [-56, -394], [-46, -383.4], [-33, -383.4], [-23, -394], [-19.5, -409]];
+// Repair round 1: the heel flares out toward the sole (v1 was a box).
 const SHOE_L: Pt[] = [
-	[-80.5, -39], [-58.5, -41.6], [-30.5, -40], [-24.1, -32], [-21.5, -16], [-22.9, -4], [-38.5, -1.75], [-70.5, -1.75], [-88.5, -2.4], [-93.1, -10],
-	[-92.1, -24], [-87.1, -34],
+	[-80.5, -39], [-58.5, -41.6], [-30.5, -40], [-24.6, -32], [-22.8, -20], [-19.6, -9.4], [-21, -3], [-38.5, -1.75], [-70.5, -1.75], [-90.6, -2.4],
+	[-95.6, -8.6], [-93, -20], [-88.6, -32],
 ];
-const SHOE_SOLE_L: Pt[] = [[-96.5, -10.6], [-56.5, -10], [-18.5, -10.6], [-18.5, 2], [-96.5, 2]];
+const SHOE_SOLE_L: Pt[] = [[-99.5, -10.6], [-56.5, -10], [-15.5, -10.6], [-15.5, 2], [-99.5, 2]];
 const SHOE_SHADOW_L: Pt[] = [[-90.5, -44], [-74.5, -44], [-78.5, -20], [-84.5, -10], [-90.5, -10]];
 const SHOE_LINES_L: Pt[][] = [
-	[[-92.3, -10.4], [-56.5, -9.8], [-21.9, -10.4]],
+	[[-95, -10.4], [-56.5, -9.8], [-19.8, -10.4]],
 	[[-89.5, -23], [-56.5, -21.6], [-23.9, -23]],
 	[[-55.5, -39], [-55.5, -28]],
 ];
@@ -167,13 +192,13 @@ const Leg: React.FC<{side: 1 | -1}> = ({side}) => {
 					<path d={smooth(m(SHOE_SHADOW_L))} fill={ZOO_COLORS.sneakerShadow} />
 					<path d={smooth(m(SHOE_SOLE_L))} fill={ZOO_COLORS.sneakerSole} />
 				</Clipped>
-				<path d={shoe} fill="none" stroke={LINE.color} strokeWidth={LINE.width} strokeLinejoin="round" />
+				<Outline d={shoe} />
 				{SHOE_LINES_L.map((l, i) => (
-					<Stroke key={i} d={line(m(l))} width={i === 0 ? LINE.detailWidth : LINE.detailWidth * 0.8} />
+					<Stroke key={i} d={line(m(l))} width={i === 0 ? ZOO_LINE.detail : ZOO_LINE.fine} />
 				))}
 			</g>
 			<Shape d={smooth(m(LEG_L))} fill={ZOO_COLORS.trousers} shadow={{d: LEG_SHADOWS_L.map((p) => smooth(m(p))).join(' '), fill: ZOO_COLORS.trousersShadow}} />
-			<path data-part="backPocket" d={smooth(m(POCKET_L))} fill="none" stroke={LINE.color} strokeWidth={LINE.detailWidth * 0.8} strokeLinejoin="round" />
+			<Stroke name="backPocket" d={line(m(POCKET_L))} width={ZOO_LINE.fine} />
 		</g>
 	);
 };
@@ -188,7 +213,7 @@ export const ZooBack: React.FC<ViewBodyProps> = (p) => {
 		<g data-view="back">
 			<Leg side={1} />
 			<Leg side={-1} />
-			<Stroke d={line([[3.2, -412], [3, -390], [3, -368]])} width={LINE.detailWidth * 0.8} />
+			<Stroke d={line([[3.2, -412], [3, -390], [3, -368]])} width={ZOO_LINE.fine} />
 			<g transform={`translate(0 ${dy})`}>
 				<Shape name="neck" d={smooth(NECK)} fill={ZOO_COLORS.skin} shadow={{d: NECK_SHADOW, fill: ZOO_COLORS.skinShadow}} />
 			</g>
@@ -198,9 +223,9 @@ export const ZooBack: React.FC<ViewBodyProps> = (p) => {
 			</g>
 			<g data-part="torso" transform={torsoT}>
 				<Shape name="overshirt" d={smooth(SHIRT)} fill={ZOO_COLORS.overshirt} shadow={{d: SHIRT_SHADOW, fill: ZOO_COLORS.overshirtShadow}} />
-				<Stroke d={YOKE} width={LINE.detailWidth} />
+				<Stroke d={YOKE} width={ZOO_LINE.detail} />
 				<Shape name="collar" d={COLLAR} fill={ZOO_COLORS.overshirt} />
-				<Stroke d={COLLAR_SEAM} width={LINE.detailWidth * 0.8} />
+				<Stroke d={COLLAR_SEAM} width={ZOO_LINE.fine} />
 			</g>
 			<g data-part="upperBody" transform={`translate(0 ${dy}) rotate(${tilt} ${BACK_BODY.headPivot.x} ${BACK_BODY.headPivot.y})`}>
 				<BackHead />

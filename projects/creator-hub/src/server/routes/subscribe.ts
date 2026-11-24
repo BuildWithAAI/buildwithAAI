@@ -60,8 +60,8 @@ const signup: Handler = (ctx) => {
 </div>
 <h2>What happens next</h2>
 <ol>
-<li>Kit, our email provider, sends you an email with a link to confirm your address. Nothing else arrives until you confirm.</li>
-<li>After that, you get new episodes and the occasional recommendation. Any link we earn from says so right next to it.</li>
+<li>Kit, our email provider, adds your address to our list. If it sends you an email asking you to confirm your address, click the link in it to finish.</li>
+<li>You get new episodes and the occasional recommendation. Any link we earn from says so right next to it.</li>
 <li>Every email has an unsubscribe link.</li>
 </ol>
 <p class="muted small">Your email address goes straight from your browser to Kit (kit.com). This site never receives or stores it. <a href="/privacy">Privacy</a> · <a href="/disclosures">How we make money</a></p>`,
@@ -77,7 +77,7 @@ const thanks: Handler = (ctx) => {
 			title: 'Check your inbox',
 			noindex: true,
 			body: `<h1>Almost done: check your inbox</h1>
-<p class="lede">If you just signed up, Kit, our email provider, has sent you an email with a link to confirm your address. Click it to finish.</p>
+<p class="lede">If you just signed up, look for an email from Kit, our email provider. If it asks you to confirm your address, click the link in it to finish.</p>
 <p>Can't find it? Check your spam or promotions folder, or <a href="${SUBSCRIBE_PATH}">sign up again</a>.</p>
 <div class="notice"><p>The confirmation email only asks you to click one link. It never asks for a password, a wallet connection or your seed phrase.</p></div>
 <p><a href="/">See all links</a></p>`,

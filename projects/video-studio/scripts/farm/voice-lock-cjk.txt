@@ -1,0 +1,18 @@
+# Farm-owned, hash-locked install of the voice step's ja/zh G2P packages (scripts/voice/requirements-cjk.txt), for zh
+# voice jobs only. Installed with: python -m pip install --require-hashes --no-deps -r scripts/farm/voice-lock-cjk.txt
+# Three of these ship only as source (jieba, unidic-lite, mojimoji), so they cannot be --only-binary: their exact
+# source archives are pinned by hash and built on the runner, and pip fetches their build tools (setuptools, Cython)
+# without hash checks. That residual risk is limited to zh jobs (docs/RENDER_FARM.md, "Security").
+# Hashes from PyPI's JSON API, 2026-11-24. Regenerate with:
+#   python3 scripts/farm/mklock.py scripts/voice/requirements-cjk.txt sdist > scripts/farm/voice-lock-cjk.txt
+misaki==0.7.4 --hash=sha256:f9cf1afc0a2c0e77dadf02ae8203d3a7c312ee67b235d3b658c08367919b17c1
+regex==2026.11.8 --hash=sha256:563f96ad896f063fdde8874d4dc94eb5c3b8a8b0f9da0aafffca3924e8a8b669
+jieba==0.42.1 --hash=sha256:055ca12f62674fafed09427f176506079bc135638a14e23e25be909131928db2
+pypinyin==0.55.0 --hash=sha256:d53b1e8ad2cdb815fb2cb604ed3123372f5a28c6f447571244aca36fc62a286f
+cn2an==0.5.24 --hash=sha256:3d57d862a56133070ba6a737b8095bfc94716b41b7684e7a98d2d5b049495db7
+proces==0.1.7 --hash=sha256:308325bbc96877263f06e57e5e9c760c4b42cc722887ad60be6b18fc37d68762
+ordered-set==4.1.0 --hash=sha256:046e1132c71fcf3330438a539928932caf51ddbc582496833e23de611de14562
+fugashi==1.5.2 --hash=sha256:0e79d3f09d847d07eddf8e62ad9840b11331102bc31ecd66455c62581af11638
+unidic-lite==1.0.8 --hash=sha256:db9d4572d9fdd4d00a97949d4b0741ec480ee05a7e7e2e32f547500dae27b245
+jaconv==0.5.0 --hash=sha256:2914114fe761ca49fc7089e25e6ad4a400c26f262ffce84e13b176916b71610a
+mojimoji==0.0.13 --hash=sha256:0e6d2fba22cc8bf132a5bdf3a964296d9287a618d09681a12868f0fd518e4230

@@ -1,6 +1,7 @@
 {
  "schema": "case-A-candles v1",
  "case": "Case A",
+ "checked": "Independently re-derived by a checker on 2026-11-24. Where this file and ../audit.md differ, ../audit.md (checker-corrected) wins. Claim figures are banded on purpose: exact allegation figures would let a reader map this case to a named person.",
  "about": "Calibration data for a FICTIONAL animated story. Derived from public Solana data about a publicly reported allegation; our estimates only. Timing and clustering do not prove common ownership or intent. No wallet addresses, token mints, tickers, handles or names are included.",
  "units": {
   "t": "seconds relative to the public wallet's first buy (t=0)",
@@ -13308,7 +13309,7 @@
   }
  ],
  "audit_summary": {
-  "note": "Rounded figures from our own sample (two UTC days of the public wallet; 22 sampled tokens for co-traders). Our estimates, not findings of fact.",
+  "note": "Rounded figures from our own sample (two UTC days of the public wallet; 22 sampled tokens for co-traders). Our estimates, not findings of fact. Checker-corrected.",
   "public_wallet": {
    "new_tokens_bought_per_day": 60,
    "typical_first_buy_usd": 100,
@@ -13322,7 +13323,7 @@
    "sol_usd_reference": 120
   },
   "early_co_buyers": {
-   "share_of_sampled_public_buys_with_a_candidate_buying_first": 0.7,
+   "share_of_sampled_public_buys_with_a_candidate_buying_first": 0.8,
    "lead_seconds_median": -2.0,
    "lead_seconds_range": [
     -11,
@@ -13332,19 +13333,29 @@
    "same_slot_as_public_buy": "none of the candidates; two other wallets once",
    "exit_seconds_after_public_buy_median": 15,
    "exit_seconds_after_public_buy_iqr": [
-    3,
+    5,
     120
    ],
-   "profitable_exits_seconds_after_public_buy": "mostly 100 to 380 (about 2 to 6 minutes)",
+   "profitable_exits_seconds_after_public_buy": "mostly 100 to 450 (median about 3 min); these carried about 80% of the profit",
    "quick_exits_seconds_after_public_buy": "2 to 15 when the token did not run",
-   "pnl_sol_per_token_all_candidates_median": 0.5,
+   "pnl_sol_per_token_all_candidates_median": 0.55,
    "pnl_sol_per_token_max": 4.0,
    "typical_candidate_buy_sol": [
     0.1,
     0.4,
     0.8
    ],
-   "lockstep": "two pairs of candidates bought and sold in the same slot as each other on most tokens"
+   "lockstep": "two pairs of candidates bought and sold in the same slot as each other on almost every shared token (12 of 12; 12 and 10 of 12)",
+   "share_on_the_out_of_sample_day": 0.5,
+   "lead_seconds_iqr": [
+    -3,
+    -2
+   ],
+   "share_fully_out_within_45_seconds": 0.6,
+   "pnl_sol_per_token_iqr": [
+    0.27,
+    0.81
+   ]
   }
  }
 }

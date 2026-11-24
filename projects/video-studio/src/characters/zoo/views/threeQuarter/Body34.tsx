@@ -11,54 +11,69 @@
 import React from 'react';
 import {LINE, ZOO_COLORS} from '../../../palette';
 import {line, smooth, type Pt} from '../../geometry';
+import {HandDrawing, type HandDrawingSpec} from '../../parts/Hand';
 import {JellyfishPin} from '../../parts/Pin';
-import {Clipped, Shape, Stroke} from '../../parts/Shape';
+import {ZOO_LINE} from '../../lines';
+import {Clipped, Outline, Shape, Stroke, useLineScale} from '../../parts/Shape';
 
 // ---------------------------------------------------------------- neck and collar
+// Repair round 1: every point above the collar line moved down ~7 u (full at y <= -705, none below -685) so the tee
+// neckline, collar and shoulder line sit where zoo_turn_34.png has them (as in the front view).
 const NECK: Pt[] = [
-	[-28, -780], [-31.6, -768], [-33.8, -754], [-34.8, -740], [-35.6, -728], [-30, -719], [-12, -711.6], [6, -710.4],
-	[22, -714], [24, -724], [21.2, -733], [17, -738], [6, -742], [-8, -750],
+	[-28, -773], [-31.6, -761], [-33.8, -747], [-34.8, -733], [-35.6, -721], [-30, -712], [-12, -704.6], [6, -703.4],
+	[22, -707], [24, -717], [21.2, -726], [17, -731], [6, -735], [-8, -743],
 ];
-const NECK_SHADOW = smooth([[-36, -762], [-16, -755], [2, -746], [18, -739], [26, -738], [26, -726], [4, -728], [-20, -734], [-37, -738]]);
-const COLLAR_BACK = smooth([[-48, -720], [-46.6, -731], [-40, -737], [-26, -739.6], [-6, -738.6], [12, -735], [26, -729], [32, -721], [20, -713], [-30, -716]]);
+const NECK_SHADOW = smooth([[-36, -755], [-16, -748], [2, -739], [18, -732], [26, -731], [26, -719], [4, -721], [-20, -727], [-37, -731]]);
+const COLLAR_BACK = smooth([[-48, -713], [-46.6, -724], [-40, -730], [-26, -732.6], [-6, -731.6], [12, -728], [26, -722], [32, -714], [20, -706], [-30, -709]]);
 
 export const Neck34: React.FC = () => <Shape name="neck" d={smooth(NECK)} fill={ZOO_COLORS.skin} shadow={{d: NECK_SHADOW, fill: ZOO_COLORS.skinShadow}} />;
 export const CollarBack34: React.FC = () => <Shape name="collarBack" d={COLLAR_BACK} fill={ZOO_COLORS.overshirtShadow} />;
 
 // ---------------------------------------------------------------- torso
 const TEE = smooth([
-	[-12, -716], [0, -711], [15, -709.6], [28, -712.6], [37, -718], [38, -690], [37, -600], [36, -446], [18, -446.6], [0, -447.6],
-	[-8, -449], [-8, -600], [-9, -700],
+	[-12, -709], [0, -704], [15, -702.6], [28, -705.6], [37, -711], [38, -688.2], [37, -600], [36, -446], [18, -446.6], [0, -447.6],
+	[-8, -449], [-8, -600], [-9, -694.8],
 ]);
-const TEE_RIB = line([[-6, -711.4], [6, -706.8], [18, -706.6], [29, -710.6]]);
+const TEE_RIB = line([[-6, -704.4], [6, -699.8], [18, -699.6], [29, -703.6]]);
 
 /** Near panel (anatomical right front, buttons on its front edge). Its back half hides under the near sleeve. */
 const PANEL_NEAR: Pt[] = [
-	[-48, -727], [-60, -716.6], [-76, -708.4], [-92, -701], [-104, -694], [-110, -687], [-111, -640], [-105, -560], [-99, -480],
+	[-48, -720], [-60, -709.6], [-76, -701.4], [-92, -695.4], [-104, -690.9], [-110, -686.3], [-111, -640], [-105, -560], [-99, -480],
 	[-93, -440], [-85, -432.6], [-60, -429], [-32, -425], [-10, -420.8], [-2.6, -420.6], [0.6, -425], [0.8, -460], [0.8, -600],
-	[0.4, -690], [-1.8, -703], [-6, -711], [-18, -717.6], [-33, -723.6],
+	[0.4, -688.2], [-1.8, -696.7], [-6, -704], [-18, -710.6], [-33, -716.6],
 ];
-const PANEL_NEAR_SHADOW = smooth([[-90, -700], [-60, -712], [-40, -700], [-50, -684], [-70, -676], [-90, -672]]);
+const PANEL_NEAR_SHADOW = smooth([[-90, -694.8], [-60, -705], [-40, -694.8], [-50, -684], [-70, -676], [-90, -672]]);
 /** Far panel (anatomical left front: pocket + pin). */
 const PANEL_FAR: Pt[] = [
-	[29, -724], [40, -716], [52, -706.4], [64, -699.4], [75, -693.6], [83.6, -686.6], [87.4, -676], [86.6, -650], [84.4, -600],
+	[29, -717], [40, -709], [52, -699.4], [64, -694.4], [75, -690.6], [83.6, -686], [87.4, -676], [86.6, -650], [84.4, -600],
 	[82.6, -540], [81.6, -480], [81, -440], [78.6, -426], [70, -423], [50, -421], [36, -421.4], [31.2, -424.4], [30.4, -440],
-	[30.2, -600], [29.8, -690], [28.4, -712],
+	[30.2, -600], [29.8, -688.2], [28.4, -705],
 ];
-const PANEL_FAR_SHADOW = smooth([[70, -700], [92, -690], [92, -420], [68, -420], [71, -520], [73, -620]]);
-const POCKET = smooth([[45.4, -640.4, 'c'], [68.2, -640.4, 'c'], [68.2, -600, 'c'], [57.2, -589.4, 'c'], [45.4, -599.6, 'c']]);
-const POCKET_HEM = line([[45.8, -632.6], [67.8, -632.6]]);
+const PANEL_FAR_SHADOW = smooth([[70, -694.8], [92, -688.2], [92, -420], [68, -420], [71, -520], [73, -620]]);
+// Repair round 1 (zoo_turn_34.png): pocket and pin ~9 u nearer the far edge (pocket x 54..77, pin centre x 61).
+const POCKET = smooth([[54.4, -640.4, 'c'], [77, -640.4, 'c'], [77, -600, 'c'], [66, -589.4, 'c'], [54.4, -599.6, 'c']]);
+const POCKET_HEM = line([[54.8, -632.6], [76.6, -632.6]]);
 const BUTTON_X = -6.4;
-/** Same heights as the front view (decision ZOO-V3). */
-const BUTTON_Y = [-686, -625, -567, -509, -452];
-export const PIN34 = {x: 53, y: -659, sx: 0.86} as const;
+/** Same heights as the front view (decision ZOO-V3, revised in repair round 1: top button -672). */
+const BUTTON_Y = [-672, -622, -565, -508, -452];
+export const PIN34 = {x: 61, y: -660, sx: 0.86} as const;
 
 const COLLAR_NEAR: Pt[] = [
-	[-43.6, -734.6], [-48.8, -724], [-46, -708], [-38.6, -690.6, 'c'], [-28, -695], [-16, -701], [-5, -707.6], [1.4, -712.4, 'c'],
-	[-12, -716.6], [-27, -723], [-39, -731],
+	[-43.6, -727.6], [-48.8, -717], [-46, -701], [-38.6, -688.6, 'c'], [-28, -691.5], [-16, -695.4], [-5, -700.6], [1.4, -705.4, 'c'],
+	[-12, -709.6], [-27, -716], [-39, -724],
 ];
-const COLLAR_NEAR_SHADOW: Pt[] = [[-48, -706], [-38.6, -688], [-26, -692.6], [-10, -699], [-2, -704], [-6, -690], [-24, -682], [-42, -680]];
-const COLLAR_FAR: Pt[] = [[26.6, -729], [33.6, -720], [40, -705], [45.4, -691, 'c'], [39.6, -695.4], [33.4, -703], [29, -711], [25.6, -720]];
+const COLLAR_NEAR_SHADOW: Pt[] = [[-48, -699], [-38.6, -687], [-26, -689.9], [-10, -694.1], [-2, -697.4], [-6, -688.2], [-24, -682], [-42, -680]];
+const COLLAR_FAR: Pt[] = [[26.6, -722], [33.6, -713], [40, -698], [45.4, -688.9, 'c'], [39.6, -691.8], [33.4, -696.7], [29, -704], [25.6, -713]];
+
+/** A small silver button with a fine outline (line width follows lineScale). */
+export const Button: React.FC<{x: number; y: number; r: number; rx?: number}> = ({x, y, r, rx}) => {
+	const ls = useLineScale();
+	return rx ? (
+		<ellipse cx={x} cy={y} rx={rx} ry={r} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={ZOO_LINE.fine * 0.8 * ls} />
+	) : (
+		<circle cx={x} cy={y} r={r} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={ZOO_LINE.fine * 0.8 * ls} />
+	);
+};
 
 export const Torso34: React.FC = () => (
 	<g data-part="torso" data-view="threeQuarter">
@@ -66,8 +81,8 @@ export const Torso34: React.FC = () => (
 		<Stroke d={TEE_RIB} width={LINE.detailWidth * 0.8} color={ZOO_COLORS.overshirt} />
 		<Shape name="overshirtLeftPanel" d={smooth(PANEL_FAR)} fill={ZOO_COLORS.overshirt} shadow={{d: PANEL_FAR_SHADOW, fill: ZOO_COLORS.overshirtShadow}} />
 		<g data-part="pocket">
-			<path d={POCKET} fill="none" stroke={LINE.color} strokeWidth={LINE.detailWidth} strokeLinejoin="round" />
-			<Stroke d={POCKET_HEM} width={LINE.detailWidth * 0.7} />
+			<Outline d={POCKET} width={ZOO_LINE.detail} />
+			<Stroke d={POCKET_HEM} width={ZOO_LINE.fine} />
 		</g>
 		<g transform={`translate(${PIN34.x} 0) scale(${PIN34.sx} 1) translate(${-PIN34.x} 0)`}>
 			<JellyfishPin x={PIN34.x} y={PIN34.y} />
@@ -75,7 +90,7 @@ export const Torso34: React.FC = () => (
 		<Shape name="overshirtRightPanel" d={smooth(PANEL_NEAR)} fill={ZOO_COLORS.overshirt} shadow={{d: PANEL_NEAR_SHADOW, fill: ZOO_COLORS.overshirtShadow}} />
 		<g data-part="buttons">
 			{BUTTON_Y.map((y) => (
-				<circle key={y} cx={BUTTON_X} cy={y} r={3.7} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1.1} />
+				<Button key={y} x={BUTTON_X} y={y} r={3.7} />
 			))}
 		</g>
 		<path data-part="collarShadow" d={smooth(COLLAR_NEAR_SHADOW)} fill={ZOO_COLORS.overshirtShadow} />
@@ -87,17 +102,17 @@ export const Torso34: React.FC = () => (
 // ---------------------------------------------------------------- arms
 /** Near sleeve (anatomical right), hanging in front of the near side of the body. */
 const SLEEVE_NEAR: Pt[] = [
-	[-92, -701], [-104, -694], [-112, -686.6], [-118.4, -677], [-123.4, -664], [-127.4, -650], [-130.4, -628], [-133.4, -604], [-136.2, -576],
+	[-92, -695.4], [-104, -690.9], [-112, -686], [-118.4, -677], [-123.4, -664], [-127.4, -650], [-130.4, -628], [-133.4, -604], [-136.2, -576],
 	[-138.6, -548], [-140, -520], [-139.2, -500], [-136.4, -480], [-132.6, -463], [-130.6, -455], [-129.8, -440], [-128.8, -419.4, 'c'],
 	[-105, -416.8], [-82.4, -418.4, 'c'], [-82.8, -440], [-84, -455.4], [-86, -480], [-87.8, -520], [-88.4, -560], [-87, -600],
-	[-84.6, -630], [-83.8, -650], [-85.6, -668], [-88.6, -686],
+	[-84.6, -630], [-83.8, -650], [-85.6, -668], [-88.6, -685.6],
 ];
 const SLEEVE_NEAR_SHADOW = smooth([[-96, -684], [-86, -692], [-80, -640], [-80, -420], [-98, -420], [-100, -520], [-98, -620]]);
 const CUFF_NEAR = line([[-131, -455.4], [-108, -457.4], [-84, -455.8]]);
 const ELBOW_NEAR = line([[-123.4, -616], [-120.4, -590], [-121.2, -566]]);
 /** Far sleeve (anatomical left): only its outer half shows, behind the far panel. */
 const SLEEVE_FAR: Pt[] = [
-	[66, -697], [79, -692], [86.6, -682], [89.8, -664], [91.8, -640], [94, -612], [96.8, -582], [99.4, -555], [101.6, -525],
+	[66, -692.8], [79, -689.5], [86.6, -682], [89.8, -664], [91.8, -640], [94, -612], [96.8, -582], [99.4, -555], [101.6, -525],
 	[103.2, -500], [104.6, -478], [104.8, -462], [103.8, -455], [103.6, -440], [103, -419.4, 'c'], [89, -417], [75.6, -418.6, 'c'],
 	[75.6, -440], [75.8, -455], [74, -500], [72, -600], [64, -680],
 ];
@@ -105,7 +120,7 @@ const SLEEVE_FAR_SHADOW = smooth([[60, -700], [80, -700], [86, -640], [84, -420]
 const CUFF_FAR = line([[75.8, -455.4], [90, -456.6], [104, -455.2]]);
 
 /** Wrist pivots (cuff bottom centre) used to hang the hands. */
-export const WRIST34 = {near: {x: -95.5, y: -418}, far: {x: 90.8, y: -418}} as const;
+export const WRIST34 = {near: {x: -98.4, y: -418}, far: {x: 87.6, y: -418}} as const;
 
 const Sleeve: React.FC<{d: string; shadow: string; cuff: string; extra?: string; name: string}> = ({d, shadow, cuff, extra, name}) => (
 	<g data-part={name}>
@@ -116,55 +131,57 @@ const Sleeve: React.FC<{d: string; shadow: string; cuff: string; extra?: string;
 );
 
 /**
- * 3/4 hands, drawn for this view from the sheet (zoo_turn_34.png). Near = anatomical RIGHT hand: its
- * back faces the viewer, four finger lobes at the bottom, the thumb along the front edge. Far =
- * anatomical LEFT hand: fingers curl toward the thigh with the thumb tip resting over them.
+ * 3/4 hands (repair round 2), drawn for this view from zoo_turn_34.png (skin edges row-scanned); round 1 mapped the front
+ * palm drawing here, so the front thumb notch showed. Near = anatomical RIGHT hand: the BACK of the hand, ~48 u wide, four
+ * fingers pointing down with their tips stepping (little finger shortest, index longest) and the thumb as a shorter lobe
+ * on the inner side; thin warm-brown separations run up from the tip notches. Far = anatomical LEFT hand: seen from its
+ * little-finger side, the back of the hand with the fingers curled toward the body (tip lobes at the lower left) and one
+ * soft crease where they fold. Neither is a mirror of the other or of another view's hand.
  */
-const HAND_NEAR: Pt[] = [
-	[-111, -420], [-113, -400], [-114.4, -380], [-114, -362], [-112.6, -346], [-110, -336.6], [-105.6, -332], [-101.6, -333.6], [-99.6, -339, 'c'],
-	[-97, -332], [-92.6, -330], [-88.6, -332], [-87, -337.6, 'c'], [-84.4, -332.4], [-80, -331.4], [-76.8, -334.6], [-76, -340, 'c'],
-	[-72.4, -341.6], [-68.4, -346], [-66.4, -351, 'c'], [-63.4, -356], [-62.6, -366], [-65.4, -377], [-71, -389], [-77.4, -399], [-80, -420],
-];
-const HAND_NEAR_SHADOW = smooth([[-82, -402], [-60, -406], [-58, -326], [-84, -326], [-80, -350]]);
-const HAND_NEAR_LINES: Pt[][] = [
-	[[-99.6, -339], [-99.6, -351], [-101, -362]],
-	[[-87, -337.6], [-87.4, -350], [-88.6, -361]],
-	[[-76, -340], [-76.6, -351], [-77.6, -360]],
-	[[-66.4, -351], [-71.4, -356], [-76.6, -357]], // thumb tip against the index finger
-	[[-78.6, -396], [-74.4, -381], [-72, -368]], // thumb edge
-];
-const HAND_FAR: Pt[] = [
-	[78, -418], [76, -402], [73, -388], [71.4, -374], [72.6, -364, 'c'], [69, -358], [68, -350], [70.6, -343], [76, -338.6], [83, -336.6],
-	[90, -339], [95.4, -345], [99.6, -354], [102.6, -368], [104, -390], [103.6, -418],
-];
-const HAND_FAR_SHADOW = smooth([[66, -372], [84, -374], [90, -350], [80, -332], [64, -332]]);
-const HAND_FAR_LINES: Pt[][] = [
-	[[72.6, -364], [80, -366], [86.4, -362]], // thumb tip over the index finger
-	[[70.6, -343], [78, -348], [86, -348.4]],
-	[[76, -338.6], [83, -344], [91, -346]],
-];
-
-const Hand34: React.FC<{outline: Pt[]; shadow: string; lines: Pt[][]; name: string}> = ({outline, shadow, lines, name}) => (
-	<g data-part={name}>
-		<Shape d={smooth(outline)} fill={ZOO_COLORS.skin} shadow={{d: shadow, fill: ZOO_COLORS.skinShadow}} />
-		{lines.map((l, i) => (
-			<Stroke key={i} d={line(l)} width={LINE.detailWidth} />
-		))}
-	</g>
-);
+const NEAR_HAND: HandDrawingSpec = {
+	outline: [
+		[-112.6, -422], [-84, -422], [-80.4, -414], [-76.6, -408], [-71.8, -400.4], [-67.6, -393], [-65, -385], [-63, -376], [-62.4, -366],
+		[-62.8, -358], [-64.4, -352.8], [-67.2, -351.2], [-69.8, -353.4, 'c'], [-70.2, -347.6], [-70.8, -340.4], [-72.4, -334.8],
+		[-75.6, -331.2], [-79.4, -330.8], [-81.8, -333, 'c'], [-84, -331.2], [-87.2, -330.8], [-90.4, -332.2], [-92.4, -334.6],
+		[-93.8, -337.4, 'c'], [-95.8, -336], [-98.8, -336.4], [-101, -339.4], [-102.4, -344, 'c'], [-104, -346], [-106.6, -346.6],
+		[-108.8, -349.6], [-110.8, -356], [-112.4, -364], [-113, -376], [-113, -392], [-112.8, -406],
+	],
+	shadow: [[-56, -424], [-78, -422], [-73.6, -406], [-69.4, -396], [-67.4, -384], [-66.8, -370], [-56, -360]],
+	// The sheet's separations run from the knuckle line (y ~-363) to the tip notches.
+	lines: [
+		[[-102.4, -344], [-103.4, -353], [-104, -362]],
+		[[-93.8, -337.4], [-94.8, -350], [-95.4, -362.6]],
+		[[-81.8, -333], [-82.6, -347], [-83, -362]],
+		[[-69.8, -353.4], [-70.4, -365], [-71, -376]],
+	],
+};
+const FAR_HAND: HandDrawingSpec = {
+	outline: [
+		[74.8, -424], [99.4, -424], [101.6, -412], [102.6, -400], [103, -390], [102.6, -378], [101.6, -367], [98.8, -358.4], [96.4, -352.6],
+		[93.6, -347.2], [90.4, -342.6], [86.4, -338.4], [81.6, -335], [77.6, -332.8], [74, -333.8], [71.2, -336.6, 'c'], [67, -337],
+		[64.6, -339.6], [65, -343], [68.6, -344.8, 'c'], [65.6, -346.6], [64.4, -349.4], [65.6, -352.4], [68.8, -353.6], [71, -355.4, 'c'],
+		[70.8, -362], [70.6, -372], [70.4, -384], [70.6, -398], [72, -406], [73.4, -412],
+	],
+	shadow: [[110, -426], [97.4, -424], [98, -404], [97.8, -384], [96, -368], [110, -362]],
+	lines: [
+		[[86.2, -384], [84.6, -372], [82.4, -362], [79, -353.4], [74.8, -347.4], [71.2, -344.8]],
+		[[68.6, -344.8], [73, -343.8], [77.6, -341.4]],
+		[[71.2, -336.6], [75.4, -337.6], [79.6, -340.2]],
+	],
+};
 
 export const FarArm34: React.FC = () => (
 	<g data-part="armL">
-		<Hand34 outline={HAND_FAR} shadow={HAND_FAR_SHADOW} lines={HAND_FAR_LINES} name="handL" />
+		<HandDrawing hand={FAR_HAND} name="handL" />
 		<Sleeve d={smooth(SLEEVE_FAR)} shadow={SLEEVE_FAR_SHADOW} cuff={CUFF_FAR} name="sleeveL" />
 	</g>
 );
 
 export const NearArm34: React.FC = () => (
 	<g data-part="armR">
-		<Hand34 outline={HAND_NEAR} shadow={HAND_NEAR_SHADOW} lines={HAND_NEAR_LINES} name="handR" />
+		<HandDrawing hand={NEAR_HAND} name="handR" />
 		<Sleeve d={smooth(SLEEVE_NEAR)} shadow={SLEEVE_NEAR_SHADOW} cuff={CUFF_NEAR} extra={ELBOW_NEAR} name="sleeveR" />
-		<circle data-part="cuffButton" cx={-125.4} cy={-436} r={2.8} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1} />
+		<Button x={-125.4} y={-436} r={2.8} />
 	</g>
 );
 
@@ -221,9 +238,9 @@ export const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; shadow: Pt[]; lines: 
 				<path d={smooth(shadow)} fill={ZOO_COLORS.sneakerShadow} />
 				<path d={smooth(sole)} fill={ZOO_COLORS.sneakerSole} />
 			</Clipped>
-			<path d={d} fill="none" stroke={LINE.color} strokeWidth={LINE.width} strokeLinejoin="round" />
+			<Outline d={d} />
 			{lines.map((l, i) => (
-				<Stroke key={i} d={line(l)} width={i === 0 ? LINE.detailWidth : LINE.detailWidth * 0.8} />
+				<Stroke key={i} d={line(l)} width={i === 0 ? ZOO_LINE.detail : ZOO_LINE.fine} />
 			))}
 		</g>
 	);

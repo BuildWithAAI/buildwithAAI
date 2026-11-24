@@ -1,13 +1,25 @@
+import {createHmac, randomBytes} from 'node:crypto';
 import type {ServerResponse} from 'node:http';
 import type {DatabaseSync, SQLOutputValue} from 'node:sqlite';
-import type {OrderRequest} from '../../types.ts';
+import type {Offer, OrderRequest, Source} from '../../types.ts';
 import {checkCredentials, csrfToken, newCsrfNonce, parseBasicAuth, readCookie, validCsrf} from '../auth.ts';
 import {stmt} from '../db.ts';
 import {HttpError} from '../errors.ts';
 import {headerValue} from '../geo.ts';
 import {errorPage, esc, page} from '../html.ts';
 import type {Ctx, Handler, Router} from '../http.ts';
-import {disclosureLines, expiresAtMs, hubPath, isLive, parseSource, parseVideoId, SOURCES} from '../offers.ts';
+import {
+	disclosureLines,
+	expiresAtMs,
+	hubPath,
+	isLive,
+	isRestricted,
+	parseSource,
+	parseVideoId,
+	restrictedOfferLines,
+	SOURCES,
+	topDisclosure,
+} from '../offers.ts';
 import {createRateLimiter, rateLimitKey, type RateLimiter} from '../security.ts';
 
 /**
@@ -22,9 +34,8 @@ import {createRateLimiter, rateLimitKey, type RateLimiter} from '../security.ts'
  * (the first click of the day keeps its video and source).
  */
 export const register = (router: Router): void => {
-	// Failed sign-ins per client: 10, then one more every 90 seconds. Created per server instance.
-	const failures = createRateLimiter({capacity: 10, refillPerSecond: 10 / (15 * 60)});
-	const admin = (handler: AdminHandler): Handler => (ctx) => guard(ctx, failures, handler);
+	const state = createSignInState();
+	const admin = (handler: AdminHandler): Handler => (ctx) => guard(ctx, state, handler);
 	router.get('/admin', admin(overview));
 	router.get('/admin/links', admin(linkBuilder));
 	router.post('/admin/orders/:id/status', admin(updateStatus));
@@ -51,7 +62,91 @@ const sameOrigin = (ctx: Ctx): boolean => {
 	return site === null || site === 'same-origin' || site === 'none';
 };
 
-const guard = async (ctx: Ctx, failures: RateLimiter, handler: AdminHandler): Promise<void> => {
+/** Sign-in failures allowed per client: 10, then one more every 90 seconds. */
+export const CLIENT_FAILURES = {capacity: 10, refillPerSecond: 10 / (15 * 60)};
+/** Sign-in failures allowed from all clients together: 50 an hour. Beyond that admin locks for everyone. */
+export const GLOBAL_FAILURES = {capacity: 50, refillPerSecond: 50 / 3600};
+/** Password checks (scrypt, 32 MiB each) allowed at the same time; more get 429 before any hashing. */
+export const MAX_PASSWORD_CHECKS = 2;
+/** How long a verified Authorization header is trusted without running scrypt again. */
+const VERIFIED_TTL_MS = 10 * 60_000;
+const VERIFIED_MAX = 8;
+const ALL = 'all';
+
+type SignInState = {
+	failures: RateLimiter;
+	globalFailures: RateLimiter;
+	inFlight: number;
+	lockLogged: boolean;
+	/** HMAC(per-process key, Authorization header) -> expiry, for headers whose password check passed. */
+	verified: Map<string, number>;
+	verifiedKey: Buffer;
+};
+
+const createSignInState = (): SignInState => ({
+	failures: createRateLimiter(CLIENT_FAILURES),
+	globalFailures: createRateLimiter(GLOBAL_FAILURES),
+	inFlight: 0,
+	lockLogged: false,
+	verified: new Map(),
+	verifiedKey: randomBytes(32),
+});
+
+const tooMany = (ctx: Ctx, retryAfter: number, title: string, message: string): void => {
+	ctx.res.setHeader('Retry-After', String(Math.max(1, Math.ceil(retryAfter))));
+	ctx.html(429, errorPage(ctx.config, 429, title, message));
+};
+
+/**
+ * Checks Basic credentials with the brute-force limits applied BEFORE any hashing: the failure tokens are
+ * taken first and given back only when the password is right, so concurrent guesses cannot all slip past
+ * a check that has not finished yet. A header that passed recently is trusted for 10 minutes, so ordinary
+ * admin browsing does not run scrypt on every request. Returns true when the credentials are right, false
+ * when they are wrong (the caller answers 401), and 'answered' when a 429 has already been sent.
+ */
+const verifySignIn = async (ctx: Ctx, state: SignInState, header: string, credentials: {user: string; password: string}): Promise<boolean | 'answered'> => {
+	const {adminUser, adminPasswordHash} = ctx.config;
+	const now = Date.now();
+	const cacheKey = createHmac('sha256', state.verifiedKey).update(`${adminPasswordHash}\n${header}`).digest('hex');
+	const until = state.verified.get(cacheKey);
+	if (until !== undefined && until > now) return true;
+	if (until !== undefined) state.verified.delete(cacheKey);
+
+	if (state.inFlight >= MAX_PASSWORD_CHECKS) {
+		tooMany(ctx, 1, 'Sign-in is busy', 'Another sign-in is being checked. Try again in a moment.');
+		return 'answered';
+	}
+	const key = rateLimitKey(ctx);
+	if (!state.failures.take(key)) {
+		tooMany(ctx, state.failures.retryAfter(key), 'Too many failed sign-ins', 'Wait a few minutes, then try again.');
+		return 'answered';
+	}
+	if (!state.globalFailures.take(ALL)) {
+		state.failures.refund(key);
+		if (!state.lockLogged) {
+			console.warn(`[hub] admin sign-in locked: more than ${GLOBAL_FAILURES.capacity} failed sign-ins within an hour from all clients together`);
+			state.lockLogged = true;
+		}
+		tooMany(ctx, state.globalFailures.retryAfter(ALL), 'Sign-in is locked', 'There were too many failed sign-ins. Try again later.');
+		return 'answered';
+	}
+	state.lockLogged = false; // the lock (if any) is over: log the next one again
+	state.inFlight++;
+	let ok = false;
+	try {
+		ok = await checkCredentials(credentials, adminUser, adminPasswordHash);
+	} finally {
+		state.inFlight--;
+	}
+	if (!ok) return false;
+	state.failures.refund(key);
+	state.globalFailures.refund(ALL);
+	if (state.verified.size >= VERIFIED_MAX) state.verified.delete(state.verified.keys().next().value ?? '');
+	state.verified.set(cacheKey, now + VERIFIED_TTL_MS);
+	return true;
+};
+
+const guard = async (ctx: Ctx, state: SignInState, handler: AdminHandler): Promise<void> => {
 	ctx.res.setHeader('Cache-Control', 'no-store');
 	ctx.res.setHeader('X-Robots-Tag', 'noindex, nofollow');
 	const {adminUser, adminPasswordHash, hashSecret} = ctx.config;
@@ -59,15 +154,12 @@ const guard = async (ctx: Ctx, failures: RateLimiter, handler: AdminHandler): Pr
 		ctx.html(503, errorPage(ctx.config, 503, 'Admin is switched off', 'Set ADMIN_USER and ADMIN_PASSWORD_HASH to turn it on.'));
 		return;
 	}
-	const key = rateLimitKey(ctx);
-	const credentials = parseBasicAuth(headerValue(ctx.req, 'authorization') ?? undefined);
+	const header = headerValue(ctx.req, 'authorization') ?? '';
+	const credentials = parseBasicAuth(header || undefined);
 	if (credentials) {
-		if (failures.available(key) < 1) {
-			ctx.res.setHeader('Retry-After', String(Math.max(1, failures.retryAfter(key))));
-			ctx.html(429, errorPage(ctx.config, 429, 'Too many failed sign-ins', 'Wait a few minutes, then try again.'));
-			return;
-		}
-		if (await checkCredentials(credentials, adminUser, adminPasswordHash)) {
+		const result = await verifySignIn(ctx, state, header, credentials);
+		if (result === 'answered') return;
+		if (result) {
 			const name = cookieName(ctx);
 			let nonce = readCookie(ctx.req.headers.cookie, name);
 			if (ctx.req.method === 'POST') {
@@ -84,7 +176,6 @@ const guard = async (ctx: Ctx, failures: RateLimiter, handler: AdminHandler): Pr
 			await handler(ctx, csrfToken(hashSecret, nonce ?? ''));
 			return;
 		}
-		failures.take(key);
 	}
 	ctx.res.setHeader('WWW-Authenticate', 'Basic realm="Creator hub admin", charset="UTF-8"');
 	ctx.html(401, errorPage(ctx.config, 401, 'Sign-in required', 'This page is for the site owner.'));
@@ -148,6 +239,16 @@ const statusForm = (order: Row, csrf: string): string => {
 </form>`;
 };
 
+/**
+ * mailto: link for an order's address (RFC 6068): the local part and domain are percent-encoded, so an
+ * address cannot smuggle in ?cc=, &bcc= or &body= fields when the owner clicks it to reply.
+ */
+export const mailtoHref = (email: string): string => {
+	const at = email.lastIndexOf('@');
+	if (at < 1) return `mailto:${encodeURIComponent(email)}`;
+	return `mailto:${encodeURIComponent(email.slice(0, at))}@${encodeURIComponent(email.slice(at + 1))}`;
+};
+
 const ordersTable = (orders: Row[], csrf: string): string => {
 	if (orders.length === 0) return '<p class="muted">No order requests yet.</p>';
 	const rows = orders
@@ -163,7 +264,7 @@ const ordersTable = (orders: Row[], csrf: string): string => {
 			].filter(Boolean);
 			return `<tr>
 <td class="num">${esc(new Date(Number(o.ts)).toISOString().slice(0, 16).replace('T', ' '))}</td>
-<td>${esc(o.name)}<br><a href="mailto:${esc(o.email)}">${esc(o.email)}</a></td>
+<td>${esc(o.name)}<br><a href="${esc(mailtoHref(String(o.email ?? '')))}">${esc(o.email)}</a></td>
 <td>${esc(o.package_id)}</td>
 <td><details><summary>${esc(short)}</summary><p>${esc(message)}</p><p class="muted small">${details.map((d) => esc(d)).join('<br>')}</p></details></td>
 <td>${statusForm(o, csrf)}</td>
@@ -226,6 +327,22 @@ ${ordersTable(orders, csrf)}`;
 	ctx.html(200, page(ctx.config, {title: 'Admin', nav: 'admin', wide: true, noindex: true, body}));
 };
 
+/**
+ * Description text for one video, built like the publish kit's: an opening disclosure line, then each offer
+ * that may be shown everywhere with its disclosure under its link. A description is visible in every country,
+ * so offers restricted by region are never named in it: one line to the hub's region-filtered page stands in
+ * for all of them, and they are listed separately for the owner only.
+ */
+export const descriptionText = (offers: Offer[], publicBaseUrl: string, videoId: string | null, source: Source): string => {
+	const open = offers.filter((o) => !isRestricted(o));
+	const restricted = offers.filter((o) => isRestricted(o));
+	const top = topDisclosure(offers);
+	if (!top) return '';
+	const blocks = [top, ...open.map((o) => [`${o.name}: ${publicBaseUrl}${hubPath(o.id, videoId, source)}`, ...disclosureLines(o)].join('\n'))];
+	if (restricted.length > 0) blocks.push(restrictedOfferLines(publicBaseUrl, videoId, source).join('\n'));
+	return blocks.join('\n\n');
+};
+
 const linkBuilder: AdminHandler = (ctx) => {
 	const now = Date.now();
 	const rawVideo = ctx.url.searchParams.get('v') ?? '';
@@ -233,9 +350,14 @@ const linkBuilder: AdminHandler = (ctx) => {
 	const source = parseSource(ctx.url.searchParams.get('s')) ?? 'yt';
 	const {offers} = ctx.config.offers;
 	const live = offers.filter((o) => isLive(o, now));
-	const text = live
-		.map((o) => [`${o.name}: ${ctx.config.publicBaseUrl}${hubPath(o.id, videoId, source)}`, ...disclosureLines(o)].join('\n'))
-		.join('\n\n');
+	const text = descriptionText(live, ctx.config.publicBaseUrl, videoId, source);
+	const hubOnly = live.filter((o) => isRestricted(o));
+	const hubOnlyList = hubOnly
+		.map((o) => {
+			const rules = [o.blockedCountries.length ? `blocked in ${o.blockedCountries.join(' ')}` : '', o.allowedCountries?.length ? `only ${o.allowedCountries.join(' ')}` : '', 'hidden when the country is unknown'].filter(Boolean);
+			return `<li>${esc(o.name)} <span class="muted small">(${esc(rules.join('; '))})</span></li>`;
+		})
+		.join('\n');
 	const sourceOptions = SOURCES.map((s) => `<option value="${s}"${s === source ? ' selected' : ''}>${s}</option>`).join('');
 	const registryRows = offers
 		.map((o) => {
@@ -251,7 +373,7 @@ const linkBuilder: AdminHandler = (ctx) => {
 		})
 		.join('\n');
 	const body = `<h1>Link builder</h1>
-<p class="lede">Tracked links for one video, each followed by the disclosure that must sit next to it. Paste them into the description as they are.</p>
+<p class="lede">Tracked links for one video, each followed by the disclosure that must sit next to it. Paste the text into the description as it is.</p>
 <form method="get" action="/admin/links">
 <div class="field"><label for="v">Video ID or episode slug</label><input id="v" name="v" value="${esc(rawVideo)}" maxlength="64" pattern="[A-Za-z0-9_\\-]{1,64}" aria-describedby="v-help"><span id="v-help" class="muted small">Letters, digits, "-" and "_" only, up to 64 characters.</span></div>
 <div class="field"><label for="s">Where the links will be posted</label><select id="s" name="s">${sourceOptions}</select></div>
@@ -259,8 +381,17 @@ const linkBuilder: AdminHandler = (ctx) => {
 </form>
 ${rawVideo && !videoId ? '<p class="warn" role="alert">That video ID is not valid, so the links below carry no video.</p>' : ''}
 <h2>Description text</h2>
-${live.length > 0 ? `<div class="field"><label for="out">Links with disclosures (${live.length} live offers)</label><textarea id="out" readonly>${esc(text)}</textarea></div>` : '<p>No offers are live. Set "active": true in config/offers.json.</p>'}
-<p class="muted small">Restricted offers are hidden by the hub where they are blocked, but the text you paste is visible everywhere. In videos, also say the disclosure out loud and show it on screen.</p>
+${live.length > 0 ? `<div class="field"><label for="out">Opening disclosure, then links with disclosures (${live.length - hubOnly.length} of ${live.length} live offers named)</label><textarea id="out" readonly>${esc(text)}</textarea></div>` : '<p>No offers are live. Set "active": true in config/offers.json.</p>'}
+<p class="muted small">Put the first line at the top of the description. In videos, also say the disclosure out loud and show it on screen.</p>
+${
+	hubOnly.length > 0
+		? `<h3>Hub page only: do not name these in descriptions, posts, emails or videos</h3>
+<p class="muted small">They are restricted by region, and text you publish is visible everywhere (in the UK, promoting them can be a criminal offence). The hub shows them only where they are allowed, through the "More partner links" line above.</p>
+<ul>
+${hubOnlyList}
+</ul>`
+		: ''
+}
 <h2>Offer registry</h2>
 <div class="table-wrap"><table>
 <caption>Re-check each programme's terms before a campaign.</caption>

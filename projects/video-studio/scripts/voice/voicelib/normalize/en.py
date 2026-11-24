@@ -5,6 +5,7 @@ US style: no "and" inside numbers ("four hundred two"), years in pairs ("twenty 
 
 import re
 
+from ..lexicon import PRONUNCIATIONS
 from .common import SpacedNormalizer
 
 ONES = [
@@ -81,6 +82,11 @@ class English(SpacedNormalizer):
         "£": ("pound", "pounds", "penny", "pence"),
         "¥": ("yen", "yen", None, None),
         "₹": ("rupee", "rupees", None, None),
+        "US$": ("U S dollar", "U S dollars", "cent", "cents"),
+        "R$": ("Brazilian real", "Brazilian reals", "centavo", "centavos"),
+        "A$": ("Australian dollar", "Australian dollars", "cent", "cents"),
+        "C$": ("Canadian dollar", "Canadian dollars", "cent", "cents"),
+        "MX$": ("Mexican peso", "Mexican pesos", "centavo", "centavos"),
     }
     scales = {"k": ("thousand", "thousand"), "m": ("million", "million"), "b": ("billion", "billion"), "t": ("trillion", "trillion")}
     scale_words = frozenset({"thousand", "million", "billion", "trillion"})
@@ -88,6 +94,8 @@ class English(SpacedNormalizer):
     symbols = {"&": "and", "+": "plus", "=": "equals", "@": "at", "%": "percent", "#": "number", "~": "about", "×": "times"}
     months = MONTHS
     month_lookup = {**{m.lower(): i + 1 for i, m in enumerate(MONTHS)}, **{m[:3].lower(): i + 1 for i, m in enumerate(MONTHS)}, "sept": 9}
+    lexicon = PRONUNCIATIONS["en"]
+    number_word = "number"
 
     def cardinal(self, n: int) -> str:
         return cardinal(n)
@@ -114,6 +122,13 @@ class English(SpacedNormalizer):
         if mi < 10:
             return f"{cardinal(h)} oh {ONES[mi]}"
         return f"{cardinal(h)} {cardinal(mi)}"
+
+    def fraction_words(self, n: int, d: int) -> str | None:
+        if d == 2:
+            return "one half" if n == 1 else None
+        if d == 4:
+            return f"{cardinal(n)} quarter{'s' if n > 1 else ''}"
+        return f"{cardinal(n)} {ordinal(d)}{'s' if n > 1 else ''}"
 
     def ordinal_token(self, core: str) -> str | None:
         m = re.fullmatch(r"(\d+)(st|nd|rd|th)", core, re.I)

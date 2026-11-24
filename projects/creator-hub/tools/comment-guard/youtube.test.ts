@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {mkdtempSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {after, before, beforeEach, describe, it} from 'node:test';
+import {fileURLToPath} from 'node:url';
 import {approveInBrowser, type MockGoogle, startMockGoogle} from './mock-google.ts';
 import {
+	assertCredentialPathIgnored,
 	AuthError,
 	authorize,
 	createClient,
@@ -22,6 +25,14 @@ import {
 } from './youtube.ts';
 
 const CHANNEL = 'UCsyntheticZOORA00000001';
+const hasGit = (): boolean => {
+	try {
+		execFileSync('git', ['--version'], {stdio: 'ignore'});
+		return existsSync(fileURLToPath(new URL('../../../../.git', import.meta.url)));
+	} catch {
+		return false;
+	}
+};
 const client = {clientId: 'test-client.apps.googleusercontent.com', clientSecret: 'test-secret'};
 const fresh = (): Tokens => ({accessToken: 'at-valid', expiresAt: Date.now() + 3_600_000, refreshToken: 'rt-valid', scope: SCOPE});
 
@@ -67,10 +78,37 @@ describe('OAuth for installed apps (loopback redirect + PKCE)', () => {
 		assert.equal(challenge, q.get('code_challenge'));
 	});
 
-	it('rejects a response with the wrong state, and a refusal', async () => {
+	it('ignores stray and wrong-state requests to the loopback port, then accepts the real redirect', async () => {
+		const statuses: number[] = [];
+		let redirectOrigin = '';
+		const tokens = await authorize({
+			client,
+			endpoints: google.endpoints,
+			openUrl: async (url) => {
+				redirectOrigin = new URL(new URL(url).searchParams.get('redirect_uri') ?? '').origin;
+				statuses.push((await fetch(`${redirectOrigin}/?probe=1`)).status);
+				const forged = new URL(redirectOrigin);
+				forged.search = new URLSearchParams({code: 'forged-code', state: 'forged'}).toString();
+				const page = await fetch(forged);
+				statuses.push(page.status);
+				assert.doesNotMatch(await page.text(), /Signed in/);
+				await approveInBrowser(url);
+				// a request after the sign-in finished is told so, not "Signed in"
+				const late = await fetch(`${redirectOrigin}/?code=x&state=y`);
+				statuses.push(late.status);
+				assert.match(await late.text(), /already finished/);
+			},
+		});
+		assert.deepEqual(statuses, [400, 400, 409]);
+		assert.equal(tokens.accessToken, 'at-initial');
+		assert.equal(google.calls('/token').length, 1);
+		assert.equal(google.calls('/token')[0].form.get('code'), 'test-code');
+	});
+
+	it('times out when only a wrong-state response arrives, and rejects a refusal', async () => {
 		await assert.rejects(
-			authorize({client, endpoints: google.endpoints, openUrl: (url) => approveInBrowser(url, {state: 'forged'})}),
-			(err) => err instanceof AuthError && /state/.test(err.message),
+			authorize({client, endpoints: google.endpoints, timeoutMs: 400, openUrl: (url) => approveInBrowser(url, {state: 'forged'})}),
+			(err) => err instanceof AuthError && /Timed out/.test(err.message) && /wrong state/.test(err.message),
 		);
 		await assert.rejects(
 			authorize({client, endpoints: google.endpoints, openUrl: (url) => approveInBrowser(url, {error: 'access_denied'})}),
@@ -176,6 +214,43 @@ describe('credential files', () => {
 		} finally {
 			rmSync(dir, {recursive: true, force: true});
 		}
+	});
+
+	it('refuses to save credentials inside a git repository unless git ignores the path', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'guard-repo-'));
+		try {
+			mkdirSync(join(dir, '.git'));
+			const data: OAuthFile = {version: 1, client, accounts: {}};
+			const asked: string[] = [];
+			const git = (ignored: string[]) => (workTree: string, path: string) => {
+				asked.push(path);
+				assert.equal(workTree, dir);
+				return ignored.includes(path) ? 0 : 1;
+			};
+			const tracked = join(dir, 'config', 'youtube-oauth.json.bak');
+			assert.throws(() => writeOAuthFile(tracked, data, git([])), (err) => err instanceof AuthError && /not gitignored/.test(err.message));
+			assert.equal(existsSync(tracked), false, 'nothing is written');
+			const ignored = join(dir, 'config', 'youtube-oauth-news.json');
+			writeOAuthFile(ignored, data, git([ignored]));
+			assert.deepEqual(readOAuthFile(ignored), data);
+			assert.deepEqual(asked, [tracked, ignored]);
+			assert.throws(
+				() => writeOAuthFile(join(dir, 'x.json'), data, () => {
+					throw new Error('git not found');
+				}),
+				/Refusing to save YouTube credentials .*git not found/,
+			);
+		} finally {
+			rmSync(dir, {recursive: true, force: true});
+		}
+	});
+
+	it("matches creator-hub's own .gitignore for credential files (real git)", {skip: !hasGit()}, () => {
+		const project = fileURLToPath(new URL('../../', import.meta.url));
+		for (const name of ['config/youtube-oauth.json', 'config/youtube-oauth-news.json', 'config/youtube-oauth.json.bak', 'config/offers.json']) {
+			assert.doesNotThrow(() => assertCredentialPathIgnored(join(project, name)), name);
+		}
+		assert.throws(() => assertCredentialPathIgnored(join(project, 'tools', 'comment-guard', 'tokens.txt')), /not gitignored/);
 	});
 
 	it('reads the "Desktop app" client JSON from Google Cloud Console', () => {

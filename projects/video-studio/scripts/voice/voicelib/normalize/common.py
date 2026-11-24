@@ -19,7 +19,9 @@ import unicodedata
 
 NUM = r"\d+(?:[.,]\d+)*"
 SIGN = r"[+\-−±]"  # + - − ±
-CUR = r"[$€£¥₹]"
+# Currency prefixes, multi-character ones first (US$40,000, R$ 40 mil, A$5, C$10, MX$200). Every language's
+# `currencies` table carries all of them (2026-11-24, VCD fix: "R$ 40 mil" was read "real dólar quarenta mil").
+CUR = r"(?:US\$|R\$|A\$|C\$|MX\$|[$€£¥₹])"
 SCALE_CUR = r"(?:bn|BN|[kKmMbBtT])"  # after a currency amount 'm' means million ($5m)
 SCALE_BARE = r"(?:bn|[kKMBT])"  # a bare "5m" stays (minutes? metres?)
 
@@ -103,6 +105,8 @@ class SpacedNormalizer:
     big_scale_words: frozenset[str] = frozenset()  # words after which the connector is needed
     tickers: dict[str, str] = {}
     symbols: dict[str, str] = {}
+    lexicon: dict[str, str] = {}  # lexicon.PRONUNCIATIONS[lang]: written token (lower case) -> what Kokoro says
+    number_word = "number"  # "#1" -> "number one"
     months: list[str] = []  # spoken, January..December
     month_lookup: dict[str, int] = {}  # written forms (lowercase, abbreviations too) -> 1..12
 
@@ -207,6 +211,18 @@ class SpacedNormalizer:
     def multiplier(self, num: str) -> str:
         return f"{self.number(num)} {self.times_word}"
 
+    def percent_range(self, a: str, b: str) -> str:
+        """"5-10%" -> "five to ten percent" (never "five minus ten")."""
+        return f"{self.number(a)} {self.range_word} {self.number(b)} {self.percent_word}"
+
+    def hours(self, h: int, mi: int | None) -> str | None:
+        """"10h30" / "10h" (es, pt-br, it). None: not read as a time in this language."""
+        return None
+
+    def fraction_words(self, n: int, d: int) -> str | None:
+        """"1/3" -> "one third" (1 <= n < d <= 10). None: read the two numbers."""
+        return None
+
     def range(self, a: str, b: str) -> str:
         def side(x: str) -> str:
             if re.fullmatch(r"\d{4}", x) and self.is_year(int(x)):
@@ -249,8 +265,34 @@ class SpacedNormalizer:
         if hit:
             return hit
         if i + 1 < len(tokens):
-            pre, core, _ = split_punct(tokens[i])
+            pre, core, post = split_punct(tokens[i])
             npre, ncore, npost = split_punct(tokens[i + 1])
+            # "R$ 40 mil", "€ 200", "US$ 1,5 milhão": a currency sign on its own, then the amount
+            if core in self.currencies and not post and not npre:
+                m = re.fullmatch(rf"({SIGN})?({NUM})({SCALE_CUR})?", ncore)
+                if m:
+                    sign, num, scale = m.group(1), m.group(2), m.group(3)
+                    try:
+                        if not scale and not npost and i + 2 < len(tokens):
+                            p3, c3, post3 = split_punct(tokens[i + 2])
+                            if not p3 and c3.lower() in self.scale_words:
+                                plural = self.currencies[core][1]
+                                big = self.connector_after_scale and c3.lower() in self.big_scale_words
+                                noun = f"{c3} {self.connector_after_scale} {plural}" if big else f"{c3} {plural}"
+                                return 3, [pre, self.signed(sign, self.number(num)), noun + post3]
+                        return 2, [pre, self.signed(sign, self.money(core, num, scale)) + npost]
+                    except ValueError:
+                        return None
+            # "5-10 %"
+            if ncore == "%" and not npre:
+                m = re.fullmatch(rf"({NUM})%?\s?[-–]\s?({NUM})", core)
+                if m:
+                    try:
+                        words = self.percent_range(m.group(1), m.group(2))
+                    except ValueError:
+                        return None
+                    head, _, tail = words.rpartition(f" {self.percent_word}")
+                    return 2, [pre + head, f"{self.percent_word}{npost}"]
             # "68,67 %"
             if ncore == "%" and not npre and re.fullmatch(rf"({SIGN})?({NUM})", core):
                 m = re.fullmatch(rf"({SIGN})?({NUM})", core)
@@ -296,6 +338,11 @@ class SpacedNormalizer:
         pre, core, post = split_punct(token)
         if not core:
             return token
+        said = self.lexicon.get(core.lower())
+        if said is not None:
+            from ..lexicon import match_case
+
+            return f"{pre}{match_case(core, said)}{post}"
         try:
             spoken = self.core(core)
         except ValueError:
@@ -317,6 +364,14 @@ class SpacedNormalizer:
             return self.tickers[core]
         if core in self.symbols:
             return self.symbols[core]
+        m = re.fullmatch(r"(?:#|[nN]\.?[º°])(\d+)", core)  # "#1", "nº 1" -> "number one" (not "hash one")
+        if m:
+            return f"{self.number_word} {self.cardinal(int(m.group(1)))}"
+        m = re.fullmatch(r"(\d{1,2})[hH](\d{2})?", core)  # "10h30" (es, pt-br, it)
+        if m and int(m.group(1)) <= 24 and (m.group(2) is None or int(m.group(2)) < 60):
+            said = self.hours(int(m.group(1)), int(m.group(2)) if m.group(2) else None)
+            if said is not None:
+                return said
         m = re.fullmatch(r"\$([A-Z]{2,6})", core)  # cashtag
         if m:
             return self.tickers.get(m.group(1), " ".join(m.group(1)))
@@ -348,6 +403,9 @@ class SpacedNormalizer:
             if not sym:
                 sym = m.group(5)
             return self.signed(sign, self.money(sym, num, scale))
+        m = re.fullmatch(rf"({NUM})%?\s?[-–]\s?({NUM})\s?%", core)  # "5-10%", "5%-10%": a range, never "minus"
+        if m:
+            return self.percent_range(m.group(1), m.group(2))
         m = re.fullmatch(rf"({SIGN})?({NUM})\s?%", core)
         if m:
             return self.percent(m.group(1), m.group(2))
@@ -368,7 +426,9 @@ class SpacedNormalizer:
             return self.range(m.group(1), m.group(2))
         m = re.fullmatch(r"(\d+)/(\d+)", core)
         if m:
-            return f"{self.cardinal(int(m.group(1)))} {self.cardinal(int(m.group(2)))}"
+            n, d = int(m.group(1)), int(m.group(2))
+            said = self.fraction_words(n, d) if 1 <= n < d <= 10 else None
+            return said if said is not None else f"{self.cardinal(n)} {self.cardinal(d)}"
         m = re.fullmatch(rf"({SIGN})?({NUM})", core)
         if m:
             sign, num = m.group(1), m.group(2)
@@ -390,3 +450,13 @@ class SpacedNormalizer:
 
     def is_year(self, n: int) -> bool:
         return False
+
+
+# What may not reach espeak: a digit or a symbol it reads wrongly ("$40,000" -> "dollar forty thousand",
+# "5-10%" -> "five minus ten", "#1" -> "hash one"). pipeline.py warns about every spoken token still holding one.
+UNSPOKEN = re.compile(r"[0-9$%#€£¥₹/]")
+
+
+def unspoken(spoken: str) -> list[str]:
+    """Tokens of a normalized spoken string that still hold a digit or one of $ % # € £ ¥ ₹ /."""
+    return [t for t in spoken.split() if UNSPOKEN.search(t)]

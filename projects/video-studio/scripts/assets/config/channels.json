@@ -23,7 +23,8 @@
       "en"
     ],
     "podcastMinSec": 180,
-    "offerDisclosures": {}
+    "offerDisclosures": {},
+    "disclosureTranslations": {}
   },
   "channels": {
     "zoora-security": {

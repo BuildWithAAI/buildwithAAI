@@ -191,3 +191,22 @@ Full evidence, sources and dates: `docs/research/platform-facts-2026-11-23.md`. 
 - Since 2026-11-02 ✅, uploads from unverified projects are no longer forced private, and **omitted `privacyStatus` defaults to public**. Always send `privacyStatus: private`.
 - API-settable fields ✅: `status.selfDeclaredMadeForKids`, `status.containsSyntheticMedia`. `paidProductPlacementDetails` exists, but whether it can be written is unconfirmed. Keep that Studio step manual.
 - OAuth refresh tokens expire after 7 days while the consent screen is in "Testing".
+
+## Creator business tools
+
+The business side lives in `projects/creator-hub` (see its `README.md`):
+
+- the tracked link hub, `https://go.zoora.ai/go/<offer>?v=<video>&s=<source>`, with automatic disclosures and region rules;
+- the `/studio` order page and the `/subscribe` email signup;
+- the comment scam guard, the revenue dashboard and newsletter drafts.
+
+The publish kit connects each episode to them. Run it from `projects/video-studio/`:
+
+| Command | What it does |
+| --- | --- |
+| `node scripts/publish-kit/cli.ts <channel>/<slug>` | Reads `content/<channel>/<slug>/episode.json` and writes `out/publish/<channel>/<slug>/`: the YouTube description and pinned comment; Shorts, TikTok, Reels, X and Instagram text with hub links and disclosures; captions; `render-plan.sh`; `checklist.md`; and `kit.json`. Exit 0: every check passes. 1: written, but checks fail. 2: bad input |
+| `node --test "scripts/publish-kit/*.test.ts"` | Its tests. Use the glob: Node 22 fails on a bare directory |
+
+- Offer links go only through the hub. Offers come from `../creator-hub/config/offers.json` (gitignored), else `offers.example.json`, where every offer is inactive.
+- Every scene that promotes an offer says the disclosure out loud and shows it on screen. Region-restricted offers are never named in titles, posts or narration.
+- Details: `scripts/publish-kit/README.md`. CI: `.github/workflows/creator-hub.yml`.

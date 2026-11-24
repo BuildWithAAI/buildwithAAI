@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "good-episode",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "POV: Auditas a un caller famoso",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Encuentras a un caller con 80.000 seguidores. Cada llamada sube. Nadie pregunta por qué.",
+      "onScreen": {"kicker": "POV", "title": "Auditas a un caller famoso"},
+      "badger": {"present": true, "reaction": "lookUp"},
+      "claimWaivers": [{"match": "un caller con 80.000 seguidores", "rule": "factual", "reason": "story setup: the follower count of a fictional composite caller"}]
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Pump.fun paga a los callers recompensas en USDC cada día. [src:callout-terms] Primero, revisas qué billeteras compraron antes de cada llamada y qué tan rápido vendieron.",
+      "onScreen": {"title": "Qué revisas", "bullets": ["Quién compró temprano", "Qué tan rápido vendieron"], "cues": ["billeteras", "vendieron"]},
+      "badger": {"present": true, "reaction": "judge"}
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "En el gráfico, la subida parece orgánica. Luego el suelo desaparece.",
+      "onScreen": {"pair": "$DEMO / SOL", "cues": ["subida", "suelo"]},
+      "chart": {"seed": 51, "illustrative": true},
+      "badger": {"present": true, "reaction": "worried"}
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Los estafadores prometen ganancias garantizadas. Antes de seguir a alguien, revisa quién compró primero, revisa quién vendió primero y nunca compres la vela más ruidosa.",
+      "onScreen": {"title": "Antes de seguir a alguien", "steps": ["Revisa quién compró primero", "Revisa quién vendió primero", "Evita la vela más ruidosa"], "cues": ["compró", "vendió", "nunca"]},
+      "claimWaivers": [{"match": "Los estafadores prometen ganancias garantizadas", "rule": "income", "reason": "describes a scam pitch as a warning, not a promise"}]
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "Como dijo un caller: Nadie revisa la billetera.",
+      "onScreen": {"quote": "Nadie revisa la billetera.", "attribution": "un caller famoso (personaje ficticio compuesto)", "source": "Diálogo ficticio"},
+      "badger": {"present": true, "reaction": "shocked"}
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "Nada de esto es asesoría financiera. Si te ahorró una mala operación, suscríbete.",
+      "onScreen": {"title": "Una mala operación evitada", "cues": ["suscríbete"]},
+      "badger": {"present": true, "reaction": "happy"}
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "La próxima vez: el bot que opera por ti.",
+      "onScreen": {"title": "Próximo: el bot que opera por ti"},
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "callout-terms",
+      "title": "Example callout terms (test fixture)",
+      "url": "https://example.com/callout-terms",
+      "quote": "Rewards are paid daily in USDC.",
+      "accessed": "2026-11-20",
+      "status": "verified"
+    }
+  ],
+  "shorts": [{"id": "short1", "sceneIds": ["s01", "s03", "s06"], "title": "El gráfico del caller"}],
+  "thumbnails": [
+    {"id": "a", "text": "¿QUIÉN VENDIÓ PRIMERO?", "expression": "neutral", "badger": true},
+    {"id": "b", "text": "EL SUELO DESAPARECIÓ", "expression": "worried", "badger": true},
+    {"id": "c", "text": "REVISA LA BILLETERA", "expression": "shocked", "badger": false}
+  ],
+  "ui": {
+    "fictionDisclaimer": "Historia ficticia · personajes compuestos · no es asesoría financiera",
+    "sources": "Fuente",
+    "illustrative": "Ilustrativo · token ficticio",
+    "subscribe": "Suscríbete",
+    "watchNext": "Mira a continuación",
+    "subscribeSlot": "Suscríbete"
+  },
+  "translation": {"status": "machine", "method": "machine", "reviewed": false}
+}

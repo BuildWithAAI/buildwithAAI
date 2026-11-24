@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "2026-11-24-mock-bridge",
+  "youtubeVideoId": null,
+  "title": "Mock Bridge paused after a reported exploit",
+  "titleOptions": ["Mock Bridge paused after a reported exploit"],
+  "summary": "Example Wire reports that Mock Bridge paused deposits on November 24. The loss is not confirmed yet.",
+  "chapters": [],
+  "sources": [
+    {"title": "Mock Bridge pauses deposits (Example Wire)", "url": "https://wire.example.test/news/mock-bridge-pause"}
+  ],
+  "offers": [],
+  "disclosures": [
+    "DEVELOPING STORY: details may change. Corrections will be pinned in the comments.",
+    "News and education only. Not financial advice."
+  ],
+  "posts": {
+    "youtube": {"text": "Test fixture.", "charCount": 13, "limit": 5000, "notes": []},
+    "shorts": {"text": "Test fixture.", "charCount": 13, "limit": 5000, "notes": []},
+    "tiktok": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "reels": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "instagram": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "x": {"text": "Mock Bridge paused after a reported exploit\nFull episode on YouTube: The Zoo & Badger Show\n#CryptoSecurity #ThreatBrief", "charCount": 118, "limit": 280, "notes": []}
+  },
+  "captions": {"srt": null, "vtt": null},
+  "renders": [],
+  "settings": {"madeForKids": false, "containsSyntheticMedia": false, "paidPromotion": false, "reasons": []},
+  "checks": [{"id": "income-claims", "ok": true, "detail": "fixture"}],
+  "generatedAt": "2026-11-24T07:00:00.000Z"
+}

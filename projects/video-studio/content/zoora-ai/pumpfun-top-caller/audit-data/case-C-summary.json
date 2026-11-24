@@ -1,0 +1,1608 @@
+{
+ "case": "Case C",
+ "checked": "Independently re-derived by a checker on 2026-11-24. Where this file and ../audit.md differ, ../audit.md (checker-corrected) wins. Claim figures are banded on purpose: exact allegation figures would let a reader map this case to a named person.",
+ "status": "OUR ESTIMATE from public Solana data. An analytics firm's allegation, not a finding about any person. Timing, transfers and funding links do not prove who controls a wallet.",
+ "claim_summary": {
+  "claimed": "A top caller's public wallet buys; a few 'operational' wallets buy first and spread the tokens to about a dozen side wallets; copy traders pile in after the public buy and the side wallets sell into them. About 30 linked wallets, tens of thousands of tokens traded over about six months, thousands routed through the scheme, a seven-figure USD extraction estimate plus six-figure platform rewards. A serial token deployer is said to be linked, with seven-figure trading profits and hundreds of its launches bought early (exact figures withheld: they identify the case).",
+  "source": "An analytics firm's thread and blog post, as indexed by a search engine and quoted by news outlets; neither could be opened from this session.",
+  "addresses_published_in_reachable_sources": "only a 6-character prefix of the public wallet and a 5-character prefix of the deployer"
+ },
+ "public_wallet_one_day": {
+  "note": "One full UTC day shortly before the allegation",
+  "tokens_bought": 64,
+  "first_buy_sol": {
+   "n": 64,
+   "median": 3.0,
+   "p25": 1.4,
+   "p75": 10.0,
+   "min": 1.0,
+   "max": 21.0
+  },
+  "buys_per_token": {
+   "n": 64,
+   "median": 2.0,
+   "p25": 1.0,
+   "p75": 4.0,
+   "min": 1,
+   "max": 45
+  },
+  "closed_tokens": 54,
+  "closed_pnl_sol_total": 80.0,
+  "closed_pnl_usd_total_approx": 7200,
+  "share_profitable": 0.61,
+  "hold_s_closed": {
+   "n": 54,
+   "median": 220.0,
+   "p25": 53.0,
+   "p75": 1164.0,
+   "min": 7,
+   "max": 61980
+  },
+  "copy_bot_pressure": "Its address appeared in 1,000 transactions in 16 s at the time of the thread, and 1,000 per 82-263 s on earlier days; 98-100% of them failed. They are other accounts' bots that read the wallet's state (some also touch its token accounts) and try to follow its trades.",
+  "tokens_bought_note": "64 distinct tokens bought that day (433 unique successful venue transactions)"
+ },
+ "group_detected": {
+  "how_found": "Not from the firm (no side-wallet addresses were reachable). Seeded from the public wallet's own tokens: in one token, one wallet moved tokens to four others about 50 s before the public buy; those wallets sold after it and, in between, four of them signed ONE transaction together that swept their remaining tokens to the fifth. In the 18 sampled shared tokens, all five acted together in 13 and the main buyer/distributor alone in 4. (A sixth 'recipient' in one token was that token's own bonding curve, a misclassification; the group is 5 wallets.)",
+  "wallets": 5,
+  "roles": "two buyers/distributors (one also collects tokens back), three recipients that sell",
+  "co_signed_transactions": "multi-signer consolidation transactions recur (4 of the 5 wallets signing one transaction)",
+  "first_seen": "the five wallets appeared between April and late October 2026 (one in April, two on the same day in August, 9 minutes apart, one in mid-October, one in late October)"
+ },
+ "sample": {
+  "definition": "tokens handled by the detected group (newest-first systematic samples of two group wallets' transactions: every 2nd of the newest 400 of one recipient wallet, every 2nd of the newest 300 of the main buyer/distributor, before the thread time) that the public wallet ALSO bought (its own signed buy in its token account), most recent first, up to 40; quote assets excluded",
+  "tokens": 18,
+  "period": "about 27 hours ending at the group's routine daily pause before the allegation (the five wallets pause for 10-13 h on most days; they resumed within minutes after the allegation and kept trading for weeks); 13 older candidates were not processed (RPC budget), so the sample is the most recent 18 shared tokens, not 40",
+  "timing_classes": {
+   "acquired_after_ref": {
+    "tokens": 4,
+    "meaning": "group bought later than the public wallet's first buy"
+   },
+   "exited_before_ref": {
+    "tokens": 6,
+    "meaning": "group bought and sold everything before the public wallet bought"
+   },
+   "same_slot_after_ref": {
+    "tokens": 6,
+    "meaning": "group's first buy landed in the public buy's own block, right after it"
+   },
+   "sold_into_ref": {
+    "tokens": 2,
+    "meaning": "group bought before the public buy, moved tokens between its wallets, and sold after it"
+   }
+  },
+  "caveat": "The token that revealed the group is in the sample (one of the 2 sold_into_ref tokens), and 2 of the 18 were bought by the public wallet ~17 h after the group had exited."
+ },
+ "timing": {
+  "group_first_buy_minus_public_first_buy_s": {
+   "n": 18,
+   "median": 0.0,
+   "p25": -65.5,
+   "p75": 0.0,
+   "min": -62270,
+   "max": 670
+  },
+  "share_tokens_group_bought_first": 0.44,
+  "tokens_group_first_buy_same_block_as_public_buy": 6,
+  "tokens_with_any_group_buy_in_the_public_buy_block_after_it": 8,
+  "same_block_order": "in every same-block case the group bought AFTER the public wallet (higher index in the block); never before it",
+  "group_buy_sol_split": {
+   "before_public_buy": 0.26,
+   "same_block_right_after_public_buy": 0.46,
+   "later_blocks": 0.27
+  },
+  "first_distribution_minus_public_first_buy_s": {
+   "n": 14,
+   "median": 4.5,
+   "p25": -55.25,
+   "p75": 7.5
+  },
+  "group_first_sell_minus_public_first_buy_s": {
+   "n": 18,
+   "median": 2.5,
+   "p25": -60.0,
+   "p75": 16.25
+  },
+  "group_last_sell_minus_public_first_buy_s": {
+   "n": 18,
+   "median": 52.0,
+   "p25": -10.75,
+   "p75": 121.75
+  },
+  "group_sol_weighted_sell_minus_public_first_buy_s": {
+   "n": 18,
+   "median": 48.3,
+   "p25": -17.8,
+   "p75": 64.2
+  },
+  "group_hold_s_per_token": {
+   "n": 18,
+   "median": 92.0,
+   "p25": 32.75,
+   "p75": 146.5
+  },
+  "group_hold_s_per_wallet": {
+   "n": 66,
+   "median": 89.0,
+   "p25": 34.25,
+   "p75": 142.75
+  },
+  "public_hold_s": {
+   "n": 18,
+   "median": 133.5,
+   "p25": 61.75,
+   "p75": 1187.5
+  },
+  "seconds_from_latest_public_buy_to_each_group_sell": {
+   "n": 147,
+   "median": 42,
+   "p25": 13.5,
+   "p75": 103.0,
+   "min": 0,
+   "max": 967
+  },
+  "share_group_sell_proceeds_before_any_public_buy": 0.24,
+  "share_group_sell_proceeds_within_60s_after_a_public_buy": 0.31,
+  "share_group_sell_proceeds_within_300s_after_a_public_buy": 0.43,
+  "share_group_sell_proceeds_within_900s_after_a_public_buy": 0.71,
+  "share_group_sell_proceeds_after_the_public_wallet_had_fully_exited": 0.39,
+  "public_buys_per_token": {
+   "n": 18,
+   "median": 4.0,
+   "p25": 2.0,
+   "p75": 6.0,
+   "min": 1,
+   "max": 13
+  }
+ },
+ "pnl": {
+  "group_total_sol_sample": 32.5,
+  "group_total_usd_sample_approx": 2900,
+  "public_total_sol_sample": 16.2,
+  "public_total_usd_sample_approx": 1450,
+  "group_pnl_sol_per_token": {
+   "n": 18,
+   "median": -0.59,
+   "p25": -1.55,
+   "p75": 0.93,
+   "min": -9.8,
+   "max": 42.8
+  },
+  "public_pnl_sol_per_token": {
+   "n": 18,
+   "median": 0.38,
+   "p25": -1.06,
+   "p75": 1.28,
+   "min": -8.8,
+   "max": 12.7
+  },
+  "share_tokens_group_profitable": 0.39,
+  "share_tokens_public_profitable": 0.67,
+  "by_timing_class_group_pnl_sol": {
+   "acquired_after_ref": 40.3,
+   "exited_before_ref": 9.1,
+   "same_slot_after_ref": -22.9,
+   "sold_into_ref": 6.0
+  },
+  "by_timing_class_public_pnl_sol": {
+   "acquired_after_ref": 5.8,
+   "exited_before_ref": 5.2,
+   "same_slot_after_ref": 2.6,
+   "sold_into_ref": 2.7
+  },
+  "group_sell_proceeds_sol_sample": 421.0,
+  "concentration": "one token (bought 10 min after the public buy) made more than the whole total; the other 17 tokens net about -10 SOL",
+  "sol_usd_reference": "about 90 USD per SOL in the sample period (median of SOL-USDC swaps read on-chain); about 73-119 USD per SOL over the claimed window",
+  "note": "PnL = SOL in minus SOL out per wallet per token, fees, tips and rent included; stablecoin legs converted at the reference. Transfers between group wallets carry no value, so the group total is the fair figure."
+ },
+ "links_anonymized": [
+  "Four of the five group wallets signed single transactions together (token sweeps to the fifth): the strongest link we found, consistent with one operator holding those keys.",
+  "First funding inside the group: one buyer wallet sent the first SOL to one recipient (10 SOL), that recipient sent the first SOL to another (about 20 SOL) 9 minutes after it appeared, and a third recipient was first funded by a one-day-old intermediary that had itself been funded by a group wallet (35 SOL).",
+  "Two small intermediary wallets appear in the early funding of two different group wallets' funders.",
+  "Look-alike 'dust' transfers (zero-value, same first and last characters as the real funder) sit in several first transactions: address-poisoning spam, ignored.",
+  "No direct transfer between the public wallet and any group wallet appeared in the sampled tokens (0 found), and the public wallet's own first funding came from a different, older wallet (50 SOL, early August).",
+  "So the five wallets are linked to EACH OTHER; we found no on-chain link from them to the public wallet in our bounded checks."
+ ],
+ "deployer_check": {
+  "candidate": "an address with the published 5-character prefix (found via a third-party tracker; a prefix alone is not unique)",
+  "creates_verified": "all 6 recorded creation transactions of launches attributed to it by the platform's API were signed by it on-chain (a 7th rests on the API only)",
+  "activity": "first activity between 20 June and 20 July 2026; about 300 to 2,200 transactions a day at five sampled dates (Jul-Nov); token launches were 2 of 50 sampled transactions, so launches are a small share of a busy trading wallet's activity; 'thousands of launches' could not be counted",
+  "public_wallet_link": "5 of the public wallet's tokens on one day were this address's launches verified on-chain (a 6th by the API only); first buys 3-250 s after creation (3 of 5 within 8 s). A famous wallet buying a prolific launcher's tokens quickly is trading behaviour, not an ownership link."
+ },
+ "timelines_anonymized": [
+  {
+   "id": "C-timeline-1 (buy first, split, sell into the public buy)",
+   "timing_class": "sold_into_ref",
+   "group_pnl_sol": 0.3,
+   "public_pnl_sol": 1.8,
+   "events": [
+    {
+     "t": -61,
+     "slot_offset": -285,
+     "who": "group_buyer_1",
+     "action": "buy",
+     "sol": 3.1,
+     "order_in_block": 1
+    },
+    {
+     "t": -61,
+     "slot_offset": -284,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.6,
+     "order_in_block": 1
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_buyer_2",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 2
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 3
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_wallet_3",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 4
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 5
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_wallet_5",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 6
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 7
+    },
+    {
+     "t": -57,
+     "slot_offset": -264,
+     "who": "group_wallet_4",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 8
+    },
+    {
+     "t": -49,
+     "slot_offset": -228,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 0,
+     "slot_offset": 0,
+     "who": "public",
+     "action": "buy",
+     "sol": 3.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 0,
+     "slot_offset": 0,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.2,
+     "order_in_block": 2
+    },
+    {
+     "t": 6,
+     "slot_offset": 29,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.2,
+     "order_in_block": 1
+    },
+    {
+     "t": 6,
+     "slot_offset": 29,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.1,
+     "order_in_block": 2
+    },
+    {
+     "t": 6,
+     "slot_offset": 29,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.1,
+     "order_in_block": 3
+    },
+    {
+     "t": 6,
+     "slot_offset": 29,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.1,
+     "order_in_block": 4
+    },
+    {
+     "t": 9,
+     "slot_offset": 39,
+     "who": "group_wallet_4",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": 9,
+     "slot_offset": 39,
+     "who": "group_buyer_1",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 2
+    },
+    {
+     "t": 9,
+     "slot_offset": 39,
+     "who": "group_wallet_3",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 3
+    },
+    {
+     "t": 9,
+     "slot_offset": 39,
+     "who": "group_wallet_5",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 4
+    },
+    {
+     "t": 12,
+     "slot_offset": 57,
+     "who": "public",
+     "action": "buy",
+     "sol": 1.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 13,
+     "slot_offset": 58,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 1
+    },
+    {
+     "t": 14,
+     "slot_offset": 67,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.6,
+     "order_in_block": 1
+    },
+    {
+     "t": 14,
+     "slot_offset": 67,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.5,
+     "order_in_block": 2
+    },
+    {
+     "t": 14,
+     "slot_offset": 67,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.5,
+     "order_in_block": 3
+    },
+    {
+     "t": 14,
+     "slot_offset": 67,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.7,
+     "order_in_block": 4
+    },
+    {
+     "t": 26,
+     "slot_offset": 122,
+     "who": "group_wallet_3",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": 44,
+     "slot_offset": 203,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.5,
+     "order_in_block": 1
+    },
+    {
+     "t": 44,
+     "slot_offset": 203,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.6,
+     "order_in_block": 2
+    },
+    {
+     "t": 44,
+     "slot_offset": 203,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.4,
+     "order_in_block": 3
+    },
+    {
+     "t": 44,
+     "slot_offset": 203,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.4,
+     "order_in_block": 4
+    },
+    {
+     "t": 88,
+     "slot_offset": 408,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 1.3,
+     "order_in_block": 1
+    },
+    {
+     "t": 88,
+     "slot_offset": 408,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 2
+    },
+    {
+     "t": 88,
+     "slot_offset": 408,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 3
+    },
+    {
+     "t": 88,
+     "slot_offset": 408,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 4
+    },
+    {
+     "t": 113,
+     "slot_offset": 529,
+     "who": "public",
+     "action": "sell",
+     "sol": 5.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 115,
+     "slot_offset": 536,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 1.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 115,
+     "slot_offset": 536,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 1.9,
+     "order_in_block": 2
+    },
+    {
+     "t": 115,
+     "slot_offset": 536,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 2.0,
+     "order_in_block": 3
+    },
+    {
+     "t": 115,
+     "slot_offset": 536,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 2.3,
+     "order_in_block": 4
+    },
+    {
+     "t": 115,
+     "slot_offset": 536,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 5
+    }
+   ],
+   "n_events": 42,
+   "correction": "Incomplete event list: a second group wallet (through a token account the first pass missed) bought about 22 SOL in the SAME block right after the public buy, and its sends and sells that followed are missing. With them the group PnL is about +0.3 SOL, and about 80% of the group's buying in this token came after the public buy."
+  },
+  {
+   "id": "C-timeline-2 (group out before the public buy)",
+   "timing_class": "exited_before_ref",
+   "group_pnl_sol": 7.8,
+   "public_pnl_sol": -1.6,
+   "events": [
+    {
+     "t": -280,
+     "slot_offset": -1309,
+     "who": "group_buyer_1",
+     "action": "buy",
+     "sol": 18.8,
+     "order_in_block": 1
+    },
+    {
+     "t": -280,
+     "slot_offset": -1309,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 3.2,
+     "order_in_block": 2
+    },
+    {
+     "t": -277,
+     "slot_offset": -1295,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 1.7,
+     "order_in_block": 1
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_wallet_3",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 2
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 3
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_wallet_4",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 4
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 5
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_buyer_2",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 6
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 7
+    },
+    {
+     "t": -275,
+     "slot_offset": -1285,
+     "who": "group_wallet_5",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 8
+    },
+    {
+     "t": -265,
+     "slot_offset": -1236,
+     "who": "group_wallet_3",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": -265,
+     "slot_offset": -1236,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.7,
+     "order_in_block": 2
+    },
+    {
+     "t": -262,
+     "slot_offset": -1220,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.3,
+     "order_in_block": 1
+    },
+    {
+     "t": -262,
+     "slot_offset": -1220,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.4,
+     "order_in_block": 2
+    },
+    {
+     "t": -262,
+     "slot_offset": -1220,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.4,
+     "order_in_block": 3
+    },
+    {
+     "t": -262,
+     "slot_offset": -1220,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.5,
+     "order_in_block": 4
+    },
+    {
+     "t": -261,
+     "slot_offset": -1219,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.3,
+     "order_in_block": 1
+    },
+    {
+     "t": -250,
+     "slot_offset": -1169,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 1.1,
+     "order_in_block": 1
+    },
+    {
+     "t": -250,
+     "slot_offset": -1169,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 2
+    },
+    {
+     "t": -250,
+     "slot_offset": -1169,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 3
+    },
+    {
+     "t": -250,
+     "slot_offset": -1169,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 4
+    },
+    {
+     "t": -250,
+     "slot_offset": -1169,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 5
+    },
+    {
+     "t": -239,
+     "slot_offset": -1118,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 1
+    },
+    {
+     "t": -239,
+     "slot_offset": -1118,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 2
+    },
+    {
+     "t": -239,
+     "slot_offset": -1118,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 3
+    },
+    {
+     "t": -239,
+     "slot_offset": -1118,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 1.1,
+     "order_in_block": 4
+    },
+    {
+     "t": -239,
+     "slot_offset": -1118,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 5
+    },
+    {
+     "t": -235,
+     "slot_offset": -1099,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.7,
+     "order_in_block": 1
+    },
+    {
+     "t": -235,
+     "slot_offset": -1099,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.6,
+     "order_in_block": 2
+    },
+    {
+     "t": -235,
+     "slot_offset": -1099,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.6,
+     "order_in_block": 3
+    },
+    {
+     "t": -235,
+     "slot_offset": -1099,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.6,
+     "order_in_block": 4
+    },
+    {
+     "t": -235,
+     "slot_offset": -1099,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 5
+    },
+    {
+     "t": -171,
+     "slot_offset": -799,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.2,
+     "order_in_block": 1
+    },
+    {
+     "t": -167,
+     "slot_offset": -783,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.7,
+     "order_in_block": 1
+    },
+    {
+     "t": -167,
+     "slot_offset": -783,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.5,
+     "order_in_block": 2
+    },
+    {
+     "t": -167,
+     "slot_offset": -783,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.4,
+     "order_in_block": 3
+    },
+    {
+     "t": -167,
+     "slot_offset": -783,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.5,
+     "order_in_block": 4
+    },
+    {
+     "t": -167,
+     "slot_offset": -783,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.5,
+     "order_in_block": 5
+    },
+    {
+     "t": -126,
+     "slot_offset": -586,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 1
+    },
+    {
+     "t": -126,
+     "slot_offset": -586,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 1.1,
+     "order_in_block": 2
+    },
+    {
+     "t": -126,
+     "slot_offset": -586,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.7,
+     "order_in_block": 3
+    },
+    {
+     "t": -126,
+     "slot_offset": -586,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 4
+    },
+    {
+     "t": -126,
+     "slot_offset": -586,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.7,
+     "order_in_block": 5
+    },
+    {
+     "t": 0,
+     "slot_offset": 0,
+     "who": "public",
+     "action": "buy",
+     "sol": 10.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 112,
+     "slot_offset": 526,
+     "who": "public",
+     "action": "sell",
+     "sol": 8.4,
+     "order_in_block": 1
+    }
+   ],
+   "n_events": 46
+  },
+  {
+   "id": "C-timeline-3 (same block, right after the public buy)",
+   "timing_class": "same_slot_after_ref",
+   "group_pnl_sol": -6.6,
+   "public_pnl_sol": 0.9,
+   "events": [
+    {
+     "t": 0,
+     "slot_offset": 0,
+     "who": "public",
+     "action": "buy",
+     "sol": 5.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 0,
+     "slot_offset": 0,
+     "who": "group_buyer_2",
+     "action": "buy",
+     "sol": 22.7,
+     "order_in_block": 2
+    },
+    {
+     "t": 14,
+     "slot_offset": 68,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 6.6,
+     "order_in_block": 1
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_wallet_3",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 2
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_buyer_1",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 3
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 4
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 5
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_wallet_5",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 6
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 7
+    },
+    {
+     "t": 34,
+     "slot_offset": 155,
+     "who": "group_wallet_4",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 8
+    },
+    {
+     "t": 50,
+     "slot_offset": 232,
+     "who": "public",
+     "action": "buy",
+     "sol": 1.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 70,
+     "slot_offset": 323,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 70,
+     "slot_offset": 323,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.7,
+     "order_in_block": 2
+    },
+    {
+     "t": 70,
+     "slot_offset": 323,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 3
+    },
+    {
+     "t": 70,
+     "slot_offset": 323,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 4
+    },
+    {
+     "t": 70,
+     "slot_offset": 324,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 0.8,
+     "order_in_block": 1
+    },
+    {
+     "t": 105,
+     "slot_offset": 490,
+     "who": "public",
+     "action": "sell",
+     "sol": 6.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 107,
+     "slot_offset": 498,
+     "who": "group_buyer_1",
+     "action": "sell",
+     "sol": 1.2,
+     "order_in_block": 1
+    },
+    {
+     "t": 107,
+     "slot_offset": 498,
+     "who": "group_wallet_4",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 2
+    },
+    {
+     "t": 107,
+     "slot_offset": 498,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 1.3,
+     "order_in_block": 3
+    },
+    {
+     "t": 107,
+     "slot_offset": 498,
+     "who": "group_wallet_3",
+     "action": "sell",
+     "sol": 1.0,
+     "order_in_block": 4
+    },
+    {
+     "t": 107,
+     "slot_offset": 498,
+     "who": "group_wallet_5",
+     "action": "sell",
+     "sol": 0.9,
+     "order_in_block": 5
+    }
+   ],
+   "n_events": 23
+  },
+  {
+   "id": "C-timeline-4 (large group trade 10 min after the public wallet had exited)",
+   "timing_class": "acquired_after_ref",
+   "group_pnl_sol": 42.8,
+   "public_pnl_sol": 7.7,
+   "events": [
+    {
+     "t": 0,
+     "slot_offset": 0,
+     "who": "public",
+     "action": "buy",
+     "sol": 15.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 9,
+     "slot_offset": 39,
+     "who": "public",
+     "action": "buy",
+     "sol": 1.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 9,
+     "slot_offset": 42,
+     "who": "public",
+     "action": "buy",
+     "sol": 1.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 30,
+     "slot_offset": 140,
+     "who": "public",
+     "action": "buy",
+     "sol": 0.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 30,
+     "slot_offset": 142,
+     "who": "public",
+     "action": "buy",
+     "sol": 0.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 30,
+     "slot_offset": 142,
+     "who": "public",
+     "action": "buy",
+     "sol": 0.1,
+     "order_in_block": 2
+    },
+    {
+     "t": 30,
+     "slot_offset": 143,
+     "who": "public",
+     "action": "buy",
+     "sol": 0.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 31,
+     "slot_offset": 144,
+     "who": "public",
+     "action": "buy",
+     "sol": 0.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 60,
+     "slot_offset": 281,
+     "who": "public",
+     "action": "sell",
+     "sol": 25.3,
+     "order_in_block": 1
+    },
+    {
+     "t": 616,
+     "slot_offset": 2874,
+     "who": "group_buyer_2",
+     "action": "buy",
+     "sol": 92.6,
+     "order_in_block": 1
+    },
+    {
+     "t": 619,
+     "slot_offset": 2888,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 12.2,
+     "order_in_block": 1
+    },
+    {
+     "t": 619,
+     "slot_offset": 2891,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 10.6,
+     "order_in_block": 1
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_buyer_1",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 2
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 3
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_wallet_5",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 4
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 5
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_wallet_4",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 6
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_buyer_2",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 7
+    },
+    {
+     "t": 621,
+     "slot_offset": 2901,
+     "who": "group_wallet_3",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 8
+    },
+    {
+     "t": 624,
+     "slot_offset": 2914,
+     "who": "group_buyer_1",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 1
+    },
+    {
+     "t": 624,
+     "slot_offset": 2914,
+     "who": "group_buyer_2",
+     "action": "receive_tokens",
+     "sol": null,
+     "order_in_block": 2
+    },
+    {
+     "t": 624,
+     "slot_offset": 2914,
+     "who": "group_wallet_3",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 3
+    },
+    {
+     "t": 624,
+     "slot_offset": 2914,
+     "who": "group_wallet_4",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 4
+    },
+    {
+     "t": 624,
+     "slot_offset": 2914,
+     "who": "group_wallet_5",
+     "action": "send_tokens",
+     "sol": null,
+     "order_in_block": 5
+    },
+    {
+     "t": 626,
+     "slot_offset": 2922,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 9.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 634,
+     "slot_offset": 2960,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 4.2,
+     "order_in_block": 1
+    },
+    {
+     "t": 635,
+     "slot_offset": 2966,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.8,
+     "order_in_block": 1
+    },
+    {
+     "t": 639,
+     "slot_offset": 2981,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.8,
+     "order_in_block": 1
+    },
+    {
+     "t": 643,
+     "slot_offset": 3001,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 4.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 645,
+     "slot_offset": 3014,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 4.2,
+     "order_in_block": 1
+    },
+    {
+     "t": 647,
+     "slot_offset": 3019,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 4.0,
+     "order_in_block": 1
+    },
+    {
+     "t": 647,
+     "slot_offset": 3023,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 649,
+     "slot_offset": 3029,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.6,
+     "order_in_block": 1
+    },
+    {
+     "t": 650,
+     "slot_offset": 3034,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.5,
+     "order_in_block": 1
+    },
+    {
+     "t": 651,
+     "slot_offset": 3039,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.4,
+     "order_in_block": 1
+    },
+    {
+     "t": 652,
+     "slot_offset": 3045,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.2,
+     "order_in_block": 1
+    },
+    {
+     "t": 653,
+     "slot_offset": 3050,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 655,
+     "slot_offset": 3056,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 2.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 657,
+     "slot_offset": 3067,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 2.8,
+     "order_in_block": 1
+    },
+    {
+     "t": 658,
+     "slot_offset": 3071,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 2.7,
+     "order_in_block": 1
+    },
+    {
+     "t": 669,
+     "slot_offset": 3121,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 5.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 670,
+     "slot_offset": 3127,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 4.6,
+     "order_in_block": 1
+    },
+    {
+     "t": 672,
+     "slot_offset": 3137,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 4.2,
+     "order_in_block": 1
+    },
+    {
+     "t": 679,
+     "slot_offset": 3167,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 4.1,
+     "order_in_block": 1
+    },
+    {
+     "t": 701,
+     "slot_offset": 3270,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 3.9,
+     "order_in_block": 1
+    },
+    {
+     "t": 732,
+     "slot_offset": 3416,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 8.8,
+     "order_in_block": 1
+    },
+    {
+     "t": 955,
+     "slot_offset": 4453,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 10.3,
+     "order_in_block": 1
+    },
+    {
+     "t": 998,
+     "slot_offset": 4653,
+     "who": "group_buyer_2",
+     "action": "sell",
+     "sol": 8.6,
+     "order_in_block": 1
+    }
+   ],
+   "n_events": 49,
+   "note": "this single token made more than the whole sample total"
+  }
+ ],
+ "rough_scaling": {
+  "withdrawn": true,
+  "why": "A straight-line projection from 18 tokens, where one token is larger than the whole net profit and the median token loses money, is not a usable estimate."
+ },
+ "story_calibration": [
+  "A famous caller's wallet is watched by bots: 1,000 transactions referencing it every 16 s to ~4 min, 98-100% of them failing, most at the busiest moments.",
+  "The detected group moves as one: five wallets selling in the same block, at adjacent positions, within seconds.",
+  "Typical rhythm in the sample: tokens split across the group's wallets within seconds of its buy; half of its sells came within about 42 s of the latest public buy and three quarters within about 100 s; about 70% of its sell proceeds came within 15 minutes after a public buy and about 25% before any public buy; about 40% came after the public wallet had already sold out.",
+  "Not every token fits the alleged script: in our sample the group usually bought in the same block right AFTER the public wallet (copy-trading speed), sometimes finished selling BEFORE the public wallet bought, and in only 2 of 18 tokens bought first and sold into the public buy, and even there most of its buying came after the public buy."
+ ],
+ "claim_vs_measured": [
+  {
+   "claim": "The caller's public wallet is the one labelled with the published 6-character prefix",
+   "measured": "The caller's public platform profile lists a wallet with that prefix.",
+   "verdict": "confirmed"
+  },
+  {
+   "claim": "About 30 linked wallets: a few operational wallets plus about a dozen side wallets",
+   "measured": "The firm's list was not reachable. Our own detection found ONE tightly linked 5-wallet group (co-signed sweeps, internal first-funding chain); no on-chain link from it to the public wallet in bounded checks.",
+   "verdict": "could_not_check"
+  },
+  {
+   "claim": "Operational wallets buy first and distribute, the public wallet buys, side wallets sell into copy traders",
+   "measured": "18 sampled shared tokens: 2 fit the order, but even there ~80% of the group's buying came in the same block right after the public buy; 6 exited before the public buy; 6 bought in the same block right after it; 4 bought later. Group buying overall: 26% before the public buy, 46% in its block right after it, 27% later.",
+   "verdict": "partly"
+  },
+  {
+   "claim": "Side wallets dump 'right after' the public buy",
+   "measured": "Median 42 s from the latest public buy to each group sell (IQR 13.5-103 s, n=147). Sell proceeds: 24% before any public buy, 31% within 60 s, 43% within 5 min, 71% within 15 min; 39% after the public wallet had fully exited.",
+   "verdict": "partly"
+  },
+  {
+   "claim": "Side wallets buy before the public buy (lead not quantified in reachable text)",
+   "measured": "Group first buy minus public first buy: median 0 s, IQR -65.5 to 0 s; group first in 44% of tokens; in every same-block case the group was AFTER the public wallet.",
+   "verdict": "could_not_check"
+  },
+  {
+   "claim": "A seven-figure USD extraction over about six months",
+   "measured": "Detected group PnL on 18 sampled tokens: +32.5 SOL (~$2,900), median -0.59 SOL per token, profitable in 7 of 18; one token is larger than the total. No usable scaling.",
+   "verdict": "could_not_check"
+  },
+  {
+   "claim": "Tens of thousands of tokens traded by the linked wallets",
+   "measured": "The public wallet alone bought 64 tokens in one day (~12,000 over six months at that rate); one group recipient touched 116 tokens in ~2.5 days. Same order of magnitude; not counted for the whole period.",
+   "verdict": "partly"
+  },
+  {
+   "claim": "Six-figure platform callout rewards",
+   "measured": "Not measurable: payouts could not be isolated in the flooded history.",
+   "verdict": "could_not_check"
+  },
+  {
+   "claim": "A serial deployer launched and rugged thousands of tokens, including one named after the caller",
+   "measured": "A candidate address (a 5-character prefix match from a third-party tracker) signed all 6 recorded creation transactions checked; very active (300-2,200 transactions a day). Thousands, rugged and the caller-named token were not verified.",
+   "verdict": "partly"
+  },
+  {
+   "claim": "Multiple on-chain links to the deployer; side wallets sniped hundreds of its launches",
+   "measured": "The public wallet bought 5 verified launches of it in one day (3 within 8 s of creation): trading behaviour, not an ownership link. The detected group bought 2 of 116 sampled tokens from it. No funding link checked.",
+   "verdict": "could_not_check"
+  },
+  {
+   "claim": "Deployer's seven-figure trading profits",
+   "measured": "Not measured (would need its full trading history).",
+   "verdict": "could_not_check"
+  },
+  {
+   "claim": "Two named example tokens with side-wallet and public-wallet sell figures",
+   "measured": "One same-ticker token is in the public wallet's history but does not reproduce the example's figures; we cannot confirm it is the firm's example.",
+   "verdict": "could_not_check"
+  }
+ ],
+ "named_example_check": {
+  "note": "One of the firm's two named example tokens shares its ticker with a token in the public wallet's history. We cannot confirm it is the same token.",
+  "public_wallet": "four buys and two sells; net about +36 SOL",
+  "coordinated_pair": "bought in two blocks at adjacent positions, swept one wallet into the other seconds before the public buy, then sold about 32 SOL in about 20 sells over about an hour"
+ }
+}

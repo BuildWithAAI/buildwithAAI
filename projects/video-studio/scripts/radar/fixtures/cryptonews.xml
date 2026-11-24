@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>crypto.news</title>
+  <link>https://crypto.news</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title>Trezor and Exodus wallets lose $600K in reported theft</title>
+    <link>https://crypto.news/trezor-exodus-user-reports-600k-crypto-theft/</link>
+    <guid isPermaLink="false">https://crypto.news/?p=14491060</guid>
+    <pubDate>Mon, 23 Nov 2026 16:39:16 +0000</pubDate>
+    <category>News</category>
+    <category>Crypto Wallet</category>
+    <category>Solana</category>
+    <category>Trezor</category>
+    <description>A crypto wallet user reported losing more than $600,000 from a Trezor Safe 7 and an Exodus wallet used with the same iPhone, according to a Nov. 23 investigation by blockchain analytics account Onchain Lens. The user told Onchain Lens…</description>
+  </item>
+  <item>
+    <title>Bitcoin price struggles near $60K as Nvidia rally fades, ETFs shed $570M</title>
+    <link>https://crypto.news/bitcoin-price-prediction-etf-outflows-60k-support/</link>
+    <guid isPermaLink="false">https://crypto.news/?p=14491102</guid>
+    <pubDate>Tue, 24 Nov 2026 05:56:18 +0000</pubDate>
+    <category>Markets</category>
+    <category>Bitcoin</category>
+    <category>Bitcoin spot ETF</category>
+    <category>outflows</category>
+    <description>Bitcoin price struggles near $60,000 as ETF outflows reach $569 million and analysts identify crucial support levels amid persistent selling pressure.</description>
+  </item>
+</channel>
+</rss>

@@ -13,6 +13,7 @@ import {CharacterLayer, entry, SceneBg, useDirection, type SceneCtx} from './par
 import {BadgerInsert, inInsert} from './Insert';
 import {list, str} from '../validate';
 import {placeBlock, stackCards} from '../layout/blocks';
+import {useLowerThird} from './Overlays';
 
 export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const frame = useCurrentFrame();
@@ -23,6 +24,9 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const bullets = (list(ctx.sc, 'bullets') ?? []).slice(0, 4);
 	const title = str(ctx.sc, 'title') ?? '';
 	const titleFit = useFit(title, L.title, ctx.lang);
+	// a lower-third plate that reaches into the text column keeps the block above it (landscape)
+	const lt = useLowerThird(ctx.format, ctx.lang, ctx.sc);
+	const column = lt && lt.box.x + lt.box.w > L.list.x - 16 ? {top: L.column.top, bottom: Math.min(L.column.bottom, lt.box.y - 16)} : L.column;
 	// all bullets at one size, shrunk together until title + list fit the column
 	const titleH = title ? titleFit.height : 0;
 	const fits = useFitGroup(
@@ -31,7 +35,7 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		ctx.lang,
 		(rs) =>
 			placeBlock(
-				L.column,
+				column,
 				titleH,
 				stackCards(
 					rs.map((r) => r.height),
@@ -48,7 +52,7 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 		L.itemPad.y,
 		L.gap,
 	);
-	const block = placeBlock(L.column, titleH, stack.total);
+	const block = placeBlock(column, titleH, stack.total);
 	const revealed = dir.reveals.filter((r) => frame >= r).length;
 	const titleBox: Box = {...L.title.box, y: block.titleY, h: Math.ceil(titleFit.height)};
 	return (
@@ -69,7 +73,7 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				const ink = active ? C.onDark : C.ink;
 				const textBox: Box = {x: L.itemPad.x + L.marker, y: L.itemPad.y, w: L.item.box.w, h: Math.ceil(fits[i].height)}; // relative to the card
 				const m = Math.round(L.marker * 0.4);
-				const firstLine = fits[i].fontSize * L.item.lineHeight;
+				const firstLine = fits[i].fontSize * fits[i].lineHeight;
 				return (
 					<div
 						key={b + i}

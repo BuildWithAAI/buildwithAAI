@@ -10,6 +10,7 @@ import {existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileS
 import {isAbsolute, join, relative, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
+import {checkRegistry, isRestricted} from '../../src/server/offers.ts';
 import {readCatalog, readKits} from './catalog.ts';
 import {parseDate} from './csv.ts';
 import {ALL_TIME, DAY_MS, readHubCsv, readHubDb, type TimeRange} from './hub-clicks.ts';
@@ -39,6 +40,7 @@ Inputs (all optional; the dashboard uses whatever it gets):
   --payouts <id>=<file>      payout CSV for programme <id> (repeat)
                              default: <data>/payouts/<id>/*.csv for each programme in the config
   --payouts-config <file>    programme column mappings (default: config/payouts.json)
+  --offers <file>            the hub's offer registry, for its region rules (default: config/offers.json)
   --catalog <file>           videos.csv with format, tags and aliases (default: <data>/videos.csv)
   --kits <dir>               publish kits (default: ../video-studio/out/publish/<channel>)
   --from <YYYY-MM-DD>        start date for the API, hub clicks and payouts
@@ -116,6 +118,7 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 				'hub-csv': {type: 'string'},
 				payouts: {type: 'string', multiple: true},
 				'payouts-config': {type: 'string'},
+				offers: {type: 'string'},
 				catalog: {type: 'string'},
 				kits: {type: 'string'},
 				from: {type: 'string'},
@@ -265,7 +268,23 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 	if (range !== ALL_TIME) inputs.push(`date range: ${from ?? 'start'} to ${to ?? 'today'} (Studio exports cover the range chosen in Studio)`);
 	if (api && studioFiles.length > 0) inputs.push('views and retention come from the API; impressions and CTR from the Studio export. Export Studio for the same dates.');
 
-	const report = buildReport(merged.videos, merged.offers, {channel, hubLoaded: hub !== null});
+	// Region rules: restricted offers never get a "double down" call (they stay on the hub page only).
+	let restrictedOffers: Set<string> | null = null;
+	const offersFile = values.offers ? at(values.offers) : resolve(PROJECT_DIR, 'config/offers.json');
+	if (values.offers || existsSync(offersFile)) {
+		try {
+			const check = checkRegistry(JSON.parse(readFileSync(offersFile, 'utf8')));
+			if (check.errors.length > 0) {
+				add([{level: 'warning', where: offersFile, message: `the offer registry has problems (${check.errors[0]}), so region rules are not applied to the offer advice`}]);
+			} else {
+				restrictedOffers = new Set(check.registry.offers.filter((o) => isRestricted(o)).map((o) => o.id));
+				inputs.push(`offer registry: ${show(offersFile)} (${restrictedOffers.size} offer(s) restricted by region)`);
+			}
+		} catch (err) {
+			add([{level: 'warning', where: offersFile, message: `cannot read the offer registry: ${(err as Error).message}`}]);
+		}
+	}
+	const report = buildReport(merged.videos, merged.offers, {channel, hubLoaded: hub !== null, restrictedOffers});
 	const outDir = values.out ? at(values.out) : resolve(PROJECT_DIR, 'out/dashboard');
 	mkdirSync(outDir, {recursive: true});
 	const stateFile = join(outDir, 'state.json');

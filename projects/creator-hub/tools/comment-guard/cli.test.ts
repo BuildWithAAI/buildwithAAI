@@ -10,6 +10,7 @@ import {type OAuthFile, readOAuthFile, SCOPE, writeOAuthFile} from './youtube.ts
 
 const CHANNEL = 'UCsyntheticZOORA00000001';
 const FIXTURES = new URL('./fixtures/comments.json', import.meta.url).pathname;
+const FIXTURE_COUNT = (JSON.parse(readFileSync(FIXTURES, 'utf8')) as {comments: unknown[]}).comments.length;
 const noNetwork: typeof fetch = async () => {
 	throw new Error('unexpected network call');
 };
@@ -97,8 +98,9 @@ describe('guard scan (dry run, the default)', () => {
 		assert.equal(code, 0, out);
 		const [report] = reports('scan');
 		assert.equal(report.source, 'file');
-		assert.equal(report.totals.scanned, 280);
-		assert.equal(report.totals.hold + report.totals.review + report.totals.allow, 280);
+		assert.ok(FIXTURE_COUNT >= 280);
+		assert.equal(report.totals.scanned, FIXTURE_COUNT);
+		assert.equal(report.totals.hold + report.totals.review + report.totals.allow, FIXTURE_COUNT);
 		assert.ok(report.items.every((item) => item.action !== 'allow'));
 		const md = readFileSync(join(project, 'out', 'comment-guard', readdirSync(join(project, 'out', 'comment-guard')).find((n) => n.endsWith('.md')) ?? ''), 'utf8');
 		assert.match(md, /Dry run: nothing was changed/);

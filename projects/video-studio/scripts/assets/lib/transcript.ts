@@ -82,6 +82,46 @@ export const chapters = (sb: EpisodeStoryboard, tl: EpisodeTimeline | null, opts
 	return out;
 };
 
+/** "00:00", "1:02" or "1:02:03" (the publish kit's chapter starts) in ms; null when malformed. */
+export const parseClock = (start: string): number | null => {
+	const m = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/.exec(start.trim());
+	if (!m || Number(m[3]) > 59 || (m[1] !== undefined && Number(m[2]) > 59)) return null;
+	return ((Number(m[1] ?? 0) * 60 + Number(m[2])) * 60 + Number(m[3])) * 1000;
+};
+
+/**
+ * The publish kit's chapters (the ones the YouTube description and the newsletter carry) on this timeline, so the
+ * article and the podcast list the same chapters as the video. Each scene goes to the chapter its start falls in
+ * (the kit rounds starts down to the second). `localTitles` (a dub on a timeline fitted to the master): keep the
+ * kit's boundaries but title each chapter with its first scene's title in this language. Null when the kit's
+ * chapters do not fit this timeline (not starting at 0, not increasing, or past its end): the caller falls back to
+ * the scene rule and says so.
+ */
+export const chaptersFromKit = (kit: {start: string; title: string}[], sb: EpisodeStoryboard, tl: EpisodeTimeline, opts: {localTitles?: boolean} = {}): Chapter[] | null => {
+	if (!kit.length) return null;
+	const starts = kit.map((c) => parseClock(c.start));
+	if (starts.some((x) => x === null) || starts[0] !== 0) return null;
+	for (let i = 1; i < starts.length; i++) if ((starts[i] as number) <= (starts[i - 1] as number)) return null;
+	if ((starts[starts.length - 1] as number) >= tl.totalMs) return null;
+	const out: Chapter[] = kit.map((c, i) => ({startMs: starts[i] as number, endMs: i + 1 < kit.length ? (starts[i + 1] as number) : tl.totalMs, title: c.title.trim(), sceneIds: []}));
+	sb.scenes.forEach((scene, i) => {
+		const at = tl.scenes[i]?.startMs ?? 0;
+		let k = 0;
+		for (let j = 0; j < out.length; j++) if (out[j].startMs <= at + 999) k = j;
+		out[k].sceneIds.push(scene.id);
+	});
+	if (opts.localTitles) {
+		for (const ch of out) {
+			const first = sb.scenes.find((x) => x.id === ch.sceneIds[0]);
+			if (first) ch.title = sceneTitle(first);
+		}
+	}
+	return out;
+};
+
+/** True when two chapter lists start at the same seconds (the kit rounds to whole seconds). */
+export const sameChapterStarts = (a: Chapter[], b: Chapter[]): boolean => a.length === b.length && a.every((c, i) => Math.floor(c.startMs / 1000) === Math.floor(b[i].startMs / 1000));
+
 const CUE_MAX_CHARS = 42;
 const CUE_MAX_MS = 6000;
 

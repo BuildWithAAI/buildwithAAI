@@ -9,10 +9,12 @@
  * only to check that the rows add up. YouTube Help says downloaded reports are limited to 500 rows.
  */
 import {readFileSync, statSync} from 'node:fs';
-import {CsvError, MAX_CSV_BYTES, normalizeHeader, parseCount, parseCsv, parseDate, parseDuration, parseNumber, parsePercent} from './csv.ts';
+import {CsvError, isDecimalCommaOnly, MAX_CSV_BYTES, normalizeHeader, parseCount, parseCsv, parseDate, parseDuration, parseNumber, parsePercent} from './csv.ts';
 import type {Issue, StudioVideo} from './model.ts';
 
 export const STUDIO_ROW_LIMIT = 500;
+/** Revenue per 1,000 views above this is flagged: YouTube revenue per 1,000 views is rarely above a few tens. */
+export const PLAUSIBLE_REVENUE_PER_1K = 50;
 const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
 const TOTAL_LABELS = new Set(['total', 'totals', 'grand total']);
 
@@ -87,6 +89,17 @@ export const parseStudioCsv = (text: string, file: string): StudioReport => {
 	if (!METRICS.some((m) => columns.has(m)) && !revenueColumn) {
 		return error('no metric columns found (for example "Views"). Is this the "Table data.csv" of a Content export in English?');
 	}
+	// Studio writes revenue with three decimals, so in a file re-saved in a decimal-comma locale "31,200"
+	// (31.20 USD) looks exactly like 31,200 dollars. Refuse such a file instead of guessing.
+	const numericColumns = [...METRICS.map((m) => columns.get(m)), revenueColumn?.index].filter((i): i is number => i !== undefined);
+	for (const row of table.rows) {
+		const index = numericColumns.find((i) => isDecimalCommaOnly(row.cells[i] ?? ''));
+		if (index === undefined) continue;
+		return error(
+			`line ${row.line}: "${row.cells[index]}" in "${table.header[index]}" has a decimal comma, so this file was saved in a decimal-comma locale ` +
+				'and a revenue such as "31,200" (31.20) could be read as 31,200. Export again with YouTube Studio set to English, or save the CSV with "." as the decimal separator.',
+		);
+	}
 
 	const videos: StudioVideo[] = [];
 	const seen = new Set<string>();
@@ -133,6 +146,11 @@ export const parseStudioCsv = (text: string, file: string): StudioReport => {
 			const amount = raw === '' ? null : parseNumber(raw);
 			if (raw !== '' && amount === null) issues.push({level: 'warning', where, message: `estimated revenue "${raw}" is not readable, left empty`});
 			if (amount !== null) revenue = {currency: revenueColumn.currency, amount};
+		}
+		const viewsForCheck = parseCount(cell('views'));
+		if (revenue && viewsForCheck && (revenue.amount / viewsForCheck) * 1000 > PLAUSIBLE_REVENUE_PER_1K) {
+			const per1k = ((revenue.amount / viewsForCheck) * 1000).toFixed(2);
+			issues.push({level: 'warning', where, message: `video ${id} earned ${per1k} ${revenue.currency} per 1,000 views, which is unusually high: check the export's number format`});
 		}
 
 		videos.push({

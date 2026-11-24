@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "thumb-demo-alt",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "You built an AI trading agent (thumbnail fixture)",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "You gave a bot your keys and a budget. It had opinions.",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "You built an AI trading agent"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    }
+  ],
+  "sources": [],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "MY BOT DID WHAT?",
+      "expression": "shocked",
+      "badger": false
+    },
+    {
+      "id": "b",
+      "text": "NOBODY CHECKED",
+      "expression": "neutral",
+      "badger": false
+    },
+    {
+      "id": "c",
+      "text": "THE AGENT LIED",
+      "expression": "happy",
+      "badger": true,
+      "badgerReaction": "judge"
+    }
+  ]
+}

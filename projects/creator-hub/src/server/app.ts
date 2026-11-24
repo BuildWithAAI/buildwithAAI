@@ -10,7 +10,7 @@ import {isBotRequest} from './bots.ts';
 import type {ServerSettings} from './config.ts';
 import {openDb} from './db.ts';
 import {HttpError} from './errors.ts';
-import {headerValue, proxyTrusted, resolveCountry, resolveIpKey, visitorHash} from './geo.ts';
+import {headerValue, isPrivateAddress, proxyTrusted, resolveCountry, resolveIpKey, visitorHash} from './geo.ts';
 import {errorPage} from './html.ts';
 import type {Ctx} from './http.ts';
 import {createRouter, type HubRouter} from './router.ts';
@@ -69,13 +69,24 @@ export const createHub = (settings: ServerSettings): Hub => {
 	const {burst, perMinute} = settings.rateLimit;
 	const visitorLimiter = createRateLimiter({capacity: burst, refillPerSecond: perMinute / 60});
 	const ipLimiter = createRateLimiter({capacity: burst * 10, refillPerSecond: (perMinute * 10) / 60});
+	let proxyWarned = false;
 
 	const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
 		for (const [name, value] of headers) res.setHeader(name, value);
 		const url = requestUrl(config.publicBaseUrl, req.url ?? '/');
 		const trusted = proxyTrusted(req, geo);
 		const ip = resolveIpKey(req, geo, trusted);
-		setClientKey(req, ip);
+		// In production with TRUST_PROXY=none, a request from a private address almost always comes through
+		// a proxy, so its IP is the proxy's and every visitor would share it. Such requests are limited per
+		// visitor (IP + user agent) only, and the owner is told how to fix the setting.
+		const sharedProxy = settings.production && geo.trustProxy === 'none' && isPrivateAddress(req.socket.remoteAddress ?? '');
+		if (sharedProxy && !proxyWarned) {
+			proxyWarned = true;
+			console.warn(
+				`[hub] requests arrive from the private address ${req.socket.remoteAddress} while TRUST_PROXY=none: the hub is probably behind a proxy, so per-IP limits are off for them. Set TRUST_PROXY and the client IP header for your platform (docs/link-hub.md).`,
+			);
+		}
+		if (!sharedProxy) setClientKey(req, ip);
 		const userAgent = (headerValue(req, 'user-agent') ?? '').slice(0, 512);
 		let formBody: Promise<URLSearchParams> | null = null;
 		const ctx: Ctx = {
@@ -101,8 +112,8 @@ export const createHub = (settings: ServerSettings): Hub => {
 		};
 		try {
 			if (!url) throw new HttpError(400, 'Bad request.');
-			if (url.pathname !== '/healthz' && !(visitorLimiter.take(ctx.visitorHash) && ipLimiter.take(ip))) {
-				const wait = Math.max(1, visitorLimiter.retryAfter(ctx.visitorHash), ipLimiter.retryAfter(ip));
+			if (url.pathname !== '/healthz' && !(visitorLimiter.take(ctx.visitorHash) && (sharedProxy || ipLimiter.take(ip)))) {
+				const wait = Math.max(1, visitorLimiter.retryAfter(ctx.visitorHash), sharedProxy ? 0 : ipLimiter.retryAfter(ip));
 				res.setHeader('Retry-After', String(wait));
 				throw new HttpError(429, 'Too many requests. Please wait a little and try again.');
 			}

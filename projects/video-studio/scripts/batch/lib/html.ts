@@ -61,6 +61,31 @@ const dubLine = (d: DubState): string => {
 	return `<li><b>${esc(d.lang)}</b> ${state}<br><span class="small">${parts.join(' · ')}${d.notes.length && !(d.ready && d.reviewed) ? `<br>${esc(d.notes.join('; '))}` : ''}</span></li>`;
 };
 
+/** Everything the render's upload spec adds to the upload, shown in full: the owner approves this text too. */
+const specHtml = (r: ReviewItem): string => {
+	const spec = r.state.spec;
+	if (!spec) return '<h3>Upload spec</h3><p class="small">None: the upload sends the publish kit\'s English title, description and tags only.</p>';
+	const h: string[] = [];
+	h.push(`<h3>Upload spec: extra metadata the upload sends</h3><p class="small"><code>${esc(spec.file.path)}</code>${spec.file.sha256 ? ` · sha256 <code>${esc(spec.file.sha256.slice(0, 12))}</code>` : ''}. Approving binds this exact file and the files it names.</p>`);
+	if (spec.problem) h.push(`<p class="no">Unreadable: ${esc(spec.problem)}</p>`);
+	if (spec.localizations.length) {
+		h.push('<table><thead><tr><th>Language</th><th>Title and description</th></tr></thead><tbody>');
+		for (const l of spec.localizations) h.push(`<tr><td>${esc(l.lang)}</td><td><b>${esc(l.title)}</b><pre>${esc(l.description)}</pre></td></tr>`);
+		h.push('</tbody></table>');
+	}
+	const rows: string[] = [];
+	if (spec.tags) rows.push(`<li>Tags: ${spec.tags.length ? spec.tags.map((t) => `<code>${esc(t)}</code>`).join(' ') : '(none)'}</li>`);
+	if (spec.playlistId !== undefined) rows.push(`<li>Playlist: ${spec.playlistId ? `<code>${esc(spec.playlistId)}</code>` : 'none'}</li>`);
+	for (const c of spec.captions) rows.push(`<li>Caption track ${esc(c.language)}${c.name ? ` “${esc(c.name)}”` : ''}: <code>${esc(c.path)}</code>${c.file?.sha256 ? ` · sha256 <code>${esc(c.file.sha256.slice(0, 12))}</code>` : ''}${c.problem ? ` <span class="no">${esc(c.problem)}</span>` : ''}</li>`);
+	if (spec.thumbnail) rows.push(spec.thumbnail.path ? `<li>Thumbnail override: <code>${esc(spec.thumbnail.path)}</code>${spec.thumbnail.problem ? ` <span class="no">${esc(spec.thumbnail.problem)}</span>` : ''}</li>` : '<li>Thumbnail: none (no custom thumbnail)</li>');
+	for (const x of spec.settings) rows.push(`<li>${esc(x.key)}: <code>${esc(x.value)}</code></li>`);
+	if (spec.unknownKeys.length) rows.push(`<li class="no">Keys the uploader refuses: ${spec.unknownKeys.map((k) => `<code>${esc(k)}</code>`).join(' ')}</li>`);
+	if (rows.length) h.push(`<ul class="tight">${rows.join('')}</ul>`);
+	const thumb = r.specThumb?.href ? safeRelative(r.specThumb.href) : null;
+	if (thumb) h.push(`<div class="thumbs"><figure><img alt="${esc(r.specThumb?.label ?? '')}" src="${esc(thumb)}"><figcaption>${esc(r.specThumb?.label ?? '')}</figcaption></figure></div>`);
+	return h.join('');
+};
+
 const scenesHtml = (s: ItemState): string =>
 	s.scenes
 		.map((sc) => {
@@ -122,6 +147,7 @@ const itemHtml = (r: ReviewItem, timeZone: string): string => {
 		if (s.settings.reasons.length) h.push(`<details><summary>Why</summary><ul class="tight">${s.settings.reasons.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>`);
 	} else h.push('<p class="small">No publish kit yet.</p>');
 	if (s.kitFailing.length) h.push(`<ul class="tight blockers">${s.kitFailing.map((k) => `<li><code>${esc(k.id)}</code>: ${esc(k.detail)}</li>`).join('')}</ul>`);
+	h.push(specHtml(r));
 
 	if (i.kind === 'long' && s.dubs.length) {
 		h.push(`<h3>Dubbed audio tracks</h3><ul class="tight">${s.dubs.map(dubLine).join('')}</ul><p class="small">Tracks are added by hand in Studio after the upload. Only a ready, native-reviewed track is added.</p>`);
@@ -148,12 +174,13 @@ export const renderReviewHtml = (m: ReviewModel): string => {
 	h.push('<header class="card">');
 	h.push(`<div class="kicker">Weekly batch · ${esc(m.week)} · ${esc(shortDate(m.weekStart))} to ${esc(shortDate(m.weekEnd, true))} · times ${esc(m.timeZone)}</div>`);
 	h.push(`<h1>Weekly approval: ${m.items.length} item(s)</h1>`);
-	h.push(`<div class="pills"><span class="pill ready">${m.ready.length} READY</span>${m.notReady.length ? `<span class="pill notready">${m.notReady.length} NOT READY</span>` : ''}</div>`);
+	h.push(`<div class="pills"><span class="pill ready">${m.ready.length} READY</span>${m.notReady.length ? `<span class="pill notready">${m.notReady.length} NOT READY</span>` : ''}<span class="pill">Page code #${esc(m.pageCode)}</span></div>`);
 	h.push(
 		m.ready.length
-			? `<div class="reply">Approve every READY item: reply <code>${esc(m.replyAll)}</code>. Or name some: <code>${esc(`APPROVE ${m.week} ${m.ready.slice(0, 2).join(' ')}`)}</code>.</div>`
+			? `<div class="reply">Approve every READY item: reply <code>${esc(m.replyAll)}</code>. Or name some: <code>${esc(`APPROVE ${m.week} ${m.ready.slice(0, 2).join(' ')} #${m.pageCode}`)}</code>.</div>`
 			: '<div class="reply">Nothing is ready to approve yet. Each item lists what is missing.</div>',
 	);
+	h.push(`<p class="small">Every reply ends with this page's code, <b>#${esc(m.pageCode)}</b>. A reply approves only the page it carries the code of: if the page is rebuilt (after an edit or a new render), its code changes and the old reply is refused.</p>`);
 	h.push(`<div class="edit">Edits: reply <code>${esc(`EDIT <item>: <what to change>`)}</code>. Only your own reply approves; nothing is uploaded until then.</div>`);
 	h.push(`<p class="small">${esc(m.status)} Built ${esc(m.builtAtLocal)}. After your reply, the session writes the uploader's approval records for exactly these files and times; the uploader then sends each one as a private video scheduled for its slot. A file that changes after this page was built needs a new page.</p>`);
 	h.push('</header>');
@@ -172,7 +199,7 @@ export const renderReviewHtml = (m: ReviewModel): string => {
 
 	for (const r of m.items) h.push(itemHtml(r, m.timeZone));
 
-	h.push(`<section class="small"><h2>Versions</h2><p>Plan sha256 <code>${esc(m.planSha256.slice(0, 16))}</code>. Built ${esc(m.builtAt)}. The approve step re-checks the hash of every file shown here and refuses an item whose files changed.</p></section>`);
+	h.push(`<section class="small"><h2>Versions</h2><p>Page code <code>#${esc(m.pageCode)}</code>. Plan sha256 <code>${esc(m.planSha256.slice(0, 16))}</code>. Built ${esc(m.builtAt)}. The approve step re-checks the hash of every file shown here (upload specs included) and refuses an item whose files changed.</p></section>`);
 	h.push('</main></body></html>');
 	return h.join('\n');
 };

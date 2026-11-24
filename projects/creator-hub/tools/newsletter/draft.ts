@@ -51,6 +51,8 @@ export type DraftOptions = {
 export const DEFAULT_BRAND = 'Zoora AI';
 const GENERIC_CHAPTER = /^(?:intro(?:duction)?|cold open|opening|outro|credits|end ?screen|ending|subscribe|thanks for watching)$/i;
 const MAX_TAKEAWAYS = 10;
+/** Failed publish-kit checks that block the email: claims, any disclosure check, restricted offers. */
+const BLOCKING_KIT_CHECK = /^(?:income-claims|restricted-offers)$|disclosure/;
 const PREVIEW_MAX = 140;
 
 const flat = (text: string): string => text.replace(/\s+/g, ' ').trim();
@@ -180,7 +182,7 @@ export const buildDraft = (kit: NewsletterKit, options: DraftOptions): {draft: N
 		safetyLine: `${brandName} will never DM you first, ask for your seed phrase or ask you to connect a wallet. Anyone who does is an impersonator.`,
 		footer: [
 			'Educational content, not financial advice. Some links are affiliate links and are always labelled.',
-			`You're getting this email because you subscribed to ${brandName} emails and confirmed your address.`,
+			`You're getting this email because you subscribed to ${brandName} emails.`,
 		],
 		disclosuresUrl: origin ? `${origin}/disclosures` : null,
 		generatedAt: now.toISOString(),
@@ -192,6 +194,14 @@ export const buildDraft = (kit: NewsletterKit, options: DraftOptions): {draft: N
 			warn('content', `mentions "${offer.name}", which is left out of emails by its region rules: make sure the email does not promote it`);
 		}
 	}
-	for (const check of kit.checks.filter((c) => !c.ok)) warn(`checks "${check.id}"`, `the publish kit check failed: ${check.detail || 'no detail'}`);
+	for (const check of kit.checks.filter((c) => !c.ok)) {
+		// The email repeats the kit's text and offers: a kit that failed a claim, disclosure or region check
+		// must be fixed first. Other failed checks (title length, captions...) are only reported.
+		if (BLOCKING_KIT_CHECK.test(check.id)) {
+			error(`checks "${check.id}"`, `the publish kit check failed, so no email is drafted until the kit passes it: ${check.detail || 'no detail'}`);
+		} else {
+			warn(`checks "${check.id}"`, `the publish kit check failed: ${check.detail || 'no detail'}`);
+		}
+	}
 	return {draft, issues};
 };

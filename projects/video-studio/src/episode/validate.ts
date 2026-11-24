@@ -4,7 +4,7 @@
  */
 import type {MouthShape} from '../characters/types';
 import type {Lang, SceneType, Storyboard, StoryboardScene, Timeline} from './types.ts';
-import {displayText, MarkupError, parseMarkup, sourceIds} from './markup.ts';
+import {displayText, MarkupError, parseMarkup, sourceIds, spokenText} from './markup.ts';
 import {uiLabel, type UiKey} from './i18n/ui.ts';
 import {normWord} from './cues.ts';
 
@@ -58,6 +58,12 @@ export const showsSources = (sc: StoryboardScene): boolean => {
 };
 
 const loose = (s: string) => normWord(s.replace(/\s+/g, ''));
+/** Letters and digits only (NFKC, lower case): what must match between a storyboard's narration and its voiced words. */
+const letters = (s: string) => s.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+
+/** Dev fixtures (src/episode/dev/fixtures) are the only storyboards exempt from the real-channel source rules. */
+export const DEV_CHANNEL_ID = '_dev';
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
 
 export type StoryboardCtx = {channel: string; slug: string; lang: Lang; short: boolean; shortId?: string};
 
@@ -139,8 +145,10 @@ export const validateStoryboard = (sb: Storyboard, c: StoryboardCtx): Issue[] =>
 				if ((sb.offers ?? []).length) {
 					const d = str(sc, 'disclosure');
 					if (!d) e(at, 'storyboard.offers is set: the CTA needs onScreen.disclosure (shown on screen)');
-					else if (!loose(displayText(sc.narration)).includes(loose(d)))
-						e(at, `storyboard.offers is set: the CTA narration must SAY the disclosure ("${d}") as well as show it (FTC 16 CFR 255)`);
+					// the SPOKEN side (fixed 2026-11-24, review: a display-only {text|} disclosure passed here but fails the
+					// claim gate): captions alone are not a spoken disclosure
+					else if (!loose(spokenText(sc.narration)).includes(loose(d)))
+						e(at, `storyboard.offers is set: the CTA narration must SAY the disclosure ("${d}") as well as show it (FTC 16 CFR 255); display-only {text|} markup is not said`);
 				}
 				if (!str(sc, 'button')) needUi.add('subscribe');
 				break;
@@ -157,6 +165,26 @@ export const validateStoryboard = (sb: Storyboard, c: StoryboardCtx): Issue[] =>
 	});
 	if (!c.short && !sb.scenes.some((sc) => sc.badger?.present))
 		e('storyboard', 'Badger must appear recognizably in every episode (PROJECT_INSTRUCTIONS): set badger.present on at least one scene');
+	// real channels: every cited source must be one the claim gate accepts (scripts/claims: source-unverified,
+	// source-not-https, source-no-accessed). The full gate (unsourced claims, must-not-say, income, names, wallets) runs
+	// in scripts/claims; Node tools check its report (src/episode/node/claimGate.ts). Added 2026-11-24 (review).
+	if (c.channel !== DEV_CHANNEL_ID) {
+		const cited = new Set<string>();
+		for (const sc of sb.scenes) {
+			try {
+				for (const id of sourceIds(sc.narration)) cited.add(id);
+			} catch {
+				// markup errors are reported per scene above
+			}
+		}
+		for (const src of sb.sources ?? []) {
+			if (!cited.has(src.id)) continue;
+			const at = `sources[${src.id}]`;
+			if (src.status !== 'verified') e(at, `is cited but its status is "${String(src.status)}": only verified sources may back a claim (run the claim gate: node scripts/claims/check.ts)`);
+			if (!/^https:\/\//i.test(String(src.url ?? ''))) e(at, 'is cited but its url is not https');
+			if (!ISO_DATE.test(String(src.accessed ?? ''))) e(at, 'is cited but has no accessed date (YYYY-MM-DD)');
+		}
+	}
 	for (const k of needUi) if (!uiLabel(sb, k)) e('storyboard.ui', `"${k}" is required in a ${sb.lang} storyboard (no English UI text in a dubbed render)`);
 	// shorts
 	const shortIds = new Set<string>();
@@ -213,6 +241,19 @@ export const validateTimeline = (tl: Timeline, sb: Storyboard, fps: number, c: {
 			const bad = s.mouth.findIndex((m) => !MOUTHS.includes(m));
 			if (bad >= 0) e(at, `mouth[${bad}] "${s.mouth[bad]}" is not in the mouth library`);
 			if (Math.abs(s.mouth.length - frames) > 2) w(at, `mouth has ${s.mouth.length} frames, the scene ${frames}`);
+		}
+		// the voiced words must be this narration (fixed 2026-11-24, review): a storyboard edited after the voice step
+		// would render captions, cues and lip-sync for words that are not said, and skip the claim gate's check of them
+		if (!tl.mock) {
+			let want = '';
+			try {
+				want = letters(displayText(sb.scenes[i].narration));
+			} catch {
+				want = '';
+			}
+			const got = letters((s.words ?? []).map((wd) => wd.text).join(''));
+			if (want && got !== want)
+				e(at, 'its words differ from the storyboard narration: the storyboard changed after the voice step. Re-run the claim gate (node scripts/claims/check.ts) and the voice step for this language');
 		}
 		if (sb.scenes[i].type === 'endscreen' && !c.short && s.durationMs < END_SCREEN_MS - frameMs)
 			e(at, `the end screen lasts ${(s.durationMs / 1000).toFixed(1)} s; it must hold 20 s (storyboard minDurationSec: 20)`);

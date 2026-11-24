@@ -2,10 +2,10 @@
  * Fact validation (pure). Errors make a fact unusable (the CLI refuses to save it, to-storyboard refuses to cite it);
  * warnings are listed for the owner. The core rule: every figure in the statement is listed in numbers[], every listed
  * figure is in at least one source excerpt, and every excerpt contains a figure or an entity of the claim.
- * Private names and wallet addresses use the claim gate's own detectors (scripts/claims/lib), so both gates agree.
+ * Private names and wallet addresses use the claim gate's own detectors (copied in lib/detectors.ts, checked against
+ * scripts/claims/lib by a parity test), so both gates agree.
  */
-import {findNames, type NameList} from '../../claims/lib/names.ts';
-import {findWallets, KIND_LABEL} from '../../claims/lib/wallets.ts';
+import {findNames, findWallets, KIND_LABEL, type NameList} from './detectors.ts';
 import {daysBetween, isIsoDate} from './dates.ts';
 import {digitRuns, entityAliases, hasEntity, statementHasNumber, textHasNumber, unlistedFigures} from './numbers.ts';
 import {recheckDate} from './stale.ts';

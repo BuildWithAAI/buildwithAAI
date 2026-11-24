@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import {describe, it} from 'node:test';
-import {createBroadcastDraft, KIT_API_BASE, KitApiError, type BroadcastDraftInput} from './kit-api.ts';
+import {createBroadcastDraft, KIT_API_BASE, KitApiError, parseSubscriberFilter, type BroadcastDraftInput} from './kit-api.ts';
 
 const KEY = 'kit_test_key_0123456789';
 const INPUT: BroadcastDraftInput = {
@@ -90,6 +90,20 @@ describe('createBroadcastDraft', () => {
 			public: false,
 			send_at: null,
 		});
+	});
+
+	it('sends a subscriber filter only when one is given, as one "all" group', async () => {
+		const {calls, fetchImpl} = mockFetch(() => created());
+		await createBroadcastDraft({...INPUT, subscriberFilter: {type: 'segment', ids: [7, 9]}}, {apiKey: KEY, fetch: fetchImpl});
+		assert.deepEqual(JSON.parse(String(calls[0]?.init.body)).subscriber_filter, [{all: [{type: 'segment', ids: [7, 9]}]}]);
+		await createBroadcastDraft({...INPUT, subscriberFilter: null}, {apiKey: KEY, fetch: fetchImpl});
+		assert.equal('subscriber_filter' in JSON.parse(String(calls[1]?.init.body)), false);
+	});
+
+	it('parses KIT_SUBSCRIBER_FILTER', () => {
+		assert.deepEqual(parseSubscriberFilter('tag:123'), {type: 'tag', ids: [123]});
+		assert.deepEqual(parseSubscriberFilter(' Segment : 7 , 9 ,7'), {type: 'segment', ids: [7, 9]});
+		for (const bad of ['', 'tag:', 'tag:abc', 'list:7', 'tag:0', 'tag:1;drop', '123']) assert.equal(parseSubscriberFilter(bad), null, bad);
 	});
 
 	it('refuses to call Kit without a usable key or content', async () => {

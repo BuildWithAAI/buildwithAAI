@@ -94,5 +94,9 @@ def choose_fit(samples: list[tuple[float, float]], target_ms: float, master_dura
     return min(samples, key=lambda s: s[1])
 
 
+def close_tolerance(target_ms: float) -> float:
+    return max(50.0, 0.02 * target_ms)
+
+
 def close_enough(speech_ms: float, target_ms: float) -> bool:
-    return abs(speech_ms - target_ms) <= max(50.0, 0.02 * target_ms)
+    return abs(speech_ms - target_ms) <= close_tolerance(target_ms)

@@ -83,7 +83,20 @@ const mix = (videos: DashboardVideo[]): string => {
 	return [long && `${long} long`, short && `${short} short`].filter(Boolean).join(', ');
 };
 
-export const buildReport = (videos: DashboardVideo[], offers: OfferSummary[], options: {channel: string; hubLoaded: boolean}): Report => {
+export type ReportOptions = {
+	channel: string;
+	hubLoaded: boolean;
+	/**
+	 * Offer ids restricted by region in the offer registry (country lists or unknownCountry "block"), or
+	 * null/undefined when no registry was read. Restricted offers are never promoted in videos, posts or
+	 * emails, so they never get a "double down" call.
+	 */
+	restrictedOffers?: ReadonlySet<string> | null;
+};
+
+const HUB_ONLY = 'It is restricted by region, so keep it on the hub page only: do not name it in videos, posts or emails.';
+
+export const buildReport = (videos: DashboardVideo[], offers: OfferSummary[], options: ReportOptions): Report => {
 	const withViews = videos.filter(hasViews);
 	const tooSmall = withViews.length < RULES.minVideos;
 	const metric = chooseMetric(videos, options.hubLoaded);
@@ -166,11 +179,16 @@ export const buildReport = (videos: DashboardVideo[], offers: OfferSummary[], op
 				verdict = 'cut';
 				reason = `${n0(o.clicks)} clicks and no conversion (rule: ${RULES.offerCutClicks}+ clicks, 0 conversions). Check the link, its region rules and whether it fits the audience.`;
 			} else if (o.clicks < RULES.offerMinClicks) {
-				verdict = o.conversions > 0 && r !== null && r >= RULES.doubleDown ? 'test' : 'too-early';
-				reason = `${n0(o.clicks)} clicks (needs ${RULES.offerMinClicks}+)${o.conversions > 0 ? `; ${what}` : ''}.`;
+				verdict = o.conversions > 0 && r !== null && r >= RULES.doubleDown && !options.restrictedOffers?.has(o.offerId) ? 'test' : 'too-early';
+				reason = `${n0(o.clicks)} clicks (needs ${RULES.offerMinClicks}+)${o.conversions > 0 ? `; ${what}` : ''}.${options.restrictedOffers?.has(o.offerId) ? ` ${HUB_ONLY}` : ''}`;
+			} else if (r !== null && r >= RULES.doubleDown && options.restrictedOffers?.has(o.offerId)) {
+				verdict = 'steady';
+				reason = `${what}: ${times(r)}. ${HUB_ONLY}`;
 			} else if (r !== null && r >= RULES.doubleDown) {
 				verdict = 'double-down';
-				reason = `${what}: ${times(r)} (rule: at least ${RULES.doubleDown}x with ${RULES.offerMinClicks}+ clicks). Mention it where it genuinely fits the topic, with its disclosure.`;
+				reason = `${what}: ${times(r)} (rule: at least ${RULES.doubleDown}x with ${RULES.offerMinClicks}+ clicks). Mention it where it genuinely fits the topic, with its disclosure.${
+					options.restrictedOffers ? '' : ' If the offer registry restricts it by region, keep it on the hub page only.'
+				}`;
 			} else if (r !== null && r <= RULES.cut) {
 				verdict = 'cut';
 				reason = `${what}: ${times(r)} (rule: at most ${RULES.cut}x with ${RULES.offerMinClicks}+ clicks).`;
@@ -183,7 +201,9 @@ export const buildReport = (videos: DashboardVideo[], offers: OfferSummary[], op
 	});
 	for (const o of judged) {
 		if (o.requests !== null && o.blocked !== null && o.requests >= RULES.blockedMinRequests && o.blocked / o.requests >= RULES.blockedShare) {
-			notes.push(`Offer ${o.offerId}: ${Math.round((o.blocked / o.requests) * 100)}% of ${n0(o.requests)} human requests were blocked by region rules. Make sure it has alternatives set, and mention it only where most viewers can use it.`);
+			notes.push(
+				`Offer ${o.offerId}: ${Math.round((o.blocked / o.requests) * 100)}% of ${n0(o.requests)} human requests were blocked by region rules. Make sure it has alternatives set, and keep it on the hub page only: never name a region-restricted offer in videos, posts or emails.`,
+			);
 		}
 	}
 	const otherMoney = offers.flatMap((o) => o.revenueOther);

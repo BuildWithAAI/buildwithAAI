@@ -1,0 +1,1 @@
+{"schema": "zoora-security/radar@1", "runDate": "2026-11-22", "mode": "offline-fixtures", "top": [{"id": "2026-11-21-cyber", "protocol": "Cyber", "dateUtc": "2026-11-21", "status": "confirmed", "type": "bridge", "reportedLosses": [], "sources": []}], "alsoSeen": [], "seenRecordKeys": []}

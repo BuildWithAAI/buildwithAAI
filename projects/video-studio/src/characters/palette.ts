@@ -29,17 +29,27 @@ export const LINE = {
 export const ZOO_COLORS = {
 	skin: '#F3BE9B',
 	skinShadow: '#DDA27F',
-	hair: '#5E4637',
+	// Decision ZOO-C4 (repair round 1, 2026-11-24): hair re-sampled on zoo_expr_neutral/zoo_turn_front
+	// (medians #584033, #574134, #554032); was #5E4637. hairShadow unchanged (still one tone, dL* ~7).
+	hair: '#584134',
 	hairShadow: '#443329',
 	// Decision ZOO-C2 (2026-11-24): the sheet renders the beard lighter and warmer than the hair
 	// (pixel medians: chin #845D40, cheek #77563F, moustache #6A4C34 vs hair #594235), so the beard
-	// base is #7A5940 with one shadow tone. Hair keeps #5E4637.
+	// base is #7A5940 with one shadow tone.
 	beard: '#7A5940',
-	beardShadow: '#5E4535',
-	eyeIris: '#5A3E2B', // brown
+	beardShadow: '#5E4535', // also the thin closed-mouth lip line (sheet lip-line core #5C3D2C)
+	// Decision ZOO-C3 (repair round 1): the moustache is drawn darker than the chin beard on every
+	// panel (medians #634732, #684A33 vs chin #845D40). Flat fill, no shadow tone of its own.
+	moustache: '#664933',
+	// Decision ZOO-C5 (repair round 1): irises and brows re-sampled; the sheet draws both near-black
+	// brown (iris medians #292422/#261F1C, brows #241F19/#241E1C). Was iris #5A3E2B, brow #3A2A20.
+	eyeIris: '#2C221D', // dark brown
 	eyeWhite: '#FFFFFF',
 	pupil: BRAND.nearBlack,
-	brow: '#3A2A20',
+	brow: '#221C18',
+	// Decision ZOO-C6 (repair round 1): the front nose bridge is a soft warm-brown LINE colour (sheet
+	// median #906C55), not near-black and not a shadow tone; nostrils stay near-black.
+	noseLine: '#8E6A54',
 	mouthInterior: '#5A2A24',
 	tongue: '#B8635A',
 	teeth: '#FFFFFF',

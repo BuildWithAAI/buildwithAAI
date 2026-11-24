@@ -56,6 +56,25 @@ def frame_rms(samples, sample_rate: int, fps: int) -> list[float]:
     return [float(v) for v in np.sqrt((block**2).mean(axis=1))]
 
 
+def hop_db(samples, sample_rate: int, hop_s: float) -> list[float]:
+    """RMS in dB of consecutive `hop_s` windows (the energy envelope visemes.refine snaps phrase edges to)."""
+    import numpy as np
+
+    per = max(1, int(round(sample_rate * hop_s)))
+    n = len(samples) // per
+    if n == 0:
+        return []
+    block = np.asarray(samples[: n * per], dtype=np.float64).reshape(n, per)
+    rms = np.sqrt((block**2).mean(axis=1))
+    return [float(v) for v in 20 * np.log10(np.maximum(rms, 1e-9))]
+
+
+def to_db(values) -> list[float]:
+    import math
+
+    return [20 * math.log10(v) if v > 1e-9 else -180.0 for v in values]
+
+
 def write_wav(path: str, samples, sample_rate: int, subtype: str = "PCM_16") -> None:
     import soundfile as sf
 

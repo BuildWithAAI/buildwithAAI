@@ -1,0 +1,306 @@
+[
+ {
+  "date": 1793232000,
+  "name": "Binance CEX",
+  "classification": "Frontend & Infrastructure",
+  "technique": "Key Leaked via Infrastructure",
+  "amount": 6360000000,
+  "chain": [
+   "Ethereum",
+   "Bitcoin",
+   "TRON",
+   "Avalanche",
+   "Optimism",
+   "Arbitrum",
+   "Base"
+  ],
+  "bridgeHack": false,
+  "targetType": "CEX",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "2269",
+  "language": null,
+  "description": "On October 29, attackers exploited Binance’s operational infrastructure to execute unauthorized withdrawals across multiple blockchains, resulting in approximately $6.3 billion in losses. Binance’s preliminary investigation identified a potentially compromised DevOps engineer’s…"
+ },
+ {
+  "date": 1795219200,
+  "name": "Chainflip AMM",
+  "classification": "Key Compromise",
+  "technique": "Validator Key Compromised",
+  "amount": 11960000,
+  "chain": [
+   "Ethereum",
+   "Bitcoin"
+  ],
+  "bridgeHack": true,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "3853",
+  "parentProtocolId": "parent#chainflip",
+  "language": "Solidity",
+  "description": "An attacker exploited a vulnerability affecting Chainflip's aggregate validator signing system to authorize unauthorized withdrawals from its Bitcoin and Ethereum vaults. Approximately 122.86 BTC was stolen from the Bitcoin vault, followed by 520.22 ETH, 3.25M USDC and 758K…"
+ },
+ {
+  "date": 1795219200,
+  "name": "CyberConnect",
+  "classification": "Bridge & Cross-Chain",
+  "technique": "Cross-Chain Message Spoofing",
+  "amount": 968000,
+  "chain": [
+   "Solana",
+   "Ethereum"
+  ],
+  "bridgeHack": true,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "3702",
+  "language": null,
+  "description": "An attacker exploited an as-yet-unidentified authorization vulnerability affecting Cyber's cross-chain token bridge, unexpectedly minting 5.213 million CYBER on Solana and triggering the release of an equivalent amount from the Ethereum lockbox through LayerZero messaging. The…"
+ },
+ {
+  "date": 1795305600,
+  "name": "Endurance Bridge",
+  "classification": "Bridge & Cross-Chain",
+  "technique": "Unbacked Cross-Chain Mint",
+  "amount": 1040000,
+  "chain": [
+   "BSC"
+  ],
+  "bridgeHack": true,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "4585",
+  "language": "Solidity",
+  "description": "An attacker exploited privileged minting authority associated with Fusionist's Endurance Bridge to create unbacked ACE tokens on BSC. The attacker sold the unauthorized tokens through decentralized exchanges, extracting approximately $1.04M in stablecoins across dozens of…"
+ },
+ {
+  "date": 1794787200,
+  "name": "Lighter Perps",
+  "classification": "Frontend & Infrastructure",
+  "technique": "API Key Compromised",
+  "amount": 10393057,
+  "chain": [
+   "zkLighter"
+  ],
+  "bridgeHack": false,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "6751",
+  "parentProtocolId": "parent#lighter",
+  "language": null,
+  "description": "On November 16, 2026, an attacker exploited a leaked API key belonging to a trader on Lighter, enabling unauthorized activity that resulted in the withdrawal of approximately 10.39 million USDC from the platform. The stolen funds were transferred to an attacker-controlled…"
+ },
+ {
+  "date": 1794614400,
+  "name": "Kava Lend",
+  "classification": "Token & Share Accounting",
+  "technique": "Arithmetic Error",
+  "amount": 3700000,
+  "chain": [
+   "Kava"
+  ],
+  "bridgeHack": false,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "140",
+  "language": "Go",
+  "description": "On November 14, 2026, attackers exploited an arithmetic flaw in Kava Lend's BUSD market that allowed its supply interest index to increase approximately 243,000-fold when calculated against an extremely small effective supply. The attackers used the resulting inflated…"
+ },
+ {
+  "date": 1792713600,
+  "name": "Initia",
+  "classification": "Token & Share Accounting",
+  "technique": "Infinite Mint",
+  "amount": 2600000,
+  "chain": [
+   "Initia"
+  ],
+  "bridgeHack": false,
+  "targetType": "Chain",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "chain#initia",
+  "language": null,
+  "description": "Initia suffered a security incident involving the unauthorized minting of multiple assets on its L1. The attacker reportedly transferred and converted some of the minted assets into Ethereum-based holdings. Initia halted its L1 and rollups while investigating the vulnerability…"
+ },
+ {
+  "date": 1794268800,
+  "name": "Initia",
+  "classification": "Key Compromise",
+  "technique": "Private Key Compromised",
+  "amount": 615000,
+  "chain": [
+   "Initia"
+  ],
+  "bridgeHack": false,
+  "targetType": "Chain",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "chain#initia",
+  "language": null,
+  "description": "On November 10, 2026, an attacker used compromised rollup infrastructure keys to fabricate IBC transfers and withdraw assets from escrow accounts on Initia's Layer 1 that held funds bridged to multiple rollups. Approximately $615,000 in assets, including 605,000 USDC, was…"
+ },
+ {
+  "date": 1795132800,
+  "name": "Wagyu (XMR1)",
+  "classification": "Frontend & Infrastructure",
+  "technique": "Key Leaked via Infrastructure",
+  "amount": 13510000,
+  "chain": [
+   "Hyperliquid L1"
+  ],
+  "bridgeHack": false,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": null,
+  "language": null,
+  "description": "An attacker reportedly obtained Wagyu's XMR1 deployer signing key through a breach of third-party hosting infrastructure that retained files from a previously deleted server. The attacker transferred 5.2M XMR1 from the deployer account to a newly created wallet and sold…"
+ },
+ {
+  "date": 1795046400,
+  "name": "Fluidkey",
+  "classification": "Frontend & Infrastructure",
+  "technique": "Database Breach",
+  "amount": 1600000,
+  "chain": [
+   "Ethereum",
+   "Base",
+   "Binance",
+   "Polygon",
+   "Optimism",
+   "Arbitrum"
+  ],
+  "bridgeHack": false,
+  "targetType": "Wallet",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": null,
+  "language": null,
+  "description": "An attacker exploited two vulnerabilities in Fluidkey's self-hosted SigNoz logging infrastructure to access internal logs containing user session tokens. Using those tokens, the attacker created and approved fraudulent transfer requests and increased two-factor spending limits.…"
+ },
+ {
+  "date": 1794960000,
+  "name": "K3 Capital",
+  "classification": "Token & Share Accounting",
+  "technique": "Incorrect Share Accounting",
+  "amount": 3420000,
+  "chain": [
+   "Ethereum"
+  ],
+  "bridgeHack": false,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "6205",
+  "language": "Solidity",
+  "description": "Attackers exploited an accounting discrepancy in K3 Capital's sBOLD vault that excluded WETH collateral below a configured threshold from share valuations. Using flash-loaned capital, they minted sBOLD shares while the collateral was undervalued, triggered swaps that converted…"
+ },
+ {
+  "date": 1794960000,
+  "name": "Peapods Finance",
+  "classification": "Key Compromise",
+  "technique": "Deployer Key Compromised",
+  "amount": null,
+  "chain": null,
+  "bridgeHack": false,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": "4063",
+  "language": "Solidity",
+  "description": "Peapods Finance reported a suspected compromise of its deployer key, which was used to assign minting permissions on L2 PEAS contracts. The attacker minted unauthorized PEAS, bridged the tokens to Ethereum mainnet, and sold them into market liquidity. The team removed…"
+ },
+ {
+  "date": 1794960000,
+  "name": "LUKSO",
+  "classification": "Access Control",
+  "technique": "Improper Access Control",
+  "amount": 496000,
+  "chain": [
+   "LUKSO"
+  ],
+  "bridgeHack": false,
+  "targetType": "Wallet",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": null,
+  "language": null,
+  "description": "Between November 17 and 18, 2026, an attacker exploited a security vulnerability in the backend of LUKSO's email-based Universal Profile recovery service, gaining unauthorized control over approximately 300 user accounts. The attacker abused the recovery service's permissions…"
+ },
+ {
+  "date": 1794960000,
+  "name": "Gonka AI",
+  "classification": "Bridge & Cross-Chain",
+  "technique": "Bridge Logic Flaw",
+  "amount": 1050000,
+  "chain": [
+   "Ethereum"
+  ],
+  "bridgeHack": false,
+  "targetType": "DeFi Protocol",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": null,
+  "language": "Solidity",
+  "description": "An attacker reportedly replaced the epoch BLS group key used by Gonka AI's Ethereum bridge to authorize cross-chain withdrawals and WGNK minting. Using the substituted signing authority, the attacker executed unauthorized withdrawals that depleted the bridge's remaining USDT…"
+ },
+ {
+  "date": 1793577600,
+  "name": "Mercado Bitcoin",
+  "classification": "Protocol Logic",
+  "technique": "Unknown",
+  "amount": 40000000,
+  "chain": [
+   "Bitcoin",
+   "Ethereum",
+   "Solana",
+   "TRON",
+   "Polygon",
+   "Arbitrum",
+   "Avalanche",
+   "BSC",
+   "Stellar",
+   "XDC"
+  ],
+  "bridgeHack": false,
+  "targetType": "CEX",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": null,
+  "language": null,
+  "description": "On November 2, 2026, attackers compromised a system at Mercado Bitcoin and transferred more than $40 million in crypto from exchange-associated wallets across various blockchains. The exchange contained the incident and temporarily suspended deposits and withdrawals while…"
+ },
+ {
+  "date": 1330560000,
+  "name": "Bitcoinica",
+  "classification": "Frontend & Infrastructure",
+  "technique": "Key Leaked via Infrastructure",
+  "amount": 228000,
+  "chain": [
+   "Bitcoin"
+  ],
+  "bridgeHack": false,
+  "targetType": "CEX",
+  "source": "",
+  "returnedFunds": null,
+  "defillamaId": null,
+  "language": null,
+  "description": "Bitcoinica suffered its first major hack when attackers breached Linode web hosting and stole 43,000 BTC from the exchange. The compromise of the hosting provider gave attackers direct access to Bitcoinica's wallet infrastructure."
+ },
+ {
+  "name": null,
+  "date": 1795219200,
+  "amount": 5
+ },
+ {
+  "name": "Broken Date",
+  "date": "2026-11-20",
+  "amount": 5
+ }
+]

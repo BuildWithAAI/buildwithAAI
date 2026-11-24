@@ -5,7 +5,7 @@
 import {existsSync, readdirSync, readFileSync, statSync, writeFileSync} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
 import {createInterface} from 'node:readline/promises';
-import {EMPTY_NAMES, loadNames, type NameList} from '../../claims/lib/names.ts';
+import {EMPTY_NAMES, loadNames, type NameList} from './detectors.ts';
 import {factFromInput, parseFactInput, promptFact, type Ask} from './add.ts';
 import {isIsoDate, todayChicago} from './dates.ts';
 import {makeFetcher} from './fetch.ts';

@@ -64,10 +64,13 @@ const GAP = String.raw`(?:[^.!?\n]|\.(?=\d))`;
  * "Zoo will never ask you to message him", "if someone asks you to connect your wallet". The filler
  * words are deliberately few, so "don't hesitate to contact her" still counts as a request.
  */
+const REPORTING_VERB = String.raw`(?:ask(?:s|ed|ing)?|tell(?:s|ing)?|told|want(?:s|ed|ing)?|say(?:s|ing)?|said|urg(?:e|es|ed|ing)|pressur(?:e|es|ed|ing)|instruct(?:s|ed|ing)?)`;
 const NEGATED_BEFORE = new RegExp(
 	String.raw`(?:\b(?:never|don't|dont|do not|won't|wont|will not|shouldn't|should not|must not|mustn't|can't|cannot|not|no one|nobody|noone|avoid|refuse to|stop)\b` +
 		String.raw`(?:\s+(?:ever|even|just|you|u|anyone|anybody|people|to|will|would|should|ask|asks|asked|asking|tell|tells|told|telling|request|requests|need|needs|has|have|had|be|been)\b){0,4}\s*$)` +
-		String.raw`|(?:\b(?:ask(?:s|ed|ing)?|tell(?:s|ing)?|told|want(?:s|ed|ing)?|say(?:s|ing)?|said|urg(?:e|es|ed|ing)|pressur(?:e|es|ed|ing)|instruct(?:s|ed|ing)?)\s+(?:(?:you|u|me|us|people|anyone|everyone|them|victims|viewers)\s+)?to\s*$)`,
+		String.raw`|(?:\b${REPORTING_VERB}\s+(?:(?:you|u|me|us|people|anyone|everyone|them|victims|viewers)\s+)?to\s*$)` +
+		// reported speech with a clause in between: "a call saying her laptop had a virus and to call back at ..."
+		String.raw`|(?:\b${REPORTING_VERB}\b[^.!?\n]{1,80}\band\s+to\s*$)`,
 	'u',
 );
 /**
@@ -195,7 +198,8 @@ const CONTACT_ME = rx(
 		String.raw`\bcall me\s+(?:on|at|via|now|\+|\d)`,
 		String.raw`\b(?:text|message|whatsapp|call|sms)\s+(?:\S+\s+)?(?:to|at|on)\s+\+?\(?\d`,
 		String.raw`\badd me (?:on|via|at)\s+(?:${APPS}|signal|ig|instagram|snap(?:chat)?|discord)\b`,
-		String.raw`\b(?:my|our)\s+(?:${APPS}|signal|tg|wa|contact)\s*(?:number|handle|id|username|contact|line)?\s*(?:is\s*)?[:👉=>\-→➡]*\s*(?:@|\+|\d|t\.me)`,
+		// optional spaces are never next to each other, so a long run of spaces cannot make this backtrack
+		String.raw`\b(?:my|our)\s(?:${APPS}|signal|tg|wa|contact)\s?(?:(?:number|handle|id|username|contact|line)\s?)?(?:is\s?)?[:👉=>\-→➡]{0,3}\s?(?:@|\+|\d|t\.me)`,
 		String.raw`\bjoin (?:my|our) (?:vip |private |premium |exclusive |free |paid )?(?:${APPS}|signal|discord|group|channel|community|class|team|chat)\b`,
 		String.raw`\b(?:dm|inbox|message|text|contact|pm)\s+(?:for|4)\s+(?:more|info|details|the|signals?|help|recovery|strategy|guidance)\b`,
 		// Spanish, Portuguese, French, German, Turkish, Indonesian, romanised Hindi
@@ -236,7 +240,10 @@ const CONTACT_THEM = rx(
 
 /* ------------------------------------------------------------------ handlers, profits, recovery */
 
-const HONORIFIC_WORDS = 'mr|mrs|ms|miss|madam|madame|mme|sra|sr|sir|dr|prof|expert|coach|mentor|hacker|agent|broker|captain';
+const HONORIFIC_WORDS =
+	'mr|mrs|ms|miss|madam|madame|mme|sra|sr|sir|dr|prof|expert|coach|mentor|hacker|agent|broker|captain|' +
+	// Spanish, Portuguese and German titles, so a warning in those languages cannot hide a named "handler"
+	'experta|experto|especialista|dra|doctora|se[nñ]ora|senhora|frau|herr';
 /** A title, then (looked ahead, not consumed) a name of 3+ letters: "Mrs Sarah", "Expert Daniel", "Dr. Philip". */
 const HONORIFICS = new RegExp(String.raw`\b(${HONORIFIC_WORDS})\.?\s+(?=(\p{L}(?:\p{L}|['-](?=\p{L})){2,}))`, 'giu');
 const IS_HONORIFIC = new RegExp(`^(?:${HONORIFIC_WORDS})$`, 'i');
@@ -297,7 +304,8 @@ const INCOME_CLAIM = rx([
 
 const RECOVERY_CLAIM = rx([
 	String.raw`\b(?:recover(?:ed|ing|s)?|retriev(?:e|ed|ing))\s+(?:(?:all|every|each|\d+\s?%)\s+)?(?:of\s+)?(?:my|your|our|his|her|their|the|it|them|everything|all|a hacked|hacked|stolen|lost)\b`,
-	String.raw`\b(?:got|get|gotten) (?:my|all my|our|his|her|their) ${GAP}{0,30}\bback\b`,
+	// not "I got my airdrop back in 2023" (back then, not returned)
+	String.raw`\b(?:got|get|gotten) (?:my|all my|our|his|her|their) ${GAP}{0,30}\bback\b(?!\s+(?:in\s+(?:(?:19|20)\d\d|the day)|then|when)\b)`,
 	String.raw`\b(?:got|get|gotten) (?:everything|it all|all of it|it|them) back\b`,
 	String.raw`\bhelp(?:ed|s)? (?:me|you|us|people|victims) (?:to )?(?:recover|get (?:my|your|it|them) back)\b`,
 	String.raw`\b(?:i|we) can help you (?:recover|get)\b`,
@@ -307,7 +315,8 @@ const RECOVERY_CLAIM = rx([
 ]);
 
 const LIFE_CHANGE =
-	/\b(?:earning (?:steadily|consistently|daily|weekly|every (?:day|week))|(?:steady|consistent) (?:income|profits?|returns|earnings)|chang(?:ed|ing) my life|take care of my family|life[- ]changing|financial(?:ly)? free(?:dom)?|quit my (?:job|9 ?to ?5)|paid off (?:my|our)|retired(?: early)?|bought (?:a|my|our) (?:new )?(?:house|home|car)|best decision|no more debt|debt[- ]free)\b/u;
+	// "retired" alone is ordinary life ("my dad retired last year"); scam stories say "retired early"
+	/\b(?:earning (?:steadily|consistently|daily|weekly|every (?:day|week))|(?:steady|consistent) (?:income|profits?|returns|earnings)|chang(?:ed|ing) my life|take care of my family|life[- ]changing|financial(?:ly)? free(?:dom)?|quit my (?:job|9 ?to ?5)|paid off (?:my|our)|retired? early|(?:able|ready) to retire|retired at \d+|bought (?:a|my|our) (?:new )?(?:house|home|car)|best decision|no more debt|debt[- ]free)\b/u;
 
 const CREDIT =
 	/\b(?:thanks to|thank you|thanks|thanking|all thanks|grateful (?:to|for)|credit (?:goes )?to|shout ?out to|kudos to|god bless|recommend(?:ed|ing)?|introduced (?:me )?to|helped me|help of|with the help|under the guidance|guidance of|until i (?:met|found|came across|contacted)|(?:working|trading|investing|invested|invest) with|with (?:her|his|their) (?:help|strategy|guidance|signals|system|method|assistance)|(?:she|he|they) (?:recovered|helped|got|made|turned|changed)|(?:is|'s) (?:a |an |my )?(?:genius|blessing|legend|godsend|lifesaver|angel)|gracias a|grace a|gracas a|dank)\b/u;
@@ -338,10 +347,15 @@ const LEGIT_CLAIM = rx([
 const COIN = String.raw`(?:btc|bitcoin|eth|ether|ethereum|sol|solana|usdt|usdc|bnb|xrp|doge|ada|trx|ton|crypto|coins?|tokens?)`;
 const PAY = String.raw`(?:send|transfer|deposit|pay|contribute|envia|envie|enviar|manda|transfiere|deposita|transfira|deposite)`;
 const RECEIVE = String.raw`(?:get|receive|recieve|recibe|recibiras|recibir|recebe|receba|receber|recevez)`;
+/**
+ * What comes back must be money: "0.2 BTC", "4 SOL back", "2x", "double". A count such as "2 confirmations"
+ * or "3 blocks" is the advice to send a small test amount first, not a doubling scheme.
+ */
+const RETURNED_AMOUNT = String.raw`(?:\d+(?:\.\d+)?\s?(?:x\b|${COIN}\b|back\b)|double|2x|twice)(?!\s?(?:confirmations?|blocks?|days?|hours?|minutes?|mins?|seconds?|secs?|weeks?|times)\b)`;
 const DOUBLING = rx(
 	[
 		String.raw`\b${PAY}\b${GAP}{0,60}?\b(?:get|receive|recieve|returns?|back)\b${GAP}{0,30}?\b(?:double|2x|x2|twice|2 times|two times|doubled)\b`,
-		String.raw`\b${PAY}\s+(?:\d+(?:\.\d+)?|any amount(?: of)?|some|your)\s*${COIN}?\b${GAP}{0,50}?\b${RECEIVE}\s+(?:\d+(?:\.\d+)?|double|2x|twice)`,
+		String.raw`\b${PAY}\s+(?:\d+(?:\.\d+)?|any amount(?: of)?|some|your)\s*${COIN}?\b${GAP}{0,50}?\b${RECEIVE}\s+${RETURNED_AMOUNT}`,
 		String.raw`\b${RECEIVE}\s+(?:[2-9]x|x[2-9]|double|triple|twice)\s+(?:your\s+|of your\s+)?${COIN}?\s*back\b`,
 		String.raw`\bdouble (?:your|ur) (?:money|investment|capital|crypto|btc|bitcoin|eth|sol|coins|tokens|holdings|deposit)\b`,
 		String.raw`\b(?:2x|x2|double) (?:back|return|your deposit|bonus)\b`,
@@ -461,12 +475,28 @@ const WARNING = rx([
 	String.raw`\bfake (?:accounts?|replies|support|profiles?|channels?|sites?|giveaways?|airdrops?|experts?|hackers?|apps?)\b`,
 	String.raw`\b(?:impersonat\w*|phishing)\b`,
 	String.raw`\b(?:claim(?:s|ing|ed)? to be|pretend(?:s|ing)? to be|posing as)\b`,
+	String.raw`\breport(?:s|ed|ing)?\s+(?:scams?|scammers?|fraud(?:sters?)?|spam(?:mers)?|bots?|impersonators?)\b`,
+	// "real airdrops never need you to send anything", "support will never ask you to..."
+	String.raw`\b(?:never|don't|dont|do not|won't|will not)\s+(?:ever\s+)?(?:needs?|asks?|requires?|wants?)\s+(?:you|anyone|anybody|people)\s+to\b`,
+	String.raw`\bfake\s+(?:[\w'-]+\s+)?(?:texts?|calls?|e-?mails?|messages?|sms|dms?|voicemails?|letters?)\b`,
+	// warnings and "blocked / reported it" in other languages (the latin view has no accents)
+	String.raw`\b(?:cuidado|estafas?|estafador(?:es|as?)?|fraudes?|bloque(?:e|o|ar|ado|ada|alo|ala|elo|ela)|denunci(?:e|o|ar|alo|ala|ado|ada))\b`,
+	String.raw`\b(?:golpes?|golpistas?|bloqueei|bloqueie|bloquear|denunciei|denuncie|denunciar)\b`,
+	String.raw`\b(?:blokir|diblokir|penipuan|penipu|hati-hati|waspada|laporkan|dilaporkan)\b`,
+	String.raw`\b(?:betrug|betruger(?:in)?|blockiert|gemeldet|vorsicht)\b`,
 ]);
 
+const FAMILY = String.raw`(?:dad|mom|mum|father|mother|uncle|aunt|friend|brother|sister|wife|husband|grandma|grandpa|grandmother|grandfather|son|daughter|cousin|parents|partner|colleague|coworker|boss|neighbou?r)`;
 const VICTIM = rx([
-	String.raw`\b(?:i|we|me|my (?:dad|mom|mum|father|mother|uncle|aunt|friend|brother|sister|wife|husband|grandma|grandpa|grandmother|grandfather|son|daughter|cousin|parents|partner|colleague|boss|wallet))\b${GAP}{0,40}\b(?:lost|got scammed|was scammed|been scammed|got hacked|was hacked|been hacked|got drained|was drained|been drained|fell for|almost (?:lost|sent|fell|clicked|gave|shared|answered)|nearly (?:lost|sent|fell|clicked|gave|shared))\b`,
+	String.raw`\b(?:i|we|me|my (?:${FAMILY}|wallet))\b${GAP}{0,40}\b(?:lost|got scammed|was scammed|been scammed|got hacked|was hacked|been hacked|got drained|was drained|been drained|fell for|almost (?:lost|sent|fell|clicked|gave|shared|answered)|nearly (?:lost|sent|fell|clicked|gave|shared))\b`,
 	String.raw`\b(?:blocked|ghosted|scammed|robbed|tricked|drained)\s+(?:me|us)\b`,
 	String.raw`\b(?:perdi|fui roubad[oa]|me estafaron)\b`,
+	// being contacted by a scammer is something that happened to the writer, not a request
+	String.raw`\b(?:i|we|my ${FAMILY})\s+(?:just\s+)?(?:got|received|had|get)\s+(?:a|an)\s+(?:(?:fake|scam|weird|strange|random|suspicious|sketchy)\s+)?(?:call|text|sms|message|dm|e-?mail|whats\s?app|voicemail)\b`,
+	String.raw`\b(?:someone|somebody|a scammer|scammers)\s+(?:called|texted|messaged|dmed|emailed)\s+(?:me|us|my)\b`,
+	String.raw`\b(?:hung up|did(?:n't| not) fall for)\b`,
+	// "made $40 on BONK and lost $300 on the next coin": an honest loss, not a success story
+	String.raw`\b(?:and|but|then)\s+(?:i\s+|we\s+)?lost\s+(?:[$€£]\s?\d|\d)`,
 ]);
 
 /* ------------------------------------------------------------------ the rule table */

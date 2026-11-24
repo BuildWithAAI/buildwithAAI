@@ -57,39 +57,101 @@ test('triggers: pushes of request files on any branch, and manual dispatch', () 
 	assert.ok(!/^[ \t]+branches:/m.test(text), 'pushes are limited to some branches');
 });
 
-test('secrets are only read into step env, and only by steps that encrypt or decrypt', () => {
+/** The lines of one job (from its key to the next top-level job key). */
+const jobLines = (job: string): string[] => {
+	const start = lines.findIndex((l) => l === `  ${job}:`);
+	assert.ok(start > 0, job);
+	const end = lines.findIndex((l, j) => j > start && /^ {2}[a-z][\w-]*:$/.test(l));
+	return lines.slice(start, end < 0 ? lines.length : end);
+};
+/** Step names in order, each with whether its block reads the hand-off secret. */
+const steps = (job: string): {name: string; secret: boolean}[] => {
+	const jl = jobLines(job);
+	const out: {name: string; secret: boolean}[] = [];
+	jl.forEach((l, i) => {
+		const m = /^ {6}- (?:name: (.+)|uses: (\S+))/.exec(l);
+		if (!m) return;
+		const end = jl.findIndex((x, j) => j > i && /^ {6}- /.test(x));
+		const block = jl.slice(i, end < 0 ? jl.length : end).join('\n');
+		out.push({name: m[1] ?? m[2], secret: block.includes('secrets.')});
+	});
+	return out;
+};
+
+test('the only secret is the narration hand-off key, read into step env by the steps that encrypt or decrypt narration', () => {
 	const uses = lines.flatMap((l, i) => (l.includes('secrets.') ? [{l: l.trim(), i}] : []));
-	for (const {l} of uses) assert.equal(l, 'RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}');
-	assert.equal(uses.length, 6, 'plan (key check), voice preflight + pack, render preflight + unpack + pack');
-	// Steps that run third-party code (Remotion, the voice build, npm) never see the key.
-	for (const name of ['Render', 'Build the narration', 'Install dependencies', 'Set up Kokoro']) {
-		const start = lines.findIndex((l) => l.includes(`name: ${name}`));
-		assert.ok(start > 0, name);
-		const end = lines.findIndex((l, j) => j > start && /^\s+- (name|uses):/.test(l));
-		assert.ok(!lines.slice(start, end).join('\n').includes('RENDER_ARTIFACT_KEY'), `${name} sees the key`);
+	for (const {l} of uses) assert.equal(l, 'RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}');
+	assert.equal(uses.length, 8, 'plan (key check); voice preflight + pack; dub preflight + master unpack + pack; render preflight + unpack');
+	assert.ok(!text.includes('RENDER_ARTIFACT_KEY'), 'the old all-purpose key is gone');
+	// Steps that run third-party code (Remotion, npm, the voice build and its packages) never see the key, and the
+	// render job's output encryption needs no secret at all (it encrypts to a public key).
+	for (const [job, name] of [
+		['render', 'Render'],
+		['render', 'Install dependencies'],
+		['render', 'Encrypt and package (to the recipient\'s public key; no secret)'],
+		['voice', 'Build the narration'],
+		['voice', 'Set up Kokoro (sha256-verified model files; its package install finds the lock already satisfied)'],
+		['voice', 'Install the voice packages (the farm\'s hash lock; binary wheels only)'],
+		['voice-dub', 'Build the narration'],
+	] as const) {
+		const st = steps(job).find((x) => x.name === name);
+		assert.ok(st, `${job}: ${name}`);
+		assert.equal(st?.secret, false, `${job}: ${name} sees the key`);
 	}
 });
 
+test('in the render job, every step that holds the key runs before npm installs anything', () => {
+	const st = steps('render');
+	const npm = st.findIndex((x) => x.name === 'Install dependencies');
+	assert.ok(npm > 0);
+	const holders = st.flatMap((x, i) => (x.secret ? [i] : []));
+	assert.equal(holders.length, 2);
+	for (const i of holders) assert.ok(i < npm, `${st[i].name} runs after npm ci`);
+});
+
+test('voice packages install from the farm\'s hash lock, binary wheels only, before setup.sh', () => {
+	for (const job of ['voice', 'voice-dub']) {
+		const jl = jobLines(job).join('\n');
+		assert.match(jl, /pip install --disable-pip-version-check --quiet --require-hashes --only-binary :all: --no-deps -r scripts\/farm\/voice-lock\.txt/);
+		assert.match(jl, /--require-hashes --no-deps -r scripts\/farm\/voice-lock-cjk\.txt/);
+		const names = steps(job).map((x) => x.name);
+		assert.ok(names.indexOf('Install the voice packages (the farm\'s hash lock; binary wheels only)') < names.findIndex((n) => n.startsWith('Set up Kokoro')));
+	}
+});
+
+test('jobs that read the secret run in the render-farm environment (so a deployment-branch policy can guard it)', () => {
+	for (const job of ['plan', 'voice', 'voice-dub', 'render']) assert.ok(jobLines(job).includes('    environment: render-farm'), job);
+	assert.ok(!jobLines('summary').some((l) => l.includes('environment:')));
+});
+
+test('dubs: a second voice matrix after the masters downloads its master narration first', () => {
+	assert.match(text, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.voice_dub_matrix\) \}\}/);
+	const names = steps('voice-dub').map((x) => x.name);
+	assert.ok(names.indexOf('Download the master narration') < names.indexOf('Unpack the master narration'));
+	assert.ok(names.indexOf('Unpack the master narration') < names.indexOf('Build the narration'));
+	assert.match(jobLines('voice-dub').join('\n'), /name: \$\{\{ steps\.preflight\.outputs\.master_artifact \}\}/);
+});
+
 test('fan-out: matrices from the plan, 8 parallel jobs, no fail-fast, Ubuntu 24.04 pinned', () => {
-	assert.equal((text.match(/max-parallel: 8/g) || []).length, 2);
-	assert.equal((text.match(/fail-fast: false/g) || []).length, 2);
+	assert.equal((text.match(/max-parallel: 8/g) || []).length, 3);
+	assert.equal((text.match(/fail-fast: false/g) || []).length, 3);
 	assert.match(text, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.render_matrix\) \}\}/);
 	assert.match(text, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.voice_matrix\) \}\}/);
 	const runsOn = lines.filter((l) => /runs-on:/.test(l));
-	assert.equal(runsOn.length, 4);
+	assert.equal(runsOn.length, 5);
 	for (const l of runsOn) assert.match(l, /runs-on: ubuntu-24\.04$/);
 	for (const m of text.matchAll(/timeout-minutes: (\d+)/g)) assert.ok(Number(m[1]) <= 350, 'a job may exceed the 6-hour limit');
 });
 
 test('uploads happen only after the pack step, which verifies the folder is ciphertext for encrypted requests', () => {
 	const uploads = lines.flatMap((l, i) => (l.includes('actions/upload-artifact@') ? [i] : []));
-	assert.equal(uploads.length, 4);
+	assert.equal(uploads.length, 6);
 	for (const i of uploads) {
 		const cond = lines.slice(i - 2, i).join('\n');
 		assert.match(cond, /if: \$\{\{ !cancelled\(\) && steps\.(pack|probe)\.outcome == 'success'/);
 	}
 	const outputs = uploads.map((i) => lines.slice(i, i + 4).join('\n')).filter((s) => /farm\/(upload|voice-out)/.test(s));
-	assert.equal(outputs.length, 2);
+	assert.equal(outputs.length, 3);
 });
 
 test('the workflow parses as YAML when js-yaml is available', async (t) => {
@@ -102,7 +164,8 @@ test('the workflow parses as YAML when js-yaml is available', async (t) => {
 		return;
 	}
 	const doc = yaml.load(text) as {jobs: Record<string, {needs?: string | string[]; strategy?: {matrix: string}}>};
-	assert.deepEqual(Object.keys(doc.jobs), ['plan', 'voice', 'render', 'summary']);
-	assert.deepEqual(doc.jobs.render.needs, ['plan', 'voice']);
+	assert.deepEqual(Object.keys(doc.jobs), ['plan', 'voice', 'voice-dub', 'render', 'summary']);
+	assert.deepEqual(doc.jobs['voice-dub'].needs, ['plan', 'voice']);
+	assert.deepEqual(doc.jobs.render.needs, ['plan', 'voice', 'voice-dub']);
 	assert.deepEqual(doc.jobs.summary.needs, ['plan', 'render']);
 });

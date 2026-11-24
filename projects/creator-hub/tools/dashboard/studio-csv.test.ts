@@ -68,6 +68,34 @@ describe('YouTube Studio Content export', () => {
 		assert.ok(issues.some((i) => /Total row says 999 views but the video rows add up to 500/.test(i.message)));
 	});
 
+	it('refuses a file re-saved with decimal commas instead of reading "31,200" (31.20) as 31,200', () => {
+		const header = 'Content,Video title,Video publish time,Duration,Average view duration,Average percentage viewed (%),Subscribers gained,Views,Watch time (hours),Estimated revenue (USD),Thumbnail impressions,Thumbnail impressions click-through rate (%)';
+		const csv = [
+			header,
+			'Total,,,,0:03:02,"48,2",1533,183600,"7280,1","211,600",1131800,"4,9"',
+			'dQw4w9WgXcQ,A title,2026-10-06,754,0:05:12,"41,3",140,12400,"1074,7","31,200",150200,"6,1"',
+			'aaaaaaaaaaa,Plain title,2026-10-09,688,0:04:58,"43,4",233,171200,"1564,5","180,400",981600,"7,4"',
+		].join('\n');
+		const {videos, issues} = parseStudioCsv(csv, 'Table data (de).csv');
+		assert.deepEqual(videos, []);
+		assert.equal(issues.length, 1);
+		assert.equal(issues[0]?.level, 'error');
+		assert.match(issues[0]?.message ?? '', /^line 2: "7280,1" in "Watch time \(hours\)" has a decimal comma.*Export again with YouTube Studio set to English/);
+		// the same report with "." decimals is read normally
+		const english = csv.replace(/"(\d+),(\d)"/g, '$1.$2').replace(/"(\d+),(\d{3})"/g, '$1.$2');
+		const ok = parseStudioCsv(english, 'Table data.csv');
+		assert.deepEqual(ok.videos.map((v) => v.revenue?.amount), [31.2, 180.4]);
+	});
+
+	it('warns when revenue per 1,000 views is implausibly high', () => {
+		const csv = 'Content,Views,Estimated revenue (USD)\ndQw4w9WgXcQ,"20,000","31,200"\naaaaaaaaaaa,"20,000",31.200\n';
+		const {videos, issues} = parseStudioCsv(csv, 'x.csv');
+		assert.equal(videos.length, 2);
+		const warnings = issues.filter((i) => i.level === 'warning').map((i) => i.message);
+		assert.equal(warnings.length, 1);
+		assert.match(warnings[0] ?? '', /video dQw4w9WgXcQ earned 1560\.00 USD per 1,000 views, which is unusually high/);
+	});
+
 	it('rejects files that are not a Content export', () => {
 		assert.match(parseStudioCsv('Date,Views\n2026-11-01,5\n', 'daily.csv').issues[0]?.message ?? '', /no "Content" column/);
 		assert.match(parseStudioCsv('Content,Video title\nabcdefghijk,x\n', 'nometrics.csv').issues[0]?.message ?? '', /no metric columns/);

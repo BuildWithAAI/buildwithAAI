@@ -17,9 +17,9 @@ import {hubLink, loadRegistryIfPresent, selectOffers, subscribeLink, type HubSou
 import {AudioError, hasFfmpeg} from './audio.ts';
 import {makePodcast} from './podcast.ts';
 import {linkedinPost, LINKEDIN_FOLD, LINKEDIN_LIMIT, telegramPost, xThread, type SocialInput, type SocialOffer} from './social.ts';
-import {chapters as buildChapters, paragraphs as buildParagraphs, type Chapter, type Paragraph} from './transcript.ts';
+import {chapters as buildChapters, chaptersFromKit, paragraphs as buildParagraphs, sameChapterStarts, type Chapter, type Paragraph} from './transcript.ts';
 import type {AssetFile, AssetRecord, AssetStatus, Check, Lang, Manifest} from './types.ts';
-import {clock, fileSize, firstSentence, isoTimestamp, readJson, sha256File, truncate, uniqueStrings, writeFile, writeJson} from './util.ts';
+import {clock, fileSize, firstSentence, OWNER_TIME_ZONE, publishTime, readJson, sha256File, truncate, uniqueStrings, writeFile, writeJson} from './util.ts';
 import {X_LIMIT} from './xcount.ts';
 
 export const ASSET_IDS = ['article', 'podcast', 'social', 'newsletter'] as const;
@@ -107,14 +107,32 @@ export const buildLanguage = (o: BuildOptions): BuildResult => {
 	if (ytRaw && !YOUTUBE_ID.test(ytRaw)) throw new Error(`YouTube id must be 11 characters (A-Z, a-z, 0-9, "-", "_"), got ${JSON.stringify(ytRaw)}`);
 	const youtubeId = ytRaw;
 	const publishedRaw = o.published ?? ep.sidecar.publishedAt ?? null;
-	const publishedAt = publishedRaw ? isoTimestamp(publishedRaw) : null;
-	if (publishedRaw && !publishedAt) throw new Error(`publish date must be YYYY-MM-DD or an ISO timestamp, got ${JSON.stringify(publishedRaw)}`);
+	const pub = publishedRaw ? publishTime(publishedRaw) : null;
+	if (publishedRaw && !pub) throw new Error(`publish date must be YYYY-MM-DD or an ISO timestamp, got ${JSON.stringify(publishedRaw)}`);
+	// feeds need a time; schema.org and the page say only the date when no time is known
+	const publishedAt = pub?.timestamp ?? null;
+	const publishedDate = pub ? (pub.dateOnly ? pub.date : pub.timestamp) : null;
+	if (pub?.dateOnly) {
+		common.push({id: 'publish-time', ok: true, level: 'warning', detail: `only a date was given (${pub.date}): the feeds read it as 00:00 ${OWNER_TIME_ZONE} (${pub.timestamp}). Pass the full publish time (the upload's publishAt, e.g. the weekly slot) so no feed shows a time before the video went public.`});
+	}
 	const reviewed = isReviewed(sb);
-	const title = (ep.kit?.title ?? sb.title).trim();
+	// a dub without its own kit borrows the source-language kit: its video id, chapter times and offers fit, but its
+	// title, summary and disclosure lines are in the source language
+	const kitBorrowed = !!ep.kit && ep.kitLang !== null && ep.kitLang !== o.lang;
+	const title = (kitBorrowed ? sb.title : (ep.kit?.title ?? sb.title)).trim();
 	const paragraphs: Paragraph[] = buildParagraphs(sb, ep.timeline);
-	const chapters = buildChapters(sb, ep.timeline);
+	const sceneChapters = buildChapters(sb, ep.timeline);
+	const kitTimelineFits = !kitBorrowed || (ep.timeline?.mode === 'fit-to-master' && ep.timeline.masterLang === ep.kitLang);
+	const kitChapters = ep.kit?.chapters?.length && ep.timeline && kitTimelineFits ? chaptersFromKit(ep.kit.chapters, sb, ep.timeline, {localTitles: kitBorrowed}) : null;
+	const chapters = kitChapters ?? sceneChapters;
+	if (ep.kit?.chapters?.length && ep.timeline) {
+		if (!kitChapters) common.push({id: 'chapters', ok: true, level: 'warning', detail: kitTimelineFits ? 'the publish kit\'s chapters do not fit this timeline (they must start at 00:00, rise, and end before the narration does): used the scene rule; re-run the publish kit' : `this ${o.lang} narration is not fitted to the ${ep.kitLang} master, so the kit's chapter times do not apply: used the scene rule`});
+		else if (!sameChapterStarts(kitChapters, sceneChapters)) common.push({id: 'chapters', ok: true, level: 'info', detail: `chapters come from the publish kit (as in the YouTube description: ${kitChapters.map((c) => clock(c.startMs)).join(', ')}); the scene rule would give ${sceneChapters.map((c) => clock(c.startMs)).join(', ')}`});
+		const short = kitChapters?.filter((c) => c.endMs - c.startMs < 10_000) ?? [];
+		if (short.length) common.push({id: 'chapters-short', ok: false, level: 'warning', detail: `${short.length} kit chapter(s) under 10 s (${short.map((c) => clock(c.startMs)).join(', ')}): YouTube ignores all chapters then; fix the chapter starts in episode.json`});
+	}
 	const transcriptText = paragraphs.map((p) => p.text).join(' ');
-	let summary = ep.sidecar.summary?.trim() || ep.kit?.summary?.trim() || '';
+	let summary = ep.sidecar.summary?.trim() || (kitBorrowed ? '' : ep.kit?.summary?.trim()) || '';
 	if (!summary) {
 		const first = firstSentence(transcriptText);
 		const second = firstSentence(transcriptText.slice(first.length).trim());
@@ -133,6 +151,15 @@ export const buildLanguage = (o: BuildOptions): BuildResult => {
 	const unverified = sb.sources.filter((x) => x.status !== 'verified');
 	if (unverified.length) common.push({id: 'sources-verified', ok: false, level: 'error', detail: `unverified source(s): ${unverified.map((x) => x.id).join(', ')} (the claim gate fails these; verify or remove them)`});
 	const pendingCorrections = ep.corrections.filter((c) => c.status === 'pending');
+	// a pinned correction shows in this language when it has a translation, else in its own language, marked and warned
+	const pinnedCorrections = ep.corrections
+		.filter((c) => c.status === 'pinned')
+		.map((c) => {
+			const t = o.lang === sb.sourceLang ? c.correct : c.languages?.[o.lang]?.trim();
+			return t ? {date: c.date, text: t} : {date: c.date, text: c.correct, lang: sb.sourceLang};
+		});
+	const untranslatedCorrections = pinnedCorrections.filter((c) => c.lang);
+	if (untranslatedCorrections.length) common.push({id: 'correction-untranslated', ok: false, level: 'warning', detail: `${untranslatedCorrections.length} pinned correction(s) have no ${o.lang} text, so they show in ${sb.sourceLang}: add "languages": {"${o.lang}": "..."} to the correction in corrections.json`});
 	if (pendingCorrections.length) common.push({id: 'corrections', ok: false, level: 'warning', detail: `${pendingCorrections.length} pending correction(s) for this episode: approve and pin them, then re-run (pinned ones are shown on the article)`});
 	if (!ep.timeline) common.push({id: 'timeline', ok: false, level: 'warning', detail: 'no timeline: the transcript comes from the storyboard text and has no timestamps'});
 	const stale = staleScenes(ep);
@@ -149,7 +176,29 @@ export const buildLanguage = (o: BuildOptions): BuildResult => {
 	const linkFor = (offers: UsableOffer[], source: HubSource) => offers.map((x) => ({...x, url: hubLink(cfg.hubOrigin, x.id, o.slug, source)}));
 	const leftOutDisclosures = new Set((ep.kit?.offers ?? []).filter((x) => selection.leftOut.some((l) => l.id === x.id)).map((x) => x.disclosure.trim()));
 	const usedDisclosures = new Set(selection.offers.map((x) => x.disclosure));
-	const episodeDisclosures = uniqueStrings((ep.kit?.disclosures ?? []).filter((d) => !leftOutDisclosures.has(d.trim()) && !usedDisclosures.has(d.trim())));
+	const kitLines = uniqueStrings((ep.kit?.disclosures ?? []).filter((d) => !leftOutDisclosures.has(d.trim()) && !usedDisclosures.has(d.trim())));
+	// the kit's offer lines are handled by selectOffers (localized per offer); a borrowed kit's other lines need an
+	// owner-approved translation, or the asset is blocked: a disclosure is never dropped
+	const offerLines = new Set((ep.kit?.offers ?? []).map((x) => x.disclosure.trim()));
+	const untranslated: string[] = [];
+	const episodeDisclosures = kitBorrowed
+		? kitLines
+				.filter((d) => !offerLines.has(d.trim()))
+				.flatMap((d) => {
+					const t = cfg.disclosureTranslations[d.trim()]?.[o.lang];
+					if (!t) untranslated.push(d.trim());
+					return t ? [t] : [];
+				})
+		: kitLines;
+	if (untranslated.length) {
+		common.push({
+			id: 'disclosure-untranslated',
+			ok: false,
+			level: 'error',
+			detail: `${untranslated.length} disclosure line(s) of the ${ep.kitLang} publish kit have no owner-approved ${o.lang} translation: add them under "disclosureTranslations" in scripts/assets/config/channels.json (the exact ${ep.kitLang} line, then "${o.lang}"). Missing: ${untranslated.map((d) => JSON.stringify(truncate(d, 80))).join('; ')}`,
+		});
+	}
+	if (kitBorrowed) ownerActions.push(`No ${o.lang} publish kit: borrowed the ${ep.kitLang} kit for the video id, chapter times and offers; its disclosure lines need owner-approved ${o.lang} translations in config/channels.json.`);
 
 	const url = articleUrl(site.articleBase, o.channel, o.slug, o.lang);
 	const indexable = reviewed && !!youtubeId && !!publishedAt;
@@ -191,11 +240,12 @@ export const buildLanguage = (o: BuildOptions): BuildResult => {
 			disclosures: episodeDisclosures,
 			fictionNote,
 			developing: developing ? {label: developing.label ?? s.developing, asOf: developing.asOf} : null,
-			corrections: ep.corrections.filter((c) => c.status === 'pinned').map((c) => ({date: c.date, text: c.correct})),
+			corrections: pinnedCorrections,
 			machineTranslation: !reviewed,
 			youtubeId,
-			publishedAt,
+			publishedAt: publishedDate,
 			modifiedAt: now,
+			feedPublishedAt: publishedAt,
 			durationMs: ep.timeline?.totalMs ?? null,
 			subscribeUrl: subscribeLink(cfg.hubOrigin, o.slug, 'site'),
 			feedUrl: `${site.articleBase}/feed.xml`,

@@ -91,6 +91,19 @@ describe('payout CSVs', () => {
 		assert.equal(rows.find((r) => r.source === 'bio')?.videoId, null);
 	});
 
+	it('keeps reversals written the accounting way, with a trailing minus or the Unicode minus', () => {
+		const text = [
+			'Date,Program,Sub ID,Sales,Commission,Currency,Status',
+			'11/02/2026,Example Wallet Store,fixture0002.yt,1,18.00,USD,Approved',
+			'11/03/2026,Example Wallet Store,fixture0002.yt,-1,(18.00),USD,Approved',
+			'11/04/2026,Example Wallet Store,fixture0002.yt,-1,18.00-,USD,Approved',
+			'11/05/2026,Example Wallet Store,fixture0002.yt,-1,\u221218.00,USD,Approved',
+		].join('\n');
+		const {rows, issues} = parsePayoutCsv(text, 'reversals.csv', wallet);
+		assert.deepEqual(issues.filter((i) => i.level !== 'note'), []);
+		assert.deepEqual(rows.map((r) => r.amount), [18, -18, -18, -18]);
+	});
+
 	it('reads ";" files with decimal commas and day-first dates; no conversions column means one per row', () => {
 		const {rows, issues} = readPayoutCsv(fixture('payouts/eu-tools.csv'), eu);
 		assert.deepEqual(issues, []);

@@ -77,6 +77,9 @@ export type FormatSpec = {
 	notes: string[];
 };
 
+/** A weekly slot the calendar keeps free for work made outside the batch (the security channel's news round-up). */
+export type ReservedSlot = {label: string; day: Weekday | null; time: string | null; note: string};
+
 export type ChannelBatchConfig = {
 	channel: string;
 	name: string;
@@ -86,6 +89,8 @@ export type ChannelBatchConfig = {
 	long: SlotSpec[];
 	shorts: {days: Weekday[]; time: string; length: string} | null;
 	formats: Record<string, FormatSpec>;
+	/** Shown in every week of the calendar, never planned by the batch. */
+	reserved?: ReservedSlot[];
 };
 
 export type BatchConfig = {

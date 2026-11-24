@@ -1,11 +1,13 @@
 /**
  * Reads where one planned item stands now, from the files the other steps write (read only): the storyboard and its
  * dubs, the claim gate's reports (out/claims/<slug>.<lang>.json), the voice timeline, the render, the thumbnails and
- * the publish kit. Decides readiness: any blocker means NOT READY, and approve refuses an item that was not ready on
- * the page the owner saw. The same hashes are recorded by review and re-checked by approve.
+ * the publish kit, plus the render's optional upload spec. Decides readiness: any blocker means NOT READY, and approve
+ * refuses an item that was not ready on the page the owner saw. The same hashes are recorded by review and re-checked
+ * by approve.
  */
 import {existsSync, readFileSync} from 'node:fs';
-import {join} from 'node:path';
+import {isAbsolute, join} from 'node:path';
+import {lintText, loadPrivateNames, namePatterns, type LintIssue} from '../../assets/lib/lint.ts';
 import type {PlanItem} from './types.ts';
 import {hashFile, isRecord, mtimeMs, readJson, str} from './util.ts';
 
@@ -33,6 +35,30 @@ export type SceneView = {id: string; type: string; segment: string | null; text:
 
 export type DubState = {lang: string; storyboard: FileState; status: string | null; reviewed: boolean; claims: ClaimState; timeline: {exists: boolean; mode: string | null}; ready: boolean; notes: string[]};
 
+/** A file the upload spec names (a caption track or a thumbnail override). */
+export type SpecFile = {path: string; file: FileState | null; problem: string | null};
+
+/**
+ * The render's upload spec (content/<channel>/<slug>/upload-spec.<render>.json, creator-hub uploader README): extra
+ * metadata the upload sends. The page shows all of it, the snapshot hashes the spec and every file it names, and its
+ * text goes through the shared en/es/pt-br income-claim lint (scripts/assets/lib/lint.ts).
+ */
+export type SpecState = {
+	file: FileState;
+	/** Why the spec cannot be read (not JSON, not {"version": 1}); null when it can. */
+	problem: string | null;
+	localizations: Array<{lang: string; title: string; description: string}>;
+	tags: string[] | null;
+	/** undefined: not set (the channel's playlist); null: no playlist. */
+	playlistId: string | null | undefined;
+	captions: Array<{language: string; name: string | null} & SpecFile>;
+	/** null: the kit's thumbnail; otherwise the override (path null = no custom thumbnail). */
+	thumbnail: {path: string | null; file: FileState | null; problem: string | null} | null;
+	settings: Array<{key: string; value: string}>;
+	unknownKeys: string[];
+	lint: LintIssue[];
+};
+
 export type ItemState = {
 	item: PlanItem;
 	storyboard: FileState;
@@ -51,6 +77,8 @@ export type ItemState = {
 	timeline: {exists: boolean; mock: boolean; voice: string | null};
 	claims: ClaimState;
 	dubs: DubState[];
+	/** The render's upload spec, or null when there is none. */
+	spec: SpecState | null;
 	blockers: string[];
 	warnings: string[];
 	ready: boolean;
@@ -58,6 +86,8 @@ export type ItemState = {
 	hashes: Record<string, string | null>;
 	/** Dub files shown on the page (a changed dub needs a new review before its track is added). */
 	dubHashes: Record<string, string | null>;
+	/** The upload spec and every file it names (null = missing: a spec that appears after the review is a change). */
+	specHashes: Record<string, string | null>;
 };
 
 /** A path the batch may read and copy: relative, under out/ or content/ or public/, no hidden or ".." segments. */
@@ -142,6 +172,71 @@ const claimBlockers = (c: ClaimState, label: string, content: string): string[] 
 	if (!c.pass) return [`${label}: the claim gate FAILS with ${c.errors} error(s): fix them and run it again.`];
 	if (c.stale) return [`${label}: the storyboard changed after the claim gate ran: run it again.`];
 	return [];
+};
+
+/** The episode's render-farm draft: next to its WRITER.md (out/batch/<week>/<episode>/render-request.json). */
+export const farmDraftOf = (item: PlanItem): string => `${item.paths.writer.replace(/\/[^/]*$/, '')}/render-request.json`;
+
+/** The upload spec the uploader picks up for this render (approve passes it when it exists). */
+export const specPathOf = (item: PlanItem): string => `${item.paths.content}/upload-spec.${item.renderId}.json`;
+
+/** The uploader's spec keys (creator-hub/tools/uploader/inputs.ts SPEC_KEYS); any other key is refused there. */
+const SPEC_KEYS = new Set(['version', 'categoryId', 'defaultLanguage', 'audioLanguage', 'tags', 'playlistId', 'notifySubscribers', 'embeddable', 'license', 'publicStatsViewable', 'localizations', 'captions', 'thumbnail']);
+const SPEC_SETTINGS = ['categoryId', 'defaultLanguage', 'audioLanguage', 'notifySubscribers', 'embeddable', 'license', 'publicStatsViewable'];
+/** Caption files larger than this are not linted here (the uploader caps them at YouTube's limit). */
+const CAPTION_LINT_MAX = 2_000_000;
+
+const specFile = async (root: string, raw: unknown, what: string): Promise<SpecFile> => {
+	const path = typeof raw === 'string' ? raw.trim() : '';
+	if (!path) return {path: String(raw ?? ''), file: null, problem: `${what}: needs a file path`};
+	if (isAbsolute(path) || !safeStudioPath(path)) return {path, file: null, problem: `${what}: ${path} is outside out/, content/ or public/, so the weekly page cannot show or hash it`};
+	const file = await fileState(root, path);
+	return {path, file, problem: file.exists ? null : `${what}: ${path} is missing`};
+};
+
+/** Reads, hashes and lints the render's upload spec. null when the render has none. */
+export const readSpec = async (root: string, item: PlanItem, names: RegExp[]): Promise<SpecState | null> => {
+	const file = await fileState(root, specPathOf(item));
+	if (!file.exists) return null;
+	const state: SpecState = {file, problem: null, localizations: [], tags: null, playlistId: undefined, captions: [], thumbnail: null, settings: [], unknownKeys: [], lint: []};
+	const read = readJson(join(root, file.path));
+	if (!read.ok) return {...state, problem: read.error};
+	const d = read.data;
+	if (!isRecord(d) || d.version !== 1) return {...state, problem: 'not an upload spec ({"version": 1, ...})'};
+	state.unknownKeys = Object.keys(d).filter((k) => !SPEC_KEYS.has(k));
+	const where = (w: string) => `upload spec ${w}`;
+	const lint = (text: string, w: string) => state.lint.push(...lintText(text, where(w), {names}));
+	if (isRecord(d.localizations)) {
+		for (const [lang, v] of Object.entries(d.localizations)) {
+			const title = isRecord(v) && typeof v.title === 'string' ? v.title : '';
+			const description = isRecord(v) && typeof v.description === 'string' ? v.description : '';
+			state.localizations.push({lang, title, description});
+			lint(title, `localizations.${lang}.title`);
+			lint(description, `localizations.${lang}.description`);
+		}
+	} else if (d.localizations !== undefined) state.problem = 'localizations must be an object keyed by language code';
+	if (Array.isArray(d.tags)) {
+		state.tags = d.tags.map(String);
+		lint(state.tags.join(', '), 'tags');
+	} else if (d.tags !== undefined) state.problem = 'tags must be a list of strings';
+	if (d.playlistId !== undefined) state.playlistId = typeof d.playlistId === 'string' ? d.playlistId : null;
+	for (const key of SPEC_SETTINGS) if (d[key] !== undefined) state.settings.push({key, value: typeof d[key] === 'string' ? (d[key] as string) : JSON.stringify(d[key])});
+	if (Array.isArray(d.captions)) {
+		for (const [i, c] of d.captions.entries()) {
+			const language = isRecord(c) && typeof c.language === 'string' ? c.language : '?';
+			const name = isRecord(c) && typeof c.name === 'string' ? c.name : null;
+			const f = await specFile(root, isRecord(c) ? c.file : undefined, `captions[${i}] (${language})`);
+			state.captions.push({language, name, ...f});
+			if (name) lint(name, `captions[${i}].name`);
+			if (f.file?.exists && (f.file.bytes ?? 0) <= CAPTION_LINT_MAX) lint(readFileSync(join(root, f.path), 'utf8'), `caption file ${f.path}`);
+		}
+	} else if (d.captions !== undefined) state.problem = 'captions must be a list of {language, name?, file}';
+	if (d.thumbnail === null) state.thumbnail = {path: null, file: null, problem: null};
+	else if (d.thumbnail !== undefined) {
+		const f = await specFile(root, d.thumbnail, 'thumbnail');
+		state.thumbnail = {path: f.path, file: f.file, problem: f.problem};
+	}
+	return state;
 };
 
 export const inspectItem = async (root: string, item: PlanItem): Promise<ItemState> => {
@@ -249,7 +344,7 @@ export const inspectItem = async (root: string, item: PlanItem): Promise<ItemSta
 
 	// render and thumbnails
 	const render = await fileState(root, renderPath);
-	if (!render.exists) blockers.push(`Not rendered yet: ${renderPath} (render farm draft out/batch/<week>/${item.parentId ?? item.id}/render-request.json, or the kit's render-plan.sh).`);
+	if (!render.exists) blockers.push(`Not rendered yet: ${renderPath} (render farm draft ${farmDraftOf(item)}, or the kit's render-plan.sh).`);
 	else {
 		const newest = Math.max(storyboard.mtimeMs ?? 0, timelineMtime ?? 0);
 		if (render.mtimeMs !== null && newest > render.mtimeMs + 1000) blockers.push('The render is older than the current storyboard or voice timeline: render it again so the preview shows this script.');
@@ -280,6 +375,21 @@ export const inspectItem = async (root: string, item: PlanItem): Promise<ItemSta
 		dubs.push({lang, storyboard: sb, status, reviewed, claims: dc, timeline: {exists: dtl.ok, mode}, ready, notes});
 	}
 
+	// the upload spec: shown on the page, hashed, linted; any problem blocks the item
+	const names = namePatterns(loadPrivateNames(join(root, 'data', 'private', 'names.txt')));
+	const spec = await readSpec(root, item, names);
+	const specHashes: Record<string, string | null> = {[specPathOf(item)]: spec?.file.sha256 ?? null};
+	if (spec) {
+		const label = `Upload spec ${spec.file.path}`;
+		if (spec.problem) blockers.push(`${label}: ${spec.problem}. Fix or remove it, then rebuild the page.`);
+		if (spec.unknownKeys.length) blockers.push(`${label}: the uploader refuses these keys (unknown, or settings that never come from a spec): ${spec.unknownKeys.join(', ')}.`);
+		for (const f of [...spec.captions, ...(spec.thumbnail ? [spec.thumbnail] : [])]) {
+			if (f.problem) blockers.push(`${label}: ${f.problem}.`);
+			if (f.path && f.file) specHashes[f.path] = f.file.sha256;
+		}
+		for (const issue of spec.lint) (issue.level === 'error' ? blockers : warnings).push(`${label}: ${issue.where.replace(/^upload spec /, '')}: ${issue.message}`);
+	}
+
 	if (fiction === false && item.format === 'pov-story') warnings.push('A POV story with fiction: false: the fiction card only shows when storyboard.fiction is true.');
 	const hashes: Record<string, string | null> = {[storyboard.path]: storyboard.sha256, [kit.path]: kit.sha256, [render.path]: render.sha256, [claims.path]: claims.sha256};
 	for (const t of thumbnails) hashes[t.path] = t.sha256;
@@ -307,11 +417,13 @@ export const inspectItem = async (root: string, item: PlanItem): Promise<ItemSta
 		timeline,
 		claims,
 		dubs,
+		spec,
 		blockers,
 		warnings,
 		ready: blockers.length === 0,
 		hashes,
 		dubHashes,
+		specHashes,
 	};
 };
 

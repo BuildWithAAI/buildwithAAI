@@ -2,6 +2,7 @@
  * Offer registry: startup validation (fail fast) and the runtime rules used by /go and the pages.
  * Only URLs from this validated registry are ever used as redirect targets.
  */
+import {launchpadEvidence} from '../launchpads.ts';
 import type {CountryCode, Offer, OfferCategory, OfferRegistry, Relationship, Source} from '../types.ts';
 import {isCountryCode} from './countries.ts';
 
@@ -10,14 +11,17 @@ const CATEGORIES: readonly OfferCategory[] = ['security', 'tools', 'exchange', '
 const RELATIONSHIPS: readonly Relationship[] = ['affiliate', 'referral', 'own-product', 'sponsor'];
 const OFFER_KEYS = [
 	'id', 'name', 'url', 'category', 'relationship', 'disclosure', 'blockedCountries', 'allowedCountries',
-	'unknownCountry', 'active', 'expires', 'termsUrl', 'restrictedReason', 'alternatives', 'subIdParam', 'notes',
+	'unknownCountry', 'financialPromotion', 'active', 'expires', 'termsUrl', 'restrictedReason', 'alternatives',
+	'subIdParam', 'notes',
 ];
 
 /**
- * Channel rule: no memecoin launchpad is ever an offer. Hosts listed here (and their subdomains) are
- * rejected at startup. Extend the list when new launchpads appear.
+ * Words that suggest a financial product. A non-exchange offer that uses them without "financialPromotion"
+ * gets a startup warning, because a staking, yield or trading offer filed as "tools" would otherwise be shown
+ * in every country. The disclosure is checked without "earn" ("I earn a commission" is every affiliate link).
  */
-const LAUNCHPAD_HOSTS = ['pump.fun', 'letsbonk.fun', 'four.meme', 'sunpump.meme', 'believe.app'];
+const FINANCIAL_WORDS = /\b(?:deposit\w*|stak(?:e|es|ing)|yields?|apy|apr|interest|lend(?:s|ing)?|borrow\w*|trad(?:e|es|ing)|leverage|futures|margin|copy[- ]?trad\w*|signals?|savings?|earn)\b/i;
+const FINANCIAL_WORDS_IN_DISCLOSURE = /\b(?:deposit\w*|stak(?:e|es|ing)|yields?|apy|apr|interest|lend(?:s|ing)?|borrow\w*|trad(?:e|es|ing)|leverage|futures|margin|copy[- ]?trad\w*|signals?|savings?)\b/i;
 
 const OFFER_ID = /^[a-z0-9-]{2,40}$/;
 const VIDEO_ID = /^[A-Za-z0-9_-]{1,64}$/;
@@ -51,8 +55,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 /** "allowed_countries", "allowedCountry" and "AllowedCountries" all normalize to "allowedcountry". */
 const normalizeKey = (key: string): string =>
 	key.toLowerCase().replace(/[^a-z]/g, '').replace(/ies$/, 'y').replace(/s$/, '');
-
-const isLaunchpad = (host: string): boolean => LAUNCHPAD_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
 
 const isPlaceholderUrl = (url: string): boolean => {
 	const host = new URL(url).hostname;
@@ -159,6 +161,8 @@ const checkOffer = (raw: unknown, index: number, errors: string[], warnings: str
 	const blockedCountries = countries('blockedCountries', true) ?? [];
 	const allowedCountries = countries('allowedCountries', false);
 	const unknownCountry = oneOf('unknownCountry', ['allow', 'block'] as const);
+	if (raw.financialPromotion !== undefined && typeof raw.financialPromotion !== 'boolean') fail('"financialPromotion" must be true or false');
+	const financialPromotion = raw.financialPromotion === true;
 	if (typeof raw.active !== 'boolean') fail('"active" must be true or false');
 	const active = raw.active === true;
 	const expires = raw.expires === undefined ? undefined : typeof raw.expires === 'string' ? raw.expires : '';
@@ -175,17 +179,38 @@ const checkOffer = (raw: unknown, index: number, errors: string[], warnings: str
 	}
 	const notes = text('notes', 2000, false);
 
-	if (url && isLaunchpad(new URL(url).hostname)) fail('memecoin launchpads are never offers on this channel');
+	const launchpad = launchpadEvidence({
+		name: typeof raw.name === 'string' ? raw.name : undefined,
+		url: typeof raw.url === 'string' ? raw.url : undefined,
+		notes: typeof raw.notes === 'string' ? raw.notes : undefined,
+	});
+	if (launchpad) fail(`memecoin launchpads are never offers on this channel (${launchpad})`);
 	if (url && active && isPlaceholderUrl(url)) fail('replace the placeholder URL before setting "active": true');
 	if (category === 'exchange' && unknownCountry !== 'block') fail('category "exchange" must use unknownCountry "block"');
+	if (financialPromotion && unknownCountry !== 'block') fail('a financial promotion ("financialPromotion": true) must use unknownCountry "block"');
 	const restricted = blockedCountries.length > 0 || (allowedCountries?.length ?? 0) > 0;
 	if (restricted && unknownCountry === 'allow') {
 		fail('an offer restricted by country must use unknownCountry "block", or visitors whose country is unknown would bypass the restriction');
+	}
+	if ((category === 'exchange' || financialPromotion) && !restricted) {
+		fail(
+			'a financial promotion (category "exchange" or "financialPromotion": true) must list the countries where it may not be shown ("blockedCountries", e.g. "GB" and "US" unless the programme is approved there) or the only ones where it may ("allowedCountries")',
+		);
+	}
+	if (category && category !== 'exchange' && !financialPromotion) {
+		const named = [typeof raw.name === 'string' ? raw.name : '', typeof raw.url === 'string' ? raw.url : ''].join(' ');
+		const word = FINANCIAL_WORDS.exec(named)?.[0] ?? (typeof raw.disclosure === 'string' ? FINANCIAL_WORDS_IN_DISCLOSURE.exec(raw.disclosure)?.[0] : undefined);
+		if (word) {
+			warnings.push(
+				`${where}: mentions "${word}". If it promotes a financial product (staking, yield, lending, trading, signals), set "financialPromotion": true and its country rules`,
+			);
+		}
 	}
 
 	if (!id || !name || !url || !category || !relationship || !disclosure || !unknownCountry) return null;
 	const offer: Offer = {id, name, url, category, relationship, disclosure, blockedCountries, unknownCountry, active};
 	if (allowedCountries) offer.allowedCountries = allowedCountries;
+	if (financialPromotion) offer.financialPromotion = true;
 	if (expires) offer.expires = expires;
 	if (termsUrl) offer.termsUrl = termsUrl;
 	if (restrictedReason) offer.restrictedReason = restrictedReason;
@@ -251,6 +276,12 @@ export const regionDecision = (offer: Offer, country: CountryCode | null): Regio
 	return 'allow';
 };
 
+/**
+ * Restricted offers are hidden by region at the hub, so text that is visible everywhere (descriptions,
+ * posts, emails, video narration) must never name or promote them: only the hub's region-filtered page may.
+ */
+export const isRestricted = (offer: Offer): boolean => regionDecision(offer, null) !== 'allow';
+
 export const isAvailable = (offer: Offer, country: CountryCode | null, now: number): boolean =>
 	isLive(offer, now) && regionDecision(offer, country) === 'allow';
 
@@ -266,6 +297,37 @@ export const availableAlternatives = (registry: OfferRegistry, offer: Offer, cou
 export const disclosureLines = (offer: Offer): string[] =>
 	offer.category === 'exchange' && !/\brisk/i.test(offer.disclosure) ? [offer.disclosure, RISK_LINE] : [offer.disclosure];
 
+const joinOr = (items: readonly string[]): string =>
+	items.length <= 1 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`;
+
+/**
+ * The opening disclosure line for text with offer links, worded like the publish kit's description:
+ * "Disclosure: some links for this video are affiliate or referral links. ..." (null without offers).
+ */
+export const topDisclosure = (offers: readonly Offer[]): string | null => {
+	if (offers.length === 0) return null;
+	const kinds = new Set(offers.map((o) => o.relationship));
+	const paid = [kinds.has('affiliate') ? 'affiliate' : '', kinds.has('referral') ? 'referral' : '', kinds.has('sponsor') ? 'sponsored' : ''].filter(Boolean);
+	const own = kinds.has('own-product');
+	const what = paid.length ? `are ${joinOr(paid)} links${own ? ', and some go to my own products' : ''}` : 'go to my own products';
+	return `Disclosure: some links for this video ${what}. If you use them, I may earn money. Each one is labelled next to the link.`;
+};
+
+/** The hub's region-filtered link page for one video, e.g. /?v=abc123&s=yt */
+export const hubPagePath = (videoId: string | null, source: Source | null): string => {
+	const query = new URLSearchParams();
+	if (videoId) query.set('v', videoId);
+	if (source) query.set('s', source);
+	const qs = query.toString();
+	return `/${qs ? `?${qs}` : ''}`;
+};
+
+/** The line (and its disclosure) that stands in for every restricted offer in text visible everywhere. */
+export const restrictedOfferLines = (publicBaseUrl: string, videoId: string | null, source: Source | null): string[] => [
+	`More partner links, only where they are available in your country: ${publicBaseUrl}${hubPagePath(videoId, source)}`,
+	'Some of them are affiliate or referral links that may earn me money; each one is disclosed on that page.',
+];
+
 /** Relative hub link, e.g. /go/hardware-wallet?v=abc123&s=yt */
 export const hubPath = (offerId: string, videoId: string | null, source: Source | null): string => {
 	const query = new URLSearchParams();
@@ -277,15 +339,36 @@ export const hubPath = (offerId: string, videoId: string | null, source: Source 
 
 /**
  * The redirect target: the registry URL, plus `subIdParam=<videoId>.<source>` when the programme
- * supports sub-IDs. The existing query string is kept byte for byte; v and s are validated slugs.
+ * supports sub-IDs. The rest of the query string is kept byte for byte (signed or strict affiliate links
+ * break when it is re-encoded); v and s are validated slugs.
  */
 export const destinationUrl = (offer: Offer, videoId: string | null, source: Source | null): string => {
 	const url = new URL(offer.url);
 	if (!offer.subIdParam || (!videoId && !source)) return url.href;
 	const value = `${videoId ?? 'none'}.${source ?? 'none'}`;
+	const param = encodeURIComponent(offer.subIdParam);
 	if (url.searchParams.has(offer.subIdParam)) {
-		url.searchParams.set(offer.subIdParam, value);
-		return url.href;
+		// Networks hand out links with an empty "subid=" placeholder: replace only that key=value pair.
+		let replaced = false;
+		const pairs = url.search
+			.slice(1)
+			.split('&')
+			.map((pair) => {
+				const key = pair.split('=')[0] ?? '';
+				let name = key;
+				try {
+					name = decodeURIComponent(key.replace(/\+/g, ' '));
+				} catch {
+					// an undecodable key is not ours
+				}
+				if (replaced || name !== offer.subIdParam) return pair;
+				replaced = true;
+				return `${param}=${encodeURIComponent(value)}`;
+			});
+		url.search = '';
+		const hash = url.hash;
+		url.hash = '';
+		return `${url.href}?${pairs.join('&')}${hash}`;
 	}
 	const hash = url.hash;
 	url.hash = '';

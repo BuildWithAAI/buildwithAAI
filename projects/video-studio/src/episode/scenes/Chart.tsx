@@ -34,6 +34,8 @@ export const ChartScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const st = rp ? revealStateAt(rp, frame) : null;
 	const panelIn = entry(frame, 0, 10);
 	const chipW = Math.ceil(chipFit.width) + 2 * 22;
+	// the chip sits in its box on the spec's side (vertical: left, clear of the Shorts button column)
+	const chipLeft = L.chip.align === 'left' ? L.chip.box.x : L.chip.align === 'center' ? Math.round(L.chip.box.x + (L.chip.box.w - chipW) / 2) : L.chip.box.x + L.chip.box.w - chipW;
 	return (
 		<SceneBg>
 			<CharacterLayer
@@ -53,7 +55,7 @@ export const ChartScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 				/>
 			</div>
 			{label ? (
-				<div style={{position: 'absolute', left: L.chip.box.x + L.chip.box.w - chipW, top: L.chip.box.y, width: chipW, height: L.chip.box.h}}>
+				<div style={{position: 'absolute', left: chipLeft, top: L.chip.box.y, width: chipW, height: L.chip.box.h}}>
 					<div style={{position: 'absolute', inset: 0, backgroundColor: C.slate, borderRadius: R.m}} />
 					<Lines fit={chipFit} spec={{...L.chip, align: 'center', valign: 'center'}} lang={ctx.lang} color={C.onDark} box={{x: 0, y: 0, w: chipW, h: L.chip.box.h}} />
 				</div>

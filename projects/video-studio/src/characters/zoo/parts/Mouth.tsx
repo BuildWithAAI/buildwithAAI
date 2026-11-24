@@ -10,7 +10,8 @@ import type {MouthShape} from '../../types';
 import {clamp01, line, smooth, type Pt} from '../geometry';
 import {MOUTHS, type MouthSpec} from '../mouth';
 import {MOD0, PIVOTS, type MouthMod} from '../rig';
-import {Clipped, Stroke} from './Shape';
+import {ZOO_LINE} from '../lines';
+import {Clipped, Stroke, useLineScale} from './Shape';
 
 const halfWidth = (spec: MouthSpec) => {
 	const pts = spec.kind === 'line' ? spec.line : [...spec.top, ...spec.bottom];
@@ -47,12 +48,14 @@ const makeMap = (spec: MouthSpec, mod: MouthMod, project: MouthProjection) => {
 export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: MouthProjection; lineScale?: number}> = ({shape, mod = MOD0, project = FRONT_PROJECTION, lineScale = 1}) => {
 	const spec = MOUTHS[shape];
 	const M = makeMap(spec, mod, project);
+	const ls = useLineScale();
 	if (spec.kind === 'line') {
+		// The sheet's closed mouth is a thin dark-brown lip line (core #5C3D2C ~ beardShadow) with the pale lower lip below.
 		return (
 			<g data-part="mouth" data-shape={shape}>
-				{spec.lowerLip ? <Stroke d={line(spec.lowerLip.map(M))} width={1.6} color={ZOO_COLORS.skinShadow} /> : null}
-				{mod.cornerR > 2 ? <Stroke name="smirkLip" d={line(([[-8, 3.4], [1, 4.4], [7, 3.8], [11.5, 2.2]] as Pt[]).map(M))} width={1.6} color={ZOO_COLORS.skinShadow} /> : null}
-				<Stroke d={line(spec.line.map(M))} width={spec.width * lineScale} />
+				{spec.lowerLip ? <Stroke d={line(spec.lowerLip.map(M))} width={ZOO_LINE.fine} color={ZOO_COLORS.skinShadow} /> : null}
+				{mod.cornerR > 2 ? <Stroke name="smirkLip" d={line(([[-8, 3.4], [1, 4.4], [7, 3.8], [11.5, 2.2]] as Pt[]).map(M))} width={ZOO_LINE.fine} color={ZOO_COLORS.skinShadow} /> : null}
+				<Stroke name="lipLine" d={line(spec.line.map(M))} width={spec.width * lineScale} color={ZOO_COLORS.beardShadow} />
 			</g>
 		);
 	}
@@ -65,11 +68,11 @@ export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: Mouth
 				{spec.teeth ? (
 					<>
 						<path d={smooth(spec.teeth.shape.map(M))} fill={ZOO_COLORS.teeth} />
-						<Stroke d={line(spec.teeth.divider.map(M))} width={1.1} />
+						<Stroke d={line(spec.teeth.divider.map(M))} width={ZOO_LINE.fine * 0.75} />
 					</>
 				) : null}
 			</Clipped>
-			<path d={opening} fill="none" stroke={LINE.color} strokeWidth={LINE.detailWidth} strokeLinejoin="round" />
+			<path d={opening} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.feature * lineScale * ls} strokeLinejoin="round" />
 		</g>
 	);
 };

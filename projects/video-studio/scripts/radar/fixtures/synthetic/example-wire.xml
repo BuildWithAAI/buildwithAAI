@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SYNTHETIC test data: invented outlet, protocol, people and addresses. Used to
+     prove that names, handles, function names and addresses never reach output. -->
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+  <title>Example Wire</title>
+  <link>https://example.invalid/</link>
+  <description>Synthetic fixture</description>
+  <item>
+    <title>Acme Finance exploited for $2.5 million</title>
+    <link>https://example.invalid/acme-finance-exploited?utm_source=rss&amp;id=7</link>
+    <pubDate>Tue, 24 Nov 2026 03:00:00 +0000</pubDate>
+    <dc:creator>Jane Reporter</dc:creator>
+    <description><![CDATA[<p>Investigator @ExampleSleuth said the attacker abused the DeFi protocol's withdrawFunds() function and sent funds to 0x1111111111111111111111111111111111111111. CEO Jane Example said users would be repaid.</p>]]></description>
+  </item>
+  <item>
+    <title>Acme Finance suspect John Doe arrested, police say</title>
+    <link>https://example.invalid/acme-arrest</link>
+    <pubDate>Tue, 24 Nov 2026 04:00:00 +0000</pubDate>
+    <description>Police arrested John Doe, 31, in connection with the Acme Finance crypto hack, according to a statement. He has not been charged.</description>
+  </item>
+  <item>
+    <title>Acme Token price surges 40% after the hack</title>
+    <link>https://example.invalid/acme-price</link>
+    <pubDate>Tue, 24 Nov 2026 05:00:00 +0000</pubDate>
+    <description>The token price rallied as traders bought the dip; analysts are bullish.</description>
+  </item>
+</channel>
+</rss>

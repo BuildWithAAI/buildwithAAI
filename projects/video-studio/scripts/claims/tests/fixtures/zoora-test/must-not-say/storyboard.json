@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "must-not-say",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "This coin will 100x",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "talk",
+      "narration": "Bubblemaps proved the caller sold first. [src:bm] Testy McFakename runs the group.",
+      "onScreen": {
+        "title": "The group"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "The main wallet was 0xabababababababababababababababababababab. [src:bm] Graduated means safe, right?",
+      "onScreen": {
+        "title": "The wallet",
+        "bullets": [
+          "Follow @fakehandle123"
+        ]
+      }
+    },
+    {
+      "id": "s03",
+      "type": "cta",
+      "narration": "Join at t.me/fakegroupxyz for guaranteed returns. You'll earn more than your job pays.",
+      "onScreen": {
+        "title": "Join us"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "bm",
+      "title": "Example investigator thread",
+      "url": "https://example.com/thread",
+      "quote": "the wallets sold within minutes",
+      "accessed": "2026-11-20",
+      "status": "verified"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "RISK-FREE GAINS",
+      "expression": "shocked",
+      "badger": true
+    }
+  ]
+}

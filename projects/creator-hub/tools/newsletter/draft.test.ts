@@ -125,6 +125,27 @@ describe('buildDraft with the fixture kit.json', () => {
 		assert.match(errorsOf(build(bare).issues).join('\n'), /has no disclosure in kit\.json/);
 	});
 
+	it('blocks the email when the publish kit failed a claim, disclosure or region check, and only warns for others', () => {
+		const kit = loadKit();
+		for (const id of ['income-claims', 'spoken-disclosure', 'disclosures', 'restricted-offers']) {
+			const {issues} = build({...kit, checks: [...kit.checks, {id, ok: false, detail: 'failed in the kit'}]});
+			assert.match(errorsOf(issues).join('\n'), /the publish kit check failed, so no email is drafted/, id);
+		}
+		const {issues} = build({...kit, checks: [...kit.checks, {id: 'youtube-title', ok: false, detail: 'too long'}]});
+		assert.deepEqual(errorsOf(issues), []);
+		assert.ok(issues.some((i) => i.level === 'warning' && /publish kit check failed: too long/.test(i.message)));
+	});
+
+	it('refuses a summary with income claims that the old lint missed', () => {
+		const kit = {
+			...loadKit(),
+			summary: 'I made $5,000 last month copying this setup. Buy now before it sells out: SOL could hit $500 and stakers earn 20% monthly returns.',
+		};
+		const {draft} = build(kit);
+		const found = errorsOf(lintDraft(draft)).join('\n');
+		for (const label of ['an earnings figure', 'a buy call', 'a price target', 'a percentage return']) assert.match(found, new RegExp(`\\(${label}\\)`), label);
+	});
+
 	it('warns when the email names an offer that was left out for region reasons', () => {
 		const kit = {...loadKit(), summary: 'Why Demo Exchange support will never DM you first.'};
 		const warnings = build(kit).issues.filter((i) => i.level === 'warning').map((i) => i.message);

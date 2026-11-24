@@ -34,7 +34,7 @@ export const HookScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const rule: Box = {x: vertical ? Math.round(FRAME.vertical.width / 2 - 48) : L.title.box.x, y: g.ruleY, w: 96, h: RULE_H};
 	const sBox: Box | null = L.subtitle ? {...L.subtitle.box, y: g.subtitleY, h: Math.ceil(sFit.height)} : null;
 
-	const lineH = tFit.fontSize * L.title.lineHeight;
+	const lineH = tFit.fontSize * tFit.lineHeight;
 	const pillW = Math.ceil(kFit.width) + 2 * 24;
 	const pillX = vertical ? Math.round(540 - pillW / 2) : kBox.x;
 	const pk = entry(frame, 2, 8);

@@ -11,7 +11,7 @@ export type Segment = {kind: 'text'; text: string} | {kind: 'spoken'; display: s
 
 const SRC_ID = /^[A-Za-z0-9][A-Za-z0-9_.:\-/]*$/;
 /** Punctuation that hugs the previous word, so removing "[src:x]" never leaves "claim ." behind. */
-const HUG = '.,;:!?…)]}»”"\'%。，、；：！？）」』';
+const HUG = '.,;:!?…)]}»”"\'%。，、；：！？）」』।॥';
 
 export const parseMarkup = (narration: string): Segment[] => {
 	if (typeof narration !== 'string') throw new MarkupError(`narration must be a string, got ${typeof narration}`);
@@ -111,29 +111,32 @@ export const sourceOffsets = (narration: string): Array<{id: string; offset: num
 /** Languages whose text is written without spaces between words. */
 export const UNSPACED = new Set(['zh', 'ja']);
 
-/** Display words of a narration: split on whitespace; unspaced languages split into short character runs. */
+const LATIN_END = /[A-Za-z0-9$%)]$/;
+const LATIN_START = /^[A-Za-z0-9$(]/;
+/** Join word tokens for display: spaces in spaced languages; none in zh/ja except between two Latin tokens. */
+export const joinTokens = (tokens: string[], lang: string): string => {
+	if (!UNSPACED.has(lang)) return tokens.join(' ');
+	let out = '';
+	tokens.forEach((t, i) => {
+		out += (i > 0 && LATIN_END.test(tokens[i - 1]) && LATIN_START.test(t) ? ' ' : '') + t;
+	});
+	return out;
+};
+
+/**
+ * Display words of a narration: split on whitespace; unspaced languages use Intl.Segmenter words, with punctuation
+ * attached to the word before it (a stand-in for the voice step's segmentation, used by the mock timeline only).
+ */
 export const displayWords = (narration: string, lang: string): string[] => {
 	const t = displayText(narration);
 	if (!t) return [];
 	if (!UNSPACED.has(lang)) return t.split(/\s+/).filter(Boolean);
-	// unspaced: 2-character runs, punctuation hugging the run before it (a stand-in for real segmentation in mocks only)
+	const seg = new Intl.Segmenter(lang === 'ja' ? 'ja' : 'zh', {granularity: 'word'});
 	const out: string[] = [];
-	let cur = '';
-	for (const ch of t.replace(/\s+/g, '')) {
-		if (HUG.includes(ch)) {
-			if (cur) {
-				out.push(cur + ch);
-				cur = '';
-			} else if (out.length) out[out.length - 1] += ch;
-			else cur = ch;
-			continue;
-		}
-		cur += ch;
-		if (cur.length >= 2) {
-			out.push(cur);
-			cur = '';
-		}
+	for (const {segment, isWordLike} of seg.segment(t)) {
+		if (/^\s+$/.test(segment)) continue;
+		if (!isWordLike && out.length && HUG.includes(segment[0])) out[out.length - 1] += segment;
+		else out.push(segment);
 	}
-	if (cur) out.push(cur);
 	return out;
 };

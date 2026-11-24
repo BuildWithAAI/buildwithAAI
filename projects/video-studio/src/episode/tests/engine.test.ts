@@ -7,7 +7,7 @@ import {readFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import type {Storyboard, Timeline} from '../types.ts';
-import {displayText, displayWords, parseMarkup, sourceIds, sourceOffsets, spokenText} from '../markup.ts';
+import {displayText, displayWords, joinTokens, parseMarkup, sourceIds, sourceOffsets, spokenText} from '../markup.ts';
 import {findCueMs, revealTimes, wordIndexAtOffset} from '../cues.ts';
 import {buildPages} from '../captions/pages.ts';
 import {mockTimeline} from '../dev/mockTimeline.ts';
@@ -39,6 +39,9 @@ test('markup: display vs spoken text, source tags removed and punctuation repair
 	assert.throws(() => parseMarkup('broken {a|b'), /unclosed/);
 	assert.throws(() => parseMarkup('two {a|b|c} pipes'), /exactly one/);
 	assert.deepEqual(displayWords('没人看钱包，人人都看图。', 'zh').join(''), '没人看钱包，人人都看图。');
+	assert.equal(joinTokens(['Example', 'source', '交易'], 'zh'), 'Example source交易');
+	assert.equal(joinTokens(['un', 'caller'], 'es'), 'un caller');
+	assert.equal(displayText('Hindi ends with a danda। Next [src:a]।'), 'Hindi ends with a danda। Next।');
 });
 
 // ---------- cues ----------
@@ -140,7 +143,7 @@ test('validator: rejects the broken storyboards and timelines it must reject', (
 });
 
 // ---------- timing: transitions overlap visuals only; audio never moves ----------
-test('timing: every scene starts on its own audio frame; transitions only add tails', () => {
+test('timing: every scene starts on its own audio frame; transitions only add a pre-roll and tails', () => {
 	const sb = load('engine-demo');
 	const tl = mockTimeline(sb);
 	const spans = episodeSpans(sb, tl, 30);
@@ -149,7 +152,9 @@ test('timing: every scene starts on its own audio frame; transitions only add ta
 		assert.equal(s.srcFrom, s.from);
 		if (i + 1 < spans.length) {
 			assert.equal(s.from + s.durationInFrames, spans[i + 1].from, 'contiguous');
-			assert.equal(s.tail, spans[i + 1].transitionFrames);
+			// the outgoing scene renders past its end only for the part of the transition after the cut (timing.ts)
+			assert.equal(s.tail, spans[i + 1].transitionFrames - spans[i + 1].preroll);
+			assert.ok(spans[i + 1].preroll <= spans[i + 1].transitionFrames && spans[i + 1].preroll < s.durationInFrames);
 		}
 	});
 	assert.equal(spans[0].transition, 'cut');
@@ -274,23 +279,44 @@ test('fonts: Noto Sans Devanagari / SC and the brand fonts cover every character
 	}
 });
 
-// ---------- chart scene: the rug completes on its word; the whole shot lays out ----------
-test('chart: the rug candle completes on its cue word and every frame of the shot lays out', async () => {
+// ---------- chart scene: the rug completes on (or just before) its cue word; the whole shot lays out ----------
+test('chart: every language and format: the rug lands on or just before its word, and every frame lays out with no 1-frame states', async () => {
 	const {chartDataFor, planChart, checkChartPlan} = await import('../chart/plan.ts');
-	const sb = load('engine-demo');
-	const tl = mockTimeline(sb);
-	const sc = sb.scenes[2];
-	const t = tl.scenes[2];
-	for (const format of ['landscape', 'vertical'] as Format[]) {
-		const box = LAYOUTS.chart[format].chart;
-		const data = chartDataFor(sc, box);
-		assert.ok(data.illustrative && data.source.kind === 'synthetic');
-		const plan = planChart(sc, t, data, box, 30, 'en');
-		const cue = findCueMs(t.words, 'floor', 0, 'en') as number;
-		assert.ok(Math.abs((plan.rugDone as number) - msToFrame(cue, 30)) <= 1, `rug done ${plan.rugDone} vs cue ${msToFrame(cue, 30)}`);
-		checkChartPlan(plan, msToFrame(t.durationMs, 30), 'dark');
-		const dir = directScene({sc, tl: t, format, lang: 'en', fps: 30, frames: msToFrame(t.durationMs, 30), seed: 'x', zooView: 'threeQuarter', badgerPlace: null, badgerInsert: false, chart: plan});
-		assert.ok(dir.reactionAt > (plan.rugDone as number), 'the reaction beat follows the rug');
+	for (const lang of DEMO_LANGS) {
+		const sb = load('engine-demo', lang);
+		const tl = mockTimeline(sb);
+		const idx = sb.scenes.findIndex((x) => x.type === 'chart');
+		const sc = sb.scenes[idx];
+		const t = tl.scenes[idx];
+		for (const format of ['landscape', 'vertical'] as Format[]) {
+			const spans = format === 'vertical' ? shortSpans(sb, tl, 'short1', 30) : episodeSpans(sb, tl, 30);
+			const span = spans.find((x) => x.index === idx);
+			assert.ok(span, 'the chart scene is in the shot list');
+			const box = LAYOUTS.chart[format].chart;
+			const data = chartDataFor(sc, box);
+			assert.ok(data.illustrative && data.source.kind === 'synthetic');
+			const plan = planChart(sc, t, data, box, 30, lang);
+			const cueWord = (sc.onScreen?.cues as string[])[1];
+			const cue = findCueMs(t.words, cueWord, 0, lang);
+			assert.ok(cue !== null, `${lang}: the rug cue "${cueWord}" is in the narration`);
+			const cueF = msToFrame(cue, 30);
+			assert.ok((plan.rugDone as number) <= cueF + 1 && (plan.rugDone as number) >= cueF - 45, `${lang} ${format}: rug done ${plan.rugDone} vs cue ${cueF}`);
+			assert.ok(plan.revealEnd <= span.durationInFrames - 12, `${lang} ${format}: the reveal must end with a hold inside the scene`);
+			checkChartPlan(plan, span.durationInFrames + span.tail, 'dark');
+			const view = LAYOUTS.chart[format].solo.zoo.view ?? 'front';
+			const dir = directScene({sc, tl: t, format, lang, fps: 30, frames: span.durationInFrames, seed: 'x', zooView: view, badgerPlace: null, badgerInsert: false, chart: plan});
+			assert.ok(dir.reactionAt > (plan.rugDone as number), 'the reaction beat follows the rug');
+			// he watches the chart until the turn, then looks into the lens for the deadpan beat
+			const turnF = Math.min(span.durationInFrames - 20, (plan.rugDone as number) + 16);
+			assert.notEqual(zooAt(dir.zoo as never, turnF - 10).lookX + zooAt(dir.zoo as never, turnF - 10).lookY, 0, 'eyes on the chart before the turn');
+			assert.equal(zooAt(dir.zoo as never, turnF + 8).lookY, 0, 'eyes to camera after the turn');
+			if (format === 'landscape') {
+				// the point lands on the chart callout: the hand arrives as the pump completes (front view only)
+				assert.equal(view, 'front');
+				assert.equal(dir.zoo?.gestures[0]?.frame, plan.pumpDone);
+				assert.equal(zooAt(dir.zoo as never, plan.pumpDone as number).poseAmount, 1);
+			}
+		}
 	}
 	assert.ok(rand('a') !== rand('b'));
 });

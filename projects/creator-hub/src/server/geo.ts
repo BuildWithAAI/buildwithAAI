@@ -9,8 +9,9 @@
  * header the proxy adds (e.g. a Cloudflare request-header Transform Rule), so requests sent straight to
  * the origin cannot spoof a country.
  *
- * Raw IPs are never stored: they live in memory for one request (rate limiting) and are otherwise
- * only used inside the daily-salted visitor hash.
+ * Raw IPs are never written to disk. They are used inside the daily-salted visitor hash, and as keys of
+ * the in-memory rate-limit buckets (at most 50,000 per limiter, least recently used dropped first, gone
+ * on restart).
  */
 import type {IncomingMessage} from 'node:http';
 import {createHash, createHmac, timingSafeEqual} from 'node:crypto';
@@ -69,6 +70,21 @@ export const ipKey = (address: string): string | null => {
 	const right = tail === undefined ? [] : tail ? tail.split(':') : [];
 	const groups = tail === undefined ? left : [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right];
 	return `${groups.slice(0, 4).map((g) => g.toLowerCase().replace(/^0+(?=.)/, '')).join(':')}::/64`;
+};
+
+/**
+ * Loopback, private (RFC 1918, IPv6 unique-local), link-local and carrier-grade NAT addresses. Requests from
+ * these usually come from a proxy or load balancer in front of the hub, not from visitors.
+ */
+export const isPrivateAddress = (address: string): boolean => {
+	let ip = address.trim().replace(/^\[|\]$/g, '').toLowerCase();
+	if (ip.startsWith('::ffff:') && isIP(ip.slice(7)) === 4) ip = ip.slice(7);
+	if (isIP(ip) === 4) {
+		const [a = 0, b = 0] = ip.split('.').map(Number);
+		return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254) || (a === 100 && b >= 64 && b <= 127);
+	}
+	if (isIP(ip) !== 6) return false;
+	return ip === '::1' || /^f[cd][0-9a-f]{2}:/.test(ip) || /^fe[89ab][0-9a-f]:/.test(ip);
 };
 
 const lastListItem = (value: string | null): string => (value ?? '').split(',').pop()?.trim() ?? '';

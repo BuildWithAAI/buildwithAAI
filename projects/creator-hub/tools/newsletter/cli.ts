@@ -14,7 +14,7 @@ import {parseArgs} from 'node:util';
 import {checkRegistry} from '../../src/server/offers.ts';
 import type {OfferRegistry} from '../../src/types.ts';
 import {buildDraft, DEFAULT_BRAND} from './draft.ts';
-import {createBroadcastDraft, KitApiError} from './kit-api.ts';
+import {createBroadcastDraft, KitApiError, parseSubscriberFilter} from './kit-api.ts';
 import {lintDraft, lintFile, lintRendered, type Issue} from './lint.ts';
 import {isYoutubeId, readPublishKit} from './publish-kit.ts';
 import {renderEmailContent, renderEmailHtml, renderMarkdown} from './render.ts';
@@ -31,7 +31,10 @@ draft options:
   --hub <origin>      hub origin for relative offer links, e.g. https://go.zoora.ai (default: PUBLIC_BASE_URL)
   --youtube-id <id>   the video's YouTube id, if kit.json does not have it yet
   --brand <name>      brand name (default: BRAND_NAME or "${DEFAULT_BRAND}")
-  --kit-draft         also create a DRAFT broadcast in Kit (needs KIT_API_KEY). It is never sent.`;
+  --kit-draft         also create a DRAFT broadcast in Kit (needs KIT_API_KEY). It is never sent. Choose its
+                      recipients with KIT_SUBSCRIBER_FILTER=tag:<id> (or segment:<id>), e.g. the tag of the
+                      hub's sign-up form, or pass --all-subscribers if every subscriber agreed to these emails.
+  --all-subscribers   with --kit-draft: no subscriber filter (Kit's default audience: all subscribers)`;
 
 export type CliDeps = {
 	env: Record<string, string | undefined>;
@@ -84,6 +87,7 @@ const draftCommand = async (args: string[], deps: CliDeps): Promise<number> => {
 				'youtube-id': {type: 'string'},
 				brand: {type: 'string'},
 				'kit-draft': {type: 'boolean'},
+				'all-subscribers': {type: 'boolean'},
 			},
 		});
 	} catch (err) {
@@ -103,6 +107,11 @@ const draftCommand = async (args: string[], deps: CliDeps): Promise<number> => {
 	const hubOrigin = httpsOrigin(values.hub ?? deps.env.PUBLIC_BASE_URL ?? '');
 	const brandName = (values.brand ?? deps.env.BRAND_NAME ?? DEFAULT_BRAND).trim();
 	if (!brandName || brandName.length > 60) return usageError('--brand must be 1-60 characters.');
+	const filterText = (deps.env.KIT_SUBSCRIBER_FILTER ?? '').trim();
+	const subscriberFilter = filterText ? parseSubscriberFilter(filterText) : null;
+	if (filterText && !subscriberFilter) return usageError('KIT_SUBSCRIBER_FILTER must look like tag:123, segment:7 or tag:12,34.');
+	if (subscriberFilter && values['all-subscribers']) return usageError('Use KIT_SUBSCRIBER_FILTER or --all-subscribers, not both.');
+	if (values['all-subscribers'] && !values['kit-draft']) return usageError('--all-subscribers only applies with --kit-draft.');
 
 	const at = (path: string): string => resolve(deps.cwd, path);
 	const show = (path: string): string => displayPath(deps.cwd, path);
@@ -156,17 +165,33 @@ const draftCommand = async (args: string[], deps: CliDeps): Promise<number> => {
 	report.push(`  wrote ${show(mdFile)}`, `  wrote ${show(htmlFile)}`);
 
 	if (values['kit-draft']) {
+		const apiKey = deps.env.KIT_API_KEY ?? '';
+		if (apiKey.trim() && !subscriberFilter && !values['all-subscribers']) {
+			// Without a filter Kit addresses every subscriber, including people who signed up for other emails.
+			deps.printError(
+				[
+					...report,
+					'Kit draft not created: choose who it is for. Set KIT_SUBSCRIBER_FILTER=tag:<id> (or segment:<id>) to the tag or segment of the',
+					"hub's sign-up form, or pass --all-subscribers if every subscriber on the account agreed to episode emails with affiliate links.",
+				].join('\n'),
+			);
+			return 1;
+		}
 		try {
+			const recipients = subscriberFilter ? `subscribers with ${subscriberFilter.type} ${subscriberFilter.ids.join(' and ')}` : 'all subscribers';
 			const created = await createBroadcastDraft(
 				{
 					subject: draft.subject,
 					content: renderEmailContent(draft),
 					previewText: draft.previewText,
-					description: `Episode ${draft.slug}: newsletter draft from creator-hub. Check the content and pick the recipients in Kit before sending.`,
+					description: `Episode ${draft.slug}: newsletter draft from creator-hub for ${recipients}. Check the content and the recipients in Kit before sending.`,
+					subscriberFilter,
 				},
-				{apiKey: deps.env.KIT_API_KEY ?? '', fetch: deps.fetch},
+				{apiKey, fetch: deps.fetch},
 			);
-			report.push(`  created Kit broadcast draft ${created.id}. It has NOT been sent or scheduled: review it in Kit and choose the recipients there.`);
+			report.push(
+				`  created Kit broadcast draft ${created.id} for ${recipients}. It has NOT been sent or scheduled: review it and its recipients in Kit.`,
+			);
 		} catch (err) {
 			if (!(err instanceof KitApiError)) throw err;
 			deps.printError([...report, `Kit draft not created: ${err.message}`].join('\n'));

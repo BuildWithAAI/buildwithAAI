@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "fiction",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Broken fixture: fiction without a disclaimer",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "You wake up as a caller. Your phone will not stop buzzing.",
+      "onScreen": {"title": "You are the caller"},
+      "badger": {"present": true, "reaction": "lookUp"}
+    }
+  ],
+  "sources": [],
+  "ui": {"fictionDisclaimer": "Not financial advice"}
+}

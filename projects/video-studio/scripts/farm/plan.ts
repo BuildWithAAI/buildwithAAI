@@ -34,9 +34,14 @@ export type VoiceCell = {
 	encrypt: boolean;
 	cjk: boolean; // zh needs the misaki G2P extras
 	artifact: string;
+	/** Dubs only: the master language this narration is fitted to ('' for a native voice). */
+	fitTo: string;
+	/** Dubs only: the master narration's artifact, downloaded before the build ('' for a native voice). */
+	masterArtifact: string;
 };
 
-export type Plan = {render: RenderCell[]; voice: VoiceCell[]};
+/** voice: native narrations (masters), all in parallel; voiceDub: dubs fitted to a master, after the masters. */
+export type Plan = {render: RenderCell[]; voice: VoiceCell[]; voiceDub: VoiceCell[]};
 
 // Artifact names use "_" as the separator: request ids cannot contain it, so the pattern voice_<id>_* never matches
 // another request whose id merely starts with <id>-.
@@ -61,10 +66,25 @@ export const buildPlan = (requests: RenderRequest[]): {plan: Plan; errors: strin
 	const errors: string[] = [];
 	const render: RenderCell[] = [];
 	const voice: VoiceCell[] = [];
+	const voiceDub: VoiceCell[] = [];
 	if (requests.length > PLAN_LIMITS.requestsPerRun) errors.push(`one push may change at most ${PLAN_LIMITS.requestsPerRun} request files (this one changed ${requests.length})`);
 	for (const req of requests) {
 		req.voice.forEach((v, vindex) => {
-			voice.push({request: req.id, vindex, channel: v.channel, slug: v.slug, lang: v.lang, encrypt: req.encrypt, cjk: v.lang === 'zh', artifact: voiceArtifact(req.id, vindex)});
+			const master = v.fitTo ? req.voice.findIndex((m) => m.channel === v.channel && m.slug === v.slug && m.lang === v.fitTo && !m.fitTo) : -1;
+			const cell: VoiceCell = {
+				request: req.id,
+				vindex,
+				channel: v.channel,
+				slug: v.slug,
+				lang: v.lang,
+				encrypt: req.encrypt,
+				cjk: v.lang === 'zh',
+				artifact: voiceArtifact(req.id, vindex),
+				fitTo: v.fitTo ?? '',
+				masterArtifact: master >= 0 ? voiceArtifact(req.id, master) : '',
+			};
+			if (v.fitTo && master < 0) errors.push(`${req.id}: voice[${vindex}] has no native ${v.fitTo} master to fit to`);
+			(v.fitTo ? voiceDub : voice).push(cell);
 		});
 		req.jobs.forEach((j, index) => {
 			const needs = voiceNeeds(req, index);
@@ -82,8 +102,8 @@ export const buildPlan = (requests: RenderRequest[]): {plan: Plan; errors: strin
 		});
 	}
 	if (render.length > PLAN_LIMITS.renderJobsPerRun) errors.push(`one run may hold at most ${PLAN_LIMITS.renderJobsPerRun} render jobs (this one has ${render.length})`);
-	if (voice.length > PLAN_LIMITS.voiceJobsPerRun) errors.push(`one run may hold at most ${PLAN_LIMITS.voiceJobsPerRun} voice jobs (this one has ${voice.length})`);
-	return {plan: {render, voice}, errors};
+	if (voice.length + voiceDub.length > PLAN_LIMITS.voiceJobsPerRun) errors.push(`one run may hold at most ${PLAN_LIMITS.voiceJobsPerRun} voice jobs (this one has ${voice.length + voiceDub.length})`);
+	return {plan: {render, voice, voiceDub}, errors};
 };
 
 /** Runs git with arguments (never through a shell). */

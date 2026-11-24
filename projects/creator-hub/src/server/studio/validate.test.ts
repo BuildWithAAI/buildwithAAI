@@ -93,7 +93,7 @@ test('isEmail accepts real-world addresses and rejects malformed ones', () => {
 	for (const ok of ['a@b.co', 'first.last+tag@sub.example.org', "o'neil@example.ie", 'josé@exämple.de', 'x@xn--bcher-kva.example']) {
 		assert.equal(isEmail(ok), true, ok);
 	}
-	for (const bad of ['', 'plain', '@example.com', 'a@', 'a@b', 'a b@example.com', 'a@example..com', '.a@example.com', 'a.@example.com', 'a@-example.com', 'a@1.2.3.4', `${'l'.repeat(65)}@example.com`, 'a<b>@example.com', 'a@example.com>']) {
+	for (const bad of ['', 'plain', '@example.com', 'a@', 'a@b', 'a b@example.com', 'a@example..com', '.a@example.com', 'a.@example.com', 'a@-example.com', 'a@1.2.3.4', `${'l'.repeat(65)}@example.com`, 'a<b>@example.com', 'a@example.com>', 'x?cc=attacker@evil.example', 'a#b%c&d?e=f/g@evil.example', 'sales%40real-client.com?bcc=spy%40evil.example&x=@evil.example']) {
 		assert.equal(isEmail(bad), false, bad);
 	}
 });

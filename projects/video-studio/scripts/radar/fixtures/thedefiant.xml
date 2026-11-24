@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>The Defiant</title>
+  <link>https://thedefiant.io</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title>Chainflip Suspects Key Theft in $12.6 Million Vault Hack</title>
+    <link>https://thedefiant.io/news/hacks/chainflip-suspects-key-theft-in-12-6-million-vault-hack</link>
+    <guid isPermaLink="true">https://thedefiant.io/news/hacks/chainflip-suspects-key-theft-in-12-6-million-vault-hack</guid>
+    <pubDate>Tue, 24 Nov 2026 04:36:59 GMT</pubDate>
+    <description>The first report identifies validly signed transfers outside the protocol but leaves parts of the suspected key theft unconfirmed. Services remain paused.</description>
+    <content:encoded><![CDATA[<p>The first report identifies validly signed transfers outside the protocol but leaves parts of the suspected key theft unconfirmed. Services remain paused.</p>]]></content:encoded>
+  </item>
+  <item>
+    <title>Cyber Bridge Hack Followed LayerZero's Support Exit</title>
+    <link>https://thedefiant.io/news/hacks/cyber-bridge-hack-followed-layerzero-s-support-exit</link>
+    <guid isPermaLink="true">https://thedefiant.io/news/hacks/cyber-bridge-hack-followed-layerzero-s-support-exit</guid>
+    <pubDate>Mon, 23 Nov 2026 19:57:17 GMT</pubDate>
+    <description>AstraSec said 5.213 million unbacked CYBER were minted. LayerZero's CEO suspects Cyber's replacement infrastructure was compromised.</description>
+    <content:encoded><![CDATA[<p>AstraSec said 5.213 million unbacked CYBER were minted. LayerZero's CEO suspects Cyber's replacement infrastructure was compromised.</p>]]></content:encoded>
+  </item>
+  <item>
+    <title>Reuters: Circle, World Liberty Ordered to Keep Tokens Frozen</title>
+    <link>https://thedefiant.io/news/hacks/reuters-circle-world-liberty-ordered-to-keep-tokens-frozen</link>
+    <guid isPermaLink="true">https://thedefiant.io/news/hacks/reuters-circle-world-liberty-ordered-to-keep-tokens-frozen</guid>
+    <pubDate>Tue, 24 Nov 2026 05:19:20 GMT</pubDate>
+    <description>An ADGM order requires 18 firms to preserve Binance hack-linked tokens, Reuters reported. A Dec. 1 hearing will consider whether the restrictions continue.</description>
+    <content:encoded><![CDATA[<p>An ADGM order requires 18 firms to preserve Binance hack-linked tokens, Reuters reported. A Dec. 1 hearing will consider whether the restrictions continue.</p>]]></content:encoded>
+  </item>
+  <item>
+    <title>Stake DAO Warns of Forum Breach, Says Funds Unaffected</title>
+    <link>https://thedefiant.io/news/hacks/stake-dao-warns-of-forum-breach-says-funds-unaffected</link>
+    <guid isPermaLink="true">https://thedefiant.io/news/hacks/stake-dao-warns-of-forum-breach-says-funds-unaffected</guid>
+    <pubDate>Mon, 23 Nov 2026 18:35:01 GMT</pubDate>
+    <description>The copied database may contain emails, hashed passwords, 2FA secrets and private messages. Stake DAO urged forum users to reset access and watch for phishing.</description>
+    <content:encoded><![CDATA[<p>The copied database may contain emails, hashed passwords, 2FA secrets and private messages. Stake DAO urged forum users to reset access and watch for phishing.</p>]]></content:encoded>
+  </item>
+  <item>
+    <title>Wiz Says Attacker Mined AI Coding Histories for Logins</title>
+    <link>https://thedefiant.io/frontier/ai/wiz-says-attacker-mined-ai-coding-histories-for-logins</link>
+    <guid isPermaLink="true">https://thedefiant.io/frontier/ai/wiz-says-attacker-mined-ai-coding-histories-for-logins</guid>
+    <pubDate>Tue, 24 Nov 2026 04:57:53 GMT</pubDate>
+    <description>Wiz matched cloud-intrusion telemetry with an attacker's exposed files, which also revealed broader credential harvesting.</description>
+    <content:encoded><![CDATA[<p>Wiz matched cloud-intrusion telemetry with an attacker's exposed files, which also revealed broader credential harvesting.</p>]]></content:encoded>
+  </item>
+</channel>
+</rss>

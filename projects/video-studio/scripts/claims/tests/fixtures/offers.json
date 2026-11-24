@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "offers": [
+    {"id": "security-checklist", "name": "Crypto Security Checklist (test)", "relationship": "own-product", "category": "own-product", "disclosure": "I built this checklist; it is my own product.", "active": true}
+  ]
+}

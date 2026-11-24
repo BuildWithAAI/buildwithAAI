@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "thumb-demo",
+  "lang": "hi",
+  "sourceLang": "en",
+  "title": "POV: आप एक टॉप कॉलर बन जाते हैं (थंबनेल फ़िक्स्चर)",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "आप एक चार्ट पोस्ट करते हैं। एक घंटे में दस हज़ार अजनबी आपका कॉइन खरीद लेते हैं।",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "आप एक टॉप कॉलर बन जाते हैं"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    }
+  ],
+  "sources": [],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "टॉप कॉलर?"
+    },
+    {
+      "id": "b",
+      "text": "ज़मीन खिसक गई"
+    },
+    {
+      "id": "c",
+      "text": "पहले किसने बेचा?"
+    }
+  ],
+  "translation": {
+    "status": "machine"
+  }
+}

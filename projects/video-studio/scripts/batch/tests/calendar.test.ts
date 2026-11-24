@@ -35,6 +35,18 @@ test('the calendar covers 4 weeks from 2026-11-30 for both channels, marked as a
 	assert.doesNotMatch(md, /\bZOO\b/);
 });
 
+test('every week keeps a reserved row for the news round-up, and the pilot\'s format conflict goes to the owner', () => {
+	const md = render();
+	assert.equal((md.match(/\| Day TBD \(owner\) \| TBD \| TBD \| The Zoo & Badger Show \| reserved \| Weekly round-up \(news, made in-week\) \| Made in-week, not by the batch \|/g) ?? []).length, 4, 'one reserved round-up row per week');
+	assert.match(md, /- The day and time of The Zoo & Badger Show's weekly round-up: every week above keeps a reserved row for it\./);
+	assert.match(md, /\*\*Pilot:\*\* `ai1` is the pilot\. CLAUDE\.md \(Status, Phase 2\) defines the pilot as a 60–90 s video with 1 Short/);
+	assert.equal((md.match(/\*\*Pilot:\*\*/g) ?? []).length, 1, 'only the idea whose role is the pilot');
+	assert.match(md, /- The pilot's format \(`pumpfun-top-caller`\): CLAUDE\.md's Phase 2 is a 60–90 s pilot with 1 Short/);
+	// scheduled Short titles say no more than their cited facts (2026-11-24 review)
+	assert.doesNotMatch(md, /Four of six/);
+	assert.match(md, /`ai2-s1` \| Short 1 of `ai2` \| The AI that finished last lost more than half \|/);
+});
+
 test('the facts label says where each idea stands', () => {
 	const idea = (facts: Array<{status: string; factId?: string}>) =>
 		testIdea('x', 'pov-story', 1, {facts: facts.map((f, i) => ({need: `n${i}`, factId: f.factId ?? null, status: f.status}))}) as unknown as Parameters<typeof factsLabel>[0];

@@ -50,10 +50,12 @@ def bonding_curve(mint):
     return solkeys.find_program_address([b"bonding-curve", solkeys.b58decode(mint)], PUMP)[0]
 
 
-def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
+def collect(rpc, mint, venue, t_ref, before, after, dense_min=3, base_vault=None, quote_vault=None, every=1):
     cur = txfetch.cursor_at_time(rpc, t_ref + after + 30)
     rows, meta = rpc.signatures_in_window(venue, t_ref - before, t_ref + after + 1, start_before=cur[0])
-    ok = [r for r in rows if not r.get("err")]
+    ok_all = sorted((r for r in rows if not r.get("err")), key=lambda r: (r["slot"], r.get("transactionIndex") or 0))
+    # documented systematic sample for busy pools: every N-th successful transaction in chain order
+    ok = ok_all[::every] if every > 1 else ok_all
     per_slot = collections.Counter(r["slot"] for r in ok)
 
     def tx_cached(sig):
@@ -89,6 +91,23 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
         else:
             tx = txfetch.get_tx(rpc, r["signature"])
             i = r.get("transactionIndex")
+        if base_vault and quote_vault:
+            pt = trades.vault_pair_trade(tx, base_vault, quote_vault, signature=r["signature"], tx_index=i)
+            if not pt:
+                continue
+            pt["price_sol_per_token"] = pt["price_quote_per_token"]
+            if pt["quote_mint"] == trades.WSOL_MINT:
+                pt["sol_amount"] = pt["quote_amount"]
+                pt["quote_mint"] = "SOL"
+            else:
+                pt["sol_amount"] = None
+                pt["quote_amount_native"] = pt["quote_amount"]
+            pt["indexed"] = i is not None
+            pt["signers"] = [k["pubkey"] if isinstance(k, dict) else k
+                             for k in tx["transaction"]["message"]["accountKeys"]
+                             if isinstance(k, dict) and k.get("signer")]
+            out.append(pt)
+            continue
         pt = trades.pool_trades(tx, venue, mint, signature=r["signature"], tx_index=i)
         if not pt:
             continue
@@ -128,7 +147,8 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
         pt.pop("traders", None)
         out.append(pt)
     out.sort(key=lambda t: (t["slot"], 0 if t["indexed"] else 1, t["tx_index"] if t["tx_index"] is not None else 0))
-    return out, {"sigs": len(rows), "ok": len(ok), "dense_slots": len(dense), "paging": meta,
+    return out, {"sigs": len(rows), "ok": len(ok_all), "read": len(ok), "every": every,
+                 "dense_slots": len(dense), "paging": meta,
                  "creation_events": creations,
                  "ok_without_curve_flow": len(ok) - len(out) - len(creations)}
 
@@ -159,11 +179,17 @@ def main():
     ap.add_argument("--after", type=int, default=1800)
     ap.add_argument("--bucket", type=int, default=5)
     ap.add_argument("--dense-min", type=int, default=3)
+    ap.add_argument("--base-vault", default=None,
+                    help="pool's token vault account; with --quote-vault, prices come from the two vaults")
+    ap.add_argument("--quote-vault", default=None, help="pool's quote vault account (SOL, a stablecoin or a token)")
+    ap.add_argument("--every", type=int, default=1,
+                    help="read every N-th successful transaction only (documented sample for busy pools)")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
     rpc = RPC(a.cache)
-    venue = a.venue_account or bonding_curve(a.mint)
-    trs, meta = collect(rpc, a.mint, venue, a.t_ref, a.before, a.after, a.dense_min)
+    venue = a.venue_account or a.base_vault or bonding_curve(a.mint)
+    trs, meta = collect(rpc, a.mint, venue, a.t_ref, a.before, a.after, a.dense_min,
+                        a.base_vault, a.quote_vault, a.every)
     cs = to_candles(trs, a.t_ref, a.before, a.after, a.bucket)
     qc = collections.Counter(t.get("quote_mint", "SOL") for t in trs if t.get("price_sol_per_token"))
     meta["quote_dominant_is_sol"] = (qc.most_common(1)[0][0] == "SOL") if qc else True

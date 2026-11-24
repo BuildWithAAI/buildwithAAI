@@ -74,7 +74,10 @@ export const readFormBody = (req: IncomingMessage, limit = BODY_LIMIT_BYTES): Pr
 		};
 		const onError = (err: Error): void => {
 			cleanup();
-			reject(err);
+			// A client that aborts its upload is not a server failure: answer 400 and do not log a stack trace.
+			const code = (err as NodeJS.ErrnoException).code;
+			const interrupted = err.message === 'aborted' || code === 'ECONNRESET' || code === 'ECONNABORTED' || code === 'EPIPE';
+			reject(interrupted ? new HttpError(400, 'The request was interrupted.') : err);
 		};
 		const onClose = (): void => {
 			cleanup();
@@ -93,6 +96,8 @@ export const readFormBody = (req: IncomingMessage, limit = BODY_LIMIT_BYTES): Pr
 export type RateLimiter = {
 	/** Takes `cost` tokens from the bucket for `key`; false (and nothing taken) when there are too few. */
 	take(key: string, cost?: number): boolean;
+	/** Gives back `cost` tokens taken earlier (never above the capacity), e.g. after a sign-in succeeded. */
+	refund(key: string, cost?: number): void;
 	/** Tokens available now, without taking any. */
 	available(key: string): number;
 	/** Whole seconds until `cost` tokens are available. */
@@ -116,18 +121,27 @@ export const createRateLimiter = (options: RateLimiterOptions): RateLimiter => {
 		if (!bucket) return {tokens: capacity, at};
 		return {tokens: Math.min(capacity, bucket.tokens + ((at - bucket.at) / 1000) * refillPerSecond), at};
 	};
+	const store = (key: string, bucket: {tokens: number; at: number}): void => {
+		buckets.delete(key);
+		buckets.set(key, bucket);
+		if (buckets.size > maxKeys) {
+			const oldest = buckets.keys().next().value;
+			if (oldest !== undefined) buckets.delete(oldest);
+		}
+	};
 	return {
 		take(key, cost = 1) {
 			const bucket = current(key);
 			const allowed = bucket.tokens >= cost;
 			if (allowed) bucket.tokens -= cost;
-			buckets.delete(key);
-			buckets.set(key, bucket);
-			if (buckets.size > maxKeys) {
-				const oldest = buckets.keys().next().value;
-				if (oldest !== undefined) buckets.delete(oldest);
-			}
+			store(key, bucket);
 			return allowed;
+		},
+		refund(key, cost = 1) {
+			if (!buckets.has(key)) return; // a dropped or never-used bucket is already full
+			const bucket = current(key);
+			bucket.tokens = Math.min(capacity, bucket.tokens + cost);
+			store(key, bucket);
 		},
 		available: (key) => current(key).tokens,
 		retryAfter(key, cost = 1) {
@@ -143,8 +157,9 @@ const clientKeys = new WeakMap<IncomingMessage, string>();
 export const setClientKey = (req: IncomingMessage, key: string): void => void clientKeys.set(req, key);
 
 /**
- * The per-visitor rate-limit key: the client IP (IPv6: its /64) as resolved by geo.ts, held in memory
- * for this request only. Unlike ctx.visitorHash it does not change with the user agent.
+ * The per-visitor rate-limit key: the client IP (IPv6: its /64) as resolved by geo.ts. It is only ever a
+ * key of in-memory buckets, never stored. Unlike ctx.visitorHash it does not change with the user agent.
+ * When the IP is known to be a proxy's (see app.ts), the visitor hash is used instead.
  */
 export const rateLimitKey = (ctx: Ctx): string => clientKeys.get(ctx.req) ?? ctx.visitorHash;
 

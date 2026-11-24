@@ -88,20 +88,28 @@ FRONT = {
     'mouth': {
         'neutral': {'strokes': ['M 129 175 C 137 190 147 204 160 214 C 176 219 193 217 208 211 C 223 217 240 219 252 214 C 261 204 270 191 278 176'],
                     'details': ['M 185 228 C 197 231 219 231 231 228'], 'fills': []},
-        'happy': {'strokes': ['M 129 175 C 133 183 137 189 142 194 C 152 205 166 213 182 216 C 194 218 202 216 208 212 '
-                              'C 214 216 222 218 234 216 C 250 213 264 205 274 194 C 279 189 282 183 286 176'],
-                  'details': ['M 178 225 C 194 240 222 240 238 225'], 'fills': []},
+        # happy (retraced from badger_expr_happy.png, mapped by the nose): the jaw runs on from the cheeks, a separate
+        # wide smile with raised corners sits inside it with a notch at the philtrum, short upturned creases at the
+        # corners, and a lower-lip arc below
+        'happy': {'strokes': ['M 129 175 C 134 187 141 198 150 206', 'M 278 176 C 273 188 266 198 257 206',
+                              'M 142 185 C 148 199 157 209 168 213 C 181 218 197 216 208 207 C 219 216 235 218 248 213 C 259 209 268 199 274 185'],
+                  'details': ['M 142 185 C 139.5 182 138.5 178 139.5 174', 'M 274 185 C 276.5 182 277.5 178 276.5 174',
+                              'M 178 226 C 193 235 223 235 238 226'], 'fills': []},
         'worried': {'strokes': ['M 129 175 C 137 190 147 205 161 215 C 176 216 192 222 208 217 C 222 213 238 220 252 215 C 261 204 270 191 278 176'],
                     'details': ['M 190 231 C 200 228 216 228 226 231'], 'fills': []},
-        'shocked': {'strokes': ['M 129 175 C 137 190 148 206 164 216', 'M 278 176 C 270 191 260 206 252 216',
-                                'M 184 213 C 190 203 226 203 232 213 C 236 226 224 240 208 240 C 192 240 180 226 184 213 Z'],
+        # shocked (retraced from badger_expr_shocked.png): a small open mouth, about nose width and 0.45 of the nose height,
+        # directly under the philtrum (which stays), with a pink lower lip; the jaw contour stays continuous below it
+        'shocked': {'strokes': ['M 129 175 C 138 196 152 216 172 230 C 186 239 198 243 208 243 C 220 243 233 238 245 230 '
+                                'C 263 217 272 196 278 176',
+                                'M 185 214 C 195 210.5 221 210.5 231 214 C 233 223 223 233 208 233 C 193 233 183 223 185 214 Z'],
                     'details': [],
-                    'fills': [('M 184 213 C 190 203 226 203 232 213 C 236 226 224 240 208 240 C 192 240 180 226 184 213 Z', 'mouth'),
-                              ('M 190 231 C 198 225 218 225 226 231 C 222 238 194 238 190 231 Z', 'tongue')]},
+                    'fills': [('M 185 214 C 195 210.5 221 210.5 231 214 C 233 223 223 233 208 233 C 193 233 183 223 185 214 Z', 'mouth'),
+                              ('M 192 227 C 198 222.5 218 222.5 224 227 C 220 232 196 232 192 227 Z', 'tongue')]},
     },
     # pale ANATOMICAL RIGHT ear (screen left in the front view): flap + pink ribbon + small spot
     'earR': {
-        'pivot': (126, 66), 'backRot': -6, 'backSx': 0.68,
+        # worried / earsBack: the flap swings down and out about its base (~20 deg) and keeps its width (round-1 repair)
+        'pivot': (126, 66), 'backRot': -20, 'backSx': 0.96,
         'fills': [
             ('M 158 31 C 150 25 136 17 122 17 C 109 17 97 26 86 35 C 72 45 52 55 40 66 C 34 72 35 86 42 93 '
              'C 50 102 60 113 70 116 C 77 117 83 111 89 104 C 96 107 104 111 113 113 C 114 100 118 82 124 66 '
@@ -121,7 +129,7 @@ FRONT = {
     },
     # dark-capped ANATOMICAL LEFT ear (screen right in the front view)
     'earL': {
-        'pivot': (285, 60), 'backRot': 6, 'backSx': 0.68,
+        'pivot': (285, 60), 'backRot': 20, 'backSx': 0.96,
         'fills': [
             ('M 296 104 C 297 92 299 80 303 70 C 310 60 325 58 334 64 C 337 68 338 72 337 75 '
              'C 330 84 316 94 303 106 C 300 108 297 107 296 104 Z', 'earPaleInner', False),
@@ -284,8 +292,10 @@ def fix_three_quarter(view, theta, fFace):
     ts = turn_skull(theta)
     mx = (lambda x, y: (x, y)) if right else (lambda x, y: (416 - x, y))
     # far outline + muzzle in turned space (screen-right turn), mirrored for the screen-left turn
-    far = ('C 284 99 285.5 108 284.5 117 C 283 129 278 141 272 151 C 270 155 269.5 158 269.5 162 '
-           'C 272.5 171 273.5 183 271.5 193 C 271.5 200 271 207 268 213 C 266 227 260 239 249 244 '
+    # round-1 repair: the far cheek is pulled in below the far eye so the muzzle projects past it with the nose at its
+    # tip (badger_turn_34.png), and the far contour continues round the muzzle and the chin (the chin is outlined)
+    far = ('C 284 99 285.5 108 284.5 117 C 282 128 274 139 266 148 C 263 152 262 156 263 160 '
+           'C 268 168 275 178 276.5 190 C 277 199 275.5 207 271.5 214 C 268 227 261 239 249 244 '
            'C 236 247 221 246 209.5 244')
     far_t = map_path('M 281.4 92 ' + far, mx)
     if right:
@@ -298,19 +308,23 @@ def fix_three_quarter(view, theta, fFace):
         # outline from the chin back up to the far temple, then the far top corner
         near = map_path('M 141 31 C 165 23 245 22 262 29 L 289 92 C 293 118 294 148 288 162 C 284 170 280 174 277 177 '
                         'C 271 192 262 205 252 216 C 244 230 228 243 208 244', ts)
-        far_rev = map_path('M 209.5 244 C 221 246 236 247 249 244 C 260 239 266 227 268 213 C 271 207 271.5 200 271.5 193 '
-                           'C 273.5 183 272.5 171 269.5 162 C 269.5 158 270 155 272 151 C 278 141 283 129 284.5 117 '
+        far_rev = map_path('M 209.5 244 C 221 246 236 247 249 244 C 261 239 268 227 271.5 214 C 275.5 207 277 199 276.5 190 '
+                           'C 275 178 268 168 263 160 C 262 156 263 152 266 148 C 274 139 282 128 284.5 117 '
                            'C 285.5 108 284 99 281.4 92', mx)
         corner = map_path('M 122 40', ts)
         fill_t = near + ' ' + far_rev[far_rev.index('C'):] + ' L ' + corner[2:] + ' Z'
     heads[view]['skull']['fill'] = mp(fill_t, F)
-    contour = map_path('M 281.4 92 C 284 99 285.5 108 284.5 117 C 283 129 278 141 272 151 C 270 155 269.5 158 269.5 162', mx)
-    lip_far = map_path('M 271.5 187 C 271.5 198 271 207 268 213', mx)
+    # one far contour: temple -> far cheek -> stop -> far side of the muzzle round the nose -> chin (closed jaw)
+    contour = map_path('M 281.4 92 C 284 99 285.5 108 284.5 117 C 282 128 274 139 266 148 C 263 152 262 156 263 160 '
+                       'C 268 168 275 178 276.5 190 C 277 199 275.5 207 271.5 214 C 268 227 261 239 249 244 '
+                       'C 240 246.5 230 247 222 246', mx)
+    lip_far = map_path('M 274 195 C 274.5 203 273.5 209 271.5 214', mx)
     # near cheek outline continues down the jaw toward the throat (the front head drew this edge with the lip line,
     # which now starts lower)
     fSkull = compose(ts, F)
-    near_cheek = ('M 113 104 C 112 125 114 145 119 158 C 122 165 125 170 129 175 C 135 186 143 197 152 206' if right else
-                  'M 293 100 C 295 120 294 145 289 158 C 286 165 282 171 278 176 C 273 187 266 197 257 206')
+    # the near cheek runs down to the jaw and stops (it used to curl into the lip line and read as a grin)
+    near_cheek = ('M 113 104 C 112 125 114 145 119 158 C 122 165 125 170 129 175 C 132 181 135 186 139 191' if right else
+                  'M 293 100 C 295 120 294 145 289 158 C 286 165 282 171 278 176 C 275 182 272 187 268 192')
     heads[view]['skull']['strokes'] = [heads[view]['skull']['strokes'][0], mp(near_cheek, fSkull), mp(contour, F)]
     heads[view]['skull']['details'] = []
     heads[view]['philtrum'] = mp(lip_far, F)
@@ -319,13 +333,16 @@ def fix_three_quarter(view, theta, fFace):
     tt = 0.7 if right else 0.3
     src = FRONT['mouth']
     m = heads[view]['mouth']
-    m['neutral']['strokes'] = [mp(trim(src['neutral']['strokes'][0], tt), fFace)]
-    m['worried']['strokes'] = [mp(trim(src['worried']['strokes'][0], tt), fFace)]
-    happy = src['happy']['strokes'][0].split(' C ')  # drop the cheek segment on the near side
-    happy = ('M ' + _fmt(_pts(happy[1])[-1:]) + ' C ' + ' C '.join(happy[2:])) if right else ' C '.join(happy[:-1])
-    m['happy']['strokes'] = [mp(happy, fFace)]
-    # shocked: only the open mouth; the front's cheek lines leave stray dashes beside it in a 3/4 turn
-    m['shocked']['strokes'] = [mp(src['shocked']['strokes'][2], fFace)]
+    def drop_far(d):
+        segs = d.split(' C ')
+        return ' C '.join(segs[:-1]) if right else ('M ' + _fmt(_pts(segs[1])[-1:]) + ' C ' + ' C '.join(segs[2:]))
+    m['neutral']['strokes'] = [mp(drop_far(trim(src['neutral']['strokes'][0], tt)), fFace)]
+    m['worried']['strokes'] = [mp(drop_far(trim(src['worried']['strokes'][0], tt)), fFace)]
+    # happy: the smile only (clipped to the skull; the far end disappears behind the muzzle)
+    m['happy']['strokes'] = [mp(src['happy']['strokes'][2], fFace)]
+    m['happy']['details'] = [mp(src['happy']['details'][0 if right else 1], fFace)]
+    # shocked: only the open mouth; the front's jaw line would leave stray dashes beside it in a 3/4 turn
+    m['shocked']['strokes'] = [mp(src['shocked']['strokes'][-1], fFace)]
     # far eye and brow: 0.72 of the near eye width (was 0.86), brow compressed toward the eye centre
     far_side = 'L' if right else 'R'
     for e in heads[view]['eyes']:
@@ -346,6 +363,20 @@ for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen'
     far_side = 'L' if theta > 0 else 'R'
     eye_w = (1.0, 0.86) if theta > 0 else (0.86, 1.0)
     heads[view] = build_from_front(FRONT, fFace, fSkull, fEarR, fEarL, view, eye_w=eye_w, ears_behind=(far_side,))
+    # round-1 repair: the far ear shows its outer side only (badger_turn_34.png draws the far dark ear solid), and the
+    # irises fill more of the almond, as on the sheet's 3/4 head
+    for e in heads[view]['earsBehind']:
+        for fl in e['fills']:
+            if fl['color'] == 'earPaleInner':
+                fl['color'] = 'earCap' if e['side'] == 'L' else 'coat'
+    for e in heads[view]['eyes']:
+        e['irisR'] = round(e['irisR'] * 1.15, 2)
+    # the chin is outlined now (fix_three_quarter), so the front head's lower-lip detail would double it
+    for k in ('neutral', 'happy', 'worried'):
+        heads[view]['mouth'][k]['details'] = []
+    # the nose sits at the tip of the projecting muzzle: 3 units toward the far side
+    sh = 3.0 if theta > 0 else -3.0
+    heads[view]['nose']['d'] = map_path(heads[view]['nose']['d'], lambda x, y: (x + sh, y))
     # true 3/4: the far cheek below the eye is hidden by the snout; the far outline runs from under the far
     # ear into the far side of the nose, and the mouth is clipped to the skull so the far lip line disappears
     if theta > 0:
@@ -373,64 +404,77 @@ for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen'
     fix_three_quarter(view, theta, fFace)
 
 # =============================================================================== PROFILE LEFT (CL)
+# Retraced 2026-11-24 (round-1 repair) on reference/crops/badger_coat_left.png at 5x: deeper stop at the eye, muzzle
+# underside 2.5 px lower, a nose the sheet's size (outer 20 x 21 px once outlined) shaped as the rounded tip of the muzzle,
+# a small dark almond eye, and a short commissure mark instead of a second lip stroke over the jaw line.
 KX_CL, KY_CL = 0.9398, 1.0455
 C = lin(155, 100, KX_CL, KY_CL)
 EAR_PL = ('M 139 39 C 150 36 162 36 172 40 C 182 44 192 51 195 59 C 197 66 194 72 187 76 '
           'C 180 80 172 85 163 89 C 159 90 155 89 152 86 C 147 80 143 68 141 56 C 140 50 139 44 139 39 Z')
 PROFILE_L = {
-    'skull_fill': ('M 50 76 C 62 72 78 68 88 63 C 92 58 97 52 104 48 C 115 42 128 39 142 38 C 165 38 185 43 192 57 '
-                   'C 196 65 194 76 186 84 C 178 96 168 108 152 116 C 140 120 132 121 126 121 C 118 117 108 115 96 115 '
-                   'C 80 117 64 115 54 110 C 46 105 44 96 46 86 C 47 80 48 78 50 76 Z'),
-    'skull_strokes': ['M 141 38 C 128 39 115 42 104 48 C 97 52 92 58 88 63 C 78 68 62 72 49 77',
-                      'M 45 99 C 49 105 56 110 66 113 C 82 117 100 116 112 117 C 118 118 122 119 126 122'],
-    'details': ['M 153 98 C 150 104 145 108 138 111'],
-    'nose': 'M 50 77 C 43 75 35 79 33 86 C 32 93 36 99 43 100 C 48 100 52 96 52 90 C 52 84 52 79 50 77 Z',
-    'eye': (100, 66.5, 11.5, 5.4, 4.0, 3.5, -1, 5.4, -3.2, 0.3, 'L'),
-    'brow': ((111, 57), (103, 54), (94, 57), 'L'),
+    'skull_fill': ('M 50 76 C 64 71 79 66 86 60 C 90 55 94 49 101 45 C 112 40 127 37 142 37 C 165 37 185 43 192 57 '
+                   'C 196 65 194 76 186 84 C 178 96 168 108 152 116 C 140 120 132 122 126 122 C 118 119 108 118 96 118 '
+                   'C 80 119 64 117 54 112 C 47 108 45 100 46 92 C 46 85 47 79 50 76 Z'),
+    'skull_strokes': ['M 141 37 C 127 37 112 40 101 45 C 94 49 90 55 86 60 C 79 66 64 71 49 77',
+                      'M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 119 120 123 122 127 124'],
+    'details': ['M 154 101 C 151 107 146 111 139 114'],
+    'nose': 'M 49 77.5 C 44 76.5 38 77.5 35 80.5 C 32.5 83.5 32.5 89 35.5 92 C 38 94.5 42 95 45 93.5 C 48 92 49.5 89 49.5 85.5 C 49.5 82 49.5 79.5 49 77.5 Z',
+    'eye': (103.5, 67, 8.5, 4.6, 3.6, 2.5, -1, 4.9, -1.6, 0.4, 'L'),
+    'brow': ((112, 57.5), (104, 55), (96, 58), 'L'),
     'mouth': {
-        'neutral': {'strokes': [], 'details': ['M 110 114 C 115 115 119 117 122 121'], 'fills': []},
-        'happy': {'strokes': [], 'details': ['M 104 116 C 111 115 116 112 119 107'], 'fills': []},
-        'worried': {'strokes': [], 'details': ['M 106 115 C 112 117 116 120 118 125'], 'fills': []},
-        'shocked': {'strokes': ['M 50 106 C 70 117 98 121 118 118'], 'details': [],
-                    'fills': [('M 47 103 C 70 113 100 115 120 116 C 104 121 78 122 58 116 C 52 113 49 108 47 103 Z', 'mouth')]},
+        'neutral': {'strokes': [], 'details': ['M 110 118.6 C 113.5 118 116.5 117 118.5 115.5'], 'fills': []},
+        'happy': {'strokes': [], 'details': ['M 105 118.4 C 111 118 116 115.5 119.5 111'], 'fills': []},
+        'worried': {'strokes': [], 'details': ['M 108 118.4 C 112.5 119 116 120.5 118.5 123'], 'fills': []},
+        # shocked: the open mouth is a closed, outlined wedge INSIDE the head silhouette, between the raised upper lip
+        # and the lip line, from the commissure to just behind the nose (mouth colour + a sliver of tongue)
+        'shocked': {'strokes': ['M 112 119 C 100 113 80 108 57 104.5 C 54 106 53.5 109 55 111.5 C 66 115.5 88 118.5 112 119 Z'], 'details': [],
+                    'fills': [('M 112 119 C 100 113 80 108 57 104.5 C 54 106 53.5 109 55 111.5 C 66 115.5 88 118.5 112 119 Z', 'mouth'),
+                              ('M 62 112 C 72 114.6 86 116.8 99 117.6 C 88 115.6 74 113.6 62 112 Z', 'tongue')]},
     },
     'ear': {'side': 'L', 'pivot': (150, 44), 'backRot': -24, 'backSx': 0.92,
             'fills': [(EAR_PL, 'earCap', False)], 'strokes': [EAR_PL], 'details': []},
 }
 
 # =============================================================================== PROFILE RIGHT (CR, coat_right.png)
+# Traced directly on reference/crops/badger_coat_right.png at 5x (round-1 repair; it used to be the left profile mirrored).
+# The pale RIGHT ear is a rose flap hanging from the top of the skull: its outline runs over the top of the head and
+# down the back to a rounded tip, its front edge is the fold, and the turnaround side view shows the ear's pink inner as a
+# band in front of the fold at the base. Small spot H-EAR-R-SPOT on the flap, as on coat_right.
 CRF = lin(477, 100, KX_CL, KY_CL)
-# outline: the rose-ear shape of the left profile ear at the position traced on coat_right (ear shapes are
-# anatomically symmetric; colour, fold and the small spot are the RIGHT ear's own, from badger_coat_right.png)
-EAR_PR = 'M 493 39 C 482 36 470 36 460 40 C 450 44 440 51 437 59 C 435 66 438 72 445 76 C 452 80 460 85 469 89 C 473 90 477 89 480 86 C 485 80 489 68 491 56 C 492 50 493 44 493 39 Z'
+EAR_PR = ('M 496 42 C 491 36 480 31 468 32 C 456 34 444 42 437 51 C 433 56 433 61 436 65 C 442 72 452 80 461 85 '
+          'C 465 87 469 86 471 83 C 476 74 481 64 485 57 C 489 51 493 47 496 42 Z')
+EAR_PR_FOLD = 'M 491 38 C 487 46 482 56 478 67 C 476 74 473 80 471 83'
+EAR_PR_INNER = ('M 491 38 C 493 39 495 40 496 42 C 493 47 489 51 485 57 C 482 62 480 67 478 71 '
+                'C 478.5 69 478 68 478 67 C 482 56 487 46 491 38 Z')
 PROFILE_R = {
-    'skull_fill': ('M 584 76 C 572 70 556 62 546 57 C 541 52 536 46 528 42 C 517 37 502 35 488 36 C 467 37 448 42 441 55 '
-                   'C 437 65 439 76 447 84 C 455 96 465 108 481 116 C 492 120 499 121 504 121 C 512 117 522 115 534 115 '
-                   'C 550 116 566 114 578 109 C 588 105 592 97 590 88 C 589 82 588 79 584 76 Z'),
-    'skull_strokes': ['M 487 36 C 502 35 517 37 528 42 C 536 46 541 52 546 57 C 556 62 572 70 585 76',
-                      'M 590 98 C 586 105 578 109 568 112 C 552 116 532 115 520 116 C 512 117 508 118 504 121'],
-    'details': ['M 477 98 C 480 104 485 108 492 111'],
-    'nose': 'M 582 77 C 589 75 597 79 599 86 C 600 93 596 99 589 100 C 584 100 580 96 580 90 C 580 84 580 79 582 77 Z',
-    'eye': (532, 62, 11.5, 5.4, 4.0, 3.5, 1, 5.4, 3.2, 0.3, 'R'),
-    'brow': ((521, 53), (529, 50), (538, 53), 'R'),
+    'skull_fill': ('M 583 76 C 571 70 557 65 549 61 C 543 57 539 52 534 47 C 527 41 514 36 500 35 C 474 35 452 40 443 52 '
+                   'C 437 62 439 76 447 84 C 455 96 465 108 481 116 C 492 120 499 121 504 121 C 512 115 522 113 534 113 '
+                   'C 550 114 566 112 578 107 C 585 103 589 97 589 90 C 589 84 587 79 583 76 Z'),
+    'skull_strokes': ['M 498 35 C 514 36 527 41 534 47 C 539 52 543 57 549 61 C 557 65 571 70 584 76',
+                      'M 588 95 C 585 102 578 107 568 110 C 552 113 532 113 520 114 C 512 115 508 117 504 121'],
+    'details': ['M 477 99 C 480 104 485 108 492 111'],
+    'nose': 'M 581 77 C 585.5 76 590.5 77 593.5 80 C 595.5 83 595 88 592 91 C 589.5 93.5 585.5 93.5 583.5 91.5 C 581.5 89.5 580.5 86 580.5 83 C 580.5 80.5 580.5 78.5 581 77 Z',
+    'eye': (528, 64, 8.5, 4.6, 3.6, 2.5, 1, 4.9, 1.6, 0.4, 'R'),
+    'brow': ((520, 55), (528, 52), (536, 55.5), 'R'),
     'mouth': {
-        'neutral': {'strokes': [], 'details': ['M 522 113 C 517 114 513 116 510 120'], 'fills': []},
-        'happy': {'strokes': [], 'details': ['M 528 115 C 521 114 516 111 513 106'], 'fills': []},
-        'worried': {'strokes': [], 'details': ['M 526 114 C 520 116 516 119 514 124'], 'fills': []},
-        'shocked': {'strokes': ['M 584 105 C 564 116 536 120 516 117'], 'details': [],
-                    'fills': [('M 587 102 C 564 112 534 114 514 115 C 530 120 556 121 576 115 C 582 112 585 107 587 102 Z', 'mouth')]},
+        'neutral': {'strokes': [], 'details': ['M 523 113.6 C 519.5 113 516.5 112 514.5 110.5'], 'fills': []},
+        'happy': {'strokes': [], 'details': ['M 528 113.4 C 522 113 517 110.5 513.5 106'], 'fills': []},
+        'worried': {'strokes': [], 'details': ['M 525 113.4 C 520.5 114 517 115.5 514.5 118'], 'fills': []},
+        'shocked': {'strokes': ['M 516 115 C 530 110 552 104 575 100.5 C 578 102 578.5 105 577 107.5 C 566 111.5 542 114 516 115 Z'], 'details': [],
+                    'fills': [('M 516 115 C 530 110 552 104 575 100.5 C 578 102 578.5 105 577 107.5 C 566 111.5 542 114 516 115 Z', 'mouth'),
+                              ('M 570 108 C 560 110.8 546 112.8 533 113.6 C 544 111.8 558 109.8 570 108 Z', 'tongue')]},
     },
-    # near ear = pale ANATOMICAL RIGHT ear, with its small dark spot (badger_coat_right.png)
-    'ear': {'side': 'R', 'pivot': (466, 44), 'backRot': 24, 'backSx': 0.92,
+    # near ear = pale ANATOMICAL RIGHT ear: flap (coat) + pink inner band at the base of the fold + small dark spot
+    'ear': {'side': 'R', 'pivot': (488, 40), 'backRot': 24, 'backSx': 0.92,
             'fills': [(EAR_PR, 'coat', False),
-                      ('M 493 39 C 486 44 482 54 482 64 C 482 72 482 80 480 87 C 486 84 489 78 490 68 C 491 58 492 48 493 39 Z', 'earPaleInner', True),
-                      (ellipse_path(471, 55, 3.6, 7.0, 8), 'spot', True)],
-            'strokes': [EAR_PR], 'details': ['M 491 42 C 485 48 482 57 482 66 C 482 74 482 81 480 87'],
-            'spot': (471, 55, 3.6, 7.0, 8)},
+                      (EAR_PR_INNER, 'earPaleInner', True),
+                      (ellipse_path(475, 55.5, 3.2, 5.6, 10), 'spot', True)],
+            'strokes': [EAR_PR], 'details': [EAR_PR_FOLD],
+            'spot': (475, 55.5, 3.2, 5.6, 10)},
 }
 
 
-def build_profile(src, f, view, pitch=0.0):
+def build_profile(src, f, view, pitch=0.0, base=None):
     e = src['eye']
     cx, cy, w, up, low, drop, inner, ir, idx, idy, side = e
     k = KY_CL
@@ -441,7 +485,7 @@ def build_profile(src, f, view, pitch=0.0):
     ear = src['ear']
     fe = f
     if pitch:
-        base = C if src is PROFILE_L else CRF
+        base = base or (C if src is PROFILE_L else CRF)
         px, py = base(*ear['pivot'])
         # the ear hangs (counter-rotates part of the pitch) and folds a little smaller, as on the looking-up pose
         def fold(x, y, px=px, py=py):
@@ -471,30 +515,176 @@ def build_profile(src, f, view, pitch=0.0):
 
 heads['profileLeftScreen'] = build_profile(PROFILE_L, C, 'profileLeftScreen')
 heads['profileRightScreen'] = build_profile(PROFILE_R, CRF, 'profileRightScreen')
-# looking up: the profile pitched nose-up about the head pivot (+ = clockwise in SVG space)
-UP_PITCH = 34.0
-heads['upLeftScreen'] = build_profile(PROFILE_L, compose(C, rotate_about(UP_PITCH)), 'upLeftScreen', UP_PITCH)
-heads['upRightScreen'] = build_profile(PROFILE_R, compose(CRF, rotate_about(-UP_PITCH)), 'upRightScreen', -UP_PITCH)
-# the throat bridge is drawn un-pitched (it belongs to the neck) so the jaw-to-neck line stays connected
+
+# =============================================================================== LOOKING UP (round-1 repair)
+# The matching profile pitched nose-up about the head pivot, joined to the rig's own neck so every outline is closed:
+#  * the lip line ends at the commissure and ONE throat stroke runs from there onto the neck's throat line; a coat band
+#    behind it hides the neck's old upper throat line (no forks, no stubs);
+#  * the pitched skull's back contour is stroked from the skull top down past the point where it crosses the neck's
+#    back line, so there is no gap above or below the hanging ear;
+#  * the hanging ear shows a band of its inner surface at the fold, as the looking-up panel draws it.
+# The neck lines come from the side rigs (parts/rigLeft.ts, parts/rigRight.ts; build.sh generates them first) and are
+# moved into head-local space with the head mount of the matching facing. KEEP IN SYNC with Badger.tsx
+# LEFT_HEAD_MOUNT.upLeftScreen and RIGHT_HEAD_MOUNT.upRightScreen (dx, dy).
+UP_PITCH = 40.0
+UP_MOUNT = {'upLeftScreen': (0.0, 0.0), 'upRightScreen': (-7.0, 1.0)}
+HERE = os.path.dirname(__file__)
+sys.path.insert(0, HERE)
+from erode import parse as _parse, bez as _bez
 
 
-def throat_bridge(fp, f0, jaw_end, neck_pt, ctrl):
-    """Jaw-to-neck bridge: starts exactly at the pitched jaw end and lands on the neck's throat line."""
-    j = fp(*jaw_end)
-    n = f0(*neck_pt)
-    c1 = f0(*ctrl[0])
-    c2 = f0(*ctrl[1])
-    back = f0(*ctrl[2])
+def _rig(name):
+    src = open(os.path.join(HERE, '..', '..', 'parts', name)).read()
+    return json.loads(src[src.index('{'):src.rindex('}') + 1])
+
+
+def _neck_lines_head_local(rig, view):
+    """The rig's neck strokes [back, throat] moved into head-local space (head mount + per-view offset)."""
+    hm = rig['neck']['headMount']
+    dx, dy = UP_MOUNT[view]
+    ox, oy = hm['x'] + dx, hm['y'] + dy
+    return [map_path(d, lambda x, y: (x - ox, y - oy)) for d in rig['neck']['strokes']]
+
+
+def _samples(d, n=40):
+    out = []
+    for sub in _parse(d):
+        p0 = sub['start']
+        for c, ps in sub['segs']:
+            for k in range(1, n + 1):
+                t = k / n
+                out.append(_bez(p0, ps[0], ps[1], ps[2], t) if c == 'C' else (p0[0] + (ps[0][0] - p0[0]) * t, p0[1] + (ps[0][1] - p0[1]) * t))
+            p0 = ps[-1]
+    return out
+
+
+def _at_y(pts, y):
+    """Point (and unit tangent) of a sampled polyline where it first reaches height y (y down)."""
+    for a, b in zip(pts, pts[1:]):
+        if (a[1] - y) * (b[1] - y) <= 0 and a[1] != b[1]:
+            t = (y - a[1]) / (b[1] - a[1])
+            p = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+            L = math.hypot(b[0] - a[0], b[1] - a[1]) or 1
+            return p, ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+    return pts[-1], (0.0, 1.0)
+
+
+def _seg_x(p1, p2, p3, p4):
+    """Do segments p1-p2 and p3-p4 intersect?"""
+    def o(a, b, c):
+        return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    d1, d2, d3, d4 = o(p3, p4, p1), o(p3, p4, p2), o(p1, p2, p3), o(p1, p2, p4)
+    return d1 * d2 < 0 and d3 * d4 < 0
+
+
+def _smooth(pts):
+    """Dense sample list -> a smooth cubic path through every 3rd point (Catmull-Rom)."""
+    P = pts[::3] + ([pts[-1]] if (len(pts) - 1) % 3 else [])
+    out = ['M %.1f %.1f' % P[0]]
+    for i in range(len(P) - 1):
+        p0 = P[i - 1] if i else P[i]
+        p1, p2 = P[i], P[i + 1]
+        p3 = P[i + 2] if i + 2 < len(P) else p2
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        out.append('C %.1f %.1f %.1f %.1f %.1f %.1f' % (c1 + c2 + p2))
+    return ' '.join(out)
+
+
+def _unit(v):
+    L = math.hypot(v[0], v[1]) or 1
+    return (v[0] / L, v[1] / L)
+
+
+def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=None):
+    pitch = sign * UP_PITCH
+    fp = compose(base, rotate_about(pitch))
+    if inner_band:
+        src = dict(src)
+        ear = dict(src['ear'])
+        ear['fills'] = list(ear['fills']) + [(inner_band, 'earPaleInner', True)]
+        src['ear'] = ear
+    g = build_profile(src, fp, view, pitch, base=base)
+    back_line, throat_line = _neck_lines_head_local(_rig(rig_name), view)
+    # lip line ends at the commissure; the skull's back contour is outlined (the hanging ear no longer covers it) down to
+    # where it crosses the neck's back line, plus a short overlap; below that the neck's own back line carries the nape
+    bk = _samples(mp(back_path, fp), 60)
+    nb = _samples(back_line, 60)
+    cut = len(bk) - 1
+    for i in range(len(bk) - 1):
+        hit = False
+        for k in range(len(nb) - 1):
+            if _seg_x(bk[i], bk[i + 1], nb[k], nb[k + 1]):
+                hit = True
+                break
+        if hit:
+            cut = min(len(bk) - 1, i + 4)
+            break
+    back_d = 'M ' + ' L '.join('%.1f %.1f' % p for p in bk[:cut + 1])
+    g['skull']['strokes'] = [g['skull']['strokes'][0], mp(lip_cut, fp), _smooth(bk[:cut + 1])]
+    lip = _samples(mp(lip_cut, fp))
+    J = lip[-1]
+    tJ = _unit((lip[-1][0] - lip[-4][0], lip[-1][1] - lip[-4][1]))
+    tp = _samples(throat_line, 60)
     q = lambda p: '%.1f %.1f' % p
-    stroke = 'M %s C %s %s %s' % (q(j), q(c1), q(c2), q(n))
-    fill = stroke + ' L %s L %s Z' % (q(back), q(fp(jaw_end[0] + (14 if jaw_end[0] < 300 else -14), jaw_end[1] - 18)))
-    return {'fill': fill, 'stroke': stroke}
+    inward = (1.0, 0.0) if base is C else (-1.0, 0.0)  # toward the nape
+    # landing point L1 on the neck's throat line: the lowest one (within reach) whose bridge passes IN FRONT of the old
+    # upper throat line, so a thin band behind the bridge can hide that old line completely
+    best = None
+    for idx in range(min(len(tp) - 2, 70), -1, -2):
+        L1 = tp[idx]
+        if L1[1] - J[1] > 60:
+            continue
+        nxt = tp[min(idx + 1, len(tp) - 1)]
+        tL = _unit((nxt[0] - L1[0], nxt[1] - L1[1]))
+        k0 = math.hypot(L1[0] - J[0], L1[1] - J[1]) * 0.42
+        c1 = (J[0] + tJ[0] * k0, J[1] + tJ[1] * k0)
+        c2 = (L1[0] - tL[0] * k0, L1[1] - tL[1] * k0)
+        br = [_bez(J, c1, c2, L1, k / 30) for k in range(31)]
+        old = tp[:idx]
+        crosses = any(_seg_x(br[i], br[i + 1], old[k], old[k + 1]) for i in range(len(br) - 3) for k in range(len(old) - 1))
+        # every old sample above L1 must lie on the nape side of the bridge
+        def side(pnt):
+            j = min(range(len(br)), key=lambda i: math.hypot(br[i][0] - pnt[0], br[i][1] - pnt[1]))
+            return (pnt[0] - br[j][0]) * inward[0] + (pnt[1] - br[j][1]) * inward[1]
+        if not crosses and all(side(o) >= -0.5 for o in old):
+            best = (L1, c1, c2, idx)
+            break
+    if best is None:
+        L1 = tp[0]
+        nxt = tp[1]
+        tL = _unit((nxt[0] - L1[0], nxt[1] - L1[1]))
+        k0 = math.hypot(L1[0] - J[0], L1[1] - J[1]) * 0.42
+        best = (L1, (J[0] + tJ[0] * k0, J[1] + tJ[1] * k0), (L1[0] - tL[0] * k0, L1[1] - tL[1] * k0), 0)
+    L1, c1, c2, idx = best
+    stroke = 'M %s C %s %s %s' % (q(J), q(c1), q(c2), q(L1))
+    # band: bridge, then back up the old throat line offset 6 units toward the nape, then into the head
+    old = tp[:idx + 1]
+    def off(i):
+        a, b = old[max(0, i - 1)], old[min(len(old) - 1, i + 1)]
+        t = _unit((b[0] - a[0], b[1] - a[1]))
+        n = (-t[1], t[0])
+        if n[0] * inward[0] + n[1] * inward[1] < 0:
+            n = (-n[0], -n[1])
+        return (old[i][0] + n[0] * 6.0, old[i][1] + n[1] * 6.0)
+    back_pts = [off(i) for i in range(len(old) - 1, -1, -1)] if len(old) > 1 else []
+    tail = [(J[0] + inward[0] * 8.0, J[1] - 4.0)]
+    fill = stroke + ''.join(' L %s' % q(p) for p in back_pts + tail) + ' Z'
+    g['throat'] = {'fill': fill, 'stroke': stroke}
+    return g
 
 
-heads['upLeftScreen']['throat'] = throat_bridge(compose(C, rotate_about(UP_PITCH)), C, (126, 122), (139, 157),
-                                                ((126, 132), (134, 146), (166, 150)))
-heads['upRightScreen']['throat'] = throat_bridge(compose(CRF, rotate_about(-UP_PITCH)), CRF, (504, 122), (491, 157),
-                                                 ((504, 132), (496, 146), (464, 150)))
+heads['upLeftScreen'] = build_up(
+    'upLeftScreen', PROFILE_L, C, 1, 'rigLeft.ts',
+    lip_cut='M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 115 119.3 117 119.6 118.5 120',
+    back_path='M 142 37 C 165 37 185 43 192 57 C 196 65 194 76 186 84 C 182 89 177 95 171 101',
+    inner_band='M 139 39 C 140 44 141 50 141 56 C 143 68 147 80 152 86 C 153 80 151 70 149 60 C 147 52 144 45 139 39 Z')
+heads['upRightScreen'] = build_up(
+    'upRightScreen', PROFILE_R, CRF, -1, 'rigRight.ts',
+    lip_cut='M 588 95 C 585 102 578 107 568 110 C 552 113 532 113 520 114 C 518 114.2 516 114.6 514.5 115',
+    back_path='M 498 35 C 474 35 452 40 443 52 C 437 62 439 76 447 84 C 451 90 456 96 462 102',
+    # the hanging pale ear shows its pink inner over the front half of the flap (badger_pose_looking_up.png)
+    inner_band='M 496 42 C 490 48 485 56 481 64 C 478 71 475 78 471 83 C 466 77 464 69 466 61 C 468 52 474 45 482 40 C 488 37 493 38 496 42 Z')
 for v in ('front', 'threeQuarterLeftScreen', 'threeQuarterRightScreen'):
     heads[v]['throat'] = None
 for v in heads:

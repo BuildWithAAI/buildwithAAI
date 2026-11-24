@@ -9,7 +9,8 @@ import {useCurrentFrame, useVideoConfig} from 'remotion';
 import {BRAND} from '../palette';
 import type {ZooProps} from '../types';
 import {clamp} from './geometry';
-import {ARM_POINT, ARM_POINT_WINDUP, ARM_REST, armAnglesFor, breathOffset, PIVOTS, POINT_HAND_SWITCH} from './rig';
+import {LineScaleContext} from './parts/Shape';
+import {ARM_POINT, ARM_POINT_WINDUP, ARM_REST, armAnglesFor, breathOffset, PIVOTS, POINT_HAND_CURL, POINT_HAND_SWITCH, POINT_LOOK, TYPING_LOOK} from './rig';
 import {Arm} from './parts/Arm';
 import {Head} from './parts/Head';
 import {Legs} from './parts/Legs';
@@ -39,6 +40,12 @@ export type ZooExtraProps = {
 	/** Drawn in ZOO's world space between the back and front layers (e.g. a desk and keyboard). */
 	between?: React.ReactNode;
 	/**
+	 * Multiplier for every stroke width (default 1 = LINE widths, right for full-body framing). The sheet keeps a
+	 * near-constant SCREEN line weight, so close-ups want thinner world-unit lines: pass lineScaleFor(pxPerUnit)
+	 * (lines.ts, ART_GUIDE SL5), e.g. ~0.53 for a 1080p bust where 1 unit = 3.2 px.
+	 */
+	lineScale?: number;
+	/**
 	 * pose="point", front view: 0..1 anticipation before the gesture (the hand draws in toward the hip and
 	 * the wrist cocks, ARM_POINT_WINDUP). Animate it up just before poseAmount starts and back to 0 as the arm
 	 * swings out. Default 0.
@@ -50,7 +57,10 @@ const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | '
 	Pick<ZooProps, 'mouth' | 'pose'> & {breathe: boolean; breathFrame?: number; showPivots?: boolean; pointWindup: number}> = (p) => {
 	const frame = useCurrentFrame();
 	const {fps} = useVideoConfig();
-	const dy = p.breathe ? breathOffset(p.breathFrame ?? frame, fps) : 0;
+	const bf = p.breathFrame ?? frame;
+	const dy = p.breathe ? breathOffset(bf, fps) : 0;
+	// The arms follow the chest 3 frames late (overlap, ART_GUIDE MO8).
+	const dyArms = p.breathe ? breathOffset(bf - 3, fps) : 0;
 	const hem = PIVOTS.torso.y;
 	const sy = 1 + -dy / (hem - PIVOTS.shoulderL.y);
 	const pointing = p.pose === 'point';
@@ -61,11 +71,11 @@ const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | '
 		elbow: base.elbow + ARM_POINT_WINDUP.elbow * w,
 		wrist: base.wrist + ARM_POINT_WINDUP.wrist * w,
 	};
-	const leftHand = pointing && p.poseAmount >= POINT_HAND_SWITCH ? 'point' : 'relaxed';
+	const leftHand = !pointing ? 'relaxed' : p.poseAmount >= POINT_HAND_SWITCH ? 'point' : p.poseAmount >= POINT_HAND_CURL ? 'curl' : 'relaxed';
 	return (
 		<>
 			{/* Sleeves emerge from under the overshirt's shoulder and side contour, so the arms sit behind the torso. */}
-			<g data-part="arms" transform={`translate(0 ${dy})`}>
+			<g data-part="arms" transform={`translate(0 ${dyArms})`}>
 				<Arm side="R" angles={ARM_REST} hand="relaxed" />
 				<Arm side="L" angles={leftAngles} hand={leftHand} />
 			</g>
@@ -76,7 +86,7 @@ const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | '
 				<Neck />
 			</g>
 			<g data-part="torsoGroup" transform={`translate(0 ${hem}) scale(1 ${sy}) translate(0 ${-hem})`}>
-				<Torso />
+				<Torso shoulderL={leftAngles.shoulder} />
 			</g>
 			<g data-part="upperBody" transform={`translate(0 ${dy})`}>
 				<Head expression={p.expression} mouth={p.mouth} blink={p.blink} browLift={p.browLift} lookX={p.lookX} lookY={p.lookY} headTilt={p.headTilt} />
@@ -116,7 +126,22 @@ const PivotMarkers: React.FC<{table?: Record<string, {x: number; y: number}>}> =
 const VIEW_PIVOTS = {threeQuarter: PIVOTS_34, side: PIVOTS_SIDE, back: PIVOTS_BACK} as const;
 
 /** The rig as an SVG group in world units (origin = ground contact point). */
-export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
+export const ZooRig: React.FC<ZooProps & ZooExtraProps> = (props) => {
+	// pose="point": unless the caller animates them, the eyes and head lean toward the point with the arm (POINT_LOOK).
+	const amount = Math.max(0, Math.min(1, props.poseAmount ?? 1));
+	const pointing = props.pose === 'point' && (props.view ?? 'front') === 'front';
+	const typingPose = props.pose === 'typing';
+	const lookX = props.lookX ?? (pointing ? POINT_LOOK.lookX * amount : typingPose ? TYPING_LOOK.lookX : undefined);
+	const lookY = props.lookY ?? (typingPose ? TYPING_LOOK.lookY : undefined);
+	const headTilt = props.headTilt ?? (pointing ? POINT_LOOK.headTilt * amount : typingPose ? TYPING_LOOK.headTilt : undefined);
+	return (
+		<LineScaleContext.Provider value={Math.max(0.05, props.lineScale ?? 1)}>
+			<ZooRigInner {...props} lookX={lookX} lookY={lookY} headTilt={headTilt} />
+		</LineScaleContext.Provider>
+	);
+};
+
+const ZooRigInner: React.FC<ZooProps & ZooExtraProps> = ({
 	x = 0,
 	y = 0,
 	scale = 1,

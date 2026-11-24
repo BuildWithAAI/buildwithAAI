@@ -63,6 +63,38 @@ describe('income-claim words', () => {
 		});
 	}
 
+	for (const text of [
+		'I made $5,000 last month with this bot',
+		'Earn $500 a day from home',
+		'Earn £300 a week',
+		'Make €1,000 every month',
+		'I earned 5 ETH in a week',
+		'Buy now before it pumps',
+		'Ape in before the listing',
+		'Get in early before everyone else',
+		'Earn 20% monthly returns on your USDT',
+		'Get 1% daily yield, paid out every day',
+		'Stake and earn 300% APY',
+		'SOL could hit $500 this year',
+		'BTC to $250k by December',
+		'This coin is heading to $1',
+		'Turn $100 into $10,000',
+		'You literally cannot lose',
+		'It is a no-brainer, you can’t lose',
+		'Your money is 100% safe with this exchange',
+		'Profit every single day',
+		'Easy 2x in a month',
+		'Get a $50 sign-up bonus',
+	]) {
+		it(`fails the claims the publish kit also refuses: "${text}"`, () => {
+			assert.ok(errors(checkText(text, 'summary')).some((e) => /income or return claim/.test(e)), text);
+		});
+	}
+
+	for (const text of ['Get 10% off your hardware wallet with this link', 'Referral link: I earn 20% of the fees you pay', 'Bitcoin fell 20% this week', 'Make sure you cannot lose your seed phrase', 'The token crashed from $1 to $0.01 by the end of the day', 'No wallet is 100% safe, so keep a backup']) {
+		it(`passes ordinary text: "${text}"`, () => assert.deepEqual(errors(checkText(text, 'summary')), []));
+	}
+
 	it('fails even when the claim is quoted from a scam', () => {
 		assert.equal(errors(checkText('The bot promised "guaranteed 100x" profits.', 'summary')).length, 2);
 	});

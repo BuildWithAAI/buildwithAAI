@@ -23,7 +23,7 @@ export type RenderProbe = {
 	request: string;
 	index: number;
 	composition: string;
-	kind: 'video' | 'still';
+	kind: 'video' | 'still' | 'audio';
 	lang: string;
 	output: string;
 	artifact: string;
@@ -247,7 +247,7 @@ export const runSummary = (probes: AnyProbe[], expectedRenders: number): string 
 	if (voices.length) lines.push('### Voice tracks', '', table(VOICE_HEADER, voices.map(voiceRow)), '');
 	if (renders.length) lines.push('### Outputs', '', table(RENDER_HEADER, renders.map(renderRow)), '');
 	if (renders.some((p) => p.encrypted) || voices.some((p) => p.encrypted)) {
-		lines.push('Encrypted artifacts: download them, then run `scripts/farm/decrypt.sh` with the RENDER_ARTIFACT_KEY (docs/RENDER_FARM.md).', '');
+		lines.push('Encrypted artifacts: download them, then run `scripts/farm/decrypt.sh --key <the owner\'s private key>` (docs/RENDER_FARM.md). No CI step can decrypt them.', '');
 	}
 	return lines.join('\n');
 };

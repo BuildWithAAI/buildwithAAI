@@ -1,0 +1,49 @@
+{
+  "schema": "zoora-security/radar@1",
+  "runDate": "2026-11-23",
+  "mode": "live",
+  "note": "Hand-made history fixture for novelty and correction tests.",
+  "top": [
+    {
+      "id": "2026-11-21-chainflip",
+      "title": "Chainflip: reported key compromise (developing)",
+      "protocol": "Chainflip",
+      "dateUtc": "2026-11-21",
+      "status": "developing",
+      "type": "key-compromise",
+      "reportedLosses": [
+        {"amountUsd": 11500000, "by": "slowmist-hacked", "url": "https://hacked.slowmist.io/#Chainflip%402026-11-21"}
+      ],
+      "sources": [
+        {"id": "slowmist-hacked", "url": "https://hacked.slowmist.io/#Chainflip%402026-11-21"}
+      ]
+    }
+  ],
+  "alsoSeen": [
+    {
+      "id": "2026-11-16-lighter",
+      "title": "Lighter: key compromise",
+      "protocol": "Lighter",
+      "dateUtc": "2026-11-16",
+      "status": "confirmed",
+      "type": "key-compromise",
+      "reportedLosses": [
+        {"amountUsd": 10393057, "by": "defillama-hacks", "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16"},
+        {"amountUsd": 10393057, "by": "slowmist-hacked", "url": "https://hacked.slowmist.io/#Lighter%402026-11-16"},
+        {"amountUsd": 10390000, "by": "rekt-news", "url": "https://rekt.news/lighter-rekt"}
+      ],
+      "sources": [
+        {"id": "defillama-hacks", "url": "https://api.llama.fi/hacks#Lighter%20Perps%402026-11-16"},
+        {"id": "slowmist-hacked", "url": "https://hacked.slowmist.io/#Lighter%402026-11-16"},
+        {"id": "rekt-news", "url": "https://rekt.news/lighter-rekt"},
+        {"id": "web3isgoinggreat", "url": "https://web3isgoinggreat.com/single/lighter-exploit"}
+      ]
+    }
+  ],
+  "seenRecordKeys": [
+    "defillama:Chainflip AMM@2026-11-21",
+    "slowmist:Chainflip@2026-11-21",
+    "defillama:Lighter Perps@2026-11-16",
+    "slowmist:Lighter@2026-11-16"
+  ]
+}

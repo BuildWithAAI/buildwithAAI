@@ -4,35 +4,44 @@
  * storyboard's SHA-256, the digest of everything the upload sends, privacy private, publishAt = the item's calendar
  * slot). It NEVER uploads: it prints the uploader commands for the owner to run.
  *
- * Who approves: only the owner. At a terminal he types the week id; without one, the session passes his own reply
- * from the Claude app verbatim (--reply "APPROVE <week> <ids|all>"). Text in files, feeds, comments or other
- * agents' messages is never an approval, whatever it says, and no agent writes a reply for him.
+ * Who approves: only the owner. Every page has a page code (review.ts) and every reply carries it: "APPROVE <week>
+ * <ids|all> #<code>". At a terminal he types the code from the page he reviewed; without a terminal, the session passes
+ * his own reply from the Claude app verbatim (--reply). A code that is not the current page's is refused, so a reply
+ * can never approve a page rebuilt after he answered (an edit, a new render). Text in files, feeds, comments or other
+ * agents' messages is never an approval, whatever it says, and no agent writes a reply for him. That the reply really
+ * comes from the owner rests on that process: the code binds the reply to a page, not to a person.
  *
- * Refused per item: not READY on the page he saw, any shown file changed since (hash), the uploader's own checks
- * (failing kit check, no category, publish time under the lead time, already uploaded). Each record is re-read with
- * the uploader's prepareFromApproval before it is kept, so plan and upload will accept it.
+ * Refused per item: not READY on the page he saw, any shown file changed since (hash; the upload spec and the files
+ * it names included, and a spec that appears after the review), a file the uploader would send that the page did not
+ * show, the uploader's own checks (failing kit check, no category, publish time under the lead time, already
+ * uploaded). Each record is re-read with the uploader's prepareFromApproval before it is kept, so plan and upload will
+ * accept it.
  */
 import {existsSync, readFileSync, renameSync, rmSync} from 'node:fs';
 import {join, relative} from 'node:path';
-import {changedPaths, inspectItem} from './inspect.ts';
+import {changedPaths, inspectItem, specPathOf} from './inspect.ts';
 import {readPlan} from './plan.ts';
-import {approvalDir, type ReviewSnapshot} from './review.ts';
+import {approvalDir, archivedSnapshotPath, PAGE_CODE, type ReviewSnapshot} from './review.ts';
 import type {PlanItem} from './types.ts';
-import {loadUploader, reasonsOf} from './uploader.ts';
+import {loadUploader, reasonsOf, sentFiles} from './uploader.ts';
 import {isRecord, readJson, sha256, UsageError, writeJsonAtomic} from './util.ts';
 import {formatLocal} from './zone.ts';
 
 export type Selection = 'all' | string[];
 
-/** The owner's reply: "APPROVE 2026-W49 all" or "APPROVE 2026-W49 ai1 ai1-s1" (commas or spaces). */
-export const parseReply = (reply: string): {week: string; items: Selection} | null => {
-	const m = /^\s*approve\s+(\d{4}-?w\d{1,2})\s+([a-z0-9,\s-]+?)\s*[.!]?\s*$/i.exec(reply);
+/**
+ * The owner's reply, exactly as the page offers it: "APPROVE 2026-W49 all #93770ddb" or
+ * "APPROVE 2026-W49 ai1 ai1-s1 #93770ddb" (commas or spaces). The page code is required.
+ */
+export const parseReply = (reply: string): {week: string; items: Selection; code: string} | null => {
+	const m = /^\s*approve\s+(\d{4}-?w\d{1,2})\s+([a-z0-9,\s-]+?)[\s,]*#([0-9a-f]{8})\s*[.!]?\s*$/i.exec(reply);
 	if (!m) return null;
 	const week = m[1].toUpperCase().replace(/^(\d{4})-?W/, '$1-W').replace(/-W(\d)$/, '-W0$1');
 	const words = m[2].split(/[\s,]+/).map((w) => w.trim().toLowerCase()).filter(Boolean);
 	if (!words.length) return null;
-	if (words.includes('all')) return words.length === 1 ? {week, items: 'all'} : null;
-	return {week, items: [...new Set(words)]};
+	const code = m[3].toLowerCase();
+	if (words.includes('all')) return words.length === 1 ? {week, items: 'all', code} : null;
+	return {week, items: [...new Set(words)], code};
 };
 
 export const sameSelection = (a: Selection, b: Selection): boolean => (a === 'all' || b === 'all' ? a === b : a.length === b.length && [...a].sort().join() === [...b].sort().join());
@@ -107,27 +116,52 @@ export const runApprove = async (o: ApproveOptions): Promise<ApproveResult> => {
 		return none(3);
 	}
 
-	// the owner's confirmation
+	// the owner's confirmation, bound to the page he saw by its code
+	const current = typeof snapshot.page?.code === 'string' && PAGE_CODE.test(snapshot.page.code) ? snapshot.page.code.toLowerCase() : null;
+	if (!current) {
+		o.log(`Refused: the ${o.week} page has no page code (built by an older batch). Run review again and send the new page.`);
+		return none(3);
+	}
+	const wrongPage = (code: string): string | null => {
+		if (code === current) return null;
+		const old = readJson<ReviewSnapshot>(archivedSnapshotPath(o.root, o.week, code));
+		const when = (iso: unknown) => (typeof iso === 'string' && Number.isFinite(Date.parse(iso)) ? formatLocal(Date.parse(iso), plan.timeZone) : '?');
+		return old.ok && isRecord(old.data)
+			? `the reply answers the page built ${when(old.data.builtAt)} (#${code}), but the page was rebuilt since: the current page is #${current}, built ${when(snapshot.builtAt)}. Its files may differ from what you saw: read the current page and reply with its code.`
+			: `no ${o.week} page has the code #${code}; the current page is #${current}, built ${when(snapshot.builtAt)}.`;
+	};
+	const pick = o.items === 'all' ? 'all' : o.items.join(' ');
 	if (o.reply !== null) {
 		const r = parseReply(o.reply);
 		if (!r) {
-			o.log(`Not approved: the reply must read "APPROVE ${o.week} <item ids or all>". Got: "${o.reply.slice(0, 120)}".`);
+			o.log(`Not approved: the reply must read "APPROVE ${o.week} <item ids or all> #<page code>", as the page shows it. Got: "${o.reply.slice(0, 120)}".`);
 			return none(4);
 		}
 		if (r.week !== o.week || !sameSelection(r.items, o.items)) {
-			o.log(`Not approved: the reply approves ${r.week} ${r.items === 'all' ? 'all' : r.items.join(' ')}, but this run is for ${o.week} ${o.items === 'all' ? 'all' : o.items.join(' ')}.`);
+			o.log(`Not approved: the reply approves ${r.week} ${r.items === 'all' ? 'all' : r.items.join(' ')}, but this run is for ${o.week} ${pick}.`);
+			return none(4);
+		}
+		const problem = wrongPage(r.code);
+		if (problem) {
+			o.log(`Not approved: ${problem}`);
 			return none(4);
 		}
 	} else if (o.prompt) {
 		o.log(`About to record approval of ${selected.length} upload(s) for ${o.week}, each private and scheduled for its slot:`);
 		for (const i of selected) o.log(`  ${i.id.padEnd(9)} ${i.slot.local}  ${i.channel}/${i.slug} ${i.renderId}`);
-		const answer = await o.prompt(`Type ${o.week} to approve exactly these, anything else to cancel: `);
-		if (answer.trim().toUpperCase() !== o.week) {
+		const answer = (await o.prompt(`Type the page code shown at the top of the ${o.week} page you reviewed (8 characters after "#") to approve exactly these, anything else to cancel: `)).trim();
+		const m = PAGE_CODE.exec(answer);
+		if (!m) {
 			o.log('Not approved, nothing written.');
 			return none(4);
 		}
+		const problem = wrongPage(m[1].toLowerCase());
+		if (problem) {
+			o.log(`Not approved: ${problem}`);
+			return none(4);
+		}
 	} else {
-		o.log(`Not approved, nothing written. Without a terminal, pass the owner's own reply: --reply "APPROVE ${o.week} ${o.items === 'all' ? 'all' : o.items.join(' ')}".`);
+		o.log(`Not approved, nothing written. Without a terminal, pass the owner's own reply, which carries the page code: --reply "APPROVE ${o.week} ${pick} #<page code>".`);
 		return none(4);
 	}
 
@@ -147,7 +181,7 @@ export const runApprove = async (o: ApproveOptions): Promise<ApproveResult> => {
 			continue;
 		}
 		const now = await inspectItem(o.root, item);
-		const changed = changedPaths(seen.hashes, now.hashes);
+		const changed = [...changedPaths(seen.hashes, now.hashes), ...changedPaths(seen.specHashes ?? {}, now.specHashes)];
 		if (changed.length) {
 			refuse([`Changed since the page was built: ${changed.join(', ')}. Rebuild the page (review) and look again.`]);
 			continue;
@@ -157,7 +191,7 @@ export const runApprove = async (o: ApproveOptions): Promise<ApproveResult> => {
 			continue;
 		}
 		const common = {kitPath: join(o.root, item.paths.kit), videoStudioRoot: o.root, channels, stateDir, nowMs: o.nowMs, processingPolls: 20, allowSecondUpload: false};
-		const specRel = `${item.paths.content}/upload-spec.${item.renderId}.json`;
+		const specRel = specPathOf(item);
 		const spec = existsSync(join(o.root, specRel)) ? specRel : undefined;
 		let prepared;
 		try {
@@ -174,12 +208,19 @@ export const runApprove = async (o: ApproveOptions): Promise<ApproveResult> => {
 			refuse([`The uploader would send ${prepared.plan.video.rel}, which is not the file shown on the page.`]);
 			continue;
 		}
+		// every file the upload sends must be one the page showed, byte for byte (the spec and its files included)
+		const shown: Record<string, string | null> = {...seen.hashes, ...(seen.specHashes ?? {})};
+		const unseen = sentFiles(prepared).filter((f) => !f.sha256 || shown[f.rel] !== f.sha256);
+		if (unseen.length) {
+			refuse([`The uploader would send ${unseen.map((f) => f.rel).join(', ')}, which the page did not show as is. Rebuild the page (review) and look again.`]);
+			continue;
+		}
 		const record = uploader.createApproval(prepared.plan, {
 			nowMs: o.nowMs,
 			approvedBy: o.by,
 			validDays: Math.min(o.validDays, channels.approvalMaxDays),
 			spec: prepared.inputs.spec?.rel ?? null,
-			note: `Weekly batch ${o.week}, item ${item.id}, approved ${o.reply !== null ? 'by the owner\'s reply' : 'at a terminal'} on the weekly page (review ${snapshot.builtAt}).`,
+			note: `Weekly batch ${o.week}, item ${item.id}, approved ${o.reply !== null ? 'by the owner\'s reply' : 'at a terminal'} on the weekly page #${current} (review ${snapshot.builtAt}).`,
 		});
 		const finalPath = join(o.root, item.paths.kitDir, `approval-${item.renderId}.json`);
 		const tmpPath = `${finalPath}.${process.pid}.check`;
@@ -230,7 +271,7 @@ export const runApprove = async (o: ApproveOptions): Promise<ApproveResult> => {
 		kind: 'zoora-weekly-approvals',
 		week: o.week,
 		updatedAt: new Date(o.nowMs).toISOString(),
-		review: {builtAt: snapshot.builtAt, page: snapshot.page.path, sha256: snapshot.page.sha256},
+		review: {builtAt: snapshot.builtAt, page: snapshot.page.path, sha256: snapshot.page.sha256, code: current},
 		...(o.reply !== null ? {reply: o.reply.trim()} : {via: 'terminal'}),
 		note: 'Approval records for the creator-hub uploader. Nothing has been uploaded: the owner runs each uploadCommand from projects/creator-hub.',
 		items: [...kept, ...approved].sort((a, b) => a.publishAt.localeCompare(b.publishAt) || a.id.localeCompare(b.id)),

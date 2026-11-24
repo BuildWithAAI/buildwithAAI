@@ -10,10 +10,24 @@ export const ENTRIES = ['src/index.ts', 'src/episode/index.ts', 'src/show/index.
 export type Entry = (typeof ENTRIES)[number];
 
 /**
- * Entries whose renders are tests (dev sheets, TestCard, chart demos): the only ones that may skip encryption.
- * Episode, show and thumbnail renders are unreleased work and are always encrypted.
+ * The test compositions (TestCard, character sheets, chart demos): the only renders that may skip encryption or go to
+ * the "selftest" recipient. Listed by id AND entry, so a new composition added to src/index.ts (the studio's registry,
+ * where Phase 1 templates will live) is encrypted until someone adds it here on purpose. Episode, show and thumbnail
+ * renders are unreleased work and are always encrypted to the owner.
  */
-export const TEST_ENTRIES: readonly Entry[] = ['src/index.ts', 'src/charts/dev/index.ts'];
+export const TEST_COMPOSITIONS: Readonly<Partial<Record<Entry, readonly string[]>>> = {
+	'src/index.ts': ['TestCard', 'ZooSheet', 'BadgerSheet', 'MouthDemo', 'Preview10s'],
+	'src/charts/dev/index.ts': ['ChartTest', 'ChartLight', 'ChartShort', 'ChartReveal'],
+};
+export const isTestComposition = (entry: Entry, composition: string): boolean => (TEST_COMPOSITIONS[entry] ?? []).includes(composition);
+
+/** Entries whose jobs render real episode or show content: the claim gate must pass for them (scripts/farm/gates.ts). */
+export const CONTENT_ENTRIES: readonly Entry[] = ['src/episode/index.ts', 'src/show/index.ts'];
+
+/** The recipient whose public key encrypts outputs by default (scripts/farm/keys/owner.pub.pem). */
+export const DEFAULT_RECIPIENT = 'owner';
+/** A test-only recipient: its private key is not the owner's, so only test compositions may use it. */
+export const SELFTEST_RECIPIENT = 'selftest';
 
 /** src/episode/types.ts `Lang`. Used to label jobs (props.lang); the composition validates its own props. */
 export const LANGS = ['en', 'es', 'pt-br', 'hi', 'it', 'zh', 'ja'] as const;
@@ -39,9 +53,12 @@ export const LIMITS = {
 	retentionMinDays: 1,
 	retentionMaxDays: 90, // GitHub's maximum for public repositories
 	retentionDefaultDays: 7,
+	/** Unencrypted (test) artifacts are public: keep them a week at most. */
+	retentionMaxUnencryptedDays: 7,
 } as const;
 
-export type Kind = 'video' | 'still';
+/** video: an MP4; still: one frame; audio: the composition's sound only (a dub's full mix for a multi-language track). */
+export type Kind = 'video' | 'still' | 'audio';
 
 export type RenderJob = {
 	composition: string;
@@ -53,7 +70,12 @@ export type RenderJob = {
 	lang: string | null; // props.lang when it is a known Lang (labels only)
 };
 
-export type VoiceEntry = {channel: string; slug: string; lang: VoiceLang; voice: typeof ZOO_VOICE};
+/**
+ * One narration to voice. fitTo (a dub for a multi-language audio track): voice this language into the master
+ * language's timeline (scripts/voice/build.py --fit-to), so it lines up with the master video. The master must be a
+ * native voice entry of the same channel and slug in the same request; the farm voices it first.
+ */
+export type VoiceEntry = {channel: string; slug: string; lang: VoiceLang; voice: typeof ZOO_VOICE; fitTo?: VoiceLang};
 
 export type RenderRequest = {
 	id: string;
@@ -62,6 +84,8 @@ export type RenderRequest = {
 	voice: VoiceEntry[];
 	encrypt: boolean;
 	retentionDays: number;
+	/** Whose public key encrypts the outputs (scripts/farm/keys/<recipient>.pub.pem). */
+	recipient: string;
 };
 
 export type Validation = {ok: true; request: RenderRequest} | {ok: false; errors: string[]};
@@ -73,11 +97,18 @@ const OUTPUT_RE = /^out(?:\/[A-Za-z0-9_-][A-Za-z0-9._-]*)+$/;
 const CHANNEL_RE = /^_?[a-z0-9][a-z0-9-]{0,47}$/;
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,95}$/;
 const KEY_NAME_RE = /^[A-Za-z0-9_-]{1,40}$/;
-const EXTENSIONS: Record<Kind, readonly string[]> = {video: ['.mp4'], still: ['.png', '.jpg', '.jpeg']};
+const EXTENSIONS: Record<Kind, readonly string[]> = {video: ['.mp4'], still: ['.png', '.jpg', '.jpeg'], audio: ['.wav', '.m4a', '.mp3']};
+const RECIPIENT_NAME_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
-const TOP_KEYS = ['id', 'entry', 'jobs', 'voice', 'encrypt', 'retentionDays'];
+/** The Remotion codec for an audio output, by extension. */
+export const audioCodec = (output: string): 'wav' | 'aac' | 'mp3' | null => {
+	const ext = extensionOf(output);
+	return ext === '.wav' ? 'wav' : ext === '.m4a' ? 'aac' : ext === '.mp3' ? 'mp3' : null;
+};
+
+const TOP_KEYS = ['id', 'entry', 'jobs', 'voice', 'encrypt', 'retentionDays', 'recipient'];
 const JOB_KEYS = ['composition', 'props', 'output', 'kind', 'entry', 'frame'];
-const VOICE_KEYS = ['channel', 'slug', 'lang', 'voice'];
+const VOICE_KEYS = ['channel', 'slug', 'lang', 'voice', 'fitTo'];
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> =>
 	typeof v === 'object' && v !== null && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
@@ -148,6 +179,12 @@ export const validateRequest = (raw: unknown, fileId: string): Validation => {
 		else errors.push(`retentionDays must be an integer from ${LIMITS.retentionMinDays} to ${LIMITS.retentionMaxDays}`);
 	}
 
+	let recipient = DEFAULT_RECIPIENT;
+	if ('recipient' in raw) {
+		if (typeof raw.recipient === 'string' && RECIPIENT_NAME_RE.test(raw.recipient)) recipient = raw.recipient;
+		else errors.push('recipient must be 1-32 lowercase letters, digits and dashes: the name of a public key in scripts/farm/keys/ (default "owner")');
+	}
+
 	const jobs: RenderJob[] = [];
 	if (!Array.isArray(raw.jobs) || raw.jobs.length === 0) {
 		errors.push('jobs must be a non-empty array');
@@ -164,8 +201,8 @@ export const validateRequest = (raw: unknown, fileId: string): Validation => {
 			const before = errors.length;
 			errors.push(...unknownKeys(j, JOB_KEYS, at));
 			if (typeof j.composition !== 'string' || !COMPOSITION_RE.test(j.composition)) errors.push(`${at}.composition must be 1-64 characters from A-Z, a-z, 0-9 and "-"`);
-			const kind: Kind | null = j.kind === 'video' || j.kind === 'still' ? j.kind : null;
-			if (!kind) errors.push(`${at}.kind must be "video" or "still"`);
+			const kind: Kind | null = j.kind === 'video' || j.kind === 'still' || j.kind === 'audio' ? j.kind : null;
+			if (!kind) errors.push(`${at}.kind must be "video", "still" or "audio"`);
 			const op = outputProblem(j.output, kind);
 			if (op) errors.push(`${at}.output ${op}`);
 			else if (outputs.has(j.output as string)) errors.push(`${at}.output repeats the output of an earlier job`);
@@ -179,7 +216,7 @@ export const validateRequest = (raw: unknown, fileId: string): Validation => {
 			let frame = 0;
 			if ('frame' in j) {
 				const f = j.frame;
-				if (kind === 'video') errors.push(`${at}.frame is only for kind "still"`);
+				if (kind !== 'still') errors.push(`${at}.frame is only for kind "still"`);
 				else if (typeof f === 'number' && Number.isInteger(f) && f >= 0 && f <= LIMITS.maxFrame) frame = f;
 				else errors.push(`${at}.frame must be an integer from 0 to ${LIMITS.maxFrame}`);
 			}
@@ -219,6 +256,10 @@ export const validateRequest = (raw: unknown, fileId: string): Validation => {
 				if (typeof v.slug !== 'string' || !SLUG_RE.test(v.slug)) errors.push(`${at}.slug must be lowercase letters, digits and "-" (1-96 characters)`);
 				if (!isVoiceLang(v.lang)) errors.push(`${at}.lang must be one of ${VOICE_LANGS.join(', ')}`);
 				if (v.voice !== ZOO_VOICE) errors.push(`${at}.voice must be "${ZOO_VOICE}" (Zoo's voice in every language, owner decision)`);
+				if ('fitTo' in v) {
+					if (!isVoiceLang(v.fitTo)) errors.push(`${at}.fitTo must be one of ${VOICE_LANGS.join(', ')}: the master language whose timeline this dub fits`);
+					else if (v.fitTo === v.lang) errors.push(`${at}.fitTo must differ from lang`);
+				}
 				if (errors.length !== before) return;
 				const key = `${v.channel}/${v.slug}/${v.lang}`;
 				if (seen.has(key)) {
@@ -226,24 +267,35 @@ export const validateRequest = (raw: unknown, fileId: string): Validation => {
 					return;
 				}
 				seen.add(key);
-				voice.push({channel: v.channel as string, slug: v.slug as string, lang: v.lang as VoiceLang, voice: ZOO_VOICE});
+				voice.push({channel: v.channel as string, slug: v.slug as string, lang: v.lang as VoiceLang, voice: ZOO_VOICE, ...('fitTo' in v ? {fitTo: v.fitTo as VoiceLang} : {})});
+			});
+			// a dub needs its master, voiced natively in the same request (the farm voices masters first)
+			voice.forEach((v, i) => {
+				if (!v.fitTo) return;
+				const master = voice.find((m) => m.channel === v.channel && m.slug === v.slug && m.lang === v.fitTo);
+				if (!master) errors.push(`voice[${i}].fitTo is "${v.fitTo}", but the request has no voice entry for ${v.fitTo} of the same channel and slug to fit to`);
+				else if (master.fitTo) errors.push(`voice[${i}] fits to a voice entry that is itself a dub; fit every dub to the native master`);
 			});
 		}
 	}
 
-	if (!encrypt && errors.length === 0) {
-		const nonTestJob = jobs.findIndex((j) => !TEST_ENTRIES.includes(j.entry));
+	const testOnly = (what: string): void => {
+		const nonTestJob = jobs.findIndex((j) => !isTestComposition(j.entry, j.composition));
 		if (nonTestJob >= 0) {
-			errors.push(`encrypt: false is only for test renders (entries ${TEST_ENTRIES.join(', ')}); jobs[${nonTestJob}] renders from another entry, so this request must be encrypted`);
+			errors.push(`${what} is only for the test compositions (${Object.entries(TEST_COMPOSITIONS).map(([e, ids]) => `${(ids ?? []).join(', ')} from ${e}`).join('; ')}); jobs[${nonTestJob}] renders another composition, so this request must be encrypted to the owner`);
 		}
 		const nonTestVoice = voice.findIndex((v) => v.channel !== FARM_CHANNEL);
-		if (nonTestVoice >= 0) {
-			errors.push(`encrypt: false is only for test renders; voice[${nonTestVoice}] voices real content, so this request must be encrypted`);
-		}
+		if (nonTestVoice >= 0) errors.push(`${what} is only for test renders; voice[${nonTestVoice}] voices real content, so this request must be encrypted to the owner`);
+	};
+	if (errors.length === 0) {
+		if (!encrypt) {
+			testOnly('encrypt: false');
+			if (retentionDays > LIMITS.retentionMaxUnencryptedDays) errors.push(`retentionDays may be at most ${LIMITS.retentionMaxUnencryptedDays} for an unencrypted request (anyone can download its artifacts)`);
+		} else if (recipient === SELFTEST_RECIPIENT) testOnly(`recipient "${SELFTEST_RECIPIENT}"`);
 	}
 
 	if (errors.length) return {ok: false, errors};
-	return {ok: true, request: {id: fileId, entry, jobs, voice, encrypt, retentionDays}};
+	return {ok: true, request: {id: fileId, entry, jobs, voice, encrypt, retentionDays, recipient}};
 };
 
 /** Parses and validates request file text. */

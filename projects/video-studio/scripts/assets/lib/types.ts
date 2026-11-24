@@ -26,6 +26,8 @@ export type Correction = {
 	timestamp?: string;
 	status: 'pending' | 'pinned';
 	sources?: Array<{id: string; url: string; title?: string; publisher?: string}>;
+	/** The corrected statement in other languages, for dubbed pages: {"es": "...", "pt-br": "..."} (optional). */
+	languages?: Record<string, string>;
 };
 
 /**

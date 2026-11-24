@@ -1,0 +1,18 @@
+{
+  "slug": "2026-11-24-fixtureswap",
+  "date": "2026-11-24",
+  "title": "FixtureSwap lost its keys",
+  "shortTitle": "FixtureSwap lost its keys",
+  "developing": false,
+  "summary": "According to Fixture DB, FixtureSwap lost $4,200,000 in a key compromise on November 23.",
+  "whatWeKnow": [],
+  "analysis": ["Second key-compromise drain on the fixture tracker this week."],
+  "oneFix": "Keep long-term funds on a hardware wallet and never type its recovery phrase into a website.",
+  "sources": [{"publisher": "Fixture DB", "title": "Fixture DB hacks: FixtureSwap (2026-11-23)", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23"}],
+  "corrections": ["Correction (2026-11-24): Example Wire now gives the figure as $4.8 million, not $4.5 million."],
+  "youtubeId": null,
+  "alsoOnRadar": [],
+  "showName": "The Zoo & Badger Show",
+  "displayName": "Zoora AI",
+  "email": {"subject": "Threat Brief", "preview": "fixture"}
+}

@@ -9,8 +9,9 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import type {Lang, Storyboard, StoryboardScene, TimelineScene} from '../types';
 import {C, OUTLINE, R} from '../theme';
-import {BADGE_AREA, FICTION_CARD, LAYOUTS, LOWER_THIRD, type Format, type TextSpec} from '../layout/specs';
+import {BADGE_AREA, FICTION_CARD, LAYOUTS, LOWER_THIRD, LOWER_THIRD_PAD, lowerThirdX, type Box, type Format, type TextSpec} from '../layout/specs';
 import {Lines, useFit} from '../text/FitText';
+import type {FitResult} from '../text/fit';
 import {fontFor} from '../i18n/fonts';
 import {uiLabel} from '../i18n/ui';
 import {entry} from './parts';
@@ -23,27 +24,47 @@ import {domainOf} from './Quote';
 /** In-and-out envelope for overlays: decelerate in over 10 f, ease out over 8 f. */
 const inOut = (f: number, from: number, to: number) => (f < from || f >= to ? 0 : Math.min(entry(f, from, 10), track(f, [[to - 8, 1], [to, 0]], EASE.inOut)));
 
-export const LowerThird: React.FC<{format: Format; lang: Lang; sc: StoryboardScene}> = ({format, lang, sc}) => {
-	const frame = useCurrentFrame();
+/**
+ * The lower-third plate of a scene (landscape only; null without onScreen.lowerThird): its box at the template's x
+ * (specs.ts LOWER_THIRD_X) and the fitted name and role. Talk and CTA use it too, to keep their text block above a plate
+ * that reaches into their text column.
+ */
+export const useLowerThird = (
+	format: Format,
+	lang: Lang,
+	sc: StoryboardScene,
+): {box: Box; name: string; role: string; nFit: FitResult; rFit: FitResult; spec: NonNullable<(typeof LOWER_THIRD)['landscape']>} | null => {
 	const spec = LOWER_THIRD[format];
 	const v = sc.onScreen?.lowerThird;
 	const [name, role] = Array.isArray(v) ? [v[0] ?? '', v[1] ?? ''] : [typeof v === 'string' ? v : '', ''];
 	const nFit = useFit(name, spec?.name ?? FICTION_CARD.landscape, lang);
 	const rFit = useFit(role, spec?.role ?? FICTION_CARD.landscape, lang);
 	if (!spec || !name) return null;
+	const w = Math.max(nFit.width, rFit.width) + LOWER_THIRD_PAD.left + LOWER_THIRD_PAD.right;
+	const h = role ? spec.box.h : spec.box.h - 44;
+	return {box: {x: lowerThirdX(sc.type), y: spec.box.y + (spec.box.h - h), w, h}, name, role, nFit, rFit, spec};
+};
+
+export const LowerThird: React.FC<{format: Format; lang: Lang; sc: StoryboardScene}> = ({format, lang, sc}) => {
+	const frame = useCurrentFrame();
+	const lt = useLowerThird(format, lang, sc);
+	if (!lt) return null;
 	const p = inOut(frame, 12, 12 + 135);
 	if (p <= 0) return null;
-	const w = Math.max(nFit.width, rFit.width) + 40 + 40 + 12;
-	const h = role ? spec.box.h : spec.box.h - 44;
+	const {box, spec, nFit, rFit, role} = lt;
 	return (
-		<div style={{position: 'absolute', left: spec.box.x, top: spec.box.y + (spec.box.h - h), width: w, height: h, clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`}}>
+		<div style={{position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h, clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`}}>
 			<div style={{position: 'absolute', inset: 0, backgroundColor: C.slate, borderRadius: R.m}} />
-			<div style={{position: 'absolute', left: 18, top: 18, width: 10, height: h - 36, backgroundColor: C.teal, borderRadius: R.s}} />
-			<Lines fit={nFit} spec={spec.name} lang={lang} color={C.onDark} box={{x: 40 + 12, y: 14, w: spec.name.box.w, h: spec.name.box.h}} />
-			{role ? <Lines fit={rFit} spec={spec.role} lang={lang} color={C.onDarkMuted} box={{x: 40 + 12, y: 70, w: spec.role.box.w, h: spec.role.box.h}} /> : null}
+			<div style={{position: 'absolute', left: 18, top: 18, width: 10, height: box.h - 36, backgroundColor: C.teal, borderRadius: R.s}} />
+			<Lines fit={nFit} spec={spec.name} lang={lang} color={C.onDark} box={{x: LOWER_THIRD_PAD.left, y: 14, w: spec.name.box.w, h: spec.name.box.h}} />
+			{role ? <Lines fit={rFit} spec={spec.role} lang={lang} color={C.onDarkMuted} box={{x: LOWER_THIRD_PAD.left, y: 70, w: spec.role.box.w, h: spec.role.box.h}} /> : null}
 		</div>
 	);
 };
+
+/** Frames (from the start of the episode or Short) during which the fiction card is on screen. */
+export const FICTION_SHOW = {from: 4, to: 4 + 150} as const;
+const FICTION_PAD_Y = 12;
 
 export const FictionCard: React.FC<{format: Format; sb: Storyboard}> = ({format, sb}) => {
 	const frame = useCurrentFrame();
@@ -51,13 +72,13 @@ export const FictionCard: React.FC<{format: Format; sb: Storyboard}> = ({format,
 	const text = sb.fiction ? (uiLabel(sb, 'fictionDisclaimer') ?? '') : '';
 	const fit = useFit(text, spec, sb.lang);
 	if (!text) return null;
-	const p = inOut(frame, 4, 4 + 150);
+	const p = inOut(frame, FICTION_SHOW.from, FICTION_SHOW.to);
 	if (p <= 0) return null;
 	const padX = 18;
-	const padY = 12;
+	const padY = FICTION_PAD_Y;
 	const w = Math.ceil(fit.width) + 2 * padX + 26;
 	const h = Math.ceil(fit.height) + 2 * padY;
-	const firstLine = fit.fontSize * spec.lineHeight;
+	const firstLine = fit.fontSize * fit.lineHeight;
 	return (
 		<div style={{position: 'absolute', left: spec.box.x, top: spec.box.y, width: w, height: h, clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`}}>
 			<div style={{position: 'absolute', inset: 0, boxSizing: 'border-box', backgroundColor: C.card, border: `${OUTLINE}px solid ${C.ink}`, borderRadius: R.m}} />
@@ -67,7 +88,7 @@ export const FictionCard: React.FC<{format: Format; sb: Storyboard}> = ({format,
 	);
 };
 
-const SENTENCE_END = /[.!?…。！？]$/;
+const SENTENCE_END = /[.!?…。！？।॥]$/;
 
 /**
  * When each cited source is spoken: from the first word of the sentence that carries the claim to the word that ends
@@ -90,7 +111,21 @@ const sourcesSpec = (type: StoryboardScene['type'], format: Format): TextSpec | 
 	return l?.sources ?? null;
 };
 
-export const SourcesCard: React.FC<{format: Format; sb: Storyboard; sc: StoryboardScene; tl: TimelineScene; fps: number; frames: number}> = ({format, sb, sc, tl, fps, frames}) => {
+/**
+ * `startFrame`: the scene's first frame in the composition (the fiction card runs on composition frames). When the
+ * sources line shares the fiction card's band (vertical: every template's line, in the top band; landscape: the talk
+ * scene's top line) and a cue starts while that card is up, the line sits below the card for that whole cue, so the
+ * fiction disclaimer is never covered and the line never jumps mid-display. Added 2026-11-24 (engine demo).
+ */
+export const SourcesCard: React.FC<{format: Format; sb: Storyboard; sc: StoryboardScene; tl: TimelineScene; fps: number; frames: number; startFrame?: number}> = ({
+	format,
+	sb,
+	sc,
+	tl,
+	fps,
+	frames,
+	startFrame = 0,
+}) => {
 	const frame = useCurrentFrame();
 	const spec = sourcesSpec(sc.type, format);
 	const on = !!spec && showsSources(sc);
@@ -101,6 +136,9 @@ export const SourcesCard: React.FC<{format: Format; sb: Storyboard; sc: Storyboa
 	const label = uiLabel(sb, 'sources') ?? '';
 	const text = src ? `${label ? `${label}: ` : ''}${src.title} · ${domainOf(src.url)}` : '';
 	const fit = useFit(text || ' ', spec ?? FICTION_CARD[format], sb.lang);
+	const fiction = FICTION_CARD[format];
+	const fictionText = sb.fiction ? (uiLabel(sb, 'fictionDisclaimer') ?? '') : '';
+	const fictionFit = useFit(fictionText || ' ', fiction, sb.lang);
 	if (!cur || !src || !spec) return null;
 	const to = Math.min(frames, Math.max(cur.from + 120, cur.claimEnd + 90));
 	const p = inOut(frame, cur.from - 6, to);
@@ -108,9 +146,18 @@ export const SourcesCard: React.FC<{format: Format; sb: Storyboard; sc: Storyboa
 	const padX = 16;
 	const w = Math.ceil(fit.width) + 2 * padX;
 	const h = spec.box.h + 12;
-	const x = spec.align === 'right' ? spec.box.x + spec.box.w - w : spec.box.x;
+	const x = spec.align === 'right' ? spec.box.x + spec.box.w - w : spec.align === 'center' ? Math.round(spec.box.x + (spec.box.w - w) / 2) : spec.box.x;
+	const fictionBottom = fiction.box.y + Math.ceil(fictionFit.height) + 2 * FICTION_PAD_Y;
+	// the fiction plate's real width (FictionCard: text + 2 x 18 padding + 26 for the teal mark): a line beside it, not
+	// under it (landscape talk/CTA lines sit in the text column, right of a short disclaimer), keeps its own place
+	const fictionRight = fiction.box.x + Math.ceil(fictionFit.width) + 2 * 18 + 26;
+	const sharesBand = !!fictionText && spec.box.y - 6 < fictionBottom && spec.box.y + spec.box.h + 6 > fiction.box.y && x < fictionRight + 10 && x + w > fiction.box.x - 10;
+	const cueStart = startFrame + cur.from - 6;
+	const top = sharesBand && cueStart < FICTION_SHOW.to ? fictionBottom + 10 : spec.box.y - 6;
+	const clip =
+		spec.align === 'right' ? `inset(0 0 0 ${(1 - p) * 100}%)` : spec.align === 'center' ? `inset(0 ${(1 - p) * 50}% 0 ${(1 - p) * 50}%)` : `inset(0 ${(1 - p) * 100}% 0 0)`;
 	return (
-		<div style={{position: 'absolute', left: x, top: spec.box.y - 6, width: w, height: h, clipPath: spec.align === 'right' ? `inset(0 0 0 ${(1 - p) * 100}%)` : `inset(0 ${(1 - p) * 100}% 0 0)`}}>
+		<div style={{position: 'absolute', left: x, top, width: w, height: h, clipPath: clip}}>
 			<div style={{position: 'absolute', inset: 0, backgroundColor: C.card, borderRadius: R.s, border: `2px solid ${C.ink}`, boxSizing: 'border-box'}} />
 			<Lines fit={fit} spec={{...spec, align: 'left'}} lang={sb.lang} color={C.ink} box={{x: padX, y: 6, w: spec.box.w, h: spec.box.h}} />
 		</div>
@@ -125,7 +172,7 @@ export const ReviewBadges: React.FC<{format: Format; mock: boolean; machine: boo
 	const f = fontFor('en', 'body', 800);
 	const size = format === 'vertical' ? 24 : 26;
 	return (
-		<div style={{position: 'absolute', right: FRAME_W[format] - area.right, top: area.y, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10}}>
+		<div style={{position: 'absolute', right: FRAME_W[format] - area.right, top: area.y, display: 'flex', flexDirection: format === 'vertical' ? 'column' : 'row', alignItems: 'flex-end', gap: 10}}>
 			{items.map((t) => (
 				<div key={t} style={{backgroundColor: C.ink, color: C.card, fontFamily: f.fontFamily, fontWeight: f.fontWeight, fontSize: size, lineHeight: `${size + 16}px`, padding: '0 16px', borderRadius: R.m, whiteSpace: 'pre'}}>
 					{t}

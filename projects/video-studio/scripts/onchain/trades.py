@@ -226,6 +226,46 @@ def system_transfers(tx):
     return out
 
 
+def account_token_deltas(tx, accounts):
+    """{account: (mint, ui_delta)} for the given token-account addresses, from pre/post
+    token balances matched by account index (not by owner). Useful when several pools
+    share one vault authority (e.g. Raydium CPMM), where owner-level sums can mix pools."""
+    keys = account_keys(tx)
+    want = set(accounts)
+    meta = tx["meta"]
+    pre, post, mints = {}, {}, {}
+    for tb in meta.get("preTokenBalances") or []:
+        k = keys[tb["accountIndex"]] if tb["accountIndex"] < len(keys) else None
+        if k in want:
+            pre[k] = int(tb["uiTokenAmount"]["amount"]) / 10 ** int(tb["uiTokenAmount"]["decimals"])
+            mints[k] = tb["mint"]
+    for tb in meta.get("postTokenBalances") or []:
+        k = keys[tb["accountIndex"]] if tb["accountIndex"] < len(keys) else None
+        if k in want:
+            post[k] = int(tb["uiTokenAmount"]["amount"]) / 10 ** int(tb["uiTokenAmount"]["decimals"])
+            mints[k] = tb["mint"]
+    return {k: (mints[k], post.get(k, 0.0) - pre.get(k, 0.0)) for k in mints}
+
+
+def vault_pair_trade(tx, base_vault, quote_vault, signature=None, tx_index=None):
+    """One trade read from a pool's two vault accounts: base = the token, quote = what it is
+    priced in. Price = |quote vault change| / |base vault change| (pool-side, so a token's
+    transfer fee and router fees are excluded). None if the base vault did not move."""
+    if not tx or not tx.get("meta") or tx["meta"].get("err") is not None:
+        return None
+    d = account_token_deltas(tx, [base_vault, quote_vault])
+    if base_vault not in d or d[base_vault][1] == 0:
+        return None
+    b = d[base_vault][1]
+    q = d.get(quote_vault, (None, 0.0))[1]
+    if q == 0 or (b > 0) == (q > 0):
+        return None   # not a swap (deposit, withdrawal, fee harvest...)
+    return {"signature": signature or tx["transaction"]["signatures"][0],
+            "blockTime": tx.get("blockTime"), "slot": tx.get("slot"), "tx_index": tx_index,
+            "side": "sell" if b > 0 else "buy", "token_amount": abs(b), "quote_mint": d.get(quote_vault, (None,))[0],
+            "quote_amount": abs(q), "price_quote_per_token": abs(q) / abs(b), "venue": venue_of(tx)}
+
+
 def pool_trades(tx, pool_owner, mint, signature=None, tx_index=None):
     """Trades against a venue account (bonding curve PDA or AMM pool authority).
 

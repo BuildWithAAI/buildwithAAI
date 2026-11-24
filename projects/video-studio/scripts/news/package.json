@@ -1,0 +1,6 @@
+{
+  "name": "zoora-news-gate",
+  "private": true,
+  "type": "module",
+  "description": "News claim gate for channel 2 (zoora-security). Run with node directly; see README.md."
+}

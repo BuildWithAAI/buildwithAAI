@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "bad-sources",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Broken fixture: bad sources",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "talk",
+      "narration": "The platform passed $1B in revenue. [src:unverified-one] It paid $33M to callers. [src:plain-http] Payouts are daily. [src:no-date] The terms changed in August. [src:future-date] Some callers left. [src:odd-status]",
+      "onScreen": {"title": "The numbers"},
+      "badger": {"present": true, "reaction": "judge"}
+    }
+  ],
+  "sources": [
+    {"id": "unverified-one", "title": "A secondary report", "url": "https://example.com/a", "quote": "passed $1B", "accessed": "2026-11-20", "status": "unverified"},
+    {"id": "plain-http", "title": "An old page", "url": "http://example.com/b", "quote": "paid $33M", "accessed": "2026-11-20", "status": "verified"},
+    {"id": "no-date", "title": "Terms page", "url": "https://example.com/c", "quote": "daily", "status": "verified"},
+    {"id": "future-date", "title": "Changelog", "url": "https://example.com/d", "quote": "August", "accessed": "2027-01-01", "status": "verified"},
+    {"id": "odd-status", "title": "Forum post", "url": "https://example.com/e", "quote": "left", "accessed": "2026-11-20", "status": "maybe"},
+    {"id": "never-cited", "title": "Unused", "url": "https://example.com/f", "accessed": "2026-11-20", "status": "verified"}
+  ]
+}

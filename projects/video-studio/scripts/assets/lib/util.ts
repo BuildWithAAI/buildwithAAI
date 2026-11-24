@@ -89,13 +89,46 @@ export const firstSentence = (text: string): string => {
 	return m ? m[1] : clean;
 };
 
-/** A YYYY-MM-DD date or a full ISO timestamp → a full ISO timestamp in UTC; null when invalid. */
-export const isoTimestamp = (value: string): string | null => {
-	const v = value.trim();
-	const date = /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T00:00:00Z`) : new Date(v);
-	if (Number.isNaN(date.getTime()) || !/^\d{4}-\d{2}-\d{2}/.test(v)) return null;
-	return date.toISOString().replace(/\.000Z$/, 'Z');
+/** The owner's time zone (CLAUDE.md, owner decisions 2026-11-24): a date with no time is a day in it. */
+export const OWNER_TIME_ZONE = 'America/Chicago';
+
+/** The UTC offset of a time zone at an instant, in ms (Intl; no time-zone data of our own). */
+const zoneOffsetMs = (utcMs: number, timeZone: string): number => {
+	const parts = new Intl.DateTimeFormat('en-US', {timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'}).formatToParts(new Date(utcMs));
+	const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+	return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')) - utcMs;
 };
+
+/** 00:00 of a calendar day in a time zone, as UTC ms (midnight is never inside a US daylight-saving gap). */
+const localMidnightUtc = (date: string, timeZone: string): number => {
+	const [y, m, d] = date.split('-').map(Number);
+	let guess = Date.UTC(y, m - 1, d);
+	for (let i = 0; i < 2; i++) guess = Date.UTC(y, m - 1, d) - zoneOffsetMs(guess, timeZone);
+	return guess;
+};
+
+/**
+ * A publish time. A full ISO timestamp is kept (in UTC). A YYYY-MM-DD date is that day in the owner's time zone: its
+ * timestamp is 00:00 there (not 00:00 UTC, which is the evening before in Chicago), and dateOnly tells the caller to
+ * write only the date where a date is enough (schema.org, the page). Null when invalid.
+ */
+export const publishTime = (value: string, timeZone = OWNER_TIME_ZONE): {timestamp: string; date: string; dateOnly: boolean} | null => {
+	const v = value.trim();
+	if (!/^\d{4}-\d{2}-\d{2}/.test(v)) return null;
+	if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+		const ms = localMidnightUtc(v, timeZone);
+		const check = new Date(Date.UTC(Number(v.slice(0, 4)), Number(v.slice(5, 7)) - 1, Number(v.slice(8, 10))));
+		if (Number.isNaN(ms) || check.toISOString().slice(0, 10) !== v) return null;
+		return {timestamp: new Date(ms).toISOString().replace(/\.000Z$/, 'Z'), date: v, dateOnly: true};
+	}
+	const date = new Date(v);
+	if (Number.isNaN(date.getTime())) return null;
+	const timestamp = date.toISOString().replace(/\.000Z$/, 'Z');
+	return {timestamp, date: timestamp.slice(0, 10), dateOnly: false};
+};
+
+/** A YYYY-MM-DD date (00:00 in the owner's time zone) or a full ISO timestamp → a full ISO timestamp in UTC; null when invalid. */
+export const isoTimestamp = (value: string): string | null => publishTime(value)?.timestamp ?? null;
 
 /** RFC 822 date for RSS 2.0 (pubDate, lastBuildDate). */
 export const rfc822 = (iso: string): string => new Date(iso).toUTCString().replace(/GMT$/, '+0000');

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!DOCTYPE rss [
+  <!ENTITY a "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
+  <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">
+]>
+<rss version="2.0"><channel><title>Bomb</title>
+<item><title>&b;</title><link>https://example.invalid/x</link></item>
+</channel></rss>

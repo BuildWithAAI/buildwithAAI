@@ -8,9 +8,11 @@
  * Layers, back to front: leg + shoe, collar stand, neck, shirt body, collar leaf, near arm + hand.
  */
 import React from 'react';
-import {LINE, ZOO_COLORS} from '../../../palette';
+import {ZOO_COLORS} from '../../../palette';
 import {line, smooth, type Pt} from '../../geometry';
-import {Clipped, Shape, Stroke} from '../../parts/Shape';
+import {ZOO_LINE} from '../../lines';
+import {Button} from '../threeQuarter/Body34';
+import {Clipped, Outline, Shape, Stroke} from '../../parts/Shape';
 
 // ---------------------------------------------------------------- shirt
 const SHIRT: Pt[] = [
@@ -22,7 +24,8 @@ const SHIRT: Pt[] = [
 const SHIRT_SHADOW = smooth([[-80, -700], [-60, -700], [-66, -640], [-68, -560], [-66, -430], [-80, -420]]);
 /** The near panel's placket line, ~7 u inside the front edge, and the buttons along it (front-view heights). */
 const PLACKET = line([[24, -700], [30, -680], [38.6, -655], [45, -630], [49.6, -600], [52.4, -560], [53.4, -520], [53.4, -470], [53, -432]]);
-const BUTTONS: Pt[] = [[29.4, -686], [43.6, -625], [50.6, -567], [52.8, -509], [53.2, -452]];
+/** Front-view button heights (repair round 1: top button -672, ZOO-V3 revised), placed along the placket. */
+const BUTTONS: Pt[] = [[35.4, -672], [43.8, -622], [50.8, -565], [52.8, -508], [53.2, -452]];
 
 /** The collar band seen from the side: top edge from the back of the neck down to the front, point at the front. */
 const COLLAR: Pt[] = [
@@ -38,10 +41,10 @@ export const CollarStandSide: React.FC = () => <Shape name="collarBack" d={COLLA
 export const TorsoSide: React.FC = () => (
 	<g data-part="torso" data-view="side">
 		<Shape name="overshirt" d={smooth(SHIRT)} fill={ZOO_COLORS.overshirt} shadow={{d: SHIRT_SHADOW, fill: ZOO_COLORS.overshirtShadow}} />
-		<Stroke d={PLACKET} width={LINE.detailWidth * 0.8} />
+		<Stroke d={PLACKET} width={ZOO_LINE.fine} />
 		<g data-part="buttons">
 			{BUTTONS.map(([x, y]) => (
-				<ellipse key={y} cx={x} cy={y} rx={2.8} ry={3.7} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1.1} />
+				<Button key={y} x={x} y={y} r={3.7} rx={2.8} />
 			))}
 		</g>
 		<path data-part="collarShadow" d={COLLAR_SHADOW} fill={ZOO_COLORS.overshirtShadow} />
@@ -64,36 +67,38 @@ export const WRIST_SIDE = {x: -6, y: -422} as const;
 export const SHOULDER_SIDE = {x: -18, y: -690} as const;
 
 /**
- * Anatomical RIGHT hand seen from its outer side (back of the hand), fingers hanging and curling
- * slightly forward: four finger lobes at the bottom, the thumb edge along the front. Drawn for the
- * side view (the sheet shows no separate thumb lobe here).
+ * Anatomical RIGHT hand seen from its outer side (back of the hand). Repair round 2, row-scanned on zoo_turn_side.png:
+ * the back of the hand widens from the cuff to ~47 u, then FOUR fingers part from the knuckle line (V tops at y -366;
+ * round 1 stopped them at -357, so the fingers were only ~24% of the hand and read as a glove). The fingers lean slightly
+ * back toward their rounded tips, as the sheet draws them, and the tips step: back finger -341, then -337, the third
+ * lowest at -333, the front finger -337. No separate thumb lobe in this view (ZOO-V5).
  */
 const HAND: Pt[] = [
-	[-20, -424], [-21, -400], [-21.6, -380], [-20.8, -362], [-19.2, -350], [-17, -342], [-13, -338.6], [-8.6, -340], [-6.4, -344.4, 'c'],
-	[-4.6, -338.4], [0, -336.6], [4, -338.4], [5.4, -342.2, 'c'], [7.4, -337.6], [11.6, -336.8], [14.6, -339.6], [15.4, -343.8, 'c'],
-	[18, -341.8], [21, -343.2], [22.6, -348], [22.8, -356], [24.6, -370], [26, -388], [26, -405], [24.8, -424],
+	[-21, -424], [17, -424], [18.4, -412], [21.6, -404], [24.8, -397], [27.6, -390], [28.2, -380], [28, -366], [27.6, -356],
+	[26.8, -348], [25.4, -341.6], [22.8, -337.2], [19.4, -335.6], [16.4, -337.6], [15.6, -342], [16.4, -349], [17.6, -357.4],
+	[18.6, -366, 'c'], [17.4, -357.4], [15.8, -348.6], [13.8, -340.6], [10.8, -334.4], [6.8, -331.4], [3, -332.4], [1, -336.4],
+	[1.6, -344], [3.6, -353.6], [5.6, -366, 'c'], [3.8, -356.4], [1.2, -347.8], [-1.6, -341], [-4.8, -336], [-8.2, -334.6],
+	[-11.2, -337], [-11.8, -342], [-9.8, -351.4], [-6.6, -366, 'c'], [-9, -356.2], [-11.4, -348.4], [-14, -342.6], [-16.8, -339.4],
+	[-20.2, -340.2], [-21.8, -344.4], [-21.4, -352], [-19.4, -360], [-18.6, -368], [-19.8, -378], [-21.6, -390], [-21.8, -402],
+	[-21.4, -414],
 ];
-const HAND_SHADOW = smooth([[8, -400], [26, -404], [26, -330], [-4, -330], [4, -352], [10, -370]]);
-const HAND_LINES: Pt[][] = [
-	[[-6.4, -344.4], [-6, -357]],
-	[[5.4, -342.2], [5.8, -355]],
-	[[15.4, -343.8], [15.8, -355]],
-	[[24, -396], [21.4, -380], [21.6, -366]], // thumb edge
-];
+/** One flat terminator along the front edge (no full-height band). */
+const HAND_SHADOW = smooth([[21, -412], [30, -400], [30.4, -362], [27.4, -344], [24, -338], [24.4, -360], [24.8, -392]]);
+const HAND_LINES: Pt[][] = [];
 
 export const ArmSide: React.FC = () => (
 	<g data-part="armR">
 		<g data-part="handR">
 			<Shape d={smooth(HAND)} fill={ZOO_COLORS.skin} shadow={{d: HAND_SHADOW, fill: ZOO_COLORS.skinShadow}} />
 			{HAND_LINES.map((l, i) => (
-				<Stroke key={i} d={line(l)} width={LINE.detailWidth} />
+				<Stroke key={i} d={line(l)} width={ZOO_LINE.detail} />
 			))}
 		</g>
 		<Shape name="sleeveR" d={smooth(SLEEVE)} fill={ZOO_COLORS.overshirt} shadow={{d: SLEEVE_SHADOW, fill: ZOO_COLORS.overshirtShadow}} />
-		<Stroke d={CUFF_SEAM} width={LINE.detailWidth} />
-		<Stroke d={ARMHOLE} width={LINE.detailWidth * 0.8} />
-		<Stroke d={ELBOW} width={LINE.detailWidth * 0.8} />
-		<circle data-part="cuffButton" cx={-26} cy={-433} r={3} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1} />
+		<Stroke d={CUFF_SEAM} width={ZOO_LINE.detail} />
+		<Stroke d={ARMHOLE} width={ZOO_LINE.fine} />
+		<Stroke d={ELBOW} width={ZOO_LINE.fine} />
+		<Button x={-26} y={-433} r={3} />
 	</g>
 );
 
@@ -111,18 +116,20 @@ const LEG_SHADOW = [
 ].join(' ');
 const LEG_CREASE = line([[-6, -404], [-12, -320], [-18, -240], [-24, -160], [-28, -100], [-30, -64]]);
 
+// Repair round 1 (zoo_turn_side.png): toe extended ~12 u to x ~78 and rounded, toe box ~30 u tall (v1 was 142 u long with a
+// low pointed toe; the sheet's shoe is ~156 u).
 const SHOE: Pt[] = [
-	[-71, -42], [-60, -40], [-45, -39], [-30, -41.4], [-16, -46.4], [-4, -53], [4, -55.4], [14, -48.4], [28, -39.6], [44, -32], [57, -26.6],
-	[64.6, -19], [66, -8.6], [61.6, -1.75], [0, -1.75], [-66, -1.75], [-71.4, -6], [-72.4, -22], [-71.6, -34],
+	[-71, -42], [-60, -40], [-45, -39], [-30, -41.4], [-16, -46.4], [-4, -53], [4, -55.4], [14, -48.4], [30, -41], [46, -35.6], [60, -31],
+	[70, -25.6], [76.4, -17], [78, -8.4], [73.6, -1.75], [0, -1.75], [-66, -1.75], [-71.4, -6], [-72.4, -22], [-71.6, -34],
 ];
-const SHOE_SOLE: Pt[] = [[-76, -11], [0, -10.4], [70, -11.4], [70, 2], [-76, 2]];
+const SHOE_SOLE: Pt[] = [[-76, -11], [0, -10.4], [82, -11.4], [82, 2], [-76, 2]];
 const SHOE_SHADOW: Pt[] = [[-76, -44], [-58, -44], [-56, -26], [-60, -11], [-76, -11]];
 const SHOE_LINES: Pt[][] = [
-	[[-71.4, -10.8], [0, -10.2], [65.6, -11]],
+	[[-71.4, -10.8], [0, -10.2], [77.4, -11]],
 	[[8, -49], [14, -45.4]],
 	[[14, -43.6], [21, -40]],
 	[[21, -39], [28, -35.4]],
-	[[36, -22.6], [50, -19.6], [61, -20.4]],
+	[[46, -24.2], [62, -20.4], [74, -21]],
 	[[-70, -34], [-58, -31], [-52, -22]],
 ];
 
@@ -136,13 +143,13 @@ export const LegSide: React.FC = () => {
 					<path d={smooth(SHOE_SHADOW)} fill={ZOO_COLORS.sneakerShadow} />
 					<path d={smooth(SHOE_SOLE)} fill={ZOO_COLORS.sneakerSole} />
 				</Clipped>
-				<path d={shoe} fill="none" stroke={LINE.color} strokeWidth={LINE.width} strokeLinejoin="round" />
+				<Outline d={shoe} />
 				{SHOE_LINES.map((l, i) => (
-					<Stroke key={i} d={line(l)} width={i === 0 ? LINE.detailWidth : LINE.detailWidth * 0.8} />
+					<Stroke key={i} d={line(l)} width={i === 0 ? ZOO_LINE.detail : ZOO_LINE.fine} />
 				))}
 			</g>
 			<Shape name="legR" d={smooth(LEG)} fill={ZOO_COLORS.trousers} shadow={{d: LEG_SHADOW, fill: ZOO_COLORS.trousersShadow}} />
-			<Stroke d={LEG_CREASE} width={LINE.detailWidth * 0.7} color={ZOO_COLORS.trousersShadow} />
+			<Stroke d={LEG_CREASE} width={ZOO_LINE.fine} color={ZOO_COLORS.trousersShadow} />
 		</g>
 	);
 };

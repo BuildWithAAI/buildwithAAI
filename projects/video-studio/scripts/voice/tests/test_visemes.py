@@ -1,3 +1,4 @@
+import math
 import unittest
 
 from voicelib import visemes as V
@@ -85,6 +86,23 @@ class Track(unittest.TestCase):
         tr = V.mouth_track(toks, 30, FPS)
         self.assertTrue(all(n >= 2 for _, n in runs(tr)), runs(tr))
 
+    def test_one_frame_onset_opens_early_not_late(self):
+        # a 40 ms first phone after a long pause: one frame of 'slightlyOpen', then 'oh'. It used to merge into the
+        # closed run, so the mouth opened a frame after the voice (es demo s03/s07, 2026-11-24)
+        tr = V.enforce_min_hold(["closed"] * 6 + ["slightlyOpen"] + ["oh"] * 4 + ["closed"] * 6)
+        self.assertEqual(tr[:11], ["closed"] * 5 + ["slightlyOpen"] * 2 + ["oh"] * 4)
+        self.assertTrue(all(n >= 2 for _, n in runs(tr)), runs(tr))
+        # a closed run that cannot spare a frame still merges as before
+        tr2 = V.enforce_min_hold(["closed"] * 2 + ["ah"] + ["oh"] * 4)
+        self.assertTrue(all(n >= 2 for _, n in runs(tr2)), runs(tr2))
+
+    def test_tie_between_pause_and_phone_shows_the_phone(self):
+        # a take's first phone starts at 150 ms = 4.5 frames: with the 1 f lead, frame 3's window is half pause,
+        # half phone, and the phone wins (it used to depend on float rounding)
+        toks = [(" ", 0.0, 0.15), ("a", 0.15, 0.40), (" ", 0.40, 1.2)]
+        self.assertEqual(V.raw_frames(V.intervals(toks), 36, FPS, 1)[3], "ah")
+        self.assertEqual(V.mouth_track(toks, 36, FPS).index("ah"), 3)
+
     def test_short_mbp_is_extended_not_dropped(self):
         # a 20 ms /p/ between vowels: less than a frame, still shown, for 2+ frames
         toks = [("a", 0.0, 0.2), ("p", 0.2, 0.22), ("a", 0.22, 0.42), (" ", 0.42, 1.0)]
@@ -149,6 +167,100 @@ class Track(unittest.TestCase):
         tr = V.mouth_track(toks, n, FPS)
         self.assertTrue(all(k >= 2 for _, k in runs(tr)))
         self.assertLess(V.changes_per_second(tr), 9.1)  # the raw per-frame rate measured in ART_GUIDE M2
+
+
+def envelope(spans, total_s, hop=V.HOP_S, loud=-8.0, residual=-44.0, silence=-180.0):
+    """5 ms energy envelope (dB): `loud` inside the (start, end) voiced spans, a `residual` up to 300 ms after each
+    span (Kokoro's tail after a phrase), digital silence elsewhere."""
+    n = int(round(total_s / hop))
+    env = [silence] * n
+    for a, b in spans:
+        for h in range(int(a / hop), min(n, int(b / hop))):
+            env[h] = loud
+        for h in range(int(b / hop), min(n, int((b + 0.3) / hop))):
+            if env[h] == silence:
+                env[h] = residual
+    return env
+
+
+def frame_db(env, fps=FPS, hop=V.HOP_S):
+    """Per-frame RMS in dB from a 5 ms dB envelope (power mean, weighted by each hop's overlap with the frame)."""
+    out = []
+    n_frames = int(len(env) * hop * fps + 1e-9)
+    for f in range(n_frames):
+        a, b = f / fps, (f + 1) / fps
+        p = w = 0.0
+        for h in range(int(a / hop), min(len(env), int(math.ceil(b / hop)))):
+            o = min(b, (h + 1) * hop) - max(a, h * hop)
+            if o > 0:
+                p += o * 10 ** (env[h] / 10)
+                w += o
+        p /= w or 1.0
+        out.append(10 * math.log10(p) if p > 0 else -180.0)
+    return out
+
+
+class SnapToAudio(unittest.TestCase):
+    """VCD fix 2026-11-24: Kokoro stretches the phrase-final phone (300-400 ms) while the voice stops ~250 ms
+    earlier; the residual after it sits 34-39 dB under the peak, so the old -40 dB gate never fired and the mouth
+    stayed open 5-10 frames after the voice."""
+
+    # "a mee" + comma pause + "ba" ; the final 'i' token runs to 1.20 s, the voice stops at 0.90 s
+    TOKENS = [(" ", 0.0, 0.30), ("m", 0.30, 0.40), ("i", 0.40, 1.20), (",", 1.20, 1.25), (" ", 1.25, 1.90), ("b", 1.90, 2.00), ("a", 2.00, 2.40), (".", 2.40, 2.50)]
+    VOICE = [(0.30, 0.90), (1.86, 2.30)]  # the second onset comes 40 ms before its 'b' token (the space carried it)
+    TOTAL = 3.2
+
+    def track(self, with_env=True, silence_db=V.SILENCE_DB):
+        env = envelope(self.VOICE, self.TOTAL)
+        fdb = frame_db(env)
+        rms = [10 ** (v / 20) for v in fdb]
+        n = len(fdb)
+        return V.mouth_track(self.TOKENS, n, FPS, rms=rms, env_db=env if with_env else None, silence_db=silence_db), fdb
+
+    def test_phrase_end_closes_within_two_frames(self):
+        tr, fdb = self.track()
+        sync = V.sync_landmarks(tr, fdb)
+        self.assertTrue(sync["offsets"], sync)
+        self.assertTrue(all(abs(x) <= 2 for x in sync["offsets"]), (sync, runs(tr)))
+        self.assertTrue(all(-2 <= x <= 0 for x in sync["onsets"]) and all(-4 <= x <= 0 for x in sync["mbpOnsets"]), (sync, runs(tr)))
+        self.assertTrue(all(n >= 2 for _, n in runs(tr)))
+
+    def test_the_old_track_stayed_open(self):
+        # timings alone and the old -40 dB gate: the residual (-36 dB under the peak) keeps the vowel up
+        tr, fdb = self.track(with_env=False, silence_db=-40.0)
+        late = V.sync_landmarks(tr, fdb)["offsets"]
+        self.assertTrue(any(x > 2 for x in late), (late, runs(tr)))
+
+    def test_the_gate_alone_closes_at_minus_32(self):
+        tr, fdb = self.track(with_env=False)
+        self.assertTrue(all(abs(x) <= 3 for x in V.sync_landmarks(tr, fdb)["offsets"]), runs(tr))
+
+    def test_refine_moves_ends_and_onsets(self):
+        env = envelope(self.VOICE, self.TOTAL)
+        ivs = V.refine(V.intervals(self.TOKENS), V.phrase_spans(self.TOKENS), env)
+        phones = [(round(a, 3), round(b, 3), s) for a, b, s in ivs if s != V.PAUSE]
+        self.assertEqual(phones[1][2], "ee")
+        self.assertAlmostEqual(phones[1][1], 0.90 + V.END_PAD_S, places=3)  # the stretched 'i' ends with the voice
+        self.assertEqual(phones[2][2], "mbp")
+        self.assertAlmostEqual(phones[2][0], 1.86, places=3)  # 'b' starts where its sound does
+        self.assertEqual(V.phrase_spans(self.TOKENS), [(0.30, 1.20), (1.90, 2.40)])
+
+    def test_voiced_space_inside_a_phrase_folds_into_the_next_phone(self):
+        toks = [("a", 0.0, 0.2), (" ", 0.2, 0.28), ("o", 0.28, 0.5), (".", 0.5, 0.6)]
+        env = envelope([(0.0, 0.5)], 1.2)
+        ivs = V.refine(V.intervals(toks), V.phrase_spans(toks), env)
+        self.assertEqual([(round(a, 3), round(b, 3), s) for a, b, s in ivs if s != V.PAUSE], [(0.0, 0.2, "ah"), (0.2, 0.5, "oh")])
+
+
+class SyncLandmarks(unittest.TestCase):
+    def test_measures_onset_and_offset(self):
+        fdb = [-90.0] * 10 + [-5.0] * 20 + [-90.0] * 20
+        track = ["closed"] * 9 + ["ah"] * 20 + ["closed"] * 21
+        self.assertEqual(V.sync_landmarks(track, fdb), {"onsets": [-1], "mbpOnsets": [], "offsets": [-1]})
+        lips = ["closed"] * 7 + ["mbp"] * 3 + ["ah"] * 19 + ["closed"] * 21
+        self.assertEqual(V.sync_landmarks(lips, fdb)["mbpOnsets"], [-3])  # LP3: mbp 1-4 frames before the release
+        late = ["closed"] * 9 + ["ah"] * 27 + ["closed"] * 14
+        self.assertEqual(V.sync_landmarks(late, fdb)["offsets"], [6])
 
 
 if __name__ == "__main__":

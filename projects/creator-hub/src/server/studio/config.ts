@@ -2,7 +2,12 @@
  * Shape and validation of config/studio.json (HubConfig.studio). Owned by routes/studio.ts.
  * Keys that start with "_" are ignored at every level, so the file can carry notes. Any other
  * unknown key is an error, which catches typos such as "priceUSD".
+ *
+ * Honesty checks: package, FAQ and portfolio text may not promise income, returns, prices or results
+ * (the shared rules in src/claims.ts; a denied claim or a question, such as "Do you guarantee views? No.",
+ * is fine), and a Stripe payment link needs a decided price.
  */
+import {findClaims, RESULT_PROMISES} from '../../claims.ts';
 
 export type StudioPackage = {
 	id: string; // slug [a-z0-9-], 2-40 chars, no leading/trailing hyphen; "custom" is reserved
@@ -167,9 +172,40 @@ export const loadStudioConfig = (value: unknown): StudioConfig => {
 		const links = object(o.stripePaymentLinks, 'stripePaymentLinks', packages.map((p) => p.id));
 		const stripePaymentLinks: Record<string, string> = {};
 		for (const [id, url] of Object.entries(links)) {
-			if (!id.startsWith('_')) stripePaymentLinks[id] = httpsUrl(url, `stripePaymentLinks.${id}`);
+			if (id.startsWith('_')) continue;
+			stripePaymentLinks[id] = httpsUrl(url, `stripePaymentLinks.${id}`);
+			const index = packages.findIndex((p) => p.id === id);
+			if (packages[index]?.priceUsd === null) {
+				fail(`stripePaymentLinks.${id}`, `needs a decided price: set packages[${index}].priceUsd first, so the pay button never sits next to "Contact for a quote"`);
+			}
 		}
 		config.stripePaymentLinks = stripePaymentLinks;
 	}
+	checkClaims(config);
 	return config;
+};
+
+/** Package, FAQ and portfolio text must not promise income, returns, prices or audience numbers. */
+const checkClaims = (config: StudioConfig): void => {
+	const texts: [string, string][] = [
+		...config.packages.flatMap((p, i): [string, string][] => [
+			[`packages[${i}].name`, p.name],
+			...(p.summary === undefined ? [] : [[`packages[${i}].summary`, p.summary] as [string, string]]),
+			...p.deliverables.map((d, j): [string, string] => [`packages[${i}].deliverables[${j}]`, d]),
+		]),
+		...config.faq.flatMap((f, i): [string, string][] => [
+			[`faq[${i}].q`, f.q],
+			[`faq[${i}].a`, f.a],
+		]),
+		...config.portfolio.flatMap((p, i): [string, string][] => [
+			[`portfolio[${i}].title`, p.title],
+			...(p.description === undefined ? [] : [[`portfolio[${i}].description`, p.description] as [string, string]]),
+			...(p.client === undefined ? [] : [[`portfolio[${i}].client`, p.client] as [string, string]]),
+		]),
+		...config.budgetRanges.map((b, i): [string, string] => [`budgetRanges[${i}]`, b]),
+	];
+	for (const [path, text] of texts) {
+		const hit = findClaims(text, {allowDenied: true})[0] ?? findClaims(text, {rules: RESULT_PROMISES, allowDenied: true})[0];
+		if (hit) fail(path, `makes a claim the studio never makes (${hit.label}: "${hit.match}"). Describe the work, not results, returns or prices`);
+	}
 };

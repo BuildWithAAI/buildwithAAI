@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "dub-demo",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "POV: You copy a top caller",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "You copy a caller on Pump.fun. In one hour, {$40,000|forty thousand dollars} of other people's money follows you in.",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "You copy a top caller",
+        "subtitle": "A fictional story about a real pattern."
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "claimWaivers": [
+        {
+          "match": "You copy a caller on Pump.fun",
+          "rule": "factual",
+          "reason": "story action in a composite story, not a claim about the platform"
+        },
+        {
+          "match": "of other people's money follows you in",
+          "rule": "factual",
+          "reason": "story action: a fictional amount in a composite story"
+        }
+      ]
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Here is the catch. In 2024, 68.67% of new tokens stopped trading on launch day. [src:launch-data] Bubblemaps estimated that 1,234 wallets bought before the calls. [src:bm-thread]",
+      "onScreen": {
+        "title": "The catch",
+        "bullets": [
+          "Most tokens die on day one",
+          "Insiders buy before the call"
+        ],
+        "cues": [
+          "tokens",
+          "wallets"
+        ],
+        "lowerThird": [
+          "Zoo",
+          "Host · Zoora AI"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "On the chart, the pump looks organic. Then the floor disappears.",
+      "onScreen": {
+        "pair": "$DEMO / SOL",
+        "cues": [
+          "pump",
+          "floor"
+        ]
+      },
+      "chart": {
+        "seed": 51,
+        "illustrative": true
+      },
+      "badger": {
+        "present": true,
+        "reaction": "worried"
+      }
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Before you copy anyone, check who bought first, check who sold first, and never chase the loudest candle.",
+      "onScreen": {
+        "title": "Before you copy anyone",
+        "steps": [
+          "Check who bought first",
+          "Check who sold first",
+          "Skip the loudest candle"
+        ],
+        "cues": [
+          "bought",
+          "sold",
+          "never"
+        ]
+      }
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "As one caller put it: Nobody checks the wallet.",
+      "onScreen": {
+        "quote": "Nobody checks the wallet.",
+        "attribution": "a top caller (fictional composite)",
+        "source": "Fictional dialogue"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      }
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "None of this is financial advice. Badger checked the chart so you don't have to. Subscribe.",
+      "onScreen": {
+        "title": "One bad trade avoided",
+        "cues": [
+          "subscribe"
+        ],
+        "badgerCue": "Badger"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "The free checklist is at the link. Next time: the bot that trades for you.",
+      "onScreen": {
+        "title": "Free checklist: go.zoora.ai/check"
+      },
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "launch-data",
+      "title": "Example token survival study (test fixture)",
+      "url": "https://example.com/survival",
+      "quote": "68.67% of tokens recorded their last trade on launch day.",
+      "accessed": "2026-11-20",
+      "status": "verified"
+    },
+    {
+      "id": "bm-thread",
+      "title": "Example investigator thread (test fixture)",
+      "url": "https://example.com/thread",
+      "quote": "We estimate 1,234 wallets bought before the calls.",
+      "accessed": "2026-11-21",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s06"
+      ],
+      "title": "The caller's chart"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "WHO SOLD FIRST?",
+      "expression": "neutral",
+      "badger": true
+    },
+    {
+      "id": "b",
+      "text": "THE FLOOR VANISHED",
+      "expression": "worried",
+      "badger": true
+    },
+    {
+      "id": "c",
+      "text": "CHECK THE WALLET",
+      "expression": "shocked",
+      "badger": false
+    }
+  ]
+}

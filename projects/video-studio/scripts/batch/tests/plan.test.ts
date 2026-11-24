@@ -88,6 +88,8 @@ test('the WRITER packet carries the slots, the exact Short ids, the facts, the r
 	assert.match(w, /\| 1 \| When Pump\.fun launched and what it lets anyone do \| fact-bank \| `pumpfun-launch-month` \|/);
 	assert.match(w, /no real caller names, handles or likenesses/);
 	assert.match(w, /Zoo \(title case, never "ZOO"\)/);
+	assert.doesNotMatch(w, /\$ZOO\b/, 'ZOO is a real token and the banned spelling of the host: never the example ticker');
+	assert.match(w, /an invented ticker that a web search shows is no live token, e\.g\. \$QZLX \/ SOL/);
 	assert.match(w, /Never upload, publish or post anything\. `approve` runs only on the owner's own reply/);
 	assert.match(w, /--fit-to en --voice im_nicola/);
 	const skeleton = JSON.parse(/### Storyboard skeleton[\s\S]*?```json\n([\s\S]*?)\n```/.exec(w)?.[1] ?? '{}') as {fiction: boolean; shorts: Array<{id: string}>; channel: string};
@@ -123,17 +125,24 @@ test('the farm drafts pass the render farm\'s own validator, English renders on 
 	const ai2 = ws.json<{id: string; encrypt: boolean; voice: Array<{lang: string; voice: string}>; jobs: Array<{composition: string; output: string; props: Record<string, string>}>}>('out/batch/2026-W49/ai2/render-request.json');
 	assert.equal(ai2.id, 'batch-2026-w49-ai2');
 	assert.equal(ai2.encrypt, true);
-	assert.deepEqual(ai2.voice.map((v) => `${v.lang}:${v.voice}`), ['en:im_nicola']);
-	assert.deepEqual(ai2.jobs.map((j) => `${j.composition} ${j.output} ${j.props.shortId ?? ''}`.trim()), [
+	assert.deepEqual(ai2.voice.map((v) => `${v.lang}:${v.voice}`), ['en:im_nicola', 'es:im_nicola', 'pt-br:im_nicola']);
+	assert.deepEqual((ai2.voice as Array<{lang: string; fitTo?: string}>).map((v) => v.fitTo ?? null), [null, 'en', 'en'], 'dubs are fitted to the English timeline, for multi-language audio tracks');
+	const jobs = ai2.jobs as Array<{composition: string; kind: string; output: string; props: Record<string, string>}>;
+	assert.deepEqual(jobs.filter((j) => j.kind === 'video').map((j) => `${j.composition} ${j.output} ${j.props.shortId ?? ''}`.trim()), [
 		'Episode out/publish/zoora-ai/ai-agent-hedge-fund/media/long.mp4',
 		'EpisodeShort out/publish/zoora-ai/ai-agent-hedge-fund/media/short-1.mp4 short-1',
 		'EpisodeShort out/publish/zoora-ai/ai-agent-hedge-fund/media/short-2.mp4 short-2',
 		'EpisodeShort out/publish/zoora-ai/ai-agent-hedge-fund/media/short-3.mp4 short-3',
 		'EpisodeShort out/publish/zoora-ai/ai-agent-hedge-fund/media/short-4.mp4 short-4',
 	]);
-	const sec1 = ws.json<{entry: string; jobs: Array<{composition: string}>}>('out/batch/2026-W49/sec1/render-request.json');
+	assert.deepEqual(jobs.filter((j) => j.kind === 'audio').map((j) => `${j.composition} ${j.props.lang} ${j.output}`).slice(0, 2), [
+		'Episode es out/publish/zoora-ai/ai-agent-hedge-fund/media/dubs/es/long.wav',
+		'EpisodeShort es out/publish/zoora-ai/ai-agent-hedge-fund/media/dubs/es/short-1.wav',
+	]);
+	assert.equal(jobs.filter((j) => j.kind === 'audio').length, 10, 'one dub track per video and dub language');
+	const sec1 = ws.json<{entry: string; jobs: Array<{composition: string; kind: string; props: {lang: string}}>}>('out/batch/2026-W49/sec1/render-request.json');
 	assert.equal(sec1.entry, 'src/show/index.ts');
-	assert.deepEqual(sec1.jobs.map((j) => j.composition), ['ShowEpisode']);
+	assert.deepEqual(sec1.jobs.map((j) => `${j.composition} ${j.kind} ${j.props.lang}`), ['ShowEpisode video en', 'ShowEpisode audio es', 'ShowEpisode audio pt-br']);
 });
 
 test('the packet lists fact-bank facts by id and by topic tag, and flags ids the bank lacks', (t) => {

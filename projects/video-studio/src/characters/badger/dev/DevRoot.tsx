@@ -4,6 +4,7 @@ import {BRAND} from '../../palette';
 import type {BadgerHead, Expression} from '../../types';
 import {Badger, LEFT_HEAD_MOUNT} from '../Badger';
 import {ViewCompositions} from './DevViews';
+import {RigCompositions} from './DevRig';
 import {Head, headGeom} from '../parts/heads/Head';
 import {NeckFront} from '../parts/Neck';
 import {LEFT_RIG} from '../parts/rigLeft';
@@ -201,6 +202,30 @@ const HeadAt: React.FC<{view: BadgerHead; ox: number; oy: number; scale: number;
 	</AbsoluteFill>
 );
 
+/** mouthOpen (sound-clip control) on four head views at 0, 0.5 and 1. */
+const MOUTH_HEADS: BadgerHead[] = ['front', 'threeQuarterRightScreen', 'profileRightScreen', 'upLeftScreen'];
+const MouthOpenGrid: React.FC = () => (
+	<AbsoluteFill style={{background: BG}}>
+		<svg width="100%" height="100%" viewBox="0 0 1500 1080">
+			{MOUTH_HEADS.map((v, row) =>
+				[0, 0.5, 1].map((amt, col) => {
+					const c = headCentre(v);
+					return (
+						<g key={`${v}${amt}`} transform={`translate(${250 + col * 480} ${140 + row * 265}) scale(1.6) translate(${-c.x} ${-c.y})`}>
+							<Head view={v} state={{expression: 'neutral', blink: 0, judge: 0, earsBack: 0, lookX: 0, lookY: 0, mouthOpen: amt}} />
+						</g>
+					);
+				}),
+			)}
+			{[0, 0.5, 1].map((amt, col) => (
+				<text key={amt} x={250 + col * 480} y={1065} textAnchor="middle" fontFamily="sans-serif" fontSize={26} fill={BRAND.nearBlack}>
+					{`mouthOpen ${amt}`}
+				</text>
+			))}
+		</svg>
+	</AbsoluteFill>
+);
+
 const standDefaults: StandProps = {head: 'front', scale: 1.6, ox: 600, oy: 800, expression: 'neutral', judge: 0, tailWag: 0, breathe: false};
 
 export const DevRoot: React.FC = () => (
@@ -235,6 +260,7 @@ export const DevRoot: React.FC = () => (
 		/>
 		<Composition id="BadgerHeads" component={Heads} durationInFrames={1} fps={30} width={2450} height={440} defaultProps={{expression: 'neutral' as Expression, judge: 0}} />
 		<Composition id="BadgerExpressions" component={Expressions} durationInFrames={1} fps={30} width={2200} height={600} />
+		<Composition id="BadgerMouthOpen" component={MouthOpenGrid} durationInFrames={1} fps={30} width={1500} height={1080} />
 		<Composition
 			id="BadgerBust"
 			component={SingleBust}
@@ -254,6 +280,7 @@ export const DevRoot: React.FC = () => (
 			defaultProps={{view: 'profileRightScreen' as BadgerHead, ox: 300, oy: 300, scale: 2, expression: 'neutral' as Expression}}
 		/>
 		<ViewCompositions />
+		<RigCompositions />
 		<Composition id="BadgerAnim" component={Anim} durationInFrames={135} fps={30} width={1100} height={860} />
 		<Composition
 			id="BadgerWag"

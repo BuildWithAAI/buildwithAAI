@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>Coin Edition</title>
+  <link>https://coinedition.com</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title>DOJ Targets $1B in USDC Tied to North Korea’s Binance Hack</title>
+    <link>https://coinedition.com/crypto-live-news/doj-moves-to-seize-1b-in-usdc-linked-to-binance-hack/</link>
+    <guid isPermaLink="false">https://coinedition.com/?p=926575</guid>
+    <pubDate>Mon, 23 Nov 2026 20:36:44 +0000</pubDate>
+    <category>Crypto Live News</category>
+    <category>Market</category>
+    <category>Market News</category>
+    <category>News</category>
+    <description>&lt;p&gt;The U.S. Justice Department wants to seize nearly $1 billion in USDC connected to the October Binance hack. Prosecutors filed a civil forfeiture complaint in Washington on November 23, identifying funds held across 36 addresses on 18 blockchains. Investigators have linked the…&lt;/p&gt;</description>
+  </item>
+  <item>
+    <title>Chainflip Loses $12.6M as Validator Flaw Exposes Bitcoin, Ethereum Vaults</title>
+    <link>https://coinedition.com/crypto-live-news/chainflip-loses-12-6m-as-validator-flaw-exposes-bitcoin/</link>
+    <guid isPermaLink="false">https://coinedition.com/?p=926572</guid>
+    <pubDate>Mon, 23 Nov 2026 19:54:04 +0000</pubDate>
+    <category>Crypto Live News</category>
+    <category>Market</category>
+    <category>Market News</category>
+    <category>News</category>
+    <description>&lt;p&gt;Chainflip has lost approximately $12.6 million after an attacker exploited its validator network and drained funds from its Bitcoin and Ethereum vaults on November 21. The cross-chain protocol confirmed the theft in an incident report published November 23. Chainflip Labs said…&lt;/p&gt;</description>
+  </item>
+</channel>
+</rss>

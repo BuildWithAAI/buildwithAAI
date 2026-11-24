@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>Cointelegraph.com News</title>
+  <link>https://cointelegraph.com</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title>Chainflip confirms $12M hack, offers attacker 10% bounty</title>
+    <link>https://cointelegraph.com/news/chainflip-12m-crypto-hack-10-percent-bounty?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound</link>
+    <guid isPermaLink="true">https://cointelegraph.com/news/chainflip-12m-crypto-hack-10-percent-bounty</guid>
+    <pubDate>Sun, 22 Nov 2026 05:28:43 +0000</pubDate>
+    <category>Latest News</category>
+    <description>&lt;p&gt;Chainflip offered the attacker a 10% bounty to return 90% of the stolen funds by Nov. 23, promising to treat the return as a white-hat recovery and withdraw law enforcement complaints.&lt;/p&gt;</description>
+  </item>
+  <item>
+    <title>South Korean exchanges halt CYBER transfers amid suspected bridge exploit</title>
+    <link>https://cointelegraph.com/news/upbit-bithumb-suspend-cyber-transfers-bridge-exploit?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound</link>
+    <guid isPermaLink="true">https://cointelegraph.com/news/upbit-bithumb-suspend-cyber-transfers-bridge-exploit</guid>
+    <pubDate>Sun, 22 Nov 2026 07:24:05 +0000</pubDate>
+    <category>Latest News</category>
+    <description>&lt;p&gt;Cyber reported unexpected minting of CYBER tokens on Solana, followed by tokens moving out of its Ethereum bridge lockbox, prompting an investigation.&lt;/p&gt;</description>
+  </item>
+  <item>
+    <title>US seeks to recover $1.1B in crypto stolen in North Korea-linked Binance hack</title>
+    <link>https://cointelegraph.com/news/us-seeks-11b-crypto-stolen-north-korea-binance-hack?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound</link>
+    <guid isPermaLink="true">https://cointelegraph.com/news/us-seeks-11b-crypto-stolen-north-korea-binance-hack</guid>
+    <pubDate>Mon, 23 Nov 2026 21:04:03 +0000</pubDate>
+    <category>Latest News</category>
+    <description>&lt;p&gt;US prosecutors are seeking control of stolen USDC, while Elliptic says hackers have moved $247 million through Bitcoin mixers.&lt;/p&gt;</description>
+  </item>
+  <item>
+    <title>‘MoldyRoost’ ads can steal crypto wallet recovery phrases from iPhones</title>
+    <link>https://cointelegraph.com/news/moldyroost-malware-drain-iphone-wallets-one-tap?utm_source=rss_feed&amp;utm_medium=rss&amp;utm_campaign=rss_partner_inbound</link>
+    <guid isPermaLink="true">https://cointelegraph.com/news/moldyroost-malware-drain-iphone-wallets-one-tap</guid>
+    <pubDate>Mon, 23 Nov 2026 09:05:44 +0000</pubDate>
+    <category>Latest News</category>
+    <description>&lt;p&gt;The campaign used at least 480 ad domains to target users in more than 47 countries and could infect a vulnerable iPhone with a single tap.&lt;/p&gt;</description>
+  </item>
+</channel>
+</rss>

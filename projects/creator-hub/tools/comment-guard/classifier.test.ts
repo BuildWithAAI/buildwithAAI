@@ -39,7 +39,7 @@ describe('classifier on the labelled fixtures', () => {
 				(label) => `${pad(label, 10)}${ACTIONS.map((a) => pad(matrix[label][a])).join('')}${pad(label === 'scam' ? scams : legits)}`,
 			),
 			`recall (hold or review) ${recall.toFixed(3)} | hold-only recall ${holdRecall.toFixed(3)} | false-positive rate (legit held or flagged) ${falsePositiveRate.toFixed(3)}`,
-			...[0, 1, 2, 3].map((round) => {
+			...[...new Set(fixtures.map((f) => f.round))].sort((a, b) => a - b).map((round) => {
 				const rows = fixtures.map((f, i) => ({f, v: verdicts[i]})).filter(({f}) => f.round === round);
 				const count = (label: string, ok: (a: Action) => boolean) => rows.filter(({f, v}) => f.label === label && ok(v.action)).length;
 				return `  round ${round}: scams flagged ${count('scam', (a) => a !== 'allow')}/${count('scam', () => true)} (held ${count('scam', (a) => a === 'hold')}), legit flagged ${count('legit', (a) => a !== 'allow')}/${count('legit', () => true)}`;
@@ -174,6 +174,51 @@ describe('rules', () => {
 		const v = scam('Is @ZooraExampleBot on Telegram the official bot?');
 		assert.ok(!v.reasons.some((r) => r.rule === 'messaging-handle'));
 		assert.equal(v.action, 'allow');
+		// a longer handle that starts with ours belongs to someone else
+		const lookalike = scam('Message @ZooraExampleBot_help on Telegram for support');
+		assert.ok(lookalike.reasons.some((r) => r.rule === 'messaging-handle' && /zooraexamplebot_help/.test(r.evidence)));
+	});
+
+	it('tells a test-transaction tip from a doubling scheme', () => {
+		for (const text of [
+			'Pro tip: send some ETH to your own new wallet first and wait until you get 2 confirmations before moving the rest.',
+			'Always send 0.001 ETH first and wait until you receive 12 confirmations, then send the rest.',
+			'Exchanges make you send your deposit and get 3 confirmations before it shows up.',
+		]) {
+			assert.ok(!scam(text).reasons.some((r) => r.rule === 'doubling-scheme'), text);
+		}
+		for (const text of ['Send 100 USDT and get 200 USDT back, only today', 'Send 2 SOL to the address in my bio and receive 4 SOL back', 'send 1 ETH, receive 2x']) {
+			assert.equal(scam(text).action, 'hold', text);
+		}
+	});
+
+	it('counts a number once when it is both a phone number and a messaging contact', () => {
+		const v = scam('WhatsApp +1 (213) 555-0186');
+		assert.equal(v.reasons.find((r) => r.rule === 'phone-number')?.weight, 4);
+		assert.equal(v.reasons.find((r) => r.rule === 'messaging-handle')?.weight, 0);
+		assert.equal(v.score, 5);
+		// a different handle next to a number still counts on its own
+		const two = scam('WhatsApp +1 (213) 555-0186 or Telegram @deals_example');
+		assert.equal(two.reasons.find((r) => r.rule === 'messaging-handle')?.weight, 4);
+	});
+
+	it('reads "saying ... and to call back" as reported speech, not a request', () => {
+		const v = scam("My grandma got a call from 'Microsoft' saying her laptop had a virus and to call back at +1 (888) 555-0142. She hung up.");
+		assert.ok(!v.reasons.some((r) => r.rule === 'contact-me'));
+		assert.equal(v.action, 'allow');
+		assert.ok(scam('Call me at +1 (213) 555-0147 for the strategy').reasons.some((r) => r.rule === 'contact-me'));
+	});
+
+	it('dampens warnings and "blocked / reported" in other languages', () => {
+		for (const text of [
+			'Mi papá recibió un WhatsApp del número +44 7700 900131 diciendo que era del banco. Lo bloqueó.',
+			'Recebi no WhatsApp do número +44 7700 900128 uma mensagem dizendo que era do suporte. Bloqueei.',
+			'Ada yang chat saya di Telegram ngaku admin. Langsung saya blokir.',
+		]) {
+			const v = scam(text);
+			assert.ok(v.reasons.some((r) => r.rule === 'warning-context'), text);
+			assert.equal(v.action, 'allow', text);
+		}
 	});
 });
 
@@ -185,6 +230,19 @@ describe('robustness', () => {
 			classifyAll([{id: 'h', text, authorName: text.slice(0, 200), authorChannelId: 'UChostile'}], identity);
 			assert.ok(performance.now() - started < 500, `slow on ${JSON.stringify(text.slice(0, 20))}`);
 		}
+	});
+
+	it('stays fast when combining marks turn into long runs of spaces', () => {
+		// "¨" is a space plus a mark after NFKD; stripping the marks used to leave thousands of spaces in a row,
+		// and a contact rule with three optional spaces in a row then took seconds per comment
+		for (const text of ['my whatsapp' + '¨'.repeat(3985) + 'x', 'my whatsapp' + ' ́'.repeat(1990) + 'x', 'her telegram' + '¨\n'.repeat(1990) + 'x']) {
+			const started = performance.now();
+			const v = classify({id: 'r', text, authorName: '@viewer', authorChannelId: 'UCviewer'}, identity);
+			assert.ok(performance.now() - started < 250, `slow on ${JSON.stringify(text.slice(0, 14))}`);
+			assert.equal(v.action, 'allow');
+		}
+		const disguised = classify({id: 'd', text: 'my whatsapp¨ ¨ ¨: +1 213 555 0147', authorName: '@viewer', authorChannelId: 'UCviewer'}, identity);
+		assert.ok(disguised.reasons.some((r) => r.rule === 'contact-me'));
 	});
 
 	it('scores 2,000 comments in well under ten seconds', () => {

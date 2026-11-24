@@ -1,9 +1,9 @@
 import React from 'react';
-import {BADGER_COLORS, LINE} from '../../palette';
+import {BADGER_COLORS, BRAND, LINE} from '../../palette';
 import {FRONT_NECK_SPOTS, spotsFor} from '../spots';
 import {FRONT_NECK_GEOM} from './heads/headGeom';
 import {LEFT_RIG} from './rigLeft';
-import {PartShape, STROKE, useUid} from './shared';
+import {PartShape, useStrokes, useUid} from './shared';
 import {SpotShapes} from './SpotShapes';
 
 const N = LEFT_RIG.neck;
@@ -21,16 +21,17 @@ export const NeckLeft: React.FC<{uid: string}> = ({uid}) => (
  */
 export const CollarLeft: React.FC<{neckAngle: number}> = ({neckAngle}) => {
 	const a = N.tagAnchor;
+	const L = useStrokes();
 	return (
 		<g>
 			<path d={N.collar} fill={BADGER_COLORS.collar} />
 			<path d={N.collarShadow} fill={BADGER_COLORS.collarShadow} />
-			<path d={N.collar} {...STROKE} />
+			<path d={N.collar} {...L.stroke} />
 			<g transform={`rotate(${-neckAngle} ${a.x} ${a.y})`}>
-				<path d={N.tagRing} {...STROKE} strokeWidth={LINE.detailWidth} />
+				<path d={`${N.tagRing} Z`} {...L.stroke} fill={BRAND.silver} strokeWidth={LINE.detailWidth * L.k} />
 				<path d={N.tag} fill={BADGER_COLORS.tag} />
 				<path d={N.tagShadow} fill={BADGER_COLORS.tagShadow} />
-				<path d={N.tag} {...STROKE} strokeWidth={LINE.detailWidth * 1.1} />
+				<path d={N.tag} {...L.stroke} strokeWidth={LINE.detailWidth * 1.1 * L.k} />
 			</g>
 		</g>
 	);
@@ -40,6 +41,7 @@ export const CollarLeft: React.FC<{neckAngle: number}> = ({neckAngle}) => {
 export const NeckFront: React.FC = () => {
 	const uid = useUid('bnf');
 	const g = FRONT_NECK_GEOM;
+	const L = useStrokes();
 	return (
 		<g>
 			<PartShape geom={{fill: g.fill, strokes: g.strokes, details: g.details}} clipId={`${uid}-n`}>
@@ -47,11 +49,11 @@ export const NeckFront: React.FC = () => {
 			</PartShape>
 			<path d={g.collar} fill={BADGER_COLORS.collar} />
 			<path d={g.collarShadow} fill={BADGER_COLORS.collarShadow} />
-			<path d={g.collar} {...STROKE} />
-			<path d={g.tagRing} {...STROKE} strokeWidth={LINE.detailWidth} />
+			<path d={g.collar} {...L.stroke} />
+			<path d={`${g.tagRing} Z`} {...L.stroke} fill={BRAND.silver} strokeWidth={LINE.detailWidth * L.k} />
 			<path d={g.tag} fill={BADGER_COLORS.tag} />
 			<path d={g.tagShadow} fill={BADGER_COLORS.tagShadow} />
-			<path d={g.tag} {...STROKE} strokeWidth={LINE.detailWidth * 1.2} />
+			<path d={g.tag} {...L.stroke} strokeWidth={LINE.detailWidth * 1.2 * L.k} />
 		</g>
 	);
 };

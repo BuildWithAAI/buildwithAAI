@@ -23,12 +23,14 @@ type OneProps = {
 	walkPhase: number;
 	expression: Expression;
 	tailWag: number;
+	/** Line weight multiplier (BadgerExtraProps.lineScale); 1 = LINE widths. */
+	lineScale?: number;
 };
 
-const One: React.FC<OneProps> = ({view, pose, head, scale, ox, oy, walkPhase, expression, tailWag}) => (
+const One: React.FC<OneProps> = ({view, pose, head, scale, ox, oy, walkPhase, expression, tailWag, lineScale}) => (
 	<AbsoluteFill style={{background: BG}}>
 		<svg width="100%" height="100%" viewBox="0 0 1100 860">
-			<Badger x={ox} y={oy} scale={scale} view={view} pose={pose} head={head} walkPhase={walkPhase} expression={expression} tailWag={tailWag} breathe={false} />
+			<Badger x={ox} y={oy} scale={scale} view={view} pose={pose} head={head} walkPhase={walkPhase} expression={expression} tailWag={tailWag} breathe={false} lineScale={lineScale} />
 		</svg>
 	</AbsoluteFill>
 );
@@ -98,8 +100,8 @@ const Turnaround: React.FC<{expression: Expression}> = ({expression}) => (
 	</AbsoluteFill>
 );
 
-/** Poses as on the sheet (all face screen right, right-side markings): sit, lie, walk 0 / 0.5, look up. */
-const Poses: React.FC = () => (
+/** Poses as on the sheet (face screen right, right-side markings; view 'left' = the left-facing set): sit, lie, walk 0 / 0.5, look up. */
+const Poses: React.FC<{view: BadgerView}> = ({view}) => (
 	<AbsoluteFill style={{background: BG}}>
 		<svg width="100%" height="100%" viewBox="0 0 2600 640">
 			<line x1={40} y1={540} x2={2560} y2={540} stroke={BRAND.nearBlack} strokeWidth={2} />
@@ -113,7 +115,7 @@ const Poses: React.FC = () => (
 				] as const
 			).map(([p, ph, x, t]) => (
 				<g key={`${p}${ph}`}>
-					<Badger x={x} y={540} scale={0.95} view="right" pose={p} walkPhase={ph} breathe={false} />
+					<Badger x={x} y={540} scale={0.95} view={view} pose={p} walkPhase={ph} breathe={false} />
 					<Label x={x} y={600} text={t} />
 				</g>
 			))}
@@ -175,7 +177,7 @@ const SpotsRight: React.FC<{scale: number; ox: number; oy: number}> = ({scale, o
 				);
 			})}
 			<text x={20} y={34} fontFamily="sans-serif" fontSize={18} fill={BRAND.nearBlack}>
-				{`BADGER right side: ${RIGHT_SPOTS.filter((s) => s.side === 'right').length} R- spots + the L-WITHERS top-line edge (badger_coat_right.png)`}
+				{`BADGER right side: ${RIGHT_SPOTS.filter((s) => s.side === 'right').length} R- spots + the right lobe of L-WITHERS (coat_right + coat_top, decision D16)`}
 			</text>
 		</svg>
 	</AbsoluteFill>
@@ -184,7 +186,7 @@ const SpotsRight: React.FC<{scale: number; ox: number; oy: number}> = ({scale, o
 export const ViewCompositions: React.FC = () => (
 	<>
 		<Composition id="BadgerTurnaround" component={Turnaround} durationInFrames={1} fps={30} width={1920} height={700} defaultProps={{expression: 'neutral' as Expression}} />
-		<Composition id="BadgerPoses" component={Poses} durationInFrames={1} fps={30} width={2600} height={640} />
+		<Composition id="BadgerPoses" component={Poses} durationInFrames={1} fps={30} width={2600} height={640} defaultProps={{view: 'right' as BadgerView}} />
 		<Composition id="BadgerSpotsRight" component={SpotsRight} durationInFrames={1} fps={30} width={1100} height={860} defaultProps={{scale: 1.6, ox: 550, oy: 800}} />
 		<Composition id="BadgerWalkStrip" component={WalkStrip} durationInFrames={1} fps={30} width={2400} height={1000} defaultProps={{view: 'right' as BadgerView}} />
 		<Composition id="BadgerWalkTravel" component={WalkTravel} durationInFrames={108} fps={30} width={1920} height={700} defaultProps={{view: 'right' as BadgerView, scale: 1}} />

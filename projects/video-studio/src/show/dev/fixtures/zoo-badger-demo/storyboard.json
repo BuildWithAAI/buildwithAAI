@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "zoo-badger-demo",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "FixtureSwap reports $4.2M drain (developing) - dev fixture",
+  "fiction": false,
+  "news": {
+    "format": "weekly-roundup",
+    "developing": {
+      "label": "DEVELOPING",
+      "asOf": "2026-11-24T08:00:00Z"
+    },
+    "incidentIds": [
+      "inc-fixtureswap"
+    ]
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "segment": "coldOpen",
+      "narration": "One leaked key. {$4.2M|Four point two million dollars} gone, according to FixtureSwap [src:src-wire]. Good morning.",
+      "onScreen": {
+        "kicker": "Tuesday, Nov 24 · Daily brief"
+      }
+    },
+    {
+      "id": "s01b",
+      "type": "talk",
+      "segment": "beat",
+      "narration": "",
+      "minDurationSec": 1.4,
+      "badgerBeats": [
+        {
+          "reaction": "judge"
+        }
+      ]
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "segment": "headline",
+      "narration": "FixtureSwap says attackers drained {$4.2M|four point two million dollars} from its liquidity pools [src:src-wire]. The company calls the investigation ongoing, and says the figures may change [src:src-pm].",
+      "onScreen": {
+        "title": "FixtureSwap reports $4.2M drain",
+        "developing": "DEVELOPING",
+        "loss": "$4.2M",
+        "lossAlt": "$4.5M"
+      },
+      "rekt": {
+        "usd": 4200000,
+        "source": "src-wire",
+        "alt": {
+          "usd": 4500000,
+          "source": "src-lab"
+        }
+      },
+      "badgerBeats": [
+        {
+          "reaction": "earsBack",
+          "after": 0
+        }
+      ]
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "segment": "howItWorked",
+      "narration": "FixtureSwap's preliminary review says a compromised deployer key was used to upgrade the pool contract [src:src-pm]. Example Security Lab says the funds then went to a new address, and across a bridge [src:src-lab].",
+      "onScreen": {
+        "nodes": [
+          "Leaked deployer key",
+          "Pool contract upgraded",
+          "New address",
+          "Bridge to another network"
+        ],
+        "links": [
+          "used to upgrade",
+          "funds out",
+          "bridged"
+        ],
+        "cues": [
+          "key",
+          "upgrade",
+          "address",
+          "bridge"
+        ]
+      },
+      "diagram": {
+        "nodes": [
+          "key",
+          "contract",
+          "wallet",
+          "bridge"
+        ]
+      }
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "segment": "badgerRedFlag",
+      "narration": "Badger's red flag: one key that can upgrade the contract holding your funds, with no delay at all.",
+      "onScreen": {
+        "flag": "One key can upgrade the contract holding your funds. Instantly."
+      }
+    },
+    {
+      "id": "s05",
+      "type": "talk",
+      "segment": "zooOneFix",
+      "narration": "Zoo's one fix, for teams: keep upgrade keys in a multisig with a time delay, so one leaked key cannot change a contract on the spot.",
+      "onScreen": {
+        "fix": "Put upgrade keys in a multisig with a time delay",
+        "detail": "Then one leaked key can't change a contract instantly."
+      }
+    },
+    {
+      "id": "s05b",
+      "type": "talk",
+      "segment": "beat",
+      "narration": "",
+      "minDurationSec": 1.2,
+      "badgerBeats": [
+        {
+          "reaction": "slowBlink"
+        }
+      ]
+    },
+    {
+      "id": "s06",
+      "type": "talk",
+      "segment": "scamOfTheWeek",
+      "narration": "Scam of the week: fake wallet support. Example Security Lab warns that accounts posing as support ask users for their recovery phrase [src:src-lab2]. Real support never asks for it.",
+      "onScreen": {
+        "title": "Fake \"wallet support\" accounts",
+        "how": "A \"support agent\" answers your post and asks for your recovery phrase.",
+        "tell": "Anyone who asks for your recovery phrase.",
+        "fix": "Never share it. Real support never asks."
+      }
+    },
+    {
+      "id": "s07",
+      "type": "talk",
+      "segment": "correction",
+      "narration": "A correction. On Monday we said FixtureLend lost three and a half million dollars. Example Hack Tracker lists {$3.1M|three point one million dollars} [src:src-tracker]. We regret the error.",
+      "onScreen": {
+        "wrong": "FixtureLend lost $3.5M",
+        "correct": "Example Hack Tracker lists FixtureLend's loss at $3.1M.",
+        "date": "Nov 24, 2026",
+        "ref": "Applies to the Nov 23 brief, at 00:41"
+      }
+    },
+    {
+      "id": "s07b",
+      "type": "talk",
+      "segment": "beat",
+      "narration": "",
+      "minDurationSec": 1.4,
+      "badgerBeats": [
+        {
+          "reaction": "lookUp"
+        }
+      ]
+    },
+    {
+      "id": "s08",
+      "type": "talk",
+      "segment": "sources",
+      "narration": "Every source is on screen and linked below.",
+      "onScreen": {}
+    },
+    {
+      "id": "s09",
+      "type": "endscreen",
+      "segment": "outroEndScreen",
+      "narration": "The full explainer on upgrade keys is right here. See you tomorrow.",
+      "onScreen": {
+        "title": "See you tomorrow.",
+        "explainer": "Upgrade keys, explained"
+      },
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-wire",
+      "title": "FixtureSwap says attackers drained $4.2 million from its pools",
+      "url": "https://news.example.com/2026/11/23/fixtureswap-drain",
+      "publisher": "Example Wire",
+      "publishedAt": "2026-11-23",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "src-pm",
+      "title": "Incident update",
+      "url": "https://fixtureswap.example/blog/incident-update",
+      "publisher": "FixtureSwap",
+      "publishedAt": "2026-11-23",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "src-lab",
+      "title": "Alert: FixtureSwap outflows",
+      "url": "https://lab.example.org/alerts/fixtureswap",
+      "publisher": "Example Security Lab",
+      "publishedAt": "2026-11-23",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "src-lab2",
+      "title": "Warning: fake wallet-support accounts",
+      "url": "https://lab.example.org/alerts/fake-support",
+      "publisher": "Example Security Lab",
+      "publishedAt": "2026-11-22",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "src-tracker",
+      "title": "Incidents since 2026-09-28",
+      "url": "https://tracker.example.net/incidents?since=2026-09-28",
+      "publisher": "Example Hack Tracker",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "analysis": [
+    {
+      "id": "a1",
+      "kind": "pattern",
+      "basis": "own-data",
+      "detail": "In the tracker sample, FixtureSwap is the second key-compromise drain in eight weeks.",
+      "sourceIds": [
+        "src-tracker"
+      ],
+      "method": "Dev fixture: illustrative only."
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s01b",
+        "s02",
+        "s03",
+        "s04",
+        "s05",
+        "s09"
+      ],
+      "title": "FixtureSwap reports $4.2M drain (developing)"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "t1",
+      "text": "DEVELOPING: $4.2M DRAIN",
+      "expression": "worried",
+      "badger": true
+    }
+  ]
+}

@@ -111,19 +111,41 @@ const EMPTY = new Set(['', '-', '—', '–', 'n/a', 'na', 'null', 'none']);
 
 /**
  * "1,234", "1234.5", "-12.30", "$1,234.50", "12.5 USD" -> number. With decimal "," the European
- * form "1.234,56" is read instead. Returns null for an empty cell or anything else.
+ * form "1.234,56" is read instead. Negative amounts may also be written the accounting way,
+ * "(12.50)", with a trailing minus, "12.50-", or with the Unicode minus sign, "−12.50": payout exports
+ * use all three for reversals and chargebacks. Returns null for an empty cell or anything else.
  */
 export const parseNumber = (raw: string, decimal: '.' | ',' = '.'): number | null => {
-	let text = raw.trim().replace(/[   ]/g, '');
+	let text = raw.trim().replace(/\u2212/g, '-').replace(/[   ]/g, '');
 	if (EMPTY.has(text.toLowerCase())) return null;
+	let negative = false;
+	const parenthesised = /^\((.+)\)$/.exec(text);
+	if (parenthesised?.[1]) {
+		negative = true;
+		text = parenthesised[1];
+	} else if (/^[^+-].*\d-$/.test(text)) {
+		negative = true;
+		text = text.slice(0, -1);
+	}
 	text = text.replace(/^([+-]?)[$€£]/, '$1').replace(/(?<=\d)[A-Z]{3}$/, '');
 	const group = decimal === '.' ? ',' : '.';
 	const pattern =
 		decimal === '.' ? /^[+-]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?$/ : /^[+-]?(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d+)?$/;
 	if (!pattern.test(text)) return null;
+	if (negative && /^[+-]/.test(text)) return null; // "(-12.50)" or "-12.50-": not a format anyone writes
 	const plain = text.split(group).join('').replace(decimal, '.');
 	const value = Number(plain);
-	return Number.isFinite(value) ? value : null;
+	if (!Number.isFinite(value)) return null;
+	return negative ? -value : value;
+};
+
+/**
+ * True when a cell can only be a number with a decimal comma: "41,3", "1074,7", "0,5", "1.234,56". Such
+ * cells show that a file was saved in a decimal-comma locale, where "31,200" means 31.2, not 31,200.
+ */
+export const isDecimalCommaOnly = (raw: string): boolean => {
+	const text = raw.trim().replace(/\s*%$/, '');
+	return text.includes(',') && parseNumber(text, '.') === null && parseNumber(text, ',') !== null;
 };
 
 /** A whole number >= 0 ("1,234"), or null. */

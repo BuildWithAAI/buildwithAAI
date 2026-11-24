@@ -3,16 +3,23 @@
 #
 # Push a request file, projects/video-studio/render-requests/<id>.json, on any branch (or run this workflow by hand
 # with the request id). Then:
-#   plan     validates the request files the push added or changed and builds the job matrices;
-#   voice    voices every language in parallel (Kokoro, Zoo = im_nicola; model files cached by their sha256);
-#   render   renders every composition x language in parallel, 8 at a time, probes it with ffprobe, encrypts it,
-#            and uploads it as an artifact;
-#   summary  writes one table: each output's resolution, duration, size and render time.
+#   plan       validates the request files the push added or changed, runs the claim gate on every script they voice
+#              or render (gate before push: a pushed script is public), and builds the job matrices;
+#   voice      voices every master language in parallel (Kokoro, Zoo = im_nicola; model files cached by their sha256);
+#   voice-dub  voices every dub after its master, fitted to the master's timeline (multi-language audio tracks);
+#   render     renders every composition x language in parallel, 8 at a time (video, still or audio only), probes it
+#              with ffprobe, encrypts it, and uploads it as an artifact;
+#   summary    writes one table: each output's resolution, duration, size and render time.
 #
 # SECURITY. This repository is PUBLIC: anyone signed in to GitHub can read these logs and download these artifacts.
-# - Requests are encrypted by default. Every output of an encrypted request is encrypted BEFORE upload with
-#   openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -salt, keyed by the repository secret
-#   RENDER_ARTIFACT_KEY. Without that secret the run fails before rendering, and plaintext is never uploaded.
+# - Requests are encrypted by default. Every output and log of an encrypted request is encrypted BEFORE upload to a
+#   PUBLIC key committed in projects/video-studio/scripts/farm/keys (the owner's, by default): AES-256-GCM with a
+#   random key per file, wrapped with RSA-OAEP. No step here holds a key that can decrypt an output.
+# - The narration the voice jobs hand to the render jobs (artifacts kept 1 day) is encrypted with the secret
+#   RENDER_HANDOFF_KEY, from the render-farm environment. It decrypts nothing else. Plaintext is never uploaded.
+# - Encryption runs inside Node (node:crypto); no step that holds a key looks up an encryption tool on PATH.
+# - The voice packages install from the farm's hash-locked files (scripts/farm/voice-lock*.txt), binary wheels only
+#   for every language but zh, before any step holds a key.
 # - Props, narration and tool output of encrypted requests never reach the log (tool output goes to an encrypted log).
 # - Untrusted values (file contents, the dispatch input, branch names) reach scripts only through env, and
 #   scripts/farm/farm.ts validates them. No run: block interpolates an expression.
@@ -37,7 +44,8 @@ jobs:
   plan:
     name: Plan
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
+    environment: render-farm
     defaults:
       run:
         shell: bash
@@ -47,6 +55,8 @@ jobs:
       render_count: ${{ steps.plan.outputs.render_count }}
       voice_matrix: ${{ steps.plan.outputs.voice_matrix }}
       voice_count: ${{ steps.plan.outputs.voice_count }}
+      voice_dub_matrix: ${{ steps.plan.outputs.voice_dub_matrix }}
+      voice_dub_count: ${{ steps.plan.outputs.voice_dub_count }}
       kokoro_key: ${{ steps.plan.outputs.kokoro_key }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -64,8 +74,8 @@ jobs:
           FARM_BEFORE: ${{ github.event.before }}
           FARM_HEAD: ${{ github.sha }}
           FARM_DISPATCH_REQUEST: ${{ inputs.request }}
-          # Only checked (set, no stray whitespace, at least 32 characters) when a request must be encrypted.
-          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+          # Only checked (set, no stray whitespace, at least 32 characters) when an encrypted request hands narration over.
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts plan
 
   voice:
@@ -74,6 +84,7 @@ jobs:
     if: ${{ needs.plan.outputs.voice_count != '0' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    environment: render-farm
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -93,17 +104,17 @@ jobs:
         with:
           node-version: "22"
           package-manager-cache: false
-      - name: Preflight (request, voice entry, key)
+      - name: Preflight (request, voice entry, keys)
         id: preflight
         env:
-          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-preflight
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: |
-            projects/video-studio/scripts/voice/requirements*.txt
+            projects/video-studio/scripts/farm/voice-lock*.txt
             projects/video-studio/scripts/farm/ci-tools.txt
       - name: Restore the Kokoro model cache
         id: kokoro-cache
@@ -121,7 +132,18 @@ jobs:
           ln -sf "$exe" "$RUNNER_TEMP/bin/ffmpeg"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/bin/ffmpeg" -hide_banner -version | sed -n 1p
-      - name: Set up Kokoro (pinned packages, sha256-verified model files)
+      - name: Install the voice packages (the farm's hash lock; binary wheels only)
+        timeout-minutes: 10
+        env:
+          FARM_CJK: ${{ matrix.cjk && '1' || '0' }}
+        run: |
+          python -m venv .venv-voice
+          .venv-voice/bin/python -m pip install --disable-pip-version-check --quiet --require-hashes --only-binary :all: --no-deps -r scripts/farm/voice-lock.txt
+          if [ "$FARM_CJK" = "1" ]; then
+            .venv-voice/bin/python -m pip install --disable-pip-version-check --quiet --require-hashes --no-deps -r scripts/farm/voice-lock-cjk.txt
+          fi
+          .venv-voice/bin/python -m pip check
+      - name: Set up Kokoro (sha256-verified model files; its package install finds the lock already satisfied)
         env:
           VOICE_SKIP_CJK: ${{ matrix.cjk && '0' || '1' }}
           PYTHON: python3
@@ -138,7 +160,114 @@ jobs:
         id: pack
         if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
         env:
-          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-pack
+      - name: Upload the narration
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' && steps.pack.outputs.has_files == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.preflight.outputs.artifact }}
+          path: ${{ runner.temp }}/farm/voice-out
+          retention-days: 1
+          if-no-files-found: error
+          compression-level: 1
+          overwrite: true
+      - name: Upload the probe record
+        if: ${{ !cancelled() && steps.pack.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.preflight.outputs.probe_artifact }}
+          path: ${{ runner.temp }}/farm/probe-out
+          retention-days: 1
+          if-no-files-found: error
+          overwrite: true
+
+  voice-dub:
+    name: Dub ${{ matrix.request }} ${{ matrix.lang }} fitted to ${{ matrix.fitTo }} (${{ matrix.channel }}/${{ matrix.slug }})
+    needs: [plan, voice]
+    # Runs when some master voice jobs failed: a dub whose master is missing fails in its own download step.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.voice_dub_count != '0' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: render-farm
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.plan.outputs.voice_dub_matrix) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: projects/video-studio
+    env:
+      FARM_REQUEST: ${{ matrix.request }}
+      FARM_VOICE_INDEX: ${{ matrix.vindex }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Preflight (request, voice entry, keys)
+        id: preflight
+        env:
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-preflight
+      - name: Download the master narration
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ steps.preflight.outputs.master_artifact }}
+          path: ${{ runner.temp }}/farm/master-in
+      - name: Unpack the master narration
+        env:
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-master-unpack
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            projects/video-studio/scripts/farm/voice-lock*.txt
+            projects/video-studio/scripts/farm/ci-tools.txt
+      - name: Restore the Kokoro model cache
+        id: kokoro-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: projects/video-studio/.cache/kokoro
+          key: ${{ needs.plan.outputs.kokoro_key }}
+      - name: Install ffmpeg (static build, sha256-pinned wheel; the voice step's loudness normalization)
+        timeout-minutes: 10
+        run: |
+          python -m pip install --disable-pip-version-check --quiet --require-hashes --no-deps -r scripts/farm/ci-tools.txt
+          exe="$(python -c 'import imageio_ffmpeg, os; p = imageio_ffmpeg.get_ffmpeg_exe(); assert os.path.isabs(p), p; print(p)')"
+          mkdir -p "$RUNNER_TEMP/bin"
+          ln -sf "$exe" "$RUNNER_TEMP/bin/ffmpeg"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/bin/ffmpeg" -hide_banner -version | sed -n 1p
+      - name: Install the voice packages (the farm's hash lock; binary wheels only)
+        timeout-minutes: 10
+        env:
+          FARM_CJK: ${{ matrix.cjk && '1' || '0' }}
+        run: |
+          python -m venv .venv-voice
+          .venv-voice/bin/python -m pip install --disable-pip-version-check --quiet --require-hashes --only-binary :all: --no-deps -r scripts/farm/voice-lock.txt
+          if [ "$FARM_CJK" = "1" ]; then
+            .venv-voice/bin/python -m pip install --disable-pip-version-check --quiet --require-hashes --no-deps -r scripts/farm/voice-lock-cjk.txt
+          fi
+          .venv-voice/bin/python -m pip check
+      - name: Set up Kokoro (sha256-verified model files; its package install finds the lock already satisfied)
+        env:
+          VOICE_SKIP_CJK: ${{ matrix.cjk && '0' || '1' }}
+          PYTHON: python3
+        run: scripts/voice/setup.sh
+      - name: Build the narration
+        run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-build
+      - name: Encrypt and package
+        id: pack
+        if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
+        env:
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-pack
       - name: Upload the narration
         if: ${{ !cancelled() && steps.pack.outcome == 'success' && steps.pack.outputs.has_files == 'true' }}
@@ -162,12 +291,13 @@ jobs:
 
   render:
     name: Render ${{ matrix.request }} ${{ matrix.index }} ${{ matrix.composition }} ${{ matrix.lang }} (${{ matrix.kind }})
-    needs: [plan, voice]
-    # Runs when the voice job was skipped (no narration) or partly failed: a job whose narration is missing fails in
+    needs: [plan, voice, voice-dub]
+    # Runs when the voice jobs were skipped (no narration) or partly failed: a job whose narration is missing fails in
     # its own unpack step, and the other requests in the same push still render.
     if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.render_count != '0' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 340
+    environment: render-farm
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -189,13 +319,11 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: projects/video-studio/package-lock.json
-      - name: Preflight (request, job, key, props file)
+      - name: Preflight (request, job, keys, props file)
         id: preflight
         env:
-          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts preflight
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
       - name: Download the narration
         if: ${{ matrix.voiceExpect > 0 }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -206,8 +334,10 @@ jobs:
       - name: Unpack the narration
         if: ${{ matrix.voiceExpect > 0 }}
         env:
-          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
+          RENDER_HANDOFF_KEY: ${{ secrets.RENDER_HANDOFF_KEY }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts voice-unpack
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
       - name: Download Remotion's browser
         run: npx --no-install remotion browser ensure
       - name: Render
@@ -216,11 +346,9 @@ jobs:
         id: probe
         if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts probe
-      - name: Encrypt and package
+      - name: Encrypt and package (to the recipient's public key; no secret)
         id: pack
         if: ${{ !cancelled() && steps.preflight.outcome == 'success' }}
-        env:
-          RENDER_ARTIFACT_KEY: ${{ secrets.RENDER_ARTIFACT_KEY }}
         run: node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/farm/farm.ts pack
       - name: Upload the output
         if: ${{ !cancelled() && steps.pack.outcome == 'success' && steps.pack.outputs.has_files == 'true' }}

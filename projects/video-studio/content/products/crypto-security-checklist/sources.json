@@ -1,0 +1,480 @@
+{
+  "version": 1,
+  "checked": "2026-11-24",
+  "methods": {
+    "read": "Page fetched and read directly from this build machine on the checked date.",
+    "search-extract": "The official page is blocked by this machine's network policy, so its content was checked through search-engine extracts of that page (and matching coverage) on the checked date. Open the link in a browser before quoting it word for word."
+  },
+  "sources": [
+    {
+      "id": "ic3-genai-2024",
+      "title": "Criminals Use Generative Artificial Intelligence to Facilitate Financial Fraud (Alert I-120324-PSA)",
+      "publisher": "FBI Internet Crime Complaint Center (IC3)",
+      "date": "2024-12-03",
+      "url": "https://www.ic3.gov/PSA/2024/PSA241203",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Criminals clone a relative's voice from short clips; FBI advice to agree a secret word or phrase with family; AI-written messages and fake profiles."
+    },
+    {
+      "id": "ic3-dprk-2024",
+      "title": "North Korea Aggressively Targeting Crypto Industry with Well-Disguised Social Engineering Attacks (Alert I-090324-PSA)",
+      "publisher": "FBI Internet Crime Complaint Center (IC3)",
+      "date": "2024-09-03",
+      "url": "https://www.ic3.gov/PSA/2024/PSA240903",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Tailored job offers and 'technical tests' aimed at crypto workers; warning signs include requests to run code or non-standard packages; verify identities through separate channels."
+    },
+    {
+      "id": "ic3-simswap-2022",
+      "title": "Criminals Increasing SIM Swap Schemes to Steal Millions of Dollars from US Public (Alert I-020822-PSA)",
+      "publisher": "FBI Internet Crime Complaint Center (IC3)",
+      "date": "2022-02-08",
+      "url": "https://www.ic3.gov/PSA/2022/PSA220208",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "1,611 SIM-swap complaints with more than $68 million in adjusted losses in 2021; methods: social engineering, insider bribery, phishing."
+    },
+    {
+      "id": "ic3-bybit-2025",
+      "title": "North Korea Responsible for $1.5 Billion Bybit Hack (Alert I-022625-PSA)",
+      "publisher": "FBI Internet Crime Complaint Center (IC3)",
+      "date": "2025-02-26",
+      "url": "https://www.ic3.gov/PSA/2025/PSA250226",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "FBI attribution of the theft of about $1.5 billion from the Bybit exchange on or about 2025-02-21 to North Korean actors ('TraderTraitor')."
+    },
+    {
+      "id": "ic3-search-ads-2022",
+      "title": "Cyber Criminals Impersonating Brands Using Search Engine Advertisement Services to Defraud Users",
+      "publisher": "FBI Internet Crime Complaint Center (IC3)",
+      "date": "2022-12-21",
+      "url": "https://www.ic3.gov/PSA/2022/PSA221221",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Criminals buy search ads that impersonate brands, including crypto exchanges; FBI advice to type the address directly (or use a bookmark) instead of searching."
+    },
+    {
+      "id": "ic3-recovery-2024",
+      "title": "Fictitious Law Firms Targeting Cryptocurrency Scam Victims Offering to Recover Funds",
+      "publisher": "FBI Internet Crime Complaint Center (IC3)",
+      "date": "2024-06-24",
+      "url": "https://www.ic3.gov/PSA/2024/PSA240624",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Fake 'recovery' law firms claim to work with the FBI or other agencies and charge victims fees; more than $9.9 million in reported losses from February 2023 to February 2024."
+    },
+    {
+      "id": "ic3-impersonation-2026",
+      "title": "Update on criminals impersonating FBI and IC3 staff to re-target fraud victims (Alert I-072026-PSA)",
+      "publisher": "FBI Internet Crime Complaint Center (IC3)",
+      "date": "2026-07-20",
+      "url": "https://www.ic3.gov/PSA/2026/PSA260720",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Impersonators use AI-generated video of FBI leaders and spoofed copies of ic3.gov; IC3 has no social media presence and does not recover funds through social platforms."
+    },
+    {
+      "id": "ic3-annual-2025",
+      "title": "FBI says crypto-related fraud losses hit record $11.4 billion in 2025, with seniors bearing the brunt (report on the IC3 2025 Internet Crime Report)",
+      "publisher": "The Block",
+      "date": "2026-04",
+      "url": "https://www.theblock.co/post/397134/fbi-says-crypto-related-fraud-losses-hit-record-11-4-billion-in-2025-with-seniors-bearing-the-brunt",
+      "kind": "news",
+      "method": "search-extract",
+      "supports": "IC3 2025 figures: about $11.4 billion in crypto-related losses (181,565 complaints); crypto investment fraud $7.2 billion; recovery scams $1.4 billion; AI tracked for the first time (22,364 complaints, $893 million)."
+    },
+    {
+      "id": "fcc-simswap-2023",
+      "title": "Protecting Consumers from SIM-Swap and Port-Out Fraud (Report and Order, FCC 23-95)",
+      "publisher": "Federal Communications Commission (Federal Register)",
+      "date": "2023-12-08",
+      "url": "https://www.federalregister.gov/documents/2023/12/08/2023-26338/protecting-consumers-from-sim-swap-and-port-out-fraud",
+      "kind": "regulator",
+      "method": "search-extract",
+      "supports": "Rules adopted 2023-11-15 requiring US wireless carriers to use secure authentication before SIM changes and port-outs and to notify customers of such requests (some provisions phased in after OMB review)."
+    },
+    {
+      "id": "cisa-mfa-2022",
+      "title": "Implementing Phishing-Resistant MFA (fact sheet)",
+      "publisher": "Cybersecurity and Infrastructure Security Agency (CISA)",
+      "date": "2022-10",
+      "url": "https://www.cisa.gov/sites/default/files/publications/fact-sheet-implementing-phishing-resistant-mfa-508c.pdf",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "FIDO/WebAuthn is the only widely available phishing-resistant MFA; SMS and voice codes are exposed to phishing, SS7 and SIM-swap attacks."
+    },
+    {
+      "id": "nist-800-63b-4",
+      "title": "SP 800-63B-4, Digital Identity Guidelines: Authentication and Authenticator Management",
+      "publisher": "National Institute of Standards and Technology (NIST)",
+      "date": "2025-07",
+      "url": "https://csrc.nist.gov/pubs/sp/800/63/b/4/final",
+      "kind": "standard",
+      "method": "search-extract",
+      "supports": "Out-of-band authentication over the phone network, including SMS codes, is a 'restricted' authenticator."
+    },
+    {
+      "id": "sec-x-account-2024",
+      "title": "SECGov X Account (statement on the January 9, 2024 compromise)",
+      "publisher": "US Securities and Exchange Commission",
+      "date": "2024-01-22",
+      "url": "https://www.sec.gov/secgov-x-account",
+      "kind": "regulator",
+      "method": "search-extract",
+      "supports": "The SEC's X account was taken over through a SIM swap of the phone number tied to it; multi-factor authentication had been disabled since mid-2023."
+    },
+    {
+      "id": "fincen-deepfake-2024",
+      "title": "Alert on Fraud Schemes Involving Deepfake Media Targeting Financial Institutions (FIN-2024-Alert004)",
+      "publisher": "Financial Crimes Enforcement Network (FinCEN), US Treasury",
+      "date": "2024-11-13",
+      "url": "https://www.fincen.gov/sites/default/files/shared/FinCEN-Alert-DeepFakes-Alert508FINAL.pdf",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Rising reports since 2023 of generative-AI deepfakes used to defeat identity checks; red flags such as a third-party webcam plugin during live verification."
+    },
+    {
+      "id": "fincen-pig-2023",
+      "title": "Alert on Prevalent Virtual Currency Investment Scam Commonly Known as 'Pig Butchering' (FIN-2023-Alert005)",
+      "publisher": "Financial Crimes Enforcement Network (FinCEN), US Treasury",
+      "date": "2023-09-08",
+      "url": "https://www.fincen.gov/sites/default/files/shared/FinCEN_Alert_Pig_Butchering_FINAL_508c.pdf",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Relationship investment scams run largely by criminal groups in Southeast Asia, often using trafficked workers; victims are groomed before being shown fake investment platforms."
+    },
+    {
+      "id": "ftc-crypto-scams",
+      "title": "What To Know About Cryptocurrency and Scams",
+      "publisher": "Federal Trade Commission, Consumer Advice",
+      "date": "n.d.",
+      "url": "https://consumer.ftc.gov/articles/what-know-about-cryptocurrency-and-scams",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Promises of guaranteed returns are always scams; anyone met on a dating site or app who offers investment advice is a scammer; giveaway scams; report at ReportFraud.ftc.gov."
+    },
+    {
+      "id": "ftc-family-emergency",
+      "title": "Family Emergency Scams",
+      "publisher": "Federal Trade Commission, Consumer Advice",
+      "date": "n.d.",
+      "url": "https://consumer.ftc.gov/scams/family-emergency-scams",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Some scammers use AI to clone a loved one's voice; call the person back on a number you know is theirs; scammers ask for crypto, wires or gift cards and ask for secrecy."
+    },
+    {
+      "id": "cftc-ai-bots-2024",
+      "title": "Customer Advisory: AI Won't Turn Trading Bots into Money Machines",
+      "publisher": "Commodity Futures Trading Commission (CFTC)",
+      "date": "2024-01-25",
+      "url": "https://www.cftc.gov/LearnAndProtect/AdvisoriesAndArticles/AITradingBots.html",
+      "kind": "regulator",
+      "method": "search-extract",
+      "supports": "Scammers use AI hype to sell trading bots and signal services with promised returns; AI cannot predict the future."
+    },
+    {
+      "id": "irs-1099da",
+      "title": "Instructions for Form 1099-DA",
+      "publisher": "Internal Revenue Service",
+      "date": "2025",
+      "url": "https://www.irs.gov/instructions/i1099da",
+      "kind": "government",
+      "method": "search-extract",
+      "supports": "Brokers report gross proceeds of digital-asset sales made in 2025 without basis; basis reporting applies to covered assets acquired from 2026 and kept in the same account."
+    },
+    {
+      "id": "chainalysis-theft-2026",
+      "title": "2025 Crypto Theft Reaches $3.4 Billion",
+      "publisher": "Chainalysis",
+      "date": "2025-12",
+      "url": "https://www.chainalysis.com/blog/crypto-hacking-stolen-funds-2026/",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "Over $3.4 billion stolen in 2025 (Bybit $1.5 billion); 158,000 personal-wallet compromises affecting at least 80,000 victims, $713 million stolen from individuals."
+    },
+    {
+      "id": "chainalysis-scams-2026",
+      "title": "2026 Crypto Crime Report: Scams",
+      "publisher": "Chainalysis",
+      "date": "2026-01-13",
+      "url": "https://www.chainalysis.com/blog/crypto-scams-2026/",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "At least $14 billion received by crypto scams on-chain in 2025 (projected to exceed $17 billion); impersonation scams up 1,400% year on year; AI-enabled scams 4.5 times more profitable."
+    },
+    {
+      "id": "chainalysis-wrench-2026",
+      "title": "Violent Wrench Attacks Targeting Crypto Holders",
+      "publisher": "Chainalysis",
+      "date": "2026-08-06",
+      "url": "https://www.chainalysis.com/blog/violent-crypto-wrench-attacks-2026/",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "Most violent attacks were premeditated, with victims selected through exposed information (data breaches, social media, insiders); publicly disclosing holdings can make people targets."
+    },
+    {
+      "id": "ms-ice-phishing-2022",
+      "title": "'Ice phishing' on the blockchain",
+      "publisher": "Microsoft Security Blog",
+      "date": "2022-02-16",
+      "url": "https://www.microsoft.com/en-us/security/blog/2022/02/16/ice-phishing-on-the-blockchain/",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "Attackers trick users into approving the attacker as spender of their tokens; advice to periodically review and revoke token allowances."
+    },
+    {
+      "id": "ms-clickfix-2025",
+      "title": "Think before you Click(Fix): Analyzing the ClickFix social engineering technique",
+      "publisher": "Microsoft Security Blog",
+      "date": "2025-08-21",
+      "url": "https://www.microsoft.com/en-us/security/blog/2025/08/21/think-before-you-clickfix-analyzing-the-clickfix-social-engineering-technique/",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "Fake CAPTCHA and error pages trick people into pasting and running malicious commands in the Windows Run dialog, Terminal or PowerShell."
+    },
+    {
+      "id": "ms-cyberwarcon-2024",
+      "title": "Microsoft shares latest intelligence on North Korean and Chinese threat actors at CYBERWARCON",
+      "publisher": "Microsoft Security Blog",
+      "date": "2024-11-22",
+      "url": "https://www.microsoft.com/en-us/security/blog/2024/11/22/microsoft-shares-latest-intelligence-on-north-korean-and-chinese-threat-actors-at-cyberwarcon/",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "Sapphire Sleet posed as venture capitalists whose online meetings 'failed', then sent a 'fix'; it also posed as recruiters with malicious skills assessments; over $10 million in crypto stolen in six months."
+    },
+    {
+      "id": "gtig-unc6032-2025",
+      "title": "Text-to-Malware: How Cybercriminals Weaponize Fake AI-Themed Websites",
+      "publisher": "Google Cloud Blog (Mandiant)",
+      "date": "2025-05-27",
+      "url": "https://cloud.google.com/blog/topics/threat-intelligence/cybercriminals-weaponize-fake-ai-websites",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "Fake 'AI video generator' sites promoted through thousands of social media ads that reached millions of users delivered infostealers and backdoors that took logins, cookies and card data."
+    },
+    {
+      "id": "gtig-etherhiding-2025",
+      "title": "DPRK Adopts EtherHiding: Nation-State Malware Hiding on Blockchains",
+      "publisher": "Google Cloud Blog (Google Threat Intelligence Group)",
+      "date": "2025-10-16",
+      "url": "https://cloud.google.com/blog/topics/threat-intelligence/dprk-adopts-etherhiding",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "Fake recruiters move candidates to Telegram or Discord, then ask for a coding test or project review that downloads malicious code, or show a fake video-call error ('ClickFix') to make them install malware."
+    },
+    {
+      "id": "certik-bybit-2025",
+      "title": "Bybit Incident Technical Analysis",
+      "publisher": "CertiK",
+      "date": "2025-02",
+      "url": "https://www.certik.com/resources/blog/bybit-incident-technical-analysis",
+      "kind": "security-firm",
+      "method": "read",
+      "supports": "A rogue interface hid the transaction's intent and sent deceptive data to the hardware wallet; the signer did not verify the details on the device; blind signing and device compromise were the prerequisites."
+    },
+    {
+      "id": "kaspersky-sparkcat-2025",
+      "title": "SparkCat trojan stealer infiltrates App Store and Google Play, steals data from photos",
+      "publisher": "Kaspersky",
+      "date": "2025-02",
+      "url": "https://www.kaspersky.com/blog/ios-android-ocr-stealer-sparkcat/52980/",
+      "kind": "security-firm",
+      "method": "search-extract",
+      "supports": "Apps in the official App Store and Google Play used on-device OCR to find wallet recovery phrases in photo galleries and upload them."
+    },
+    {
+      "id": "kaspersky-fake-trezor-2023",
+      "title": "Case study: fake hardware cryptowallet",
+      "publisher": "Kaspersky",
+      "date": "2023-05-10",
+      "url": "https://www.kaspersky.com/blog/fake-trezor-hardware-crypto-wallet/48155/",
+      "kind": "security-firm",
+      "method": "search-extract",
+      "supports": "A counterfeit hardware wallet whose keys were known to the attackers before purchase; the victim lost 1.33 BTC (about $30,000)."
+    },
+    {
+      "id": "kaspersky-clipboard-2023",
+      "title": "Copy-paste heist or clipboard-injector attacks on cryptousers",
+      "publisher": "Kaspersky Securelist",
+      "date": "2023-03",
+      "url": "https://securelist.com/copy-paste-heist-clipboard-injector-targeting-cryptowallets/109186/",
+      "kind": "security-firm",
+      "method": "search-extract",
+      "supports": "Clipboard-injector malware silently swaps a copied wallet address for the attacker's."
+    },
+    {
+      "id": "scamsniffer-2025",
+      "title": "Scam Sniffer 2025: Crypto Phishing Losses Fall 83% to $84 Million",
+      "publisher": "Scam Sniffer",
+      "date": "2025-12",
+      "url": "https://drops.scamsniffer.io/scam-sniffer-2025-crypto-phishing-losses-fall-83-to-84-million/",
+      "kind": "security-firm",
+      "method": "search-extract",
+      "supports": "Wallet-drainer phishing losses on Ethereum and EVM chains of about $83.85 million in 2025 (106,106 victims), down from about $494 million in 2024; permit and EIP-7702 signature abuse noted; the drainer ecosystem remains active."
+    },
+    {
+      "id": "cmu-address-poisoning",
+      "title": "Blockchain Address Poisoning (USENIX Security 2025)",
+      "publisher": "Tsuchiya, Dong, Soska and Christin, Carnegie Mellon University",
+      "date": "2025-08",
+      "url": "https://www.usenix.org/conference/usenixsecurity25/presentation/tsuchiya",
+      "kind": "research",
+      "method": "search-extract",
+      "supports": "Lookalike addresses that share the first and last characters of a victim's counterparties flood transaction histories; at least $83.8 million lost in 6,633 incidents; about 270 million attempts over two years (CyLab release, 2026-01-07)."
+    },
+    {
+      "id": "coindesk-68m-2024",
+      "title": "Exploiter Steals $68M Worth of Crypto Through Address Poisoning",
+      "publisher": "CoinDesk",
+      "date": "2024-05-03",
+      "url": "https://www.coindesk.com/business/2024/05/03/exploiter-steals-68m-worth-of-crypto-through-address-poisoning",
+      "kind": "news",
+      "method": "search-extract",
+      "supports": "A trader sent 1,155 WBTC (about $68 million) to a poisoned lookalike address; most of it was later returned after negotiation."
+    },
+    {
+      "id": "koi-foxywallet-2025",
+      "title": "FoxyWallet: 40+ Malicious Firefox Extensions Exposed",
+      "publisher": "Koi Security",
+      "date": "2025-07",
+      "url": "https://www.koi.security/blog/foxywallet-40-malicious-firefox-extensions-exposed",
+      "kind": "security-firm",
+      "method": "search-extract",
+      "supports": "More than 40 fake wallet extensions in Firefox's official add-on store cloned real wallets' open-source code and sent recovery phrases to attackers."
+    },
+    {
+      "id": "princeton-fake-memories",
+      "title": "Real AI Agents with Fake Memories: Fatal Context Manipulation Attacks on Web3 Agents (arXiv:2503.16248)",
+      "publisher": "Patlan, Sheng, Hebbar, Mittal and Viswanath (Princeton University, Sentient Foundation)",
+      "date": "2025",
+      "url": "https://arxiv.org/abs/2503.16248",
+      "kind": "research",
+      "method": "search-extract",
+      "supports": "Injected prompts or poisoned agent memory made AI agents with wallet access perform unauthorized transfers, even where prompt-injection defenses existed."
+    },
+    {
+      "id": "owasp-llm01-2025",
+      "title": "LLM01:2025 Prompt Injection",
+      "publisher": "OWASP Gen AI Security Project",
+      "date": "2025",
+      "url": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+      "kind": "standard",
+      "method": "search-extract",
+      "supports": "Instructions hidden in content a model reads (web pages, files) can change its behaviour; fool-proof prevention is unclear; require human approval for high-risk actions."
+    },
+    {
+      "id": "theblock-wintermute-7702",
+      "title": "Wintermute warns Pectra upgrade leaves Ethereum users at risk of automated attacks",
+      "publisher": "The Block",
+      "date": "2025-06-01",
+      "url": "https://www.theblock.co/post/356481/wintermute-warns-pectra-upgrade-leaves-ethereum-users-at-risk-of-automated-attacks",
+      "kind": "news",
+      "method": "search-extract",
+      "supports": "More than 80% of EIP-7702 delegations pointed to copy-pasted 'sweeper' contracts that drain wallets whose keys have leaked."
+    },
+    {
+      "id": "eip-2612",
+      "title": "EIP-2612: Permit Extension for EIP-20 Signed Approvals",
+      "publisher": "Ethereum Improvement Proposals",
+      "date": "2020-04-13",
+      "url": "https://eips.ethereum.org/EIPS/eip-2612",
+      "kind": "standard",
+      "method": "search-extract",
+      "supports": "A 'permit' changes a token allowance with a signed message instead of a transaction."
+    },
+    {
+      "id": "ethereum-security",
+      "title": "Ethereum security and scam prevention",
+      "publisher": "ethereum.org",
+      "date": "n.d.",
+      "url": "https://ethereum.org/en/security/",
+      "kind": "wallet-docs",
+      "method": "search-extract",
+      "supports": "The seed phrase is the master key and screenshots may sync to cloud storage; no one from Ethereum will message you or ask for your phrase; airdrop and giveaway scams; never allow remote access; avoid unlimited approvals."
+    },
+    {
+      "id": "metamask-revoke",
+      "title": "How to revoke smart contract allowances/token approvals",
+      "publisher": "MetaMask Support",
+      "date": "n.d.",
+      "url": "https://support.metamask.io/more-web3/learn/how-to-revoke-smart-contract-allowances-token-approvals",
+      "kind": "wallet-docs",
+      "method": "search-extract",
+      "supports": "Unlimited spending caps let a malicious or hacked app drain a token; revoking is an on-chain transaction that costs gas; disconnecting a site is not the same as revoking."
+    },
+    {
+      "id": "ledger-phishing",
+      "title": "Ongoing phishing campaigns",
+      "publisher": "Ledger",
+      "date": "n.d.",
+      "url": "https://www.ledger.com/phishing-campaigns-status",
+      "kind": "wallet-docs",
+      "method": "search-extract",
+      "supports": "The wallet maker will never call, DM or ask for the 24-word recovery phrase; there are no circumstances in which you need to give it to anyone."
+    },
+    {
+      "id": "theblock-ledger-letters-2025",
+      "title": "Ledger confirms physical scam letters requesting seed phrase in fake security upgrade",
+      "publisher": "The Block",
+      "date": "2025-04-30",
+      "url": "https://www.theblock.co/post/352479/ledger-confirms-physical-scam-letters-requesting-seed-phrase",
+      "kind": "news",
+      "method": "search-extract",
+      "supports": "Posted letters using a wallet maker's logo and address asked owners to scan a QR code and enter their recovery phrase for a 'mandatory' check."
+    },
+    {
+      "id": "coinbase-2sv",
+      "title": "Set up your 2-step verification",
+      "publisher": "Coinbase Help",
+      "date": "n.d.",
+      "url": "https://help.coinbase.com/en/coinbase/getting-started/getting-started-with-coinbase/2-step-verification",
+      "kind": "exchange-docs",
+      "method": "search-extract",
+      "supports": "Security keys and passkeys are the strongest options and a second key is recommended as backup; SMS is 'the least secure option'."
+    },
+    {
+      "id": "coinbase-breach-2025",
+      "title": "'Expect Imposters' Coinbase Tells Customers Whose Information Was Exposed in Data Breach",
+      "publisher": "TechRepublic",
+      "date": "2025-05-15",
+      "url": "https://www.techrepublic.com/article/news-coinbase-data-breach/",
+      "kind": "news",
+      "method": "search-extract",
+      "supports": "Criminals bribed overseas support contractors to steal customer data (names, addresses, partial ID numbers, ID images) in order to impersonate the exchange; no passwords, keys or funds were accessed."
+    },
+    {
+      "id": "kraken-gsl",
+      "title": "What is the Global Settings Lock (GSL)?",
+      "publisher": "Kraken Support",
+      "date": "n.d.",
+      "url": "https://support.kraken.com/articles/201396877-What-is-the-Global-Settings-Lock-GSL-",
+      "kind": "exchange-docs",
+      "method": "search-extract",
+      "supports": "A settings lock blocks new withdrawal addresses, API key and 2FA changes; unlocking takes a waiting period and triggers an email."
+    },
+    {
+      "id": "binance-whitelist",
+      "title": "How to Enable Withdrawal Whitelist for My Binance Account?",
+      "publisher": "Binance Support",
+      "date": "n.d.",
+      "url": "https://www.binance.com/en/support/faq/how-to-enable-withdrawal-address-whitelist-1d08944f103b4fc78d3519913b600086",
+      "kind": "exchange-docs",
+      "method": "search-extract",
+      "supports": "With the whitelist on, withdrawals go only to saved addresses; new addresses can be held for 24, 48 or 72 hours."
+    },
+    {
+      "id": "scmp-arup-2024",
+      "title": "UK multinational Arup confirmed as victim of HK$200 million deepfake scam",
+      "publisher": "South China Morning Post",
+      "date": "2024-05",
+      "url": "https://www.scmp.com/news/hong-kong/law-and-crime/article/3263151/uk-multinational-arup-confirmed-victim-hk200-million-deepfake-scam-used-digital-version-cfo-dupe",
+      "kind": "news",
+      "method": "search-extract",
+      "supports": "An employee made 15 transfers totalling HK$200 million (about US$25 million) after a video call in which the 'CFO' and colleagues were deepfakes."
+    }
+  ]
+}

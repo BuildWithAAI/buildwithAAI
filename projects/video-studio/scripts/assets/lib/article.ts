@@ -40,10 +40,13 @@ export type ArticleInput = {
 	disclosures: string[]; // episode-level disclosure lines (not the per-offer ones)
 	fictionNote: string | null;
 	developing: {label: string; asOf: string | null} | null;
-	corrections: {date: string; text: string}[];
+	/** lang: set when the text is not in this page's language (no translation yet); the item is marked with it. */
+	corrections: {date: string; text: string; lang?: string}[];
 	machineTranslation: boolean;
 	youtubeId: string | null;
-	publishedAt: string | null; // ISO timestamp
+	publishedAt: string | null; // ISO timestamp, or YYYY-MM-DD when only the date is known (schema.org and the page)
+	/** The full timestamp for feeds (Atom needs a time); defaults to publishedAt. */
+	feedPublishedAt?: string | null;
 	modifiedAt: string; // ISO timestamp
 	durationMs: number | null;
 	subscribeUrl: string;
@@ -245,7 +248,7 @@ export const renderArticle = (a: ArticleInput): {html: string; meta: ArticleMeta
 
 	if (a.corrections.length) {
 		body.push(`<section aria-labelledby="corrections"><h2 id="corrections">${esc(s.corrections)}</h2><ul>`);
-		for (const c of a.corrections) body.push(`<li><time datetime="${esc(c.date)}">${esc(c.date)}</time>: ${esc(c.text)}</li>`);
+		for (const c of a.corrections) body.push(`<li><time datetime="${esc(c.date)}">${esc(c.date)}</time>: ${c.lang ? `<span lang="${esc(HREFLANG[c.lang as Lang] ?? c.lang)}">${esc(c.text)}</span>` : esc(c.text)}</li>`);
 		body.push('</ul></section>');
 	}
 
@@ -283,7 +286,7 @@ export const renderArticle = (a: ArticleInput): {html: string; meta: ArticleMeta
 		url: a.url,
 		title,
 		summary: a.summary,
-		datePublished: a.publishedAt,
+		datePublished: a.feedPublishedAt ?? a.publishedAt,
 		dateModified: a.modifiedAt,
 		indexable: a.indexable,
 		alternates: a.alternates,

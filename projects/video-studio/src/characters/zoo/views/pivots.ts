@@ -7,7 +7,7 @@
 import {HEAD34_PIVOT} from './threeQuarter/Head34';
 import {PIN34, WRIST34} from './threeQuarter/Body34';
 import {TQ_EYES, TQ_MID_X} from './threeQuarter/tq';
-import {HEAD_SIDE_PIVOT, SIDE_MOUTH} from './side/HeadSide';
+import {EYE_C, HEAD_SIDE_PIVOT, SIDE_MOUTH} from './side/HeadSide';
 import {SHOULDER_SIDE, WRIST_SIDE} from './side/BodySide';
 import {BACK_BODY} from './Back';
 import {TYPING_LAYOUT} from './Typing';
@@ -46,7 +46,7 @@ export const PIVOTS_SIDE: Table = {
 	neck: P(-5, -716, 'torso', 'breathe (translate)'),
 	head: P(HEAD_SIDE_PIVOT.x, HEAD_SIDE_PIVOT.y, 'neck', 'headTilt (deg)'),
 	jaw: P(SIDE_MOUTH.x, SIDE_MOUTH.y, 'head', 'lip contact point; the profile mouth notch opens from here'),
-	eyeR: P(48.4, -812.6, 'head', 'the visible (anatomical right) eye: blink, lookX/lookY, expression'),
+	eyeR: P(EYE_C.x, EYE_C.y, 'head', 'the visible (anatomical right) eye: blink, lookX/lookY, expression (7 u of nasal bridge in front, ZOO-V7)'),
 	browR: P(47, -829, 'head', 'expression, browLift'),
 	shoulderR: P(SHOULDER_SIDE.x, SHOULDER_SIDE.y, 'torso', 'near arm; static hang in v1'),
 	wristR: P(WRIST_SIDE.x, WRIST_SIDE.y, 'shoulderR', 'near hand (drawn for the profile)'),
@@ -59,9 +59,9 @@ export const PIVOTS_BACK: Table = {
 	neck: P(4, -730, 'torso', 'breathe (translate)'),
 	head: P(BACK_BODY.headPivot.x, BACK_BODY.headPivot.y, 'neck', 'headTilt (deg); no face controls are visible from behind'),
 	shoulderL: P(-108, -686, 'torso', 'anatomical LEFT = screen left from behind; static hang'),
-	wristL: P(-118, -418, 'shoulderL', ''),
+	wristL: P(-110, -410.4, 'shoulderL', 'cuff bottom centre (repair round 2: forearms hang ~7 u further in, as on zoo_turn_back.png)'),
 	shoulderR: P(112, -686, 'torso', 'anatomical RIGHT = screen right; pair mirrored about x=2 inside this view'),
-	wristR: P(122, -418, 'shoulderR', ''),
+	wristR: P(114, -410.4, 'shoulderR', ''),
 };
 
 const U = TYPING_LAYOUT.upper;

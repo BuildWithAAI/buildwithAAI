@@ -45,6 +45,12 @@ export type ChannelConfig = {
 	hashtags: Record<string, string[]>;
 	/** Owner-approved translations of offer disclosures: {offerId: {lang: text}} (English comes from the registry). */
 	offerDisclosures: Record<string, Record<string, string>>;
+	/**
+	 * Owner-approved translations of the publish kit's episode-level disclosure lines, keyed by the exact English
+	 * line, then by language. A language without its own kit borrows the source-language kit; each of its disclosure
+	 * lines must have a translation here, or that language's assets are blocked (never dropped silently).
+	 */
+	disclosureTranslations: Record<string, Record<string, string>>;
 	podcast: PodcastConfig;
 };
 
@@ -143,6 +149,17 @@ export const loadChannelConfig = (file: string, channel: string): ChannelConfig 
 			}
 		}
 	}
+	const disclosureTranslations: Record<string, Record<string, string>> = {};
+	for (const src of [d.disclosureTranslations, c.disclosureTranslations]) {
+		if (!isRecord(src)) continue;
+		for (const [line, byLang] of Object.entries(src)) {
+			if (!isRecord(byLang)) throw new InputError(`${file}: disclosureTranslations[${JSON.stringify(line.slice(0, 40))}] must be an object of {lang: text}`);
+			for (const [lang, text] of Object.entries(byLang)) {
+				if (typeof text !== 'string' || !text.trim()) throw new InputError(`${file}: disclosureTranslations[${JSON.stringify(line.slice(0, 40))}].${lang} must be a non-empty string`);
+				(disclosureTranslations[line.trim()] ??= {})[lang] = text.trim();
+			}
+		}
+	}
 	const minSec = c.podcastMinSec ?? d.podcastMinSec;
 	return {
 		channel,
@@ -156,6 +173,7 @@ export const loadChannelConfig = (file: string, channel: string): ChannelConfig 
 		youtubeChannelUrl: httpsUrl(c.youtubeChannelUrl, `channels.${channel}.youtubeChannelUrl`, true),
 		hashtags,
 		offerDisclosures,
+		disclosureTranslations,
 		podcast: {
 			enabled: p.enabled === true,
 			reason: typeof p.reason === 'string' ? p.reason : null,

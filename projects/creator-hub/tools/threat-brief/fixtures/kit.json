@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "2026-11-24-fixtureswap",
+  "youtubeVideoId": null,
+  "title": "FixtureSwap lost its keys",
+  "titleOptions": ["FixtureSwap lost its keys"],
+  "summary": "According to Fixture DB, FixtureSwap lost $4,200,000 in a key compromise on November 23. Zoo's one fix: keep long-term funds on a hardware wallet.",
+  "chapters": [],
+  "sources": [
+    {"title": "Fixture DB hacks: FixtureSwap (2026-11-23) (Fixture DB)", "url": "https://db.fixture.test/hacks#FixtureSwap@2026-11-23"},
+    {"title": "FixtureSwap Drained of $4.8 Million After Key Leak (Example Wire)", "url": "https://wire.example.test/news/fixtureswap-drained"}
+  ],
+  "offers": [],
+  "disclosures": ["News and education only. Not financial advice."],
+  "posts": {
+    "youtube": {"text": "Test fixture.", "charCount": 13, "limit": 5000, "notes": []},
+    "shorts": {"text": "Test fixture.", "charCount": 13, "limit": 5000, "notes": []},
+    "tiktok": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "reels": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "instagram": {"text": "Test fixture.", "charCount": 13, "limit": 2200, "notes": []},
+    "x": {"text": "FixtureSwap lost its keys\nFull episode on YouTube: The Zoo & Badger Show\n#CryptoSecurity #ThreatBrief", "charCount": 99, "limit": 280, "notes": []}
+  },
+  "captions": {"srt": null, "vtt": null},
+  "renders": [],
+  "settings": {"madeForKids": false, "containsSyntheticMedia": false, "paidPromotion": false, "reasons": []},
+  "checks": [{"id": "income-claims", "ok": true, "detail": "fixture"}],
+  "generatedAt": "2026-11-24T07:00:00.000Z"
+}

@@ -24,7 +24,7 @@ export const RemotionRoot: React.FC = () => {
 			<Composition id="BadgerSheet" component={BadgerSheet} durationInFrames={1} fps={FRAME.fps} width={FRAME.width} height={FRAME.height} />
 			{/* Silent mouth-library demo: six shapes, one per second. Not lip-synced. */}
 			<Composition id="MouthDemo" component={MouthDemo} durationInFrames={6 * FRAME.fps} fps={FRAME.fps} width={FRAME.width} height={FRAME.height} />
-			{/* Silent 10 s animation proof: ZOO + Badger (Prompt 2) */}
+			{/* Silent 10 s animation proof: Zoo + Badger (Prompt 2); timing and staging in Preview10s.tsx */}
 			<Composition id="Preview10s" component={Preview10s} durationInFrames={10 * FRAME.fps} fps={FRAME.fps} width={FRAME.width} height={FRAME.height} />
 		</>
 	);

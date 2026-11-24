@@ -1,9 +1,11 @@
 node_modules/
 data/
-config/offers.json
-config/studio.json
-config/youtube-oauth.json
+# Real config files hold private URLs, keys or tokens: only the *.example.json templates are committed.
+config/*.json
+!config/*.example.json
+# OAuth credential files (refresh tokens) anywhere in the project, and backup copies of them.
+*oauth*.json
+*oauth*.json.*
 *.sqlite
 *.sqlite-*
 out/
-config/payouts.json

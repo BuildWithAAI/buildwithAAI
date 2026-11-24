@@ -14,7 +14,7 @@ import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import type {ArticleMeta} from './lib/article.ts';
 import {loadChannelConfig} from './lib/config.ts';
-import {buildAtomFeed, buildIndexPage, buildSitemap} from './lib/site.ts';
+import {buildAtomFeed, buildIndexPage, buildSitemap, indexUrls} from './lib/site.ts';
 import {isRecord, readJson, writeFile} from './lib/util.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -87,10 +87,20 @@ export const main = (argv: string[], print = console.log, printError = console.e
 		for (const alt of m.alternates) if (!urls.has(alt.url)) warnings.push(`${m.url}: hreflang ${alt.hreflang} points to ${alt.url}, which is not in this build`);
 	}
 	const info = {siteName: site.siteName, articleBase: site.articleBase, brand: cfg.brand, hubOrigin: cfg.hubOrigin, generatedAt: (v.now ? new Date(v.now) : new Date()).toISOString().replace(/\.\d{3}Z$/, 'Z')};
-	writeFile(join(articlesDir, 'sitemap.xml'), buildSitemap(metas));
+	writeFile(join(articlesDir, 'sitemap.xml'), buildSitemap(metas, indexUrls(metas, site.articleBase)));
 	writeFile(join(articlesDir, 'feed.xml'), buildAtomFeed(metas, info));
 	writeFile(join(articlesDir, 'index.html'), buildIndexPage(metas, info));
-	print(`Site "${siteKey}" (${site.articleBase}/): ${found.length} article(s), ${metas.filter((m) => m.indexable).length} indexable → ${articlesDir}`);
+	// one index page per channel: the podcast feed's <link> (config podcast.shows.<lang>.link) points at it
+	for (const channel of [...new Set(metas.map((m) => m.channel))].sort()) {
+		let name = channel;
+		try {
+			name = loadChannelConfig(v.config ? resolve(process.cwd(), v.config) : join(HERE, 'config/channels.json'), channel).displayName;
+		} catch {
+			// a channel missing from the config keeps its id as the heading
+		}
+		writeFile(join(articlesDir, channel, 'index.html'), buildIndexPage(metas, info, {id: channel, name}));
+	}
+	print(`Site "${siteKey}" (${site.articleBase}/): ${found.length} article(s), ${metas.filter((m) => m.indexable).length} indexable, ${new Set(metas.map((m) => m.channel)).size} channel index page(s) → ${articlesDir}`);
 	for (const s of skipped) print(`  skipped ${s}`);
 	for (const w of warnings) print(`  warning: ${w}`);
 	print('Nothing was uploaded. See docs/ASSETS.md, "Hosting the articles".');

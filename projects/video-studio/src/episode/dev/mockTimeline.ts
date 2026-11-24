@@ -10,7 +10,7 @@ import {displayWords, UNSPACED} from '../markup.ts';
 
 export type MockOpts = {fps?: number; leadMs?: number; tailMs?: number};
 
-const ENDS = /[.!?…。！？]$/;
+const ENDS = /[.!?…。！？।॥]$/;
 const CLAUSE = /[,;:，、；：]$/;
 const up100 = (ms: number) => Math.ceil(ms / 100) * 100;
 

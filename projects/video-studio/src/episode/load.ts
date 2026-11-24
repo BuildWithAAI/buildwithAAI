@@ -123,7 +123,8 @@ export const resolveEpisode = async (props: EpisodeInput & {timelineOverride?: T
 		storyboard,
 		timeline,
 		shortId,
-		narration: timeline.mock ? null : narrationPath(channel, slug, lang),
+		// the voice step records the continuous track as timeline.narration (scripts/voice/timeline-additions.ts)
+		narration: timeline.mock ? null : ((timeline as Timeline & {narration?: string}).narration ?? narrationPath(channel, slug, lang)),
 		charts,
 		captions: typeof props.captions === 'boolean' ? props.captions : short,
 		durationInFrames,

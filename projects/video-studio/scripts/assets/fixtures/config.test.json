@@ -27,6 +27,11 @@
       "hardware-wallet": {
         "es": "Enlace de afiliado: puedo ganar una comisión si compras. No te cuesta nada extra."
       }
+    },
+    "disclosureTranslations": {
+      "The messages and pages shown in this video are recreations with fictional accounts.": {
+        "es": "Los mensajes y páginas que se ven en este video son recreaciones con cuentas ficticias."
+      }
     }
   },
   "channels": {

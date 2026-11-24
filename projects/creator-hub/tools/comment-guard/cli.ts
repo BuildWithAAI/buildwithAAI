@@ -65,13 +65,15 @@ Options
   --max-quota <units>      API quota budget for this run (default ${DEFAULT_MAX_QUOTA}; reads cost 1, each hold call 50).
   --max-threads <n>        Newest comment threads to read (default ${DEFAULT_MAX_THREADS}). Replies are always included.
   --from-report <file>     apply/release: use a report you reviewed ("latest" = newest in --out) instead of rescanning.
-  --input <file>           scan: score comments from a JSON file instead of the API (array of {id, text, authorName}).
+  --input <file>           scan: score comments from a JSON file instead of the API (array of {id, text, authorName,
+                           authorChannelId}). Add --trust <your channel id> so your own replies are not taken for
+                           impersonators.
   --account <key>          Which saved channel to use when config/youtube-oauth.json holds more than one.
   --channel-name <name>    Extra name to protect from impersonation (repeatable).
   --trust <channel id>     Channel whose comments are never flagged, e.g. your second channel (repeatable).
   --own-handle <handle>    A handle or link you own, e.g. your Telegram bot (repeatable).
   --client-secrets <file>  auth: the "Desktop app" OAuth client JSON from Google Cloud Console.
-  --oauth-file <file>      Credentials file (default config/youtube-oauth.json, or YOUTUBE_OAUTH_FILE).
+  --oauth-file <file>      Credentials file (default config/youtube-oauth.json, or YOUTUBE_OAUTH_FILE). Inside the repository it must be gitignored.
   --out <dir>              Report folder (default out/comment-guard).
 
 Environment

@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "good-episode",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "POV: You audit a top caller",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "You find a caller with 80,000 followers. Every call pumps. Nobody asks why.",
+      "onScreen": {"kicker": "POV", "title": "You audit a top caller"},
+      "badger": {"present": true, "reaction": "lookUp"},
+      "claimWaivers": [{"match": "a caller with 80,000 followers", "rule": "factual", "reason": "story setup: the follower count of a fictional composite caller"}]
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Pump.fun pays callers rewards in USDC every day. [src:callout-terms] First, you check which wallets bought before each call, and how fast they sold.",
+      "onScreen": {"title": "What you check", "bullets": ["Who bought early", "How fast they sold"], "cues": ["wallets", "sold"]},
+      "badger": {"present": true, "reaction": "judge"}
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "On the chart, the pump looks organic. Then the floor disappears.",
+      "onScreen": {"pair": "$DEMO / SOL", "cues": ["pump", "floor"]},
+      "chart": {"seed": 51, "illustrative": true},
+      "badger": {"present": true, "reaction": "worried"}
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Scammers promise guaranteed returns. Before you follow anyone, check who bought first, check who sold first, and never buy the loudest candle.",
+      "onScreen": {"title": "Before you follow", "steps": ["Check who bought first", "Check who sold first", "Skip the loudest candle"], "cues": ["bought", "sold", "never"]},
+      "claimWaivers": [{"match": "Scammers promise guaranteed returns", "rule": "income", "reason": "describes a scam pitch as a warning, not a promise"}]
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "As one caller put it: Nobody checks the wallet.",
+      "onScreen": {"quote": "Nobody checks the wallet.", "attribution": "a top caller (fictional composite)", "source": "Fictional dialogue"},
+      "badger": {"present": true, "reaction": "shocked"}
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "None of this is financial advice. If it saved you one bad trade, subscribe.",
+      "onScreen": {"title": "One bad trade avoided", "cues": ["subscribe"]},
+      "badger": {"present": true, "reaction": "happy"}
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "Next time: the bot that trades for you.",
+      "onScreen": {"title": "Next: the bot that trades for you"},
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "callout-terms",
+      "title": "Example callout terms (test fixture)",
+      "url": "https://example.com/callout-terms",
+      "quote": "Rewards are paid daily in USDC.",
+      "accessed": "2026-11-20",
+      "status": "verified"
+    }
+  ],
+  "shorts": [{"id": "short1", "sceneIds": ["s01", "s03", "s06"], "title": "The caller's chart"}],
+  "thumbnails": [
+    {"id": "a", "text": "WHO SOLD FIRST?", "expression": "neutral", "badger": true},
+    {"id": "b", "text": "THE FLOOR VANISHED", "expression": "worried", "badger": true},
+    {"id": "c", "text": "CHECK THE WALLET", "expression": "shocked", "badger": false}
+  ]
+}

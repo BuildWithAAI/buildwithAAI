@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "channel": "zoora-security",
+  "slug": "bad-r6-speculation",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "FixtureSwap reports $4.2M drain (developing)",
+  "fiction": false,
+  "news": {
+    "format": "daily-short",
+    "developing": {
+      "label": "DEVELOPING",
+      "asOf": "2026-11-24T08:00:00Z"
+    },
+    "incidentIds": [
+      "inc-fixtureswap"
+    ]
+  },
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "This is a developing story. FixtureSwap says attackers drained {$4.2M|four point two million dollars} from its liquidity pools [src:src-wire].",
+      "onScreen": {
+        "title": "DEVELOPING: FixtureSwap reports $4.2M drain"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "worried"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "According to FixtureSwap's preliminary review, a compromised deployer key was used to upgrade the pool contract [src:src-pm]. It says the investigation is ongoing and figures may change [src:src-pm].",
+      "onScreen": {
+        "title": "How it worked",
+        "bullets": [
+          "A compromised deployer key",
+          "The pool contract was upgraded"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "narration": "Example Security Lab says about {1,400 ETH|fourteen hundred E T H} left the pools for a newly funded address [src:src-lab]. The firm says the funds were later bridged to another network [src:src-lab].",
+      "onScreen": {
+        "title": "Where the funds went",
+        "bullets": [
+          "About 1,400 ETH out (Example Security Lab)",
+          "Bridged to another network"
+        ]
+      }
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "narration": "Our own check of the tracker sample: this is the second key-compromise drain in eight weeks. FixtureLend lost {$3.1M|three point one million dollars} on October 2, as listed by Example Hack Tracker [src:src-tracker].",
+      "onScreen": {
+        "title": "Rekt Meter",
+        "bullets": [
+          "FixtureLend: $3.1M (Example Hack Tracker)",
+          "FixtureSwap: $4.2M (Example Hack Tracker)"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      }
+    },
+    {
+      "id": "s05",
+      "type": "talk",
+      "narration": "Zoo's One Fix for teams: keep upgrade keys in a hardware-backed multisig with a time delay, so one leaked key cannot change a contract instantly. Rumor has it more pools are affected, and this probably gets worse.",
+      "onScreen": {
+        "title": "Zoo's One Fix",
+        "bullets": [
+          "Upgrade keys in a multisig",
+          "Add a time delay"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "Subscribe for tomorrow's brief.",
+      "onScreen": {
+        "button": "Subscribe"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-wire",
+      "title": "FixtureSwap says attackers drained $4.2 million from its pools (Example Wire)",
+      "url": "https://news.example.com/2026/11/23/fixtureswap-drain",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "src-pm",
+      "title": "Incident update (FixtureSwap)",
+      "url": "https://fixtureswap.example/blog/incident-update",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "src-lab",
+      "title": "Alert: FixtureSwap outflows (Example Security Lab)",
+      "url": "https://lab.example.org/alerts/fixtureswap",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "src-tracker",
+      "title": "Incidents since 2026-09-28 (Example Hack Tracker)",
+      "url": "https://tracker.example.net/incidents?since=2026-09-28",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "analysis": [
+    {
+      "id": "a1",
+      "kind": "pattern",
+      "basis": "own-data",
+      "detail": "In our tracker sample, FixtureSwap is the second key-compromise drain in eight weeks, after FixtureLend lost $3.1M on Oct 2.",
+      "sourceIds": [
+        "src-tracker"
+      ],
+      "sceneIds": [
+        "s04"
+      ],
+      "method": "Filtered the stored tracker rows (brief.json, src-tracker) for a key-compromise technique since 2026-09-28 and counted them: 2 rows, 52 days apart."
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s02",
+        "s04",
+        "s05"
+      ],
+      "title": "FixtureSwap reports $4.2M drain (developing)"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "t1",
+      "text": "DEVELOPING: FixtureSwap drain",
+      "expression": "worried",
+      "badger": true
+    }
+  ]
+}

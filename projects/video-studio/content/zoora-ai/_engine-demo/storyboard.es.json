@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "_engine-demo",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "Por qué la mayoría de las memecoins nuevas mueren el primer día",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "La mayoría de las {memecoins|mimcoins} nuevas en {Pump.fun|Pamp punto fan} nunca llegan al segundo día. [src:cg-cryptonews,cg-cryptobriefing]",
+      "onScreen": {
+        "kicker": "Explicado",
+        "title": "Muertas el primer día",
+        "subtitle": "Lo que muestran los datos de lanzamiento"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "{CoinGecko|Coin Guecko} rastreó {18,67 millones|casi diecinueve millones} de ellas. [src:cg-cryptonews,cg-cryptobriefing] {El 68,67%|Casi el sesenta y nueve por ciento} hizo su última operación en la {bonding curve|bóndin kerv} el primer día. [src:cg-cryptonews,cg-cryptobriefing] Noventa días después, solo {el 4,55%|el cuatro y medio por ciento} seguía cotizando. [src:cg-cryptonews,cg-cryptobriefing]",
+      "onScreen": {
+        "title": "Los números del lanzamiento",
+        "bullets": [
+          "18,67 millones de tokens rastreados",
+          "68,67%: última operación en la bonding curve, día uno",
+          "4,55% seguía cotizando a los 90 días"
+        ],
+        "cues": [
+          "rastreó",
+          "última",
+          "seguía"
+        ],
+        "lowerThird": [
+          "Zoo",
+          "Presentador · Zoora AI"
+        ]
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "Así luce el primer día, en una moneda inventada. Un lanzamiento, una ráfaga de compras, luego una venta masiva, y una lenta agonía.",
+      "onScreen": {
+        "pair": "$EXAMPLE / SOL",
+        "cues": [
+          "ráfaga",
+          "venta"
+        ]
+      },
+      "chart": {
+        "seed": 24,
+        "illustrative": true
+      },
+      "zoo": {
+        "expression": "worried"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "worried"
+      },
+      "transitionIn": "fade"
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Antes de tocar una moneda nueva, pregúntate: ¿quién tiene el suministro? ¿Qué más lanzó su creador? ¿Y quién cobra por promocionarla?",
+      "onScreen": {
+        "title": "Antes de tocar una moneda nueva",
+        "steps": [
+          "¿Quién tiene el suministro?",
+          "¿Qué más lanzó su creador?",
+          "¿Quién cobra por promocionarla?"
+        ],
+        "cues": [
+          "tiene",
+          "más",
+          "cobra"
+        ],
+        "badgerCue": "promocionarla"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      },
+      "transitionIn": "slide"
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "Porque los analistas {on-chain|onchéin} de {Bubblemaps|Bábol maps} advirtieron: las billeteras secundarias se han convertido en un modelo de negocio. [src:bm-side-wallets]",
+      "onScreen": {
+        "quote": "Las billeteras secundarias se han convertido en un modelo de negocio.",
+        "attribution": "Bubblemaps, firma de análisis on-chain (cita traducida)"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "Si prefieres leer los datos en vez de perseguir la euforia, suscríbete.",
+      "onScreen": {
+        "title": "Lee los datos, no la euforia",
+        "cues": [
+          "suscríbete"
+        ]
+      },
+      "zoo": {
+        "expression": "happy"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "Lo que viene: ¿quién está realmente del otro lado de tu operación?",
+      "onScreen": {
+        "title": "Próximo: ¿quién está del otro lado de tu operación?"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "minDurationSec": 20,
+      "transitionIn": "fade"
+    }
+  ],
+  "sources": [
+    {
+      "id": "cg-cryptonews",
+      "title": "Estudio de CoinGecko sobre la supervivencia el día del lanzamiento",
+      "url": "https://crypto.news/pump-funs-token-factory-has-a-69-launch-day-death-rate-coingecko/",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "cg-cryptobriefing",
+      "title": "Estudio de supervivencia de CoinGecko",
+      "url": "https://cryptobriefing.com/pump-fun-token-survival-rate-study/",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "bm-side-wallets",
+      "title": "Bubblemaps pide a los launchpads auditar a los top traders, 6 nov 2026",
+      "url": "https://www.tokenpost.com/news/investing/52014",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s06"
+      ],
+      "title": "La mayoría de las memecoins nunca llega al día dos"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "MUERTAS EL DÍA UNO",
+      "expression": "neutral",
+      "badger": true,
+      "badgerReaction": "judge"
+    },
+    {
+      "id": "b",
+      "text": "¿POR QUÉ MUEREN?",
+      "expression": "worried",
+      "badger": true,
+      "badgerReaction": "worried"
+    },
+    {
+      "id": "c",
+      "text": "SIN SEGUNDO DÍA",
+      "expression": "shocked",
+      "badger": false
+    }
+  ],
+  "ui": {
+    "sources": "Fuente",
+    "illustrative": "Ilustrativo · token ficticio",
+    "subscribe": "Suscríbete",
+    "watchNext": "A continuación",
+    "subscribeSlot": "Suscríbete"
+  },
+  "translation": {
+    "status": "machine",
+    "method": "machine",
+    "reviewed": false
+  }
+}

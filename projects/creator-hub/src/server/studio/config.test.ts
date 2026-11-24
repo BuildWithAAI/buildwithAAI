@@ -47,6 +47,7 @@ test('decided values, notes, a portfolio and Stripe links are accepted', () => {
 			c.packages[0].revisions = 0;
 			c.packages[0]._note = 'notes are ignored';
 			c.portfolio = [{title: 'Episode 1', url: 'https://www.youtube.com/watch?v=abc', client: 'Own channel'}];
+			c.packages[2].priceUsd = 600;
 			c.stripePaymentLinks = {'shorts-pack-3': 'https://buy.stripe.com/test_123', _note: 'ignored'};
 		}),
 	);
@@ -55,6 +56,26 @@ test('decided values, notes, a portfolio and Stripe links are accepted', () => {
 	assert.equal(config.packages[0]?.revisions, 0);
 	assert.equal(config.portfolio[0]?.url, 'https://www.youtube.com/watch?v=abc');
 	assert.deepEqual(config.stripePaymentLinks, {'shorts-pack-3': 'https://buy.stripe.com/test_123'});
+});
+
+test('a Stripe payment link needs a decided price', () => {
+	rejects(
+		variant((c) => (c.stripePaymentLinks = {'shorts-pack-3': 'https://buy.stripe.com/test_123'})),
+		/stripePaymentLinks\.shorts-pack-3 needs a decided price: set packages\[2\]\.priceUsd first/,
+	);
+});
+
+test('package, FAQ and portfolio text may not promise results, returns or prices', () => {
+	rejects(
+		variant((c) => (c.packages[0].summary = 'Guaranteed 100k views in 30 days or your money back. 10x your token holders.')),
+		/packages\[0\]\.summary makes a claim the studio never makes \(guaranteed/,
+	);
+	rejects(variant((c) => (c.packages[1].deliverables[0] = 'Viral launch video that will 5x your market cap')), /packages\[1\]\.deliverables\[0\] makes a claim/);
+	rejects(variant((c) => (c.packages[2].summary = 'We get you 100k views')), /a promise of results/);
+	rejects(variant((c) => (c.faq[2].a = 'Your token could hit $1 after launch.')), /faq\[2\]\.a makes a claim .*a price target/);
+	rejects(variant((c) => (c.portfolio = [{title: 'Launch that made $50,000 in a week', url: 'https://www.youtube.com/watch?v=abc'}])), /portfolio\[0\]\.title makes a claim/);
+	// questions and denials are honest: "Do you guarantee views? No. We do not guarantee results."
+	assert.doesNotThrow(() => loadStudioConfig(variant((c) => (c.faq[0].a = 'No. We do not guarantee views, subscribers or sales.'))));
 });
 
 test('bad configs are rejected with the path of the first bad setting', () => {

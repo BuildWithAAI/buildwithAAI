@@ -16,7 +16,11 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from pathmap import map_path
-from spline import spline, blob, arc_over
+from spline import spline, blob, arc_over, f2
+from erode import erode_seg
+
+# Legs are drawn stroke-under-fill (parts/Leg.tsx): fills and strokes are inset by half the outline width (erode.py).
+INSET = 3.5 / 2
 
 HERE = os.path.dirname(__file__)
 T = json.load(open(os.path.join(HERE, 'traces', 'right.json')))
@@ -74,6 +78,28 @@ def S(points, origin, closed=False):
     return map_path(spline(points, closed=closed), local(origin))
 
 
+def closed_run(points, p_start, p_end):
+    """The piece of spline(points, closed=True) from point p_start forward (wrapping) to point p_end, with the closed
+    spline's own tangents (CR px). Points are matched by position (spline() drops repeated points)."""
+    full = spline(points, closed=True).replace(' Z', '')
+    segs = full.split(' C ')
+    body = segs[1:]
+    n = len(body)
+    xy = lambda t: tuple(float(v) for v in t.split()[-2:])
+    # segment k runs from the end of segment k - 1 (segment 0 from the M point)
+    starts = [xy(segs[0][2:])] + [xy(b) for b in body[:-1]]
+    ends = [xy(b) for b in body]
+    near = lambda a, b: abs(a[0] - b[0]) < 0.06 and abs(a[1] - b[1]) < 0.06
+    k = next(i for i in range(n) if near(starts[i], p_start))
+    out = ['M %s %s' % (f2(starts[k][0]), f2(starts[k][1]))]
+    for _ in range(n):
+        out.append('C ' + body[k])
+        if near(ends[k], p_end):
+            break
+        k = (k + 1) % n
+    return ' '.join(out)
+
+
 def seg(fill_pts, strokes, origin, details=()):
     return {'fill': S(fill_pts, origin, True), 'strokes': [S(s, origin) for s in strokes], 'details': [S(s, origin) for s in details]}
 
@@ -96,9 +122,16 @@ back = pts('torso_back')                    # under the collar -> withers -> cro
 belly = pts('torso_belly')                  # stifle -> elbow
 chest = pts('torso_chest')                  # collar -> chest front -> front-leg junction
 under_leg = [(400, 293), (425, 285)]        # hidden behind the near front leg
-torso_fill = (back + [(130, 296, 'c'), (170, 300), (200, 262)] + belly + under_leg + rev(chest)
+# Round-2 repair (decision BADGER-D35): the part of the torso hidden behind the near thigh at rest is a real contour, stroked
+# all the way round: the rump line tucks into a small rounded buttock under the hip and runs on, as the flank fold, into the
+# belly line at the stifle (the fold fills the angle between belly and thigh when the thigh swings back). When the thigh swings in the walk, whatever it uncovers is outlined (it used to be an unstroked polygon that
+# showed as white wedges behind and in front of the thigh). The belly line still owns the stifle corner (its first traced
+# point is shared with the thigh's front edge), so the thigh stroke starts one point lower.
+hidden = [(118, 267), (124, 275), (133, 281), (145, 284), (157, 283), (170, 279), (183, 276), (195, 270), (203, 261)]
+stifle = [tuple(T['hl_front'][1])]
+torso_fill = (back + hidden + stifle + belly + under_leg + rev(chest)
               + [(462, 166, 'c'), (440, 150), (418, 136)])
-torso = seg(torso_fill, [back, belly + under_leg + rev(chest)], TORSO_O, [pts('chest_detail')])
+torso = seg(torso_fill, [back + hidden + stifle + belly + under_leg + rev(chest)], TORSO_O, [pts('chest_detail')])
 
 # ---------------------------------------------------------------- neck + collar + tag
 nb = pts('neck_back')                       # ear base -> collar
@@ -142,8 +175,21 @@ front_paw = seg(fp_vis + [(423, 408, 'c'), (395, 408, 'c')], [fp_vis], FRONT_PAW
 # ---------------------------------------------------------------- hind leg
 hr = until('hl_rear', ymax=366) + [(92, 368, 'c')]
 hf = until('hl_front', ymax=366) + [(124, 368, 'c')]
-hu_fill = ([(220, 244, 'c'), (206, 228), (176, 220), (146, 218), (124, 224), (114, 236)] + hr + [(124, 368, 'c')] + rev(hf))
-hind_upper = seg(hu_fill, [hr, hf], HIND_HIP)
+# Round-2 repair (D35): above the stifle the front edge of the thigh runs straight on, high up into the flank (it used to
+# turn back at a corner, so a thigh swung back or dropped by the pelvis slide showed a notch or a nub under the belly; now
+# the visible front edge simply meets the belly line). Hidden inside the body at rest. The dome behind the hip stays low, so
+# even with the walk's pelvis slide the (invisible) top of the thigh never covers the croup spot R-01.
+hu_top = [(216, 241), (220, 231), (223, 220), (226, 208), (228, 197, 'c'), (214, 203), (198, 214), (182, 226), (164, 233),
+          (144, 234), (126, 233), (116, 240)]
+hu_fill = hu_top + hr + [(124, 368, 'c')] + rev(hf[1:])
+# the back of the thigh down to the gaskin is outlined in the under-torso pass (below); drawn over the torso it left a
+# free-ending tick on the buttock when the thigh swung forward
+REAR_UNDER = 6   # hr[6] = (117, 314)
+hind_upper = seg(hu_fill, [hr[REAR_UNDER:], hf[1:]], HIND_HIP)
+# Round-2 repair (D35): the top of the thigh (stifle -> hip dome -> back of the thigh) is outlined in a pass drawn UNDER the
+# torso (parts/Leg.tsx 'underlay'): when the thigh swings back and its top pushes out past the rump, that edge has a line,
+# while inside the body the torso hides it. Cut from the closed fill spline, so it lies exactly on the fill edge.
+hind_upper['underlay'] = [map_path(closed_run(hu_fill, hf[1][:2], hr[REAR_UNDER + 1][:2]), local(HIND_HIP))]
 hl_rear = [(93, 410, 'c'), (92.5, 390), (92, 368, 'c')]
 hl_front = [(124, 368, 'c'), (122.5, 382), (120.5, 396), (120, 410, 'c')]
 hind_lower = seg(hl_rear + [(92, 368, 'c'), (124, 368, 'c')] + hl_front + [(120, 410, 'c'), (93, 410, 'c')],
@@ -155,8 +201,12 @@ hind_paw = seg(hp_vis + [(120, 410, 'c'), (93, 410, 'c')], [hp_vis], HIND_PAW, [
 # ---------------------------------------------------------------- tail (behind the torso and near thigh)
 tt = pts('tail_top')
 tb = pts('tail_bot')
-tail_fill = [(142, 166, 'c')] + tt + tb + [(124, 256), (127, 222), (136, 192)]
-tail = {**seg(tail_fill, [tt, tb], TAIL_ROOT), 'tip': rnd(sub(W(*tt[-1][:2]), W(*TAIL_ROOT)))}
+# Round-2 repair (D35): the underside runs on as a smooth curve up to the root, and the WHOLE outline is stroked. The root
+# stays inside the torso at every carriage the rig uses (tail -10..+45 deg), so a raised tail shows its underside outlined
+# until it meets the rump (it used to end in an unstroked straight edge 40-50 units long).
+tail_fill = [(142, 166, 'c')] + tt + tb + [(121, 262), (121, 240), (124, 218), (130, 200), (136, 190)]
+tail = {'fill': S(tail_fill, TAIL_ROOT, True), 'strokes': [S(tail_fill, TAIL_ROOT, True)], 'details': [],
+        'tip': rnd(sub(W(*tt[-1][:2]), W(*TAIL_ROOT)))}
 
 # ---------------------------------------------------------------- right-side markings (CR px) -> part local
 spots = []
@@ -181,10 +231,16 @@ spot('R-NECK', 'neck', None, (460.2, 124.4, 6.5, 3.8, -73.2), NECK_O, (460, 124)
 spot('R-06', 'legHindNear', 'upper', (189.9, 253.4, 11.0, 6.8, -69.0), HIND_HIP, (190, 253), 'front of the right thigh (stifle)')
 spot('R-07', 'legHindNear', 'upper', (115.9, 347.1, 10.5, 5.8, -57.4), HIND_HIP, (116, 347), 'right gaskin, just above the hock')
 spot('R-08', 'legFrontNear', 'upper', (408.0, 313.8, 12.2, 8.0, 88.5), FRONT_SHOULDER, (408, 314), 'forearm of the near (right) front leg')
-# the large LEFT withers patch shows from the right only as a thin edge along the top line
+# The withers patch L-WITHERS seen from the right (decision BADGER-D16, revised 2026-11-24): the top coat map shows the
+# FRONT half of the patch straddling the spine almost symmetrically (lateral extent 0.84 of the half-width on the right,
+# 0.86 on the left) and its right lobe ending ~70 px further back, so from the right side the patch shows as a wedge at
+# the front of the withers, deepest just behind the collar (~24 units on a rounded back section) and tapering to the top
+# line ~78 units back. coat_right's thickened top line is that wedge's upper edge; turnaround side, walking and
+# looking-up draw the same marking larger. Authored on coat_right's top line; never mirrored from the left record.
 spot('L-WITHERS', 'torso', None,
-     [(340, 141, 'c'), (360, 140.5), (382, 137, 'c'), (378, 147), (366, 152), (352, 151.5), (344, 148.5)],
-     TORSO_O, (360, 149), 'edge of the LEFT withers patch L-WITHERS where it wraps over the top line (seen from the right)', side='left')
+     [(399, 124, 'c'), (393, 141), (386, 153), (377, 163), (366, 168.5), (354, 167), (343, 162), (333, 156), (324, 150),
+      (316, 146, 'c'), (330, 140), (350, 138), (370, 134), (386, 128)],
+     TORSO_O, (366, 152), 'right lobe of the withers patch L-WITHERS (it straddles the spine at the withers, top coat map), seen from the right', side='left')
 
 tw = W(*TORSO_O)
 
@@ -205,22 +261,24 @@ rig = {
     },
     'neck': neck,
     'legFront': {
-        'upper': front_upper,
+        'upper': erode_seg(front_upper, INSET),
         'lowerPivot': rnd(sub(W(*FRONT_WRIST), W(*FRONT_SHOULDER))),
-        'lower': front_lower,
+        'lower': erode_seg(front_lower, INSET),
         'pawPivot': rnd(sub(W(*FRONT_PAW), W(*FRONT_WRIST))),
-        'paw': front_paw,
-        'lowerJointR': round(15.8 * KX, 2),  # 0.5 px inside the leg's half-width at the cut
-        'pawJointR': round(13.5 * KX, 2),
+        'paw': erode_seg(front_paw, INSET),
+        'lowerJointR': round(15.8 * KX - INSET, 2),  # 0.5 px inside the leg's half-width at the cut, minus the inset
+        'pawJointR': round(13.5 * KX - INSET, 2),
+        'inset': INSET,
     },
     'legHind': {
-        'upper': hind_upper,
+        'upper': erode_seg(hind_upper, INSET),
         'lowerPivot': rnd(sub(W(*HIND_HOCK), W(*HIND_HIP))),
-        'lower': hind_lower,
+        'lower': erode_seg(hind_lower, INSET),
         'pawPivot': rnd(sub(W(*HIND_PAW), W(*HIND_HOCK))),
-        'paw': hind_paw,
-        'lowerJointR': round(15.5 * KX, 2),
-        'pawJointR': round(13 * KX, 2),
+        'paw': erode_seg(hind_paw, INSET),
+        'lowerJointR': round(15.5 * KX - INSET, 2),
+        'pawJointR': round(13 * KX - INSET, 2),
+        'inset': INSET,
     },
     'tail': tail,
 }
@@ -235,8 +293,8 @@ with open(sys.argv[1], 'w') as fh:
 with open(sys.argv[2], 'w') as fh:
     json.dump({'const': 'RIGHT_SPOTS',
                'doc': ('Right-side markings for the RIGHT-view rig (badger_coat_right.png): 9 R- spots (R-01..R-08, R-NECK) '
-                       'plus the thin top-line edge of the LEFT withers patch (id L-WITHERS, side left), as the coat map shows it. '
-                       'Paths are in RIGHT_RIG part-local space.'),
+                       'plus the right lobe of the withers patch (id L-WITHERS, side left) that the top coat map puts across the spine '
+                       '(decision BADGER-D16). Paths are in RIGHT_RIG part-local space.'),
                'spots': spots}, fh, indent=1)
 print('ok', len(spots), 'right-view spots; footprint centre CR', (FOOT_MIN + FOOT_MAX) / 2,
       '; far-front stand reach (units):', round(KX * (FRONT_FAR_DX - FRONT_FAR_MOUNT_DX), 1))

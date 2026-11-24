@@ -15,6 +15,11 @@
  * create_broadcast: "send_at ... leave blank to create a draft broadcast"; its tests expect
  * broadcast.send_at === null for a draft) and the search-index text of the docs page above.
  *
+ * Recipients: the create-broadcast body takes an optional subscriber_filter, an array of groups such as
+ * [{"all": [{"type": "tag", "ids": [123]}]}] ("all" = the subscriber must match every listed tag or segment).
+ * According to the same docs page (search-index text, not opened directly), a broadcast without a filter goes
+ * to all subscribers, which is why the CLI makes the owner choose (KIT_SUBSCRIBER_FILTER or --all-subscribers).
+ *
  * NOT CALLED LIVE: api.kit.com is not reachable from the build machine. This client is tested only
  * against a mocked fetch (kit-api.test.ts). Try it once on the real account before relying on it.
  */
@@ -23,11 +28,28 @@ export const KIT_API_BASE = 'https://api.kit.com/v4';
 export const KIT_DOCS_URL = 'https://developers.kit.com/api-reference/broadcasts/create-a-broadcast';
 const TIMEOUT_MS = 15_000;
 
+/** Who a draft is for: subscribers with every one of these Kit tags or segments. */
+export type SubscriberFilter = {type: 'tag' | 'segment'; ids: number[]};
+
 export type BroadcastDraftInput = {
 	subject: string;
 	content: string; // email HTML; Kit wraps it in the account's default email template
 	previewText: string;
 	description: string; // internal note shown only in Kit
+	/** Sent as subscriber_filter. Omitted: Kit's default audience (all subscribers, per its docs). */
+	subscriberFilter?: SubscriberFilter | null;
+};
+
+/**
+ * Parses KIT_SUBSCRIBER_FILTER: "tag:123", "segment:7" or "tag:12,34" (the subscriber must have every listed
+ * tag). Returns null when the value is malformed.
+ */
+export const parseSubscriberFilter = (value: string): SubscriberFilter | null => {
+	const match = /^\s*(tag|segment)\s*:\s*(\d{1,15}(?:\s*,\s*\d{1,15})*)\s*$/i.exec(value);
+	if (!match?.[1] || !match[2]) return null;
+	const ids = match[2].split(',').map((id) => Number(id.trim()));
+	if (!ids.every((id) => Number.isSafeInteger(id) && id > 0)) return null;
+	return {type: match[1].toLowerCase() as 'tag' | 'segment', ids: [...new Set(ids)]};
 };
 
 export type CreatedDraft = {id: number; subject: string; createdAt: string | null};
@@ -68,7 +90,7 @@ export const createBroadcastDraft = async (input: BroadcastDraftInput, options: 
 	if (/[\s\0-\x1f]/.test(apiKey)) throw new KitApiError(null, 'KIT_API_KEY contains spaces or control characters.');
 	if (!input.subject.trim() || !input.content.trim()) throw new KitApiError(null, 'A broadcast needs a subject and content.');
 
-	const body = {
+	const body: Record<string, unknown> = {
 		subject: input.subject,
 		content: input.content,
 		description: input.description,
@@ -76,6 +98,7 @@ export const createBroadcastDraft = async (input: BroadcastDraftInput, options: 
 		public: false, // not published to the Kit web archive
 		send_at: null, // null = save as a draft; this client never schedules or sends
 	};
+	if (input.subscriberFilter) body.subscriber_filter = [{all: [{type: input.subscriberFilter.type, ids: input.subscriberFilter.ids}]}];
 	let response: Response;
 	try {
 		response = await (options.fetch ?? fetch)(`${KIT_API_BASE}/broadcasts`, {

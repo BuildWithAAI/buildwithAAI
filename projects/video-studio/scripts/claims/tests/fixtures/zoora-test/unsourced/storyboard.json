@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "unsourced",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Broken fixture: unsourced claims",
+  "fiction": false,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Pump.fun launched in January 2024. It changed memecoins.",
+      "onScreen": {"title": "A launchpad story"},
+      "badger": {"present": true, "reaction": "lookUp"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "According to analysts, most tokens die on day one.",
+      "onScreen": {"title": "Day one"},
+      "claimWaivers": [{"match": "most tokens die", "rule": "factual", "reason": "an attempt to waive an attribution (must still fail)"}]
+    },
+    {
+      "id": "s03",
+      "type": "talk",
+      "narration": "Callers earned $2 million last month. [src:ghost]",
+      "onScreen": {"title": "The payouts"}
+    },
+    {
+      "id": "s04",
+      "type": "quote",
+      "narration": "As the founder said: we fixed it.",
+      "onScreen": {"quote": "We fixed it.", "attribution": "the founder"}
+    },
+    {
+      "id": "s05",
+      "type": "endscreen",
+      "narration": "See you next time.",
+      "onScreen": {"title": "Next time"},
+      "minDurationSec": 20
+    }
+  ],
+  "sources": []
+}

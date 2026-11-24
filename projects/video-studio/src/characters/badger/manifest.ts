@@ -22,6 +22,8 @@ import {
 	THREE_QUARTER_SPOTS,
 	SIT_SPOTS,
 	LIE_SPOTS,
+	SIT_LEFT_SPOTS,
+	LIE_LEFT_SPOTS,
 } from './spots';
 
 export type Pivot = {readonly x: number; readonly y: number; readonly parent: string; readonly space: string};
@@ -77,6 +79,8 @@ export type BadgerManifest = {
 		readonly threeQuarterViewIds: readonly string[];
 		readonly sitIds: readonly string[];
 		readonly lieIds: readonly string[];
+		readonly sitLeftIds: readonly string[];
+		readonly lieLeftIds: readonly string[];
 		readonly topMapLinks: Record<string, string>;
 		readonly headIds: readonly string[];
 		readonly frontNeckIds: readonly string[];
@@ -157,6 +161,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		'reference/crops/badger_turn_front.png, badger_turn_back.png, badger_turn_34.png (front / back / three-quarter bodies, traced)',
 		'reference/crops/badger_coat_top.png (back-view markings T-, projected)',
 		'reference/crops/badger_pose_sitting.png, badger_pose_lying.png (sit / lie bodies, traced), badger_pose_walking.png (walk phase 0)',
+		'round-1 repair (2026-11-24): badger_turn_back.png (back markings), badger_turn_side.png (right-profile ear, withers patch), badger_pose_looking_up.png (look-up heads), badger_expr_happy.png / badger_expr_shocked.png (mouths)',
 	],
 	paletteKeysUsed: [
 		'coat',
@@ -213,10 +218,12 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			frontHeadHeight: 123,
 			lineWidth: LINE.width,
 			// RIGHT view (rigRight.ts, stand): withers outer edge, torso outline length, footprint (far front paw placed by IK)
-			rightWithersOuter: 312.3,
+			// round-1 repair: the far front leg now stands behind the near one (D15), so the right footprint ends at the near
+			// front paw; the root origin is kept where v1.0.0 put it so existing shots do not move
+			rightWithersOuter: 311,
 			rightTorsoLength: 352.0,
-			rightFootprintMinX: -191.2,
-			rightFootprintMaxX: 190.6,
+			rightFootprintMinX: -191,
+			rightFootprintMaxX: 162,
 			// turnaround views share one scale: 0.950 units per crop px (side-view withers 329 px = 312.6, decision V-SCALE)
 			frontViewWidth: 134.7,
 			frontHeadSkullWidthOnSheet: 97.9,
@@ -235,10 +242,10 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			"In view 'left' the near legs are the anatomical LEFT legs (legFrontNear, legHindNear); the far legs are the RIGHT legs, drawn behind in coatShadow with no visible markings.",
 			"view 'right': the dog faces SCREEN RIGHT and its ANATOMICAL RIGHT side faces the camera (badger_coat_right.png). Near legs are the anatomical RIGHT legs; the far (LEFT) legs are drawn behind in coatShadow. The near ear is the PALE right ear.",
 			"view 'front': anatomical LEFT = SCREEN RIGHT (dark ear on screen right). view 'back': anatomical LEFT = SCREEN LEFT (dark ear on screen left). view 'threeQuarter': the dog's right flank faces the camera, the head turned to screen right (badger_turn_34.png).",
-			"Every view and pose body is its own trace with its own marking records; no view or pose is produced by mirroring another.",
+			"Every view and pose body is its own trace with its own marking records. Two drawings reuse an UNMARKED, bilaterally symmetric outline mirrored about the root: the far skull outline of the screen-left 3/4 head, and the silhouette of the left-facing sit and lie bodies (decision BADGER-D23). Their markings are authored for their own side; no marking, ear colour or spot path is ever flipped.",
 			"Front head: anatomical left = screen right. The DARK-capped ear is the anatomical LEFT ear in every head view (screen right in 'front'; the near ear in left-facing views; the far ear in right-facing views).",
 			'The pale anatomical RIGHT ear carries the small spot H-EAR-R-SPOT.',
-			'No view is produced by horizontally flipping the character or any marking (see decisions D-08, D-09).',
+			'No view is produced by horizontally flipping the character or any marking (see decisions D-08, D-09, D-23). The right profile head is traced on coat_right, not mirrored (D-09, revised).',
 		],
 	},
 	views: {
@@ -250,8 +257,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			front: 'front',
 			threeQuarter: 'threeQuarterRightScreen',
 			back: 'none: the back of the head is part of the traced back view (head prop ignored)',
-			sit: 'threeQuarterRightScreen',
-			lie: 'threeQuarterRightScreen',
+			sit: "threeQuarterRightScreen (view 'left': threeQuarterLeftScreen, dark ear near)",
+			lie: "threeQuarterRightScreen (view 'left': threeQuarterLeftScreen, dark ear near)",
 			walk: 'profileLeftScreen / profileRightScreen (facing)',
 			lookUp: 'upLeftScreen / upRightScreen (facing)',
 		},
@@ -259,8 +266,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			stand: 'all five views',
 			lookUp: "side views: head 'upLeftScreen' / 'upRightScreen' + raised neck (the sheet faces right; front/back/3/4 requests render the right view)",
 			walk: 'side views, both facings: 4-beat lateral-sequence gait from walkPhase, IK legs, planted stance paws (front/back/3/4 requests render the right view)',
-			sit: 'traced pose body (badger_pose_sitting.png), screen-right facing only, right-side markings (decision P-FACING)',
-			lie: 'traced pose body (badger_pose_lying.png), screen-right facing only, right-side markings (decision P-FACING)',
+			sit: "traced pose body (badger_pose_sitting.png), screen-right facing with right-side markings; view 'left' faces screen left with the LEFT markings on the unmarked mirrored silhouette (decision BADGER-D23)",
+			lie: "traced pose body (badger_pose_lying.png), screen-right facing with right-side markings; view 'left' faces screen left with the LEFT markings on the unmarked mirrored silhouette (decision BADGER-D23)",
 		},
 	},
 	pivots: {
@@ -295,6 +302,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 	posePivots: {
 		sit: groupPivots(POSE_RIGS.sit.pivots, 'sit pose'),
 		lie: groupPivots(POSE_RIGS.lie.pivots, 'lie pose'),
+		sitLeft: groupPivots(POSE_RIGS.sitLeft.pivots, 'left-facing sit pose'),
+		lieLeft: groupPivots(POSE_RIGS.lieLeft.pivots, 'left-facing lie pose'),
 	},
 	headPivots: Object.fromEntries(HEAD_VIEWS.map((v) => [v, headPivotsFor(v)])),
 	walk: {
@@ -305,7 +314,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		rootMotion:
 			'walkPhase is in gait cycles. Move the root by WALK.stride * scale per cycle along the facing (badgerWalkDistance(cycles) in parts/gait.ts) and planted paws stay fixed on the ground.',
 		verification:
-			'Numerically checked (esbuild + node, 3 cycles, 1200 samples, both facings, all four legs): every stance toe stays fixed in world space (max drift 0.000 units in x and y).',
+			'Numerically checked with src/characters/badger/dev/walkCheck.ts (esbuild + node; 3 cycles x 400 = 1201 samples per facing, all four legs, root moving WALK.stride per cycle), measured on the DRAWN paw and pastern curves: the traced sole never goes below the ground line (max 0.000 units, both facings; the outline reaches LINE.width / 2 below it exactly as in the stand), a planted paw keeps a fixed contact (drift 0.000), paws are planted 60.3% of the time (duty 0.6), swing clearance up to 28.4 units, and a swinging paw pitches toes-down at most 28 deg.',
 	},
 	markings: {
 		leftBodySpotCount: LEFT_SPOT_COUNT,
@@ -316,6 +325,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		threeQuarterViewIds: ids(THREE_QUARTER_SPOTS),
 		sitIds: ids(SIT_SPOTS),
 		lieIds: ids(LIE_SPOTS),
+		sitLeftIds: ids(SIT_LEFT_SPOTS),
+		lieLeftIds: ids(LIE_LEFT_SPOTS),
 		topMapLinks: Object.fromEntries(BACK_SPOTS.filter((s) => s.sameAs).map((s) => [s.id, s.sameAs as string])),
 		headIds: HEAD_MARKINGS.map((m) => m.id),
 		frontNeckIds: FRONT_NECK_SPOTS.map((s) => s.id),
@@ -343,9 +354,10 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		{
 			id: 'BADGER-D04-withers-patch-side',
 			sheetShowed:
-				'badger_turn_side.png (dog facing right, i.e. showing its right side) draws the large withers patch; badger_coat_right.png shows only a sliver of it at the top line.',
-			chosen: 'The large patch L-WITHERS belongs to the LEFT side (it may show as a sliver over the top line from the right).',
-			why: 'Labeled coat maps control body markings; PROJECT_INSTRUCTIONS places the patch near the LEFT withers.',
+				'badger_coat_left.png draws the large withers patch on the left side; badger_coat_right.png draws only a thickened top line at the withers; badger_coat_top.png draws the patch straddling the spine (its front half reaches 0.84 of the half-width on the right and 0.86 on the left); the turnaround side, 3/4, walking, looking-up, sitting and lying panels (all right-facing) draw it large on the visible side.',
+			chosen:
+				'One marking, L-WITHERS: high on the back at the LEFT withers, its front half wrapping over the spine onto the right side. From the left it is the full patch (coat_left); from the right it is that right lobe (D16); from behind it is the crescent under the collar (D20).',
+			why: 'The three labelled coat maps control body markings and agree only if the patch straddles the spine; PROJECT_INSTRUCTIONS place it near the LEFT withers.',
 		},
 		{
 			id: 'BADGER-D05-cheek-spots',
@@ -374,10 +386,11 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		},
 		{
 			id: 'BADGER-D09-right-profile',
-			sheetShowed: 'badger_coat_right.png: right profile with the pale ear (small spot) as the near ear.',
+			sheetShowed:
+				'badger_coat_right.png: right profile with the pale right ear (a rose flap with a small dark spot) as the near ear; badger_turn_side.png shows the ear\'s pink inner at the fold.',
 			chosen:
-				'Right-profile skull and ear OUTLINES follow coat_right (anatomically symmetric to the left profile); the near ear is coloured pale with its own fold and spot H-EAR-R-SPOT; no left-side marking appears. Look-up heads are the profiles pitched 34 deg with the ear hanging.',
-			why: 'Opposite views carry their own anatomical markings; only symmetric anatomy is shared.',
+				'REVISED in round-1 repair: profileRightScreen is traced directly on coat_right (skull, stop, nose, eye, lip line, ear outline, fold line, pink inner band at the fold from turn_side, spot H-EAR-R-SPOT). v1.0.0 built it by mirroring the left profile; that is removed. Look-up heads are the profiles pitched 40 deg and joined to the rig necks (D27).',
+			why: 'Opposite views carry their own drawing and markings; the reviewers measured the old right ear as an exact mirror of the left one.',
 		},
 		{
 			id: 'BADGER-D10-pale-ear-tone',
@@ -394,8 +407,9 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		{
 			id: 'BADGER-D12-line-weight',
 			sheetShowed: 'The sheet uses a constant pixel line width, so its enlarged expression heads have relatively thinner lines.',
-			chosen: 'One outline weight in world units (LINE.width 3.5) across the whole character; close-ups therefore read slightly heavier than the expression sheet.',
-			why: 'Consistent near-black outlines across shots and scales (PROJECT_INSTRUCTIONS style rule).',
+			chosen:
+				'REVISED in round-1 repair: the default stays one outline weight in world units (LINE.width 3.5, details LINE.detailWidth). The optional prop lineScale (default 1) multiplies every outline and detail width (legs, collar, tag, face lines included), the same contract as ZooRig lineScale (decision ZOO-L1); badgerLineScaleFor(pxPerUnit) gives the ART_GUIDE SL5 value (outline 3-6 px at output), e.g. 1.53 at 0.56 px/unit and 0.54 at 3.2 px/unit. In a two-shot pass the same value to both characters.',
+			why: 'Consistent near-black outlines across shots and scales (PROJECT_INSTRUCTIONS style rule); below 0.857 px/unit the fixed width fell under SL5 (the pose row at 0.56 drew 1.96 px outlines). The scale is explicit, not derived from `scale`, because the output px per unit also depends on the parent viewBox, and Zoo uses the same explicit prop.',
 		},
 		{
 			id: 'BADGER-D13-tag',
@@ -412,17 +426,19 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		},
 		{
 			id: 'BADGER-D15-right-stance',
-			sheetShowed: 'coat_right draws the far (left) front paw about 30 sheet px ahead of the near one and the far hind paw 26 px ahead.',
+			sheetShowed:
+				'badger_coat_right.png and badger_turn_side.png show ONE front leg (row scans give a single pair of edges from the elbow to the paw); the far hind paw stands about 26 px ahead of the near one.',
 			chosen:
-				'The far hind leg mounts 26 px forward; the far front leg keeps the near shoulder and is rotated by IK so its paw lands 29.2 units ahead, so its top never pokes out in front of the chest.',
-			why: 'Matches the coat map stance without inventing anatomy; a shifted shoulder showed the leg top outside the chest.',
+				'REVISED in round-1 repair: the far (left) front leg stands exactly behind the near one and is hidden; the far hind leg mounts 26 px forward. The v1.0.0 text (far front paw 30 px ahead) misread the map; a forward offset showed a grey extra leg and doubled the near leg\'s front outline. The right-view root origin stays where v1.0.0 put it so existing shots do not shift.',
+			why: 'Matches the coat map and the turnaround side.',
 		},
 		{
 			id: 'BADGER-D16-withers-patch-right-facing',
 			sheetShowed:
-				'The turnaround side view, the walking, looking-up, sitting and lying panels (all facing screen right) draw the large withers patch on the visible right side; coat_right shows only its top-line edge.',
-			chosen: 'In every screen-right-facing view and pose the patch shows only as its top-line edge (L-WITHERS, side left). Extends D04.',
-			why: 'Coat maps control body markings and the locked design puts the large patch near the LEFT withers.',
+				'Six of the seven right-facing drawings (turnaround side, 3/4, walking, looking-up, sitting, lying) draw the large patch on the visible right side; coat_right shows only its top-line edge; the top map shows the front of the patch straddling the spine.',
+			chosen:
+				'REVISED in round-1 repair (2026-11-24): right-facing level views (right stand, right walk, right look-up) show the right lobe implied by the top map, a wedge at the front of the withers about 78 x 24 units (RIGHT_SPOTS L-WITHERS), deepest just behind the collar and tapering to the top line; the elevated 3/4 and the sit and lie bodies show the dorsal patch traced from their panels (about 50 x 36, 24 x 75 and 48 x 28 units). Authored per view, never mirrored from the left record. OWNER CONFIRMATION REQUESTED: the alternatives are coat_right\'s thin edge (v1.0.0) or the turnaround side\'s full patch.',
+			why: 'The top coat map, a binding coat map, puts the front of the patch across the spine, so it must show from the right; projecting its right lobe onto a rounded back gives about 15-27 units of depth at the front. This keeps the signature marking visible in every right-facing shot without inventing a second patch, and stays closer to coat_right than the pose panels do.',
 		},
 		{
 			id: 'BADGER-D17-turnaround-scale',
@@ -448,10 +464,10 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		{
 			id: 'BADGER-D20-back-view',
 			sheetShowed:
-				'badger_turn_back.png: the dark ear on SCREEN LEFT; a crescent patch under the collar; shoulder and hip spots that do not match the top map exactly.',
+				'badger_turn_back.png: dark ear on SCREEN LEFT; a domed crescent under the collar (about 85 x 23 units); two large ovals on the upper rump; a spot on the back of the left thigh; one spot above each hock. The top map shows more spots on the dorsal surface.',
 			chosen:
-				"view 'back' traces the turnaround back (head, ears, collar, body, legs, tail). Dark ear = anatomical LEFT = screen left. Back markings are the top coat map (T-PATCH, T-01..T-08) projected onto the rounded back; leg spots seen from behind keep their side-map ids (L-07, L-08, R-07). T- records name the side marking they continue (sameAs).",
-			why: 'The top coat map controls back markings (reference priority); the anatomical left ear is dark in every view (D03).',
+				'REVISED in round-1 repair: the back view shows exactly what the turnaround back shows, traced at its size: T-PATCH (= L-WITHERS) as the crescent, T-05 (= R-01) and T-08 (= L-02) as the two ovals (by height they are the croup spots, 254 / 256 units, not the mid-back pair at 283 / 290), plus L-07, L-08, R-07. The other top-map spots (T-01, T-02, T-03 = R-04, T-04 = R-02, T-06 = L-03, T-07 = L-01) lie on the receding dorsal surface and are hidden at eye level. No mark is smaller than 13 units.',
+			why: 'The top coat map keeps the identities (sameAs); the turnaround controls what an eye-level camera behind the dog sees. The v1.0.0 projection shrank spots to specks below the outline width, which read as freckles.',
 		},
 		{
 			id: 'BADGER-D21-top-map-orientation',
@@ -463,52 +479,122 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		{
 			id: 'BADGER-D22-three-quarter-view',
 			sheetShowed:
-				'badger_turn_34.png: right flank toward camera; it draws the left withers patch large on top, a spot at the back of the thigh that is not on coat_right, and omits R-05 / R-06.',
+				'badger_turn_34.png: right flank toward camera; the withers patch drawn large on top of the back; a spot behind it; R-05 / R-06 omitted.',
 			chosen:
-				"view 'threeQuarter' traces the turnaround body; markings follow coat_right (R-01..R-08, R-NECK) plus the far forearm L-09, the far shoulder L-03 at the chest edge, M-CHEST and the L-WITHERS edge. The extra thigh spot is omitted.",
-			why: 'Coat maps control body markings; the 3/4 drawing controls the silhouette.',
+				'REVISED in round-1 repair: L-WITHERS is the dorsal patch traced from the turnaround 3/4 (about 50 x 36 units on top of the withers; the elevated camera sees the surface where the patch straddles the spine, D16). R-02 moves just behind it (foreshortened). Other markings follow coat_right as before (R-01..R-08, R-NECK, L-09 far forearm, L-03 far shoulder, M-CHEST).',
+			why: 'Coat maps control markings; the 3/4 drawing shows how much of the dorsal surface is visible.',
 		},
 		{
 			id: 'BADGER-D23-pose-facing',
-			sheetShowed: 'The sitting, lying, walking and looking-up panels all face screen right.',
+			sheetShowed:
+				'The sitting, lying, walking and looking-up panels all face screen right. Episodes stage Badger to the right of Zoo facing left, so a sit or lie beat must be able to face left.',
 			chosen:
-				"sit and lie are traced pose bodies that exist only in the sheet's facing (screen right, right-side markings); requesting them with view 'left' renders the right-facing body. walk and lookUp are built on both side rigs: right-facing uses the right markings, left-facing the left markings.",
-			why: 'Sit and lie cannot be produced for the other facing without mirroring asymmetric markings, which is forbidden; walk and look-up are poses of the traced side rigs, which exist for both sides.',
+				'REVISED in round-1 repair: sit and lie exist in both facings. view right (or front/back/3/4) uses the traced right-facing bodies with right-side markings. view left uses the same UNMARKED silhouette mirrored about the root (outline, collar and tag are bilaterally symmetric, the same approach as the 3/4-left skull) carrying the LEFT coat map\'s own markings authored for it (L-WITHERS as the full patch, L-01..L-09, L-NECK, R-08 on the far forearm edge, M-CHEST) and head threeQuarterLeftScreen (dark ear near). walk and lookUp are built on both side rigs as before.',
+			why: 'v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. Only symmetric anatomy is reused; no marking is flipped.',
 		},
 		{
 			id: 'BADGER-D24-pose-scale-and-markings',
-			sheetShowed: 'The pose panels are drawn at different scales; their spot layouts are looser than the coat maps.',
+			sheetShowed:
+				'The pose panels are drawn at different scales; their spot layouts are looser than the coat maps.',
 			chosen:
-				"Sit and lie are scaled so their heads match the shared 3/4 head (eye spacing 46.4 units); check: the sit front leg (elbow to ground) is 179 units against 180 in the 3/4 view. Their spots are the coat_right records placed on the posed parts (R-06, R-07 on the folded haunch; R-08 on the forearm), plus M-CHEST and L-09 on the sit's turned chest and far leg.",
+				'Sit and lie are scaled so their heads match the shared 3/4 head (eye spacing 46.4 units); check: the sit front leg (elbow to ground) is 179 units against 180 in the 3/4 view. Right-facing bodies carry the coat_right records placed on the posed parts (R-06, R-07 on the folded haunch; R-08 on the forearm) plus M-CHEST and L-09; the withers patch is traced from each panel (D16). Left-facing bodies carry the coat_left records placed at the matching anatomy, each a little further back along the body than its right-side neighbour, as coat_left draws them.',
 			why: 'Size panel controls scale; coat maps control markings; pose drawings show the performance.',
 		},
 		{
 			id: 'BADGER-D25-walk',
-			sheetShowed: 'badger_pose_walking.png: one walking frame, far front leg reaching forward, near hind leg extended back, head carried forward.',
+			sheetShowed:
+				'badger_pose_walking.png: one walking frame, far front paw landing well ahead of the chest, near hind leg extended back at toe-off, near fore planted under the chest, head carried up and forward, tail swept back.',
 			chosen:
-				'A 4-beat lateral-sequence gait (duty 0.6, 291.7 units per cycle) solved with two-bone IK per leg. Stance toes are fixed in world space (toe roll about the planted toe at the end of stance; shoulder / hip slide inside the body keeps the legs within reach). walkPhase 0 approximates the sheet frame; the neck lowers 17 deg and the tail lifts 26 deg while walking.',
-			why: 'Pose drawings show how the same character performs; no foot sliding was required.',
+				'REVISED in round-1 repair: 4-beat lateral-sequence gait (duty 0.6, 358.3 units per cycle, stance sweep 215 units), lateral pairs close together so walkPhase 0 is the sheet frame (far fore landing, far hind just planted, near hind at toe-off, near fore in late stance). Paws are solved on their DRAWN outline: the end-of-stance roll is heel-up about the toe point that is lowest at full roll, a ground clamp keeps the traced sole on the ground line in stance and above it in swing, the swinging fore leg raises its scapula (the rig has no elbow joint), and the paw pitches toes-down at most 28 deg. Neck +2 deg, tail +34 deg while walking. Verified by dev/walkCheck.ts (see walk.verification).',
+			why: 'v1.0.0 rolled the paw heel-down and pivoted on control points, pushing paws up to 22 units into the floor; its stride was short and the head low against the sheet frame.',
 		},
 		{
 			id: 'BADGER-D26-joints',
-			sheetShowed: 'Legs are single outlined shapes with no visible joint seams.',
+			sheetShowed:
+				'Legs are single outlined shapes with no visible joint seams.',
 			chosen:
-				'Legs use round cut-out joints: segments meet on a flat cut through the pivot and a disk of the joint radius fills the bend. Each segment outline is drawn through a hard-edged occlusion mask of the other segment fills, so no interior seam shows when a joint bends. The masks are binary (black/white), never soft, and are not used for shading. The left rig joint pivots moved to the centre of each cut (FRONT_PAW, HIND_HOCK, HIND_PAW); the standing drawing is unchanged except for antialiasing at the joints.',
-			why: 'Clean flat outlines in every walk frame; consistent near-black outline weight.',
+				'REVISED in round-1 repair: stroke-under-fill. Every exterior leg stroke (and the ring of any bent joint) is drawn at twice LINE.width first; the joint disks and segment fills go on top and hide every interior seam; interior creases (elbow lines) and toe details go last. The traced leg fills and strokes are inset by LINE.width / 2 (dev/trace/erode.py: only exterior edges move, cut corners slide along the cut), so the visible outline still covers the traced edge +- LINE.width / 2. The v1.0.0 occlusion masks are gone.',
+			why: 'The masks left crumbs, spikes and stepped outlines at wrists and hocks in walk frames; this construction gives one continuous silhouette at any joint angle.',
 		},
 		{
 			id: 'BADGER-D27-look-up-right',
-			sheetShowed: 'badger_pose_looking_up.png: right-facing, head raised toward ZOO, pale near ear hanging.',
-			chosen: "Right look-up uses head 'upRightScreen' on the right neck (RIGHT_HEAD_MOUNT: neck -2 deg, offset -7 / +1) and the right-side markings.",
-			why: 'Matches the panel facing and keeps right-side markings in a right-facing pose.',
+			sheetShowed:
+				'badger_pose_looking_up.png: right-facing, neck upright, head raised toward Zoo, pale near ear hanging back with its pink inner showing, one continuous throat line from the lip to the collar.',
+			chosen:
+				'REVISED in round-1 repair: both look-up heads are their profiles pitched 40 deg (was 34) and joined to the rig necks in head-local space: the lip line ends at the commissure and ONE throat stroke lands on the neck\'s throat line (the lowest landing whose stroke passes in front of the old upper throat line, which a 6-unit coat band hides); the skull\'s back contour is stroked down past where it crosses the neck\'s back line (no nape gap). The hanging ear shows its inner at the fold (pale ear: front half; dark ear: a band). Right look-up mount: neck -12 deg (was -2), dx -7, dy +1.',
+			why: 'Matches the panel\'s head carriage; removes the nape gaps, forked stubs and floating jaw the reviewers found.',
 		},
 		{
 			id: 'BADGER-INT-B1-three-quarter-heads',
 			sheetShowed:
-				'badger_turn_34.png: the far contour runs OUTSIDE the far eye into the top of the nose; the nose sits at the tip of a muzzle with a short upper-lip line below it; the mouth is a long, nearly flat line starting below the near cheek spot; the far eye is narrower than the near one.',
+				'badger_turn_34.png: the far contour runs OUTSIDE the far eye, the muzzle projects past the far cheek with the nose at its tip, the mouth is a long gently curved line under the nose, the far dark ear is solid, the chin is closed.',
 			chosen:
-				'Integration fix (2026-11-24, gen_heads.py fix_three_quarter): both 3/4 heads get a far outline and muzzle authored in the depth-turned space (the muzzle now wraps the turned nose and chin), a far upper-lip line instead of the snout line that crossed the far eye, a near jaw line continuing the cheek, lip lines starting low on the near cheek (the front W-line began at the cheek and read as a grin), shocked without the cheek dashes, and the far eye and brow at 0.72 of the near eye. Markings, ears, eyes and every other head view are unchanged (the head-markings output is byte-identical).',
-			why: 'Turnaround views control identity. The screen-left turn reuses the far outline of the unmarked, symmetric skull (x -> 416 - x, as the original fill34 pair did); no marking is mirrored.',
+				'Revised in round-1 repair (gen_heads.py fix_three_quarter): one far contour from the far temple, pulled in at the far cheek below the far eye, round the far side of the muzzle and the nose and on round the chin (the chin is now outlined); the near cheek stops at the jaw (it curled into the lip and read as a grin); the neutral / worried lip line ends under the nose; the far ear shows its outer side only (solid dark cap); the nose sits 3 units further toward the far side; irises 15% larger; the front head\'s lower-lip detail is dropped. The screen-left turn reuses the far outline of the unmarked symmetric skull as before; no marking is mirrored.',
+			why: 'Turnaround views control identity; the reviewers found the open chin and grin-like mouth on screen for 100 frames of the proof.',
+		},
+		{
+			id: 'BADGER-D28-left-withers-patch',
+			sheetShowed:
+				'badger_coat_left.png: the patch spans 88 x 36 px below the top line, deepest in the middle, starting about 24 px behind the collar along the top line; the size panel (the default left view) shows it about 79 x 34 units with a clear gap behind the collar. coat_left\'s own top line over the patch lies about 5 px lower than the rig\'s, which is pinned to the binding withers height (312.6).',
+			chosen:
+				'L-WITHERS (left) retraced: lower edge 5 px higher than the raw trace so its depth below the rig\'s top line matches coat_left (aspect about 2.3), front tip 7 px further back so the default left view keeps the size panel\'s gap behind the collar. Same id, same part.',
+			why: 'Coat maps control the marking; the size panel controls the default view. The rendered v1.0.0 patch read as a deep half-disc touching the collar.',
+		},
+		{
+			id: 'BADGER-D29-profile-heads',
+			sheetShowed:
+				'coat_left / coat_right profiles: a nose about 20 x 21 px (outer) set into the muzzle tip, a clear stop at the eye, a small dark almond eye, rose ears hanging from the top of the skull, one lip line running into the jaw.',
+			chosen:
+				'Profile heads retraced (gen_heads.py): smaller rounded-wedge nose continuing the muzzle line, deeper stop, muzzle underside matched to each map, a profile eye drawn as a dark almond (iris colour, no white), a short commissure mark instead of a second lip stroke. The left (dark) ear outline already matched coat_left within about 1 px and is kept.',
+			why: 'The reviewers measured the old profile nose 1.4x the sheet\'s and the eye about 2x; the doubled lip stroke read as a hook at the throat.',
+		},
+		{
+			id: 'BADGER-D30-expressions',
+			sheetShowed:
+				'badger_expr_happy.png: a wide smile inside the face with raised corners, a notch at the philtrum and a lower-lip arc. badger_expr_shocked.png: a small open mouth (about nose width, 0.45 of the nose height) under a kept philtrum, jaw intact. badger_expr_worried.png: ear flaps lower and splayed. Eye lines are level on all four panels (measured tilt 0.0-0.6 deg).',
+			chosen:
+				'Happy and shocked retraced from their panels (front and 3/4); shocked in profile and look-up heads is a closed, outlined open-mouth wedge inside the head silhouette. Worried / earsBack swings each front ear about 20 deg down and out without narrowing it. Judge lowers the lids at most to 0.86 open and folds the ears back slightly (eyes stay open between blinks); a closed eye is a nearly flat lid line. No default head tilt for happy or worried: the panels\' eye lines are level, so tilt stays a composition choice.',
+			why: 'Expression drawings show how the same character performs; the reviewers found happy indistinguishable from neutral and shocked twice the panel\'s size with the jaw open.',
+		},
+		{
+			id: 'BADGER-D31-mouth-open',
+			sheetShowed:
+				'No panel; CLAUDE.md records the owner\'s request that Badger\'s mouth and ears animate from real-dog sound clips through a mouth-open control, with no redesign.',
+			chosen:
+				'Optional prop mouthOpen (0..1) on <Badger/>: each head view\'s own open-mouth drawing (the shocked mouth) grows down from the upper lip with the amount, the jaw line stays, and the ears lift slightly. Below 0.06 the expression\'s own mouth is shown. Nothing renamed.',
+			why: 'Owner request; reuses the approved shapes only.',
+		},
+		{
+			id: 'BADGER-C1-collar-colour',
+			sheetShowed:
+				'PROJECT_INSTRUCTIONS call the collar plain slate (brand slate #161A21); the approved drawing renders it #393F45 (sampled), clearly lighter than the near-black outline.',
+			chosen:
+				'BADGER_COLORS.collar = #393F45 with one shadow tone #2B3035 (palette.ts).',
+			why: 'The drawing defines the asset (same reasoning as ZOO-C1 for the overshirt): #161A21 would merge with the near-black outline and lose the collar band at small scales.',
+		},
+		{
+			id: 'BADGER-D32-tag-ring-front-strip',
+			sheetShowed:
+				'The sheet draws a light silver split ring above the teal tag, and the front view\'s hind-leg strip between the front legs in coat white.',
+			chosen:
+				'The tag ring is a closed loop filled BRAND.silver with a detail-width outline in every view; the front view\'s hind strip uses coat white.',
+			why: 'The open U stroke read as two black ticks; the grey strip read as a shadow the turnaround does not draw.',
+		},
+		{
+			id: 'BADGER-D33-happy-tail-and-breath',
+			sheetShowed:
+				'The happy panel\'s inset carries the tail high in an upward curve; the art guide asks for breathing of a few px at proof scale.',
+			chosen:
+				'With expression happy the side views carry the tail at least 32 deg above the stand (the wag stays restrained). Breathing scales the chest by 1.5% (was 0.6%), about 2 px at the proof scale.',
+			why: 'Pose and expression drawings show the performance; the old breathing was sub-pixel.',
+		},
+		{
+			id: 'BADGER-D34-contour-repairs',
+			sheetShowed:
+				'badger_turn_front.png runs the forearm contours straight past the forearm spots and the hind strip\'s line into the inner contour of the leg in front of it; badger_pose_sitting.png and badger_pose_lying.png draw the back-of-neck line from under the ear to the collar (the cheek line branches off it), one neck-front line from the chin through the collar into the chest, the collar ending at the neck-front line, and (lying) one belly underline running to the foot of the elbow.',
+			chosen:
+				'Traces repaired, nothing redrawn: front R-08 / L-09 contours straight past the spots (the spots stay inside the leg clip); the front hind strip line ends in the leg contour (no U-hook); sit / lie back-of-neck lines extended up under the ear with the neck fill closing the nape; lie throat joined to the chest line; sit chest line starts under the collar; collar front ends seated on the neck-front line (sit trimmed 4.5 px, lie extended 6.5 px, panel px); lie belly underline joined to the elbow line. The left-facing sit / lie reuse the same unmarked silhouette, so they carry the same repairs.',
+			why: 'The reviewers found V-notches with spots bulging outside the front legs, a stepped hind strip, orphan neck strokes and open contours in the pose bodies.',
 		},
 	],
 };

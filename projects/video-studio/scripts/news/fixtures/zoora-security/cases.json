@@ -1,0 +1,442 @@
+{
+  "about": "News claim gate fixtures. Built by build-fixtures.ts from good-fixtureswap-drain; fictional names on example domains.",
+  "cases": [
+    {
+      "slug": "good-fixtureswap-drain",
+      "about": "Passes every rule: attributed, sourced, labelled developing, with own-data analysis and a pinned correction.",
+      "expect": [],
+      "codes": []
+    },
+    {
+      "slug": "bad-r1-number",
+      "about": "R1: the loss figure ($4.5M) is not in the cited excerpt ($4.2 million).",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.number-not-in-excerpt"
+      ]
+    },
+    {
+      "slug": "bad-r1-no-fact",
+      "about": "R1: a tagged claim that matches no brief fact (a relaunch the source never mentions).",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.claim-not-in-fact"
+      ]
+    },
+    {
+      "slug": "bad-r1-unknown-source",
+      "about": "R1: cites a source the radar never selected (no stored excerpt).",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.not-in-brief",
+        "R1.no-brief-fact"
+      ]
+    },
+    {
+      "slug": "bad-r1-spoken-mismatch",
+      "about": "R1: the screen shows $4.2M but the voice says four point five million.",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.spoken-mismatch"
+      ]
+    },
+    {
+      "slug": "bad-r1-quote",
+      "about": "R1: a quotation that is not word for word in the cited excerpt.",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.quote-not-in-excerpt"
+      ]
+    },
+    {
+      "slug": "bad-r1-unsourced-number",
+      "about": "R1: a number stated with no source tag.",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.unsourced-number"
+      ]
+    },
+    {
+      "slug": "bad-r1-unreachable-source",
+      "about": "R1: the source is an X post, which this pipeline cannot fetch or verify.",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.unreachable-source"
+      ]
+    },
+    {
+      "slug": "bad-r2-no-label",
+      "about": "R2: a developing incident with no DEVELOPING label on screen or in the storyboard.",
+      "expect": [
+        "R2"
+      ],
+      "codes": [
+        "R2.no-visible-label",
+        "R2.short-no-label"
+      ]
+    },
+    {
+      "slug": "bad-r2-not-spoken",
+      "about": "R2: the narration never says the story is developing.",
+      "expect": [
+        "R2"
+      ],
+      "codes": [
+        "R2.not-spoken",
+        "R2.short-not-spoken"
+      ]
+    },
+    {
+      "slug": "bad-r3-unattributed",
+      "about": "R3: a cause (a compromised key) stated without saying who reports it.",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unattributed",
+        "R3.short-developing-cause"
+      ]
+    },
+    {
+      "slug": "bad-r3-loss",
+      "about": "R3: a loss amount that is not \"reported by\" anyone.",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unattributed"
+      ]
+    },
+    {
+      "slug": "bad-r3-accusation",
+      "about": "R3: an accusation (\"insiders stole\") with no source and no attribution.",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unsourced"
+      ]
+    },
+    {
+      "slug": "bad-r3-insiders-helped",
+      "about": "R3: an unattributed insider accusation in plain words (\"Insiders helped the attackers.\").",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unsourced"
+      ]
+    },
+    {
+      "slug": "bad-r3-employee-let-in",
+      "about": "R3: an unattributed insider accusation in plain words (\"An employee let the attackers in.\").",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unsourced"
+      ]
+    },
+    {
+      "slug": "bad-r3-engineer-in-on-it",
+      "about": "R3: an unattributed insider accusation in plain words (\"The engineer was in on it.\").",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unsourced"
+      ]
+    },
+    {
+      "slug": "bad-r3-staff-colluded",
+      "about": "R3: an unattributed insider accusation in plain words (\"Staff colluded with the attackers.\").",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unsourced"
+      ]
+    },
+    {
+      "slug": "bad-r3-someone-at-helped",
+      "about": "R3: an unattributed insider accusation in plain words (\"Someone at FixtureSwap helped them get in.\").",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.unsourced"
+      ]
+    },
+    {
+      "slug": "bad-r3-insider-title",
+      "about": "R3: an insider accusation in an on-screen title (\"An employee let them in\").",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.short-unattributed"
+      ]
+    },
+    {
+      "slug": "bad-r3-accusation-not-in-source",
+      "about": "R3: an attributed accusation the cited source never makes (\"stole\", \"criminals\").",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.not-in-source"
+      ]
+    },
+    {
+      "slug": "bad-r3-figure-on-thumbnail",
+      "about": "R3: a loss figure on a thumbnail with no \"reported by\".",
+      "expect": [
+        "R3"
+      ],
+      "codes": [
+        "R3.figure-unattributed"
+      ]
+    },
+    {
+      "slug": "bad-r1-figure-role",
+      "about": "R1: money the source says is being recovered, relabelled as stolen.",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.figure-role"
+      ]
+    },
+    {
+      "slug": "bad-r1-tier-c-only",
+      "about": "R1: claims that rest on a tier-C aggregator alone.",
+      "expect": [
+        "R1"
+      ],
+      "codes": [
+        "R1.tier-c-only"
+      ]
+    },
+    {
+      "slug": "bad-r2-title-no-label",
+      "about": "R2: a developing story whose video title and Short title do not say developing.",
+      "expect": [
+        "R2"
+      ],
+      "codes": [
+        "R2.title-no-label",
+        "R2.short-title-no-label"
+      ]
+    },
+    {
+      "slug": "bad-r5-unnumbered-steps",
+      "about": "R5: an on-screen list of attack actions without attack verbs or numbers.",
+      "expect": [
+        "R5"
+      ],
+      "codes": [
+        "R5.step-list"
+      ]
+    },
+    {
+      "slug": "bad-r5-diagram-steps",
+      "about": "R5: diagram nodes that are attack actions, linked by \"then\".",
+      "expect": [
+        "R5"
+      ],
+      "codes": [
+        "R5.diagram-steps"
+      ]
+    },
+    {
+      "slug": "bad-r6-dropped-hedge",
+      "about": "R6: a source suspects a cause; the claim states it as fact.",
+      "expect": [
+        "R6"
+      ],
+      "codes": [
+        "R6.dropped-hedge"
+      ]
+    },
+    {
+      "slug": "bad-r7-fabricated-own-data",
+      "about": "R7: own-data figures the brief's stored rows cannot reproduce.",
+      "expect": [
+        "R7"
+      ],
+      "codes": [
+        "R7.own-data-unverified"
+      ]
+    },
+    {
+      "slug": "bad-r9-price-no-number",
+      "about": "R9: a token move with no number, and advice on where to keep savings.",
+      "expect": [
+        "R9"
+      ],
+      "codes": [
+        "R9.price-direction",
+        "R9.advice-hold"
+      ]
+    },
+    {
+      "slug": "bad-r4-speaker-surname",
+      "about": "R4: a lone surname quoted as speaking (\"Sample said\").",
+      "expect": [
+        "R4"
+      ],
+      "codes": [
+        "R4.speaker-name"
+      ]
+    },
+    {
+      "slug": "bad-r4-person-name",
+      "about": "R4: a private person's name, a social handle and the radar's [named person] placeholder.",
+      "expect": [
+        "R4"
+      ],
+      "codes": [
+        "R4.two-word-name",
+        "R4.handle",
+        "R4.placeholder"
+      ]
+    },
+    {
+      "slug": "bad-r5-howto",
+      "about": "R5: a step-by-step with function calls (an exploit how-to).",
+      "expect": [
+        "R5"
+      ],
+      "codes": [
+        "R5.function-call",
+        "R5.camel-case"
+      ]
+    },
+    {
+      "slug": "bad-r5-code",
+      "about": "R5: payload/calldata talk and a hex selector.",
+      "expect": [
+        "R5"
+      ],
+      "codes": [
+        "R5.payload",
+        "R5.hex"
+      ]
+    },
+    {
+      "slug": "bad-r6-speculation",
+      "about": "R6: rumour and a hedge the sources never state.",
+      "expect": [
+        "R6"
+      ],
+      "codes": [
+        "R6.rumor",
+        "R6.hedge"
+      ]
+    },
+    {
+      "slug": "bad-r7-no-analysis",
+      "about": "R7: no analysis element, so the video adds no real analysis.",
+      "expect": [
+        "R7"
+      ],
+      "codes": [
+        "R7.no-analysis"
+      ]
+    },
+    {
+      "slug": "bad-r7-not-presented",
+      "about": "R7: an analysis no scene presents, so neither the episode nor the Short shows it.",
+      "expect": [
+        "R7"
+      ],
+      "codes": [
+        "R7.not-presented",
+        "R7.short-without-analysis"
+      ]
+    },
+    {
+      "slug": "bad-r8-repeats-correction",
+      "about": "R8: repeats a claim that corrections.json corrected (the stale excerpt still says it).",
+      "expect": [
+        "R8"
+      ],
+      "codes": [
+        "R8.repeats-corrected-claim",
+        "R8.pin-pending"
+      ]
+    },
+    {
+      "slug": "bad-r9-price",
+      "about": "R9: buy-the-dip advice and a price chart scene.",
+      "expect": [
+        "R9"
+      ],
+      "codes": [
+        "R9.market-talk",
+        "R9.price-chart"
+      ]
+    },
+    {
+      "slug": "bad-r10-redraw",
+      "about": "R10: redraws and embeds another outlet's chart.",
+      "expect": [
+        "R10"
+      ],
+      "codes": [
+        "R10.media-key",
+        "R10.their-media",
+        "R10.screenshot"
+      ]
+    },
+    {
+      "slug": "bad-input-fiction",
+      "about": "INPUT: a news storyboard marked as fiction.",
+      "expect": [
+        "INPUT"
+      ],
+      "codes": [
+        "INPUT.fiction"
+      ]
+    },
+    {
+      "slug": "official-named",
+      "about": "R4: an official named in a cited law-enforcement release passes only when allowlisted.",
+      "expect": [],
+      "codes": [],
+      "officials": [
+        {
+          "name": "Avery Example",
+          "role": "commissioner",
+          "agency": "Example Police Bureau",
+          "sourceUrl": "https://police.example/releases/2026-11-24"
+        }
+      ],
+      "expectWithoutOfficials": [
+        "R4"
+      ]
+    },
+    {
+      "slug": "good-radar-incident",
+      "about": "Adapter: brief.json is a radar incident object (scripts/radar output), not a curated brief.",
+      "expect": [],
+      "codes": [
+        "INPUT.brief"
+      ]
+    }
+  ]
+}

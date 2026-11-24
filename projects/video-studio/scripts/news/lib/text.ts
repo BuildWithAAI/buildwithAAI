@@ -98,6 +98,13 @@ team teams tell theft thread threat threats time timeline tip tips token tokens 
 transaction transactions transfer transfers trick tricked update updates upgrade upgraded user users verify victim
 victims video voice wallet wallets warning watch website websites week weekend weekly what's why work worth wrong
 monday tuesday wednesday thursday friday saturday sunday
+arrest arrested arrests charged charges sentenced extradited indicted sued fined banned sanctioned sanctions seized
+seizure halted resumed delisted suspended confirms denies denied warns warned alleges alleged probe lawsuit settles
+settled pleads pleaded guilty jailed prison returns returned pauses paused losses reports says said
+use keep check add avoid enable disable rotate revoke read store set turn stop start test patch limit lock split
+separate monitor alert backup write remember learn look find trust slow wait reach contact block ignore delete remove
+scan install download open click type paste share send receive pay run audit simulate require phish phished spoof
+spoofed impersonate verify double-check confirm compare plan rehearse train teach
 `;
 export const COMMON = new Set(COMMON_LIST.split(/\s+/).filter(Boolean));
 
@@ -111,6 +118,8 @@ under until up very was we were what when where which while who whom why will wi
 according said says say reported reports report stated states told tells added adds noted notes wrote writes posted
 per via its it's also later since already still just around about roughly nearly almost approximately some
 may might could would should must one two three
+january february march april may june july august september october november december jan feb mar apr jun jul aug
+sep sept oct nov dec monday tuesday wednesday thursday friday saturday sunday today yesterday tomorrow week weeks
 `;
 const STOP = new Set(STOP_LIST.split(/\s+/).filter(Boolean));
 
@@ -151,6 +160,22 @@ export const contentStems = (text: string, exclude: Set<string> = new Set()): Se
 		const w = stripPossessive(t.text.replace(/^[@$#]/, '')).toLowerCase();
 		if (w.length < 3 || STOP.has(w) || exclude.has(w) || /\d/.test(w)) continue;
 		for (const part of w.split('-')) if (part.length >= 3 && !STOP.has(part) && !exclude.has(part)) out.add(stem(part));
+	}
+	return out;
+};
+
+/**
+ * Content stems with only the theft family folded (stole, stolen, theft, heist -> steal). Used to compare a claim with a
+ * hedged clause of a source: there "drained the vault" (stated) must not match "suspected key theft" (hedged), which
+ * the wider synonym folding of contentStems would treat as the same predicate.
+ */
+const THEFT = new Set(['steal', 'steals', 'stealing', 'stole', 'stolen', 'theft', 'thefts', 'thief', 'thieves', 'heist', 'heists']);
+export const narrowStems = (text: string, exclude: Set<string> = new Set()): Set<string> => {
+	const out = new Set<string>();
+	for (const t of tokenize(normalizePunct(text))) {
+		const w = stripPossessive(t.text.replace(/^[@$#]/, '')).toLowerCase();
+		if (w.length < 3 || STOP.has(w) || exclude.has(w) || /\d/.test(w)) continue;
+		for (const part of w.split('-')) if (part.length >= 3 && !STOP.has(part) && !exclude.has(part)) out.add(THEFT.has(part) ? 'steal' : stemRaw(part));
 	}
 	return out;
 };

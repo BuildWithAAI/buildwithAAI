@@ -93,8 +93,9 @@ export const loadHosts = (path = DEFAULT_HOSTS): HostsFile => {
 		throw new InputError(`${path} is not valid JSON: ${(e as Error).message}`);
 	}
 	const o = x as {allow?: unknown; notes?: unknown};
-	if (!o || !Array.isArray(o.allow) || !o.allow.every((h) => typeof h === 'string' && /^[a-z0-9.-]+$/.test(h)))
-		throw new InputError(`${path}: "allow" must be a list of lower-case host names`);
+	// every entry is a public DNS name of at least two labels ("crypto.news"): never "com", "localhost" or an IP address
+	if (!o || !Array.isArray(o.allow) || !o.allow.every((h) => typeof h === 'string' && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(h) && !/^\d+(?:\.\d+)*$/.test(h) && !/\.\d+$/.test(h)))
+		throw new InputError(`${path}: "allow" must be a list of lower-case public host names of at least two labels (no IP addresses, no single labels)`);
 	const notes = o.notes && typeof o.notes === 'object' ? (o.notes as Record<string, string>) : {};
 	return {allow: o.allow as string[], notes};
 };

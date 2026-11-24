@@ -66,6 +66,9 @@
       "prefix": "sec",
       "backlog": "content/zoora-security/backlog.json",
       "cadenceSource": "CLAUDE.md, Channel 2: evergreen explainers that every news video links to; the daily news stays in scripts/daily.",
+      "reserved": [
+        {"label": "Weekly round-up (news, made in-week)", "day": null, "time": null, "note": "The binding cadence includes a weekly long-form round-up with fund-flow analysis (CLAUDE.md, Channel 2). It is made in the week from that week's news (scripts/daily), never in the batch, so every week keeps room for it. The owner picks its day (content/zoora-security/channel.json cadence.weeklyLongForm: day TBD)."}
+      ],
       "long": [
         {"day": "Tue", "time": "13:00", "formats": ["explainer"]},
         {"day": "Sat", "time": "13:00", "formats": ["scam-of-the-week"]}

@@ -240,3 +240,18 @@ test('fit: unspaced (CJK) text breaks between characters, never before closing p
 	assert.ok(w.lines.length >= 2);
 	for (const l of w.lines.slice(1)) assert.ok(!/^[，。、]/.test(l), `line starts with punctuation: ${l}`);
 });
+
+test('fit: unspaced text keeps the real spaces of embedded Latin words and breaks between dictionary words', () => {
+	const w = wrapText('来源: Example source (dev fixture) · example.com', 5000, 30, mono, true, 'zh');
+	assert.equal(w.lines.join(''), '来源: Example source (dev fixture) · example.com');
+	const narrow = wrapText('如果这帮你躲过了一次糟糕的交易，请订阅。', 9 * 30 * 0.6, 30, mono, true, 'zh');
+	assert.ok(narrow.lines.length > 1);
+	for (const l of narrow.lines) assert.ok(!/^[，。]/.test(l), l);
+	assert.ok(!narrow.lines.some((l, i) => i > 0 && l.startsWith('易')), 'does not split 交易');
+});
+
+test('fit: zero-width spaces mark the only CJK break points (for compounds the dictionary does not know)', () => {
+	const w = wrapText('你成了​顶级喊单人', 5 * 30, 30, (s, size) => Array.from(s).length * size, true, 'zh');
+	assert.deepEqual(w.lines, ['你成了', '顶级喊单人']);
+	assert.ok(!w.lines.join('').includes('​'));
+});

@@ -42,6 +42,15 @@ export type StoryboardScene = {
 	 * Default: true when the narration cites a source and the scene type is not 'quote' (the quote shows its own source).
 	 */
 	showSources?: boolean;
+	/**
+	 * Added 2026-11-24 (claim gate, scripts/claims), optional. Text the claim gate flags that the editor judged safe:
+	 * `factual` = a sentence that only LOOKS factual (story action, a fictional figure, "first, check..."), `income` = an
+	 * income/return word used as a warning or a quoted scam pitch. `match` is copied verbatim from this scene's narration
+	 * or onScreen text in THIS file's language (dubbing translates it); `reason` is required. Every waiver is listed in
+	 * the claim report for the owner. Waivers never cover "according to"-style attributions, research must-not-say
+	 * phrases, private names or wallet addresses.
+	 */
+	claimWaivers?: Array<{match: string; rule: 'factual' | 'income'; reason: string}>;
 };
 
 /**
@@ -70,15 +79,25 @@ export type Storyboard = {
 	sources: Source[];
 	offers?: string[]; // creator-hub offer ids (the CTA and disclosures use them)
 	shorts?: {id: string; sceneIds: string[]; title: string}[]; // which scenes are re-composed into each vertical Short
-	thumbnails?: {id: string; text: string; expression: Expression; badger: boolean}[]; // 3 variants; text has 4 words or fewer
+	/**
+	 * 3 variants; text has 4 words or fewer (zh/ja: 10 characters or fewer). A translation (storyboard.<lang>.json) carries
+	 * only {id, text}; expression and badger always come from storyboard.json.
+	 * Added 2026-11-24 (thumbnail builder), optional: `badgerReaction` sets Badger's face when badger is true (default:
+	 * 'worried' with a worried Zoo, otherwise 'judge'); a newline in `text` is the writer's explicit line break (3 lines max).
+	 */
+	thumbnails?: {id: string; text: string; expression: Expression; badger: boolean; badgerReaction?: 'neutral' | 'happy' | 'worried' | 'shocked' | 'judge'}[];
 	/** Added 2026-11-24 (episode builder), optional. Localized UI labels (see UiLabels). */
 	ui?: UiLabels;
 	/**
 	 * Added 2026-11-24 (episode builder), optional. Translation status of THIS file. A storyboard whose lang differs from
 	 * sourceLang counts as 'machine' unless this says 'native-reviewed'; such renders carry an on-screen
 	 * "machine translation: needs native review" badge.
+	 * `method` and `reviewed` added 2026-11-24 (dubbing, scripts/dub), optional: who translated (an agent or MT =
+	 * 'machine', a person = 'human') and whether the owner has confirmed a native review. `node scripts/dub/cli.ts import`
+	 * writes {status: 'machine', method, reviewed: false}; only the owner sets reviewed: true together with
+	 * status: 'native-reviewed' (reviewer = a role or initials, never a private full name: the repo is public).
 	 */
-	translation?: {status: 'machine' | 'native-reviewed'; reviewer?: string; date?: string};
+	translation?: {status: 'machine' | 'native-reviewed'; reviewer?: string; date?: string; method?: 'machine' | 'human'; reviewed?: boolean};
 };
 
 /**

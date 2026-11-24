@@ -1,7 +1,7 @@
 import React from 'react';
-import {BADGER_COLORS, LINE} from '../../palette';
+import {BADGER_COLORS, BRAND, LINE} from '../../palette';
 import type {BadgerSpot} from '../spots';
-import {DETAIL, STROKE, Pt, useUid} from './shared';
+import {Pt, useStrokes, useUid} from './shared';
 import {SpotShapes} from './SpotShapes';
 import {bendPath} from './Tail';
 
@@ -34,6 +34,7 @@ const COLOR: Record<string, string> = {
 	tag: BADGER_COLORS.tag,
 	tagShadow: BADGER_COLORS.tagShadow,
 	spot: BADGER_COLORS.spot,
+	silver: BRAND.silver, // the tag's split ring
 };
 
 const NUM = /-?\d*\.?\d+(?:e-?\d+)?/g;
@@ -61,6 +62,7 @@ export const ViewBody: React.FC<{
 	uidPrefix: string;
 }> = ({rig, spots, tailWag, tailBase = 0, breath, neckTurn, inserts = [], hide = [], uidPrefix}) => {
 	const uid = useUid(uidPrefix);
+	const L = useStrokes();
 	const pv = rig.pivots;
 	const ph = tailWag * Math.PI * 2;
 	const wag = tailWag ? 9 * Math.sin(ph) + tailBase : tailBase;
@@ -70,7 +72,7 @@ export const ViewBody: React.FC<{
 	const br = pv.breath;
 	const ta = pv.tagAnchor;
 	const groupT = (g: string | null): string | undefined => {
-		if (g === 'torso' && br) return `translate(0 ${br.y}) scale(1 ${(1 + breath * 0.006).toFixed(4)}) translate(0 ${-br.y})`;
+		if (g === 'torso' && br) return `translate(0 ${br.y}) scale(1 ${(1 + breath * 0.015).toFixed(4)}) translate(0 ${-br.y})`;
 		if ((g === 'neck' || g === 'neckBack' || g === 'headBack' || g === 'tag' || g === 'head') && nk && neckTurn)
 			return `rotate(${neckTurn} ${nk.x} ${nk.y})`;
 		return undefined;
@@ -98,7 +100,7 @@ export const ViewBody: React.FC<{
 		if (p.group === 'tag' && ta && nk && neckTurn) t = `${t ?? ''} rotate(${-neckTurn} ${ta.x} ${ta.y})`;
 		const own = spots.filter((s) => s.part === p.id);
 		const clip = `${uid}-${p.id}`;
-		const sw = p.strokeWidth ?? LINE.width;
+		const sw = (p.strokeWidth ?? (p.id === 'tagRing' ? LINE.detailWidth : LINE.width)) * L.k;
 		out.push(
 			<g key={p.id} transform={t} data-part={p.id}>
 				{p.color !== 'none' ? <path d={fill} fill={COLOR[p.color] ?? BADGER_COLORS.coat} /> : null}
@@ -113,10 +115,10 @@ export const ViewBody: React.FC<{
 					</>
 				) : null}
 				{strokes.map((d, i) => (
-					<path key={`s${i}`} d={d} {...STROKE} strokeWidth={sw} />
+					<path key={`s${i}`} d={d} {...L.stroke} strokeWidth={sw} />
 				))}
 				{details.map((d, i) => (
-					<path key={`d${i}`} d={d} {...DETAIL} />
+					<path key={`d${i}`} d={d} {...L.detail} />
 				))}
 			</g>,
 		);

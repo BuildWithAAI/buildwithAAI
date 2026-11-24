@@ -53,11 +53,11 @@ export const TERMS: readonly CopyItem[] = [
 	},
 	{
 		title: 'Restricted regions.',
-		text: 'We decline crypto financial promotions aimed at regions where they are restricted, unless you show us the required approval. In the UK, for example, crypto promotions to consumers must be made or approved through a route the FCA permits.',
+		text: 'We decline crypto financial promotions that will be visible in regions where they are restricted (a public YouTube or social video counts), unless you show us the required approval. In the UK, for example, crypto promotions to consumers must be made or approved through a route the FCA permits, wherever the company is based.',
 	},
 	{
 		title: 'Disclosure on our channels.',
-		text: 'Paid client videos are never posted on our channels without a clear disclosure that they are paid.',
+		text: 'Paid client videos are never posted on our channels without a clear disclosure that they are paid. We never publish crypto financial promotions for clients on our own channels.',
 	},
 	{
 		title: 'Everything in writing.',

@@ -1,0 +1,26 @@
+# Farm-owned, hash-locked install of the voice step's base packages for the render farm's voice jobs
+# (.github/workflows/video-render.yml). Not a project dependency file: scripts/voice/requirements.txt stays the
+# source of the versions, and scripts/farm/tests/lock.test.ts fails when the two disagree.
+#
+# Installed with: python -m pip install --require-hashes --only-binary :all: --no-deps -r scripts/farm/voice-lock.txt
+# into .venv-voice before scripts/voice/setup.sh runs, so setup.sh's own pip install finds everything satisfied and
+# fetches nothing. --only-binary: no package builds from source, so no package code runs at install time.
+# Hashes: the CPython 3.13 linux x86_64 wheels (cp313, abi3 or py3-none-any; manylinux) from PyPI's JSON API
+# (pypi.org/pypi/<name>/<version>/json, digests.sha256), 2026-11-24. Regenerate with:
+#   python3 scripts/farm/mklock.py scripts/voice/requirements.txt > scripts/farm/voice-lock.txt  (then restore this header)
+attrs==26.1.0 --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
+cffi==2.1.1 --hash=sha256:a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2
+cloudpickle==3.1.3 --hash=sha256:1654f4f18e416447210a63c5c25a135d65a292156aa5fa519dfa4baf7726dddb
+dlinfo==2.0.0 --hash=sha256:b32cc18e3ea67c0ca9ca409e5b41eed863bd1363dbc9dd3de90fedf11b61e7bc
+espeakng-loader==0.2.4 --hash=sha256:08721baf27d13d461f6be6eed9a65277e70d68234ff484fd8b9897b222cdcb6d
+flatbuffers==25.12.19 --hash=sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4
+joblib==1.6.0 --hash=sha256:3dbbf9f6e4b592a2357b854608e980fe6390d131d7a82f011a377ef2ebef7aba
+kokoro-onnx==0.6.1 --hash=sha256:50c8de4950d601df41428ee5462a48c8a78bef441bf671f2492e070ef44d8a32
+numpy==2.5.5 --hash=sha256:824025655df929268bfe6b47ed91a00d14209a6f760847cf150be446829e1ce4
+onnxruntime==1.32.0 --hash=sha256:02ea12a28c069ea8510093d95a7f6ff8126bfd9fc5c0d3381c03b80fb2b424ba
+packaging==26.4 --hash=sha256:81383611a09c1bc0b08b76e0fd5829d7c6824c65b27a6aee339da133f4233ea2
+phonemizer==3.6.0 --hash=sha256:efb0703d3204f334756cafc9c97390c588446469c69214af4092836ca128cbab
+protobuf==7.36.2 --hash=sha256:89f23aa53c24553a2416fd4fd1ec06f74fa42b14b546d8883128813f775bbfd2 --hash=sha256:bdb3a345d48db958e6ce1f18e508beb0cc981d64f24088427549c866cd039f1e
+pycparser==3.12 --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e
+soundfile==0.14.0 --hash=sha256:8ba81ae3a89fd5ab3bef8a8eb481fbbe794e806309675a89b4df48b8d31908a8 --hash=sha256:1e38bac1853412871318e82a1ba69a8be677619b56025bbfcccdb41b6cafe82d
+typing_extensions==4.16.0 --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8

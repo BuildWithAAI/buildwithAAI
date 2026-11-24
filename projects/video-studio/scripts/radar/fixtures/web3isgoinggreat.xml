@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>https://web3isgoinggreat.com/feed.xml</id>
+  <title type="html">Web3 is Going Just Great</title>
+  <link rel="self" href="https://web3isgoinggreat.com/feed.xml" />
+  <rights type="html">CC-BY-SA 3.0</rights>
+  <updated>2026-11-22T23:07:42.834Z</updated>
+  <entry>
+    <title type="html">Fusionist exploited for $1.87 million</title>
+    <published>2026-11-22T21:54:09.607Z</published>
+    <updated>2026-11-22T23:07:42.834Z</updated>
+    <link href="https://web3isgoinggreat.com/single/fusionist-exploit" />
+    <id>https://web3isgoinggreat.com/single/fusionist-exploit</id>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml"><p>An attacker has exploited the bridge belonging to the Fusionist blockchain gaming project. They were able to mint around 10 quadrillion of the project's ACE token on BNB chain, then cash out to approximately $1 million USDT, crashing the ACE token price to fractions of a cent…</p></div>
+    </content>
+  </entry>
+  <entry>
+    <title type="html">Cyber bridge exploited for almost $1 million</title>
+    <published>2026-11-22T21:45:08.331Z</published>
+    <updated>2026-11-22T21:52:04.990Z</updated>
+    <link href="https://web3isgoinggreat.com/single/cyber-bridge-exploit" />
+    <id>https://web3isgoinggreat.com/single/cyber-bridge-exploit</id>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml"><p>Cyber, an Ethereum layer-2 network formerly known as CyberConnect and built for social applications, said it is investigating an apparent bridge exploit. An attacker was able to mint CYBER tokens on the Solana chain, then unlock approximately 5.21 million corresponding CYBER…</p></div>
+    </content>
+  </entry>
+  <entry>
+    <title type="html">Chainflip loses $12 million to apparent key compromise</title>
+    <published>2026-11-22T08:28:32.220Z</published>
+    <updated>2026-11-22T08:41:29.167Z</updated>
+    <link href="https://web3isgoinggreat.com/single/chainflip-loses-12-million-to-apparent-key-compromise" />
+    <id>https://web3isgoinggreat.com/single/chainflip-loses-12-million-to-apparent-key-compromise</id>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml"><p>An attacker drained $12 million from the Chainflip cross-chain swap protocol. They then immediately swapped the tokens to ETH and then laundered the assets through Tornado Cash to make them impossible for stablecoin issuers to freeze and more challenging for investigators to…</p></div>
+    </content>
+  </entry>
+  <entry>
+    <title type="html">Lighter user(s) exploited for $15 million</title>
+    <published>2026-11-22T07:25:00.920Z</published>
+    <updated>2026-11-22T08:00:09.011Z</updated>
+    <link href="https://web3isgoinggreat.com/single/lighter-exploit" />
+    <id>https://web3isgoinggreat.com/single/lighter-exploit</id>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml"><p>An attacker drained at least one market maker account on the perpetual futures exchange Lighter. One account was emptied of around $10.4 million, and another may have lost about $5.1 million, according to blockchain researchers. Lighter has attributed the theft to a "leaked API…</p></div>
+    </content>
+  </entry>
+  <entry>
+    <title type="html">Initia suffers $2.7 million loss after unauthorized mint exploit</title>
+    <published>2026-11-22T02:34:51.837Z</published>
+    <updated>2026-11-22T02:34:51.837Z</updated>
+    <link href="https://web3isgoinggreat.com/single/initia-exploit-1" />
+    <id>https://web3isgoinggreat.com/single/initia-exploit-1</id>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml"><p>The Initia project halted its blockchain after an attacker was able to exploit a vulnerability in the project smart contract to perform an unauthorized mint of unbacked wrapped tokens. The attacker then bridged the tokens off Initia's chain to cash out. They ultimately made off…</p></div>
+    </content>
+  </entry>
+  <entry>
+    <title type="html">Mercado Bitcoin halts withdrawals after $40 million hack</title>
+    <published>2026-11-21T22:57:52.516Z</published>
+    <updated>2026-11-21T22:57:52.516Z</updated>
+    <link href="https://web3isgoinggreat.com/single/mercado-bitcoin-halts-withdrawals-after-40-million-hack" />
+    <id>https://web3isgoinggreat.com/single/mercado-bitcoin-halts-withdrawals-after-40-million-hack</id>
+    <content type="xhtml">
+      <div xmlns="http://www.w3.org/1999/xhtml"><p>Brazil's largest crypto exchange, Mercado Bitcoin, suspended deposits and withdrawals on November 2, citing a security incident. Researchers have estimated the loss at about $49 million, though around $10 million was frozen by centralized stablecoin issuers. The exchange has…</p></div>
+    </content>
+  </entry>
+</feed>

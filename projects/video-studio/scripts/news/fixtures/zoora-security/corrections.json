@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "corrections": [
+    {
+      "id": "2026-11-24-good-fixtureswap-drain-1",
+      "slug": "good-fixtureswap-drain",
+      "date": "2026-11-24",
+      "timestamp": "00:07",
+      "wrong": "FixtureSwap lost $4.8 million",
+      "correct": "FixtureSwap says attackers drained $4.2 million from its liquidity pools, according to Example Wire.",
+      "sourceIds": [
+        "src-wire"
+      ],
+      "status": "pinned",
+      "pinnedAt": "2026-11-24T15:00:00Z"
+    },
+    {
+      "id": "2026-11-24-bad-r8-repeats-correction-1",
+      "slug": "bad-r8-repeats-correction",
+      "date": "2026-11-24",
+      "wrong": "The funds were later bridged to another network",
+      "correct": "Example Security Lab now says the funds have not left Ethereum, according to its updated alert.",
+      "sourceIds": [
+        "src-lab"
+      ],
+      "status": "pending"
+    }
+  ]
+}

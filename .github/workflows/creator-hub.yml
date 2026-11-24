@@ -1,0 +1,81 @@
+# Creator hub CI: tests and typechecks for projects/creator-hub (the link hub server with its studio and subscribe
+# pages, plus the comment guard, dashboard, newsletter and other tools) and for the publish kit in
+# projects/video-studio/scripts/publish-kit, which writes the kit.json those tools read.
+# It only runs tests and typechecks: it starts no service, deploys nothing and uses no secrets.
+# Read-only token, no persisted git credentials, every action pinned to a commit SHA (tags resolved with
+# git ls-remote on 2026-11-24; the same pins as video-render.yml).
+name: Creator hub
+
+on:
+  pull_request:
+    paths:
+      - "projects/creator-hub/**"
+      - "projects/video-studio/scripts/publish-kit/**"
+      - "projects/video-studio/content/zoora-ai/_example/**"
+      - ".github/workflows/creator-hub.yml"
+  push:
+    branches: [main]
+    paths:
+      - "projects/creator-hub/**"
+      - "projects/video-studio/scripts/publish-kit/**"
+      - "projects/video-studio/content/zoora-ai/_example/**"
+      - ".github/workflows/creator-hub.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  creator-hub:
+    name: Creator hub tests and typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+        working-directory: projects/creator-hub
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      # There are no runtime dependencies; npm ci installs only the pinned TypeScript and Node type definitions.
+      - name: Install
+        run: npm ci
+      - name: Test
+        run: npm test
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+  publish-kit:
+    name: Publish kit tests and typecheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: projects/video-studio
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      # The glob form: Node 22 treats a bare directory argument to --test as a file and fails.
+      - name: Test
+        run: node --test "scripts/publish-kit/*.test.ts"
+      # The kit has no dependencies. Its strict typecheck borrows creator-hub's pinned TypeScript and Node types,
+      # so video-studio's Remotion dependencies are not installed here.
+      - name: Install TypeScript
+        working-directory: projects/creator-hub
+        run: npm ci
+      - name: Typecheck
+        working-directory: projects/creator-hub
+        run: npx tsc --noEmit -p ../video-studio/scripts/publish-kit/tsconfig.json --typeRoots ./node_modules/@types

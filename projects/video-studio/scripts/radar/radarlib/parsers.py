@@ -5,8 +5,15 @@ ParseError when the page or feed has no recognisable structure; the caller then
 skips the source with a warning, so a bad page never crashes a run.
 
 Feed safety: XML is parsed with xml.etree.ElementTree (expat: no external entity
-or network resolution) and any document that declares entities is refused before
-parsing. Feed text is only ever treated as data.
+or network resolution). Before that, a structural pre-scan with expat itself refuses
+any document with an internal DTD subset or an entity declaration, wherever it
+appears and in any encoding (a long comment before the DOCTYPE or a UTF-16 body
+cannot hide one). Feed text is only ever treated as data.
+
+Caveats about the mechanism ("the exact mechanism remains under investigation",
+"suspected compromise") are often past the first 280 characters, so each parser
+reads them from the FULL text and stores the qualifying sentence (280 characters at
+most) as its own field, with the mechanism status.
 """
 
 import datetime as dt
@@ -14,14 +21,16 @@ import json
 import re
 import urllib.parse
 import xml.etree.ElementTree as ET
+from xml.parsers import expat
 
+from .classify import mechanism_qualifier, origin_of
 from .htmldom import parse_html
 from .textutil import (
     EXCERPT_MAX, MONEY_RE, clean_ws, format_usd_exact, html_to_text, iso_z, money_value,
     parse_any_date, parse_iso, parse_rfc822, truncate,
 )
 
-PARSER_VERSION = "2026-11-24.1"
+PARSER_VERSION = "2026-11-24.2"
 MAX_ITEMS = 200
 
 
@@ -34,6 +43,19 @@ def first_sentence(text, limit=200):
     match = re.search(r"(?<=[.!?])\s+(?=[A-Z0-9“\"(])", text)
     sentence = text[: match.start()] if match else text
     return truncate(sentence, limit)
+
+
+def _qualify(item, full_text, publisher=""):
+    """Adds the mechanism status and qualifying sentence read from the full text, and the organisation the item
+    relays (its origin), to a parsed item."""
+    status, sentence = mechanism_qualifier(full_text)
+    if status:
+        item["mechanismStatus"] = status
+        item["qualifier"] = truncate(sentence, EXCERPT_MAX)
+    origin = origin_of(full_text, publisher)
+    if origin:
+        item["origin"] = origin
+    return item
 
 
 def clean_url(url, base=None):
@@ -126,7 +148,11 @@ def parse_defillama_hacks(body, source, ctx):
             head.append("bridge hack: yes")
         excerpt = truncate(" · ".join(head) + (" · " + description if description else ""), EXCERPT_MAX)
         reference = record.get("source") if isinstance(record.get("source"), str) else ""
-        items.append({
+        qualified = {}
+        _qualify(qualified, description)
+        if technique == "Unknown" and "mechanismStatus" not in qualified:
+            qualified.update(mechanismStatus="unknown", qualifier=f"{classification or 'Unclassified'} / Unknown")
+        items.append({**qualified,
             "kind": "structured",
             "key": f"defillama:{name}@{day.isoformat()}",
             "title": f"DefiLlama hacks: {name} ({day.isoformat()})",
@@ -159,7 +185,26 @@ def parse_defillama_hacks(body, source, ctx):
 
 # ------------------------------------------------------------------ RSS / Atom
 
-_ENTITY_DECL = re.compile(rb"<!ENTITY", re.IGNORECASE)
+def _refuse_dtd(body):
+    """Structural pre-scan with expat: refuse an internal DTD subset or any entity declaration, wherever it is and in
+    any encoding. External DTDs are never fetched (parameter entity parsing is off)."""
+    scanner = expat.ParserCreate()
+    scanner.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
+
+    def doctype(_name, _sysid, _pubid, has_internal_subset):
+        if has_internal_subset:
+            raise ParseError("feed declares an internal DTD subset (entities); refused")
+
+    def entity(*_args):
+        raise ParseError("feed declares XML entities; refused")
+
+    scanner.StartDoctypeDeclHandler = doctype
+    scanner.EntityDeclHandler = entity
+    scanner.UnparsedEntityDeclHandler = entity
+    try:
+        scanner.Parse(body, True)
+    except expat.ExpatError as err:
+        raise ParseError(f"XML parse error: {err}") from None
 
 
 def _local(tag):
@@ -189,8 +234,7 @@ def _elem_text(elem):
 def parse_feed(body, source, ctx):
     if isinstance(body, str):
         body = body.encode("utf-8")
-    if _ENTITY_DECL.search(body[:65536]):
-        raise ParseError("feed declares XML entities; refused")
+    _refuse_dtd(body)
     try:
         root = ET.fromstring(body)
     except ET.ParseError as err:
@@ -241,7 +285,7 @@ def parse_feed(body, source, ctx):
                 label = clean_ws(cat.get("term") or cat.text or "")
                 if label and label not in categories:
                     categories.append(label)
-            items.append({
+            items.append(_qualify({
                 "kind": "news",
                 "key": f"{source['id']}:{url}",
                 "title": truncate(title, 300),
@@ -251,7 +295,7 @@ def parse_feed(body, source, ctx):
                 "excerpt": truncate(summary, EXCERPT_MAX),
                 "lead": first_sentence(summary) if summary else "",
                 "categories": categories[:12],
-            })
+            }, f"{title}. {summary}", source.get("publisher") or source.get("name") or ""))
         except Exception as err:  # one bad entry must not lose the feed
             skipped += 1
             warnings.append(f"entry skipped: {type(err).__name__}")
@@ -302,7 +346,7 @@ def parse_rekt(body, source, ctx):
             skipped += 1
             continue
         subject = _REKT_SUFFIX.sub("", title) if _REKT_SUFFIX.search(title) else None
-        items.append({
+        items.append(_qualify({
             "kind": "postmortem",
             "key": f"{source['id']}:{url}",
             "title": title,
@@ -313,7 +357,7 @@ def parse_rekt(body, source, ctx):
             "lead": first_sentence(excerpt) if excerpt else "",
             "categories": tags[:8],
             "subject": clean_ws(subject) if subject else None,
-        })
+        }, excerpt))
     if not items:
         raise ParseError("articles found but none had a title link")
     if skipped:
@@ -377,6 +421,7 @@ def parse_slowmist(body, source, ctx):
             head.append(f"attack method: {method}")
         excerpt = truncate(" · ".join(head) + (" · " + description if description else ""), EXCERPT_MAX)
         items.append({
+            **_qualify({}, description),
             "kind": "structured",
             "key": f"slowmist:{target}@{day.date().isoformat()}",
             "title": f"SlowMist Hacked: {target} ({day.date().isoformat()})",
@@ -430,7 +475,7 @@ def parse_blog_cards(body, source, ctx):
         if not title:
             continue
         seen.add(url)
-        items.append({
+        items.append(_qualify({
             "kind": "blog",
             "key": f"{source['id']}:{url}",
             "title": truncate(title, 300),
@@ -440,7 +485,7 @@ def parse_blog_cards(body, source, ctx):
             "excerpt": truncate(description, EXCERPT_MAX),
             "lead": first_sentence(description) if description else "",
             "categories": [category] if category else [],
-        })
+        }, description))
         if len(items) >= MAX_ITEMS:
             break
     if not items:

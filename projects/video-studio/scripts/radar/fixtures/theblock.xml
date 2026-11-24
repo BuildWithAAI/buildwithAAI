@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>The Block</title>
+  <link>https://www.theblock.co</link>
+  <description>Trimmed fixture: titles, links, dates and excerpts of at most 280 characters.</description>
+  <item>
+    <title>DOJ seeks $1.17 billion in USDC tied to Binance hack; Circle could issue replacement tokens</title>
+    <link>https://www.theblock.co/news/regulation/2026-11-23-doj-1-17-billion-usdc-binance-hack-circle-replacement-tokens-445398</link>
+    <guid isPermaLink="false">e883ae61-cd89-5743-9659-59baaa98c59a</guid>
+    <pubDate>Mon, 23 Nov 2026 20:00:34 +0000</pubDate>
+    <category domain="https://www.theblock.co/category/companies">Companies</category>
+    <category domain="https://www.theblock.co/category/crypto-ecosystems">Crypto Ecosystems</category>
+    <category domain="https://www.theblock.co/category/exchanges">Exchanges</category>
+    <category domain="https://www.theblock.co/category/markets">Markets</category>
+    <description>The U.S. Justice Department is seeking to recover about $1.17 billion in USDC tied to the Oct. 29 Binance hack.</description>
+  </item>
+  <item>
+    <title>Pump.fun draws criticism over private key imports as it retires external wallet sign-in on web</title>
+    <link>https://www.theblock.co/news/ecosystems/2026-11-23-pump-fun-draws-criticism-over-private-key-imports-as-it-retires-external-wallet-sign-in-on-web-444926</link>
+    <guid isPermaLink="false">a5dca988-ba18-5470-bdda-1534261b4615</guid>
+    <pubDate>Mon, 23 Nov 2026 13:54:54 +0000</pubDate>
+    <category domain="https://www.theblock.co/category/crypto-ecosystems">Crypto Ecosystems</category>
+    <category domain="https://www.theblock.co/category/defi">DeFi</category>
+    <category domain="tag">Pump.fun</category>
+    <category domain="https://www.theblock.co/">News</category>
+    <description>Pump.fun is retiring external web wallet logins and asking users to import private keys to keep existing wallet-linked accounts.</description>
+  </item>
+  <item>
+    <title>Kalshi halts operations in Utah while dodging immediate ban in New York</title>
+    <link>https://www.theblock.co/news/regulation/2026-11-23-kalshi-pauses-operations-utah-dodging-ban-new-york-445456</link>
+    <guid isPermaLink="false">beb1e616-c700-5d45-8f5a-a5660483e4ce</guid>
+    <pubDate>Tue, 24 Nov 2026 04:28:02 +0000</pubDate>
+    <category domain="https://www.theblock.co/category/companies">Companies</category>
+    <category domain="https://www.theblock.co/category/crypto-ecosystems">Crypto Ecosystems</category>
+    <category domain="https://www.theblock.co/category/policy">Policy</category>
+    <category domain="https://www.theblock.co/category/regulation">Regulation</category>
+    <description>Kalshi has suspended operations in Utah after a federal judge allowed the state to enforce its gambling laws.</description>
+  </item>
+</channel>
+</rss>

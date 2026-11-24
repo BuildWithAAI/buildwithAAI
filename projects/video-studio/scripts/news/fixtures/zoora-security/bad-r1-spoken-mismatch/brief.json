@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "slug": "bad-r1-spoken-mismatch",
+  "generatedAt": "2026-11-24T08:00:00Z",
+  "note": "Test fixture. Every name, outlet, number and URL is fictional; URLs use reserved example domains.",
+  "incidents": [
+    {
+      "id": "inc-fixtureswap",
+      "name": "FixtureSwap",
+      "status": "developing",
+      "date": "2026-11-23"
+    },
+    {
+      "id": "inc-fixturelend",
+      "name": "FixtureLend",
+      "status": "confirmed",
+      "date": "2026-10-02"
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-wire",
+      "url": "https://news.example.com/2026/11/23/fixtureswap-drain",
+      "title": "FixtureSwap says attackers drained $4.2 million from its pools",
+      "publisher": "Example Wire",
+      "kind": "news",
+      "publishedAt": "2026-11-23T18:00:00Z",
+      "excerpt": "FixtureSwap said attackers drained $4.2 million from its liquidity pools on Sunday, according to a statement posted by the project."
+    },
+    {
+      "id": "src-pm",
+      "url": "https://fixtureswap.example/blog/incident-update",
+      "title": "Incident update",
+      "publisher": "FixtureSwap",
+      "kind": "post-mortem",
+      "publishedAt": "2026-11-24T02:00:00Z",
+      "excerpt": "Our preliminary review indicates a compromised deployer key was used to upgrade the pool contract. The investigation is ongoing and figures may change."
+    },
+    {
+      "id": "src-lab",
+      "url": "https://lab.example.org/alerts/fixtureswap",
+      "title": "Alert: FixtureSwap outflows",
+      "publisher": "Example Security Lab",
+      "kind": "security-firm",
+      "publishedAt": "2026-11-23T16:30:00Z",
+      "excerpt": "Example Security Lab flagged outflows of about 1,400 ETH from FixtureSwap pools to a newly funded address. The funds were later bridged to another network."
+    },
+    {
+      "id": "src-tracker",
+      "url": "https://tracker.example.net/incidents?since=2026-09-28",
+      "title": "Example Hack Tracker: incidents since 2026-09-28",
+      "publisher": "Example Hack Tracker",
+      "kind": "tracker",
+      "publishedAt": "2026-11-24T06:00:00Z",
+      "excerpts": [
+        "FixtureLend | 2026-10-02 | $3.1M | technique: compromised private key",
+        "FixtureSwap | 2026-11-23 | $4.2M | technique: private key compromise"
+      ]
+    }
+  ],
+  "facts": [
+    {
+      "id": "f1",
+      "text": "FixtureSwap says attackers drained $4.2 million from its liquidity pools.",
+      "sourceIds": [
+        "src-wire"
+      ],
+      "excerpts": [
+        "FixtureSwap said attackers drained $4.2 million from its liquidity pools on Sunday, according to a statement posted by the project."
+      ],
+      "incidentId": "inc-fixtureswap"
+    },
+    {
+      "id": "f2",
+      "text": "FixtureSwap's preliminary review points to a compromised deployer key used to upgrade the pool contract; the investigation is ongoing.",
+      "sourceIds": [
+        "src-pm"
+      ],
+      "excerpts": [
+        "Our preliminary review indicates a compromised deployer key was used to upgrade the pool contract. The investigation is ongoing and figures may change."
+      ],
+      "incidentId": "inc-fixtureswap"
+    },
+    {
+      "id": "f3",
+      "text": "Example Security Lab flagged outflows of about 1,400 ETH to a newly funded address; the funds were later bridged to another network.",
+      "sourceIds": [
+        "src-lab"
+      ],
+      "excerpts": [
+        "Example Security Lab flagged outflows of about 1,400 ETH from FixtureSwap pools to a newly funded address. The funds were later bridged to another network."
+      ],
+      "incidentId": "inc-fixtureswap"
+    },
+    {
+      "id": "f4",
+      "text": "Example Hack Tracker lists FixtureLend: 2026-10-02, $3.1M, compromised private key.",
+      "sourceIds": [
+        "src-tracker"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "src-tracker",
+          "text": "FixtureLend | 2026-10-02 | $3.1M | technique: compromised private key"
+        }
+      ],
+      "incidentId": "inc-fixturelend"
+    },
+    {
+      "id": "f5",
+      "text": "Example Hack Tracker lists FixtureSwap: 2026-11-23, $4.2M, private key compromise.",
+      "sourceIds": [
+        "src-tracker"
+      ],
+      "excerpts": [
+        {
+          "sourceId": "src-tracker",
+          "text": "FixtureSwap | 2026-11-23 | $4.2M | technique: private key compromise"
+        }
+      ],
+      "incidentId": "inc-fixtureswap"
+    }
+  ]
+}

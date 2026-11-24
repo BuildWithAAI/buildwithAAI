@@ -1,0 +1,201 @@
+{
+  "_fixture": "the English \"1,234\" was kept: the Spanish voice reads it as 1.234",
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "dub-demo",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "POV: Copias a un caller famoso",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Copias a un caller en Pump.fun. En una hora, {40.000 $|cuarenta mil dólares} de dinero ajeno entra detrás de ti.",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "Copias a un caller famoso",
+        "subtitle": "Una historia ficticia sobre un patrón real."
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "claimWaivers": [
+        {
+          "match": "Copias a un caller en Pump.fun",
+          "rule": "factual",
+          "reason": "story action in a composite story, not a claim about the platform"
+        },
+        {
+          "match": "de dinero ajeno entra detrás de ti",
+          "rule": "factual",
+          "reason": "story action: a fictional amount in a composite story"
+        }
+      ]
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Aquí está la trampa. En 2024, el 68,67 % de los tokens nuevos dejó de cotizar el día del lanzamiento. [src:launch-data] Bubblemaps estimó que 1,234 billeteras compraron antes de las señales. [src:bm-thread]",
+      "onScreen": {
+        "title": "La trampa",
+        "bullets": [
+          "Casi todos mueren el primer día",
+          "Los insiders compran antes"
+        ],
+        "cues": [
+          "tokens",
+          "billeteras"
+        ],
+        "lowerThird": [
+          "Zoo",
+          "Presentador · Zoora AI"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "En el gráfico, la subida parece orgánica. Luego el suelo desaparece.",
+      "onScreen": {
+        "pair": "$DEMO / SOL",
+        "cues": [
+          "subida",
+          "suelo"
+        ]
+      },
+      "chart": {
+        "seed": 51,
+        "illustrative": true
+      },
+      "badger": {
+        "present": true,
+        "reaction": "worried"
+      }
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Antes de copiar a alguien, revisa quién compró primero, revisa quién vendió primero y nunca persigas la vela más ruidosa.",
+      "onScreen": {
+        "title": "Antes de copiar a alguien",
+        "steps": [
+          "Revisa quién compró primero",
+          "Revisa quién vendió primero",
+          "Evita la vela más ruidosa"
+        ],
+        "cues": [
+          "compró",
+          "vendió",
+          "nunca"
+        ]
+      }
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "Como dijo un caller: Nadie revisa la billetera.",
+      "onScreen": {
+        "quote": "Nadie revisa la billetera.",
+        "attribution": "un caller famoso (personaje ficticio compuesto)",
+        "source": "Diálogo ficticio"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      }
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "Nada de esto es asesoría financiera. Badger revisó el gráfico para que tú no tengas que hacerlo. Suscríbete.",
+      "onScreen": {
+        "title": "Una mala operación evitada",
+        "cues": [
+          "Suscríbete"
+        ],
+        "badgerCue": "Badger"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "La lista gratuita está en el enlace. La próxima vez: el bot que opera por ti.",
+      "onScreen": {
+        "title": "Lista gratuita: go.zoora.ai/check"
+      },
+      "minDurationSec": 20
+    }
+  ],
+  "sources": [
+    {
+      "id": "launch-data",
+      "title": "Example token survival study (test fixture)",
+      "url": "https://example.com/survival",
+      "quote": "68.67% of tokens recorded their last trade on launch day.",
+      "accessed": "2026-11-20",
+      "status": "verified"
+    },
+    {
+      "id": "bm-thread",
+      "title": "Example investigator thread (test fixture)",
+      "url": "https://example.com/thread",
+      "quote": "We estimate 1,234 wallets bought before the calls.",
+      "accessed": "2026-11-21",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s06"
+      ],
+      "title": "El gráfico del caller"
+    }
+  ],
+  "thumbnails": [
+    {
+      "id": "a",
+      "text": "¿QUIÉN VENDIÓ PRIMERO?",
+      "expression": "neutral",
+      "badger": true
+    },
+    {
+      "id": "b",
+      "text": "EL SUELO DESAPARECIÓ",
+      "expression": "worried",
+      "badger": true
+    },
+    {
+      "id": "c",
+      "text": "REVISA LA BILLETERA",
+      "expression": "shocked",
+      "badger": false
+    }
+  ],
+  "ui": {
+    "fictionDisclaimer": "Historia ficticia · personajes compuestos · no es asesoría financiera",
+    "sources": "Fuente",
+    "illustrative": "Ilustrativo · token ficticio",
+    "subscribe": "Suscríbete",
+    "watchNext": "Mira a continuación",
+    "subscribeSlot": "Suscríbete"
+  },
+  "translation": {
+    "status": "machine",
+    "method": "machine",
+    "reviewed": false
+  }
+}

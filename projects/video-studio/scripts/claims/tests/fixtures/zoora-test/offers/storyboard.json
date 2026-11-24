@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "channel": "zoora-test",
+  "slug": "offers",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "Broken fixture: offer disclosure shown but not said",
+  "fiction": false,
+  "offers": ["security-checklist"],
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "One careless click can empty a wallet.",
+      "onScreen": {"title": "One careless click"},
+      "badger": {"present": true, "reaction": "judge"}
+    },
+    {
+      "id": "s02",
+      "type": "cta",
+      "narration": "{I built this checklist and it is my own product.|} Grab it at the link, and subscribe.",
+      "onScreen": {"title": "The checklist", "button": "Get it", "disclosure": "I built this checklist and it is my own product."}
+    }
+  ],
+  "sources": []
+}

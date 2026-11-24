@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {test} from 'node:test';
 import {crossBacklogProblems, parseBacklog} from '../lib/backlog.ts';
 import {loadConfig, parseConfig} from '../lib/config.ts';
-import {loadFactBank} from '../lib/factbank.ts';
+import {claimWords, loadFactBank, supportedBy, unsupportedWording, type BankFact} from '../lib/factbank.ts';
 import {channelTopics, loadAll} from '../lib/load.ts';
 import type {Backlog} from '../lib/types.ts';
 import {UsageError} from '../lib/util.ts';
@@ -89,6 +89,45 @@ test('every fact-bank id the backlogs cite is in the fact bank, verified', (t) =
 		assert.ok(fact, `${c.at}: ${c.id} is not in the fact bank`);
 		assert.notEqual(fact?.verification, 'unverified', `${c.at}: ${c.id} is unverified`);
 	}
+});
+
+test('titles, Short angles and fact needs carry no figure or superlative that their cited facts do not state', (t) => {
+	const bankPath = join(STUDIO, 'content', 'facts', 'facts.jsonl');
+	const bank = loadFactBank(existsSync(bankPath) ? bankPath : null);
+	if (!bank.facts) return t.skip('content/facts/facts.jsonl (the fact bank workflow\'s file) is not in this checkout');
+	const {backlogs} = loadAll(STUDIO, REAL_CONFIG);
+	const found = backlogs.flatMap((b) => b.ideas.flatMap((i) => unsupportedWording(i, bank.facts as Map<string, BankFact>).map((u) => `${b.channel}/${u.where}: "${u.text}" (${u.words.join(', ')})`)));
+	assert.deepEqual(found, []);
+});
+
+test('the wording check: figures, number words and superlatives need a cited statement that says them', () => {
+	const fact = (id: string, text: string): BankFact => ({id, text, tags: [], verification: 'direct-read', verifiedAt: '2026-11-24', recheckAfter: '2027-11-24', sources: [], usage: []});
+	const bank = new Map([
+		['result', fact('result', "Qwen3 Max finished first in Alpha Arena Season 1, and OpenAI's model finished last after losing more than half of its stake.")],
+		['sec', fact('sec', 'In March 2024, the SEC charged two investment advisers with AI washing.')],
+		['coingecko', fact('coingecko', '12.8 million of them (68.67%) made their last bonding-curve trade on launch day.')],
+		['followers', fact('followers', 'Followers of 10 small-cap callers were collectively down about $926,000.')],
+	]);
+	const idea = (title: string, shortIdeas: string[], facts: Array<{need: string; factId: string | null}>) => ({id: 'x', title, shortIdeas, facts});
+	// the 2026-11-24 review's case: "four of six" is in no cited statement
+	assert.deepEqual(unsupportedWording(idea('T', ['Four of six AI traders lost real money'], [{need: 'n', factId: 'result'}]), bank).map((u) => u.words), [['four', 'six']]);
+	assert.deepEqual(unsupportedWording(idea('T', ['The AI that finished last lost more than half'], [{need: 'n', factId: 'result'}]), bank), []);
+	// a need is checked against its own fact only
+	assert.deepEqual(unsupportedWording(idea('T', [], [{need: "The SEC's first AI-washing cases", factId: 'sec'}]), bank).map((u) => [u.where, u.words]), [['x facts[0].need', ['first']]]);
+	assert.deepEqual(unsupportedWording(idea('T', [], [{need: 'The SEC charged two advisers (March 2024)', factId: 'sec'}]), bank), []);
+	assert.deepEqual(unsupportedWording(idea('T', [], [{need: 'Alpha Arena: how it ended (most models lost money)', factId: 'result'}]), bank).map((u) => u.words), [['most']]);
+	// "most" is supported by a share above half; a number word by the same figure in digits
+	assert.ok(supportedBy('most', [bank.get('coingecko')?.text ?? '']));
+	assert.ok(supportedBy('ten', [bank.get('followers')?.text ?? '']));
+	assert.ok(!supportedBy('twelve', [bank.get('followers')?.text ?? '']));
+	assert.ok(supportedBy('926000', [bank.get('followers')?.text ?? '']));
+	// no cited fact: every figure and superlative waits for research; idioms and the video's own structure are not claims
+	assert.deepEqual(unsupportedWording(idea('The oldest trick in the book', ['Send one, get two'], [{need: 'n', factId: null}]), bank).map((u) => u.words), [['oldest'], ['two']]);
+	assert.deepEqual(claimWords('Your new best friend has a track record'), []);
+	assert.deepEqual(claimWords('Three questions for any AI pitch'), []);
+	assert.deepEqual(claimWords('Check the holders first'), []);
+	assert.deepEqual(claimWords('Why the first and last characters are not enough'), []);
+	assert.deepEqual(claimWords('The first AI-washing case cost $400,000'), ['400000', 'first']);
 });
 
 test('slugs are unique across both channels (claim reports are keyed by slug)', () => {

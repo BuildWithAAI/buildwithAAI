@@ -8,23 +8,21 @@ import React, {useMemo} from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import type {Lang} from '../types';
 import {C, OUTLINE, R} from '../theme';
-import {CAPTION_PAD, CAPTIONS, type Box, type Format} from '../layout/specs';
+import {CAPTION_PAD, CAPTIONS, type Format} from '../layout/specs';
 import {placeCaption} from '../layout/faces';
-import {buildPages, type CaptionPage} from './pages';
+import type {CaptionTrack, TrackPage} from './pages';
 import {useFit} from '../text/FitText';
 import {fontFor} from '../i18n/fonts';
 import {frameToMs} from '../motion';
 import {UNSPACED} from '../markup';
 
-/** One caption track = the pages of each scene, offset to composition ms, with the faces of that scene's shot. */
-export type TrackPage = CaptionPage & {faces: Box[]};
-export type CaptionTrack = TrackPage[];
+export {captionTrack, type CaptionTrack, type TrackPage} from './pages';
 
 const PageView: React.FC<{page: TrackPage; format: Format; lang: Lang; nowMs: number}> = ({page, format, lang, nowMs}) => {
 	const spec = CAPTIONS[format];
 	const fit = useFit(page.text, {...spec, box: {...spec.box, w: spec.box.w - 2 * CAPTION_PAD.x}}, lang);
 	const font = fontFor(lang, spec.role, spec.weight);
-	const lh = fit.fontSize * spec.lineHeight;
+	const lh = fit.fontSize * fit.lineHeight;
 	const plateW = Math.ceil(fit.width) + 2 * CAPTION_PAD.x;
 	const plateH = Math.ceil(fit.height) + 2 * CAPTION_PAD.y;
 	// the first caption position clear of every face in the shot (layout/faces.ts)
@@ -87,15 +85,3 @@ export const Captions: React.FC<{track: CaptionTrack; format: Format; lang: Lang
 		</AbsoluteFill>
 	);
 };
-
-/** Build the caption track for a list of scenes placed at composition frames. */
-export const captionTrack = (scenes: Array<{fromMs: number; words: Array<{text: string; startMs: number; endMs: number}>; faces: Box[]}>, lang: Lang): CaptionTrack =>
-	scenes.flatMap((s) =>
-		buildPages(s.words, {lang}).map((p) => ({
-			...p,
-			faces: s.faces,
-			startMs: p.startMs + s.fromMs,
-			endMs: p.endMs + s.fromMs,
-			words: p.words.map((w) => ({...w, startMs: w.startMs + s.fromMs, endMs: w.endMs + s.fromMs})),
-		})),
-	);

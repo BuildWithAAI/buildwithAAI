@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "about": "Test fixture in the news gate's allowlist format (video-studio/scripts/news/allowlist.json). Invented organisations only.",
+  "show": ["Zoo", "Badger", "The Zoo & Badger Show", "Zoo's One Fix", "Threat Brief"],
+  "publishers": ["Example Wire", "Sample Daily", "Aggregator Today", "The Block"],
+  "securityFirms": ["Fixture Firm", "Chainalysis"],
+  "organisations": ["FixtureSwap", "Circle"],
+  "protocols": ["Mock Bridge"],
+  "chains": ["Ethereum", "Base"],
+  "agencies": ["Justice Department", "DOJ"],
+  "places": [],
+  "terms": ["USDC", "DeFi"],
+  "attributedGroups": ["Fixture Group"],
+  "blocked": ["FixtureSleuth", "CZ"],
+  "aliases": [["DOJ", "Justice Department"]],
+  "officials": []
+}

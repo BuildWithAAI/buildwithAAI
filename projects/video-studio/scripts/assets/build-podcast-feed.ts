@@ -14,7 +14,7 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {loadChannelConfig} from './lib/config.ts';
-import type {ItemJson} from './lib/podcast.ts';
+import {checkItemJson, type ItemJson} from './lib/podcast.ts';
 import {buildPodcastFeed, feedProblems, type FeedItem} from './lib/rss.ts';
 import {isRecord, readJson, writeFile} from './lib/util.ts';
 
@@ -52,6 +52,7 @@ export const main = (argv: string[], print = console.log, printError = console.e
 	const cdir = join(outRoot, channel);
 	const items: {item: ItemJson; dir: string}[] = [];
 	const skipped: string[] = [];
+	const invalid: string[] = [];
 	for (const slug of existsSync(cdir) ? readdirSync(cdir).sort() : []) {
 		const langDirs = existsSync(join(cdir, slug)) ? readdirSync(join(cdir, slug)) : [];
 		for (const l of langDirs) {
@@ -59,7 +60,13 @@ export const main = (argv: string[], print = console.log, printError = console.e
 			if (!existsSync(file)) continue;
 			const raw = readJson(file, 'podcast item');
 			if (!isRecord(raw) || raw.version !== 1) continue;
-			const item = raw as unknown as ItemJson;
+			// item.json is read back from disk, so every field is checked before it reaches the feed or a file copy
+			const checked = checkItemJson(raw, {channel, slug});
+			if (!checked.ok) {
+				invalid.push(`${file}: ${checked.problems.join('; ')}`);
+				continue;
+			}
+			const item = checked.item;
 			if (item.lang !== lang && l !== lang) continue;
 			const okStatus = item.status === 'ok' || (v['include-drafts'] && item.status === 'draft');
 			if (!okStatus) {
@@ -97,6 +104,11 @@ export const main = (argv: string[], print = console.log, printError = console.e
 			imageUrl: item.files.cover ? at(item.files.cover) : null,
 		};
 	});
+	if (invalid.length) {
+		for (const i of invalid) printError(`  error: invalid podcast item ${i}`);
+		printError(`Feed for ${show.title} [${lang}] not written: ${invalid.length} item.json file(s) are invalid. Regenerate them with scripts/assets/make.ts; never edit them by hand.`);
+		return 1;
+	}
 	const problems = feedProblems(show, feedItems);
 	for (const s of skipped) print(`  skipped ${s}`);
 	for (const p of problems) (p.level === 'error' ? printError : print)(`  ${p.level}: ${p.message}`);

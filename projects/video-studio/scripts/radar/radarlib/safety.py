@@ -42,7 +42,7 @@ jacqueline jake james jamie jane janet janice jared jason javier jean jeff jeffr
 jeremy jerome jerry jesse jessica jihan jill jim jimmy joan joao joe joel johan johann john
 johnny jon jonathan jordi jorge jose joseph josh joshua juan judith julia julian julie julio
 justin kai kamal karen karl kate katherine kathleen kathryn kathy katie keith kelly ken kenneth
-kenji kevin khalid kirk kristen kristin kyle lance laura lauren lawrence leah leo leon leonard
+kenji kevin khalid kirk kristen kristin kyle lance larry laura lauren lawrence leah leo leon leonard
 leonardo leslie liam linda lisa lorenzo louis lucas lucia luis luke maggie manuel marc marcel
 marco marcus margaret maria marie marina mario marisa mark marta martin mary mateo matt matteo
 matthew maurice maxim maxwell megan melania melissa michael michel michelle miguel mikhail mike
@@ -85,7 +85,8 @@ _ORG_WORDS = frozenset(
     bridge dao token coin street square avenue valley city county state republic kingdom island
     islands creek hill park road global international digital technologies technology tech systems
     solutions industries energy mining pay payments studio studios games gaming club fc act bill
-    law rule index ai treasury commerce live core cash""".split()
+    law rule index ai treasury commerce live core cash bitcoin ethereum solana crypto swap defi
+    dex nft web3 stake protocol perps lend""".split()
 )
 _ORG_PHRASES = frozenset({"morgan stanley", "charles schwab", "grant thornton", "paul hastings", "kelly services"})
 _PLACES = frozenset(
@@ -137,7 +138,7 @@ _ROLE_NAME = re.compile(
     rf"\b(?i:{_ROLE_CUES})\s+({_NAME_TOKEN}(?:\s+{_PARTICLE}{_NAME_TOKEN}){{1,2}})"
 )
 _ROLE_HANDLE = re.compile(
-    r"\b(?i:investigator|sleuth|researcher|analyst|influencer|trader|kol|streamer|known as|alias|aka)"
+    r"\b(?i:investigator|sleuth|researcher|analyst|influencer|trader|kol|streamer)"
     r"\s+(@[A-Za-z0-9_]{3,}|[A-Za-z0-9_]*(?:[a-z][A-Z]|\d)[A-Za-z0-9_]*)"
 )
 _FIRST_NAME = re.compile(
@@ -154,6 +155,46 @@ _KNOWN = re.compile(
     r"(?<![A-Za-z0-9])@?(?:" + "|".join(map(re.escape, KNOWN_INDIVIDUAL_TOKENS)) + r")(?![A-Za-z0-9])"
 )
 _POSSESSIVE = re.compile(r"['’]s$")
+
+# A lone capitalised word before a speech verb ("Saylor says", "according to Saylor") is taken for a surname unless it
+# is a known organisation, a place, an org word, or one of these common capitalised words.
+_SPEECH_VERBS = (r"said|says|told|tells|wrote|writes|tweeted|posted|argued|argues|warned|warns|claimed|claims|denied|"
+                 r"denies|admitted|admits|testified|added|explained|explains|noted|stated|insisted|insists|believes|thinks")
+_LONE_SPEECH = re.compile(
+    rf"(?<![\w@#\[\]'’.-])({_NAME_TOKEN})(?:['’]s)?\s+(?:(?i:also|later|previously|then|now|has|had|once|reportedly)\s+)?"
+    rf"(?i:{_SPEECH_VERBS})\b"
+)
+_LONE_ACCORDING = re.compile(rf"\b(?i:according to)\s+({_NAME_TOKEN})\b(?!\s+[A-Z])")
+# Pseudonyms of individuals: "coordinated by Kruw", "an entity called Kruw", "a hacker known as X".
+_PSEUDONYM = re.compile(
+    r"\b(?i:coordinated by|orchestrated by|masterminded by|organi[sz]ed by|"
+    r"(?:an?\s+|the\s+)?(?:entity|actor|person|individual|user|account|figure|hacker|attacker|operator|scammer|"
+    r"developer|insider|suspect|perpetrator|exploiter|trader|whale|influencer|persona|handle)\s+"
+    r"(?:called|named|known as|dubbed|nicknamed|going by|who goes by|calling (?:himself|herself|themselves|itself))|"
+    r"nicknamed|a\.?k\.?a\.?|alias|goes by|going by|under the (?:name|alias|handle|moniker|pseudonym))"
+    r"\s+[\"'“‘]?(@?[A-Za-z0-9_][A-Za-z0-9_.-]{1,30})"
+)
+_COMMON_CAPITALISED = frozenset(
+    """he she it they we i you this that these those there here who which what someone everyone nobody one some many
+    most few several both each others another police officials official prosecutors investigators investigator
+    researchers researcher analysts analyst experts expert reports report sources source authorities authority
+    regulators regulator users user victims victim developers developer founders founder executives executive
+    spokesperson spokesman spokeswoman company firm exchange protocol project team platform court judge statement
+    filing lawsuit complaint data research analysis study survey post blog update notice community members member
+    attackers attacker hackers hacker scammers scammer customers customer holders holder investors investor
+    lawmakers lawmaker government ministry agency department office bank banks partner partners management staff
+    employees employee insiders insider people person nobody everybody anyone critics critic observers observer
+    reuters bloomberg cnbc forbes fortune axios politico wired verge techcrunch coindesk cointelegraph decrypt
+    blockworks protos rekt theblock defiant chainalysis elliptic trm certik slowmist peckshield cyvers hacken
+    immunefi zeroshadow scamsniffer misttrack arkham nansen lookonchain bubblemaps defillama
+    binance coinbase kraken okx bybit upbit bithumb bitget kucoin gemini bitstamp bitfinex huobi htx gate mexc
+    crypto robinhood tether circle ripple ledger trezor metamask phantom exodus trust rabby safe gnosis uniswap
+    aave curve compound lido maker sky chainlink polygon arbitrum optimism base avalanche cardano polkadot cosmos
+    tron near aptos sui ton solana ethereum bitcoin hyperliquid lighter jupiter raydium pump strategy microstrategy
+    blackrock fidelity grayscale paypal visa mastercard stripe google microsoft apple amazon meta openai anthropic
+    telegram discord twitter whatsapp signal github npm cloudflare fbi doj sec cftc treasury europol interpol
+    congress senate parliament""".split()
+)
 
 
 def _clean_tokens(tokens):
@@ -225,25 +266,75 @@ def _replace_names(pattern, text, group, need_first_name=False, single=False):
     return "".join(out), count
 
 
-def redact_people(text):
-    """Return (text, number_of_new_redactions)."""
+def _title_case(text):
+    """Headline-style capitalisation: most longer words start with a capital."""
+    words = [w for w in re.findall(r"[A-Za-z][A-Za-z'\u2019-]*", text)[1:] if len(w) >= 4]
+    if len(words) < 4 or len(text) > 240:
+        return False
+    return sum(1 for w in words if w[0].isupper()) / len(words) >= 0.6
+
+
+def _known_word(word, known):
+    plain = _plain(word).lstrip("@")
+    return (plain in known or plain in SAFE_HANDLES or plain in _ORG_WORDS or plain in _PLACES
+            or plain in _COMMON_CAPITALISED or plain in _NAME_STOP)
+
+
+def _replace_lone(pattern, text, known, need_shape=False):
+    """Replace group 1 of each match unless it is a known organisation or a common word. need_shape: the token must
+    look like a name or handle (capitalised, @, digits, underscores or mixed case), not a plain lower-case word."""
+    out, pos, count = [], 0, 0
+    for match in pattern.finditer(text):
+        start = match.start(1)
+        if start < pos:
+            continue
+        raw = match.group(1).rstrip(".-")
+        if not raw or _known_word(raw, known) or "named person" in raw:
+            continue
+        if need_shape and not (raw[0].isupper() or raw[0] == "@" or re.search(r"[0-9_]|[a-z][A-Z]", raw)):
+            continue
+        if len(raw.lstrip("@")) < 3:
+            continue
+        end = start + len(raw)
+        out.append(text[pos:start])
+        out.append(PERSON)
+        pos = end
+        count += 1
+    out.append(text[pos:])
+    return "".join(out), count
+
+
+def redact_people(text, known=None):
+    """Return (text, number_of_new_redactions). known: lower-case names of organisations and protocols seen in
+    this run (incident-database records, source publishers), never taken for a person when alone before "says"."""
     if not text:
         return text, 0
+    known = frozenset(k.lower() for k in (known or ()) if k)
     total = 0
     text, n = _KNOWN.subn(PERSON, text)
     total += n
     text, n = _HONORIFIC.subn(PERSON, text)
     total += n
+    # In a Title Case headline every word is capitalised, so a capitalised pair is
+    # only taken for a name when it starts with a known given name.
+    strict = _title_case(text)
     for pattern, kwargs in (
-        (_ROLE_NAME, {}),
+        (_ROLE_NAME, {"need_first_name": strict}),
         (_ROLE_HANDLE, {"single": True}),
-        (_AGE, {}),
-        (_SPEECH, {}),
-        (_ACCORDING, {}),
+        (_AGE, {"need_first_name": strict}),
+        (_SPEECH, {"need_first_name": strict}),
+        (_ACCORDING, {"need_first_name": strict}),
     ):
         text, n = _replace_names(pattern, text, 1, **kwargs)
         total += n
     text, n = _replace_first_names(text)
+    total += n
+    # lone surnames and pseudonyms: "Saylor says", "according to Saylor", "coordinated by Kruw"
+    text, n = _replace_lone(_LONE_SPEECH, text, known)
+    total += n
+    text, n = _replace_lone(_LONE_ACCORDING, text, known)
+    total += n
+    text, n = _replace_lone(_PSEUDONYM, text, known, need_shape=True)
     total += n
     text = re.sub(r"(?:\[named person\]\s*){2,}", PERSON + " ", text)
     text = re.sub(r"\[named person\] (?=[.,;:!?)])", PERSON, text)
@@ -306,16 +397,16 @@ def redact_code(text):
     return text, count
 
 
-def sanitize(text):
+def sanitize(text, known=None):
     """Names and code removed. Returns (text, {'names': n, 'code': n})."""
-    text, names = redact_people(text)
+    text, names = redact_people(text, known)
     text, code = redact_code(text)
     return text, {"names": names, "code": code}
 
 
 _PRICE = re.compile(
     r"\b(?:price|prices|priced|rall(?:y|ies|ied)|surg(?:e|es|ed|ing)|plung(?:e|es|ed|ing)|"
-    r"soar(?:s|ed|ing)?|tumbl(?:e|es|ed|ing)|crash(?:es|ed|ing)?|pump(?:s|ed|ing)?|"
+    r"soar(?:s|ed|ing)?|tumbl(?:e|es|ed|ing)|crash(?:es|ed|ing)?|pump(?:s|ed|ing)?(?!\.fun)|"
     r"dump(?:s|ed|ing)?|bullish|bearish|buy the dip|all-time high|market cap|"
     r"collaps(?:e|es|ed)\s+\d+%|\d+(?:\.\d+)?%\s+(?:drop|fall|gain|rise|jump|slide|plunge)|"
     r"(?:fell|rose|dropped|jumped|slid|sank)\s+\d+(?:\.\d+)?%|price target|"
@@ -329,9 +420,9 @@ def price_talk(text):
 
 
 _LEGAL = re.compile(
-    r"\b(alleg\w*|charged|charges|indict\w*|arrest\w*|lawsuit|sued|sues|complaint|plaintiff\w*|"
-    r"defendant\w*|accus\w*|probe|investigation|prosecut\w*|sentenc\w*|convict\w*|guilty|"
-    r"extradit\w*|forfeiture|seiz\w*|subpoena\w*|class action|court order|freezing order)\b",
+    r"\b(alleg\w*|charged|indict\w*|arrest\w*|lawsuit|sued|sues|plaintiff\w*|defendant\w*|"
+    r"accus\w*|prosecut\w*|sentenc\w*|convict\w*|guilty|extradit\w*|forfeiture|seiz\w*|"
+    r"subpoena\w*|class action|court order|freezing order|criminal complaint|civil complaint)\b",
     re.IGNORECASE,
 )
 

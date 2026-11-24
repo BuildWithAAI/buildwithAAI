@@ -15,6 +15,7 @@ import {str} from '../validate';
 import {uiLabel} from '../i18n/ui';
 import {EASE, track} from '../motion';
 import {ctaBlock} from '../layout/blocks';
+import {useLowerThird} from './Overlays';
 
 export const CtaScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const frame = useCurrentFrame();
@@ -29,10 +30,13 @@ export const CtaScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const tFit = useFit(title, L.title, ctx.lang);
 	const bFit = useFit(button, L.buttonLabel, ctx.lang);
 	const dFit = useFit(disclosure, L.disclosure, ctx.lang);
+	// a lower-third plate that reaches under the card keeps the card above it (landscape)
+	const lt = useLowerThird(ctx.format, ctx.lang, ctx.sc);
+	const column = lt && L.card && lt.box.x + lt.box.w > L.card.x - 16 ? {top: L.column.top, bottom: Math.min(L.column.bottom, lt.box.y - 16)} : L.column;
 	if (inInsert(dir, frame)) return <BadgerInsert ctx={ctx} dir={dir} />;
 
-	const g = ctaBlock(L, {title: title ? tFit.height : 0, disclosure: disclosure ? dFit.height : 0});
-	if (!g.fits) throw new Error(`cta ${ctx.sc.id}: the CTA block needs ${g.height}px; the column has ${L.column.bottom - L.column.top}px. Shorten the title or disclosure.`);
+	const g = ctaBlock({...L, column}, {title: title ? tFit.height : 0, disclosure: disclosure ? dFit.height : 0});
+	if (!g.fits) throw new Error(`cta ${ctx.sc.id}: the CTA block needs ${g.height}px; the column has ${column.bottom - column.top}px. Shorten the title or disclosure.`);
 	const centreX = L.card ? L.card.x + L.card.w / 2 : FRAME[ctx.format].width / 2;
 	const btn: Box = {x: Math.round(centreX - L.button.w / 2), y: g.buttonY, w: L.button.w, h: L.button.h};
 	const press = dir.press ?? 30;

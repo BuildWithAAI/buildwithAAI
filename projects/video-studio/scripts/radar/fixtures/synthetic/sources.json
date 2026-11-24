@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "policy": {"userAgent": "NewsRadar/0.1", "alsoObeyRobotsTokens": ["Claude-User"]},
+  "sources": [
+    {
+      "id": "example-wire",
+      "name": "Example Wire",
+      "publisher": "Example Wire",
+      "kind": "rss",
+      "url": "https://example.invalid/feed",
+      "parser": "rss",
+      "tier": "B",
+      "role": "news",
+      "enabled": true,
+      "fixture": "synthetic/example-wire.xml",
+      "terms": "Synthetic test source."
+    }
+  ]
+}

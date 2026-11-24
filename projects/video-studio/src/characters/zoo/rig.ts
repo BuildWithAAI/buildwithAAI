@@ -30,9 +30,9 @@ export const FRONT = {
 	handLength: 96, // wrist pivot to fingertips (relaxed)
 	handWidth: 48, // thumb to little-finger edge (relaxed, front view)
 	shoeWidth: 90, // front-view width of one sneaker, outline included
-	eyeSpacing: 46, // eye centre to eye centre
+	eyeSpacing: 44.4, // eye-shape centre to eye-shape centre (iris centres 42 u apart; sheet 41-42.5, repair round 1)
 	eyeLine: -816.5,
-	mouthLine: -768.3,
+	mouthLine: -769.6, // closed-mouth line (repair round 1: raised 1.3 u to the sheet's gap under the moustache)
 } as const;
 
 export type PivotName =
@@ -59,29 +59,30 @@ export const PIVOTS: Record<PivotName, {x: number; y: number; parent: PivotName 
 	torso: {x: 0, y: -420, parent: 'root', note: 'breathing scale origin at the hem; upper body rides on it'},
 	neck: {x: 0, y: -716, parent: 'torso', note: 'base of the neck at the tee neckline'},
 	head: {x: 0, y: -748, parent: 'neck', note: 'headTilt rotates the whole head here'},
-	jaw: {x: 0, y: -768.3, parent: 'head', note: 'mouth anchor; mouth shapes and chin-beard drop are measured from here'},
-	eyeL: {x: 23.2, y: -816.5, parent: 'head', note: 'anatomical left eye (screen right)'},
-	eyeR: {x: -23.2, y: -816.5, parent: 'head', note: 'anatomical right eye (screen left)'},
+	jaw: {x: 0, y: -769.6, parent: 'head', note: 'mouth anchor; mouth shapes and chin-beard drop are measured from here'},
+	eyeL: {x: 22.2, y: -816.5, parent: 'head', note: 'anatomical left eye (screen right); iris centre x 21.0'},
+	eyeR: {x: -22.2, y: -816.5, parent: 'head', note: 'anatomical right eye (screen left); iris centre x -21.0'},
 	browL: {x: 25, y: -834, parent: 'head', note: 'anatomical left brow (screen right); sits higher at rest'},
 	browR: {x: -24, y: -831, parent: 'head', note: 'anatomical right brow (screen left)'},
 	shoulderL: {x: 100, y: -672, parent: 'torso', note: 'anatomical left shoulder (screen right)'},
-	elbowL: {x: 122.5, y: -534, parent: 'shoulderL', note: ''},
-	wristL: {x: 118.6, y: -420, parent: 'elbowL', note: ''},
+	elbowL: {x: 111.5, y: -534, parent: 'shoulderL', note: 'sleeve centre at the elbow (repair round 2: was 122.5, near the outer edge)'},
+	wristL: {x: 113.8, y: -420, parent: 'elbowL', note: 'cuff bottom centre (repair round 2: the cuff spans 98.2..129.4 between path edges)'},
 	shoulderR: {x: -100, y: -672, parent: 'torso', note: 'anatomical right shoulder (screen left)'},
-	elbowR: {x: -122.5, y: -534, parent: 'shoulderR', note: ''},
-	wristR: {x: -118.6, y: -420, parent: 'elbowR', note: ''},
+	elbowR: {x: -111.5, y: -534, parent: 'shoulderR', note: ''},
+	wristR: {x: -113.8, y: -420, parent: 'elbowR', note: 'cuff bottom centre'},
 };
 
 /**
  * Arm joint angles are DELTAS from the rest pose in degrees (SVG rotate convention: negative turns
  * counter-clockwise on screen). Values are for the anatomical LEFT arm (screen right). The
  * anatomical right arm uses the negated values about its mirrored pivots.
- * Point targets measured from zoo_pose_point.png: upper arm swings out ~30 deg from vertical,
- * forearm rises to ~43 deg above horizontal, index finger points slightly above horizontal.
+ * Point (repair round 1, decision ZOO-P2): zoo_pose_point.png measures upper arm ~42 deg out from vertical, forearm
+ * rising ~52 deg, index ~25 deg up and ~45 u above the shoulder. On the turnaround body (shorter arm than the panel,
+ * ZOO-P1) the end key below gives upper arm 43 deg, forearm 57 deg, index ~22 deg up, index tip at h ~720 (v1: 691).
  */
 export type ArmAngles = {shoulder: number; elbow: number; wrist: number};
 export const ARM_REST: ArmAngles = {shoulder: 0, elbow: 0, wrist: 0};
-export const ARM_POINT: ArmAngles = {shoulder: -36, elbow: -107, wrist: 21};
+export const ARM_POINT: ArmAngles = {shoulder: -34, elbow: -117, wrist: 14};
 /**
  * Anticipation for the point (optional prop `pointWindup` 0..1, added for the v1 preview): before the
  * arm swings out, the hand draws in slightly toward the hip and the wrist cocks. Deltas at windup 1.
@@ -89,15 +90,30 @@ export const ARM_POINT: ArmAngles = {shoulder: -36, elbow: -107, wrist: 21};
  */
 export const ARM_POINT_WINDUP: ArmAngles = {shoulder: 3, elbow: 6, wrist: -8};
 /**
- * In-between key of the point gesture at poseAmount 0.5 (integration decision INT-Z3, 2026-11-24): the elbow stays
- * in at the side while the forearm lifts and the hand trails at the wrist (drag); then the upper arm opens and the
- * hand follows through into the point. Badger stands beside ZOO's hand, and a straight sideways swing passed through
- * his head; this path keeps the hand above head height before it travels right (it clears a dog whose ground point
- * is >= 554 units to screen right at any scale, checked numerically on the joint chain).
+ * In-between key of the point gesture at poseAmount 0.5 (INT-Z3, revised in repair round 1 as ZOO-P2): the elbow stays
+ * tucked at the side and the forearm lifts the hand up in front of the chest with a moderate wrist drag (38 deg; v1's
+ * 75 deg read as a limp "chicken wing"), then the upper arm opens and the hand extends into the point. Checked on the
+ * joint chain against the proof staging (Badger 560 u away, his head front at x ~300 for h 400-465): the hand stays
+ * at x <= 283 in that band (v1: 256), so it never reaches his head.
  */
-export const ARM_POINT_MID: ArmAngles = {shoulder: 6, elbow: -125, wrist: 75};
-/** poseAmount at which the hand swaps from relaxed to pointing (the index is then near horizontal, not pointing down). */
-export const POINT_HAND_SWITCH = 0.75;
+export const ARM_POINT_MID: ArmAngles = {shoulder: 10, elbow: -146, wrist: 38};
+/** poseAmount at which the hand swaps to the pointer: mid-swing, where the motion is fastest (v1: 0.75). */
+export const POINT_HAND_SWITCH = 0.5;
+/** poseAmount from which the relaxed hand is replaced by the loose fist until POINT_HAND_SWITCH (ZOO-P2). */
+export const POINT_HAND_CURL = 0.28;
+/**
+ * pose="point" defaults (used only when the caller does not pass lookX / headTilt): the eyes and head lean toward the
+ * point, scaled by poseAmount (zoo_pose_point.png angles the head toward the hand).
+ */
+export const POINT_LOOK = {lookX: 0.5, headTilt: 1.5} as const;
+/** pose="typing" defaults (only when the caller does not pass them): eyes on the screen, head tipped toward it. */
+export const TYPING_LOOK = {lookX: 0.6, lookY: 0.3, headTilt: 3} as const;
+/**
+ * Fraction of the left arm's shoulder angle that the overshirt's shoulder region follows (per-point weights in
+ * Torso.tsx). Rotating about the shoulder pivot slides the top contour along itself and swings the side seam out with
+ * the sleeve, so a raised sleeve grows out of the shoulder (ZOO-P2).
+ */
+export const SHOULDER_FOLLOW = 1;
 /** Rotation (deg) that maps the pointing-hand drawing (index along +x) into the hand's local frame. */
 export const POINT_HAND_FRAME = 110;
 
@@ -118,15 +134,26 @@ export const armAnglesFor = (target: ArmAngles, amount: number, mid: ArmAngles |
 	return {shoulder: lerp(0, target.shoulder, s), elbow: lerp(0, target.elbow, e), wrist: lerp(0, target.wrist, w)};
 };
 
-/** Idle breathing: 1.5 units rise of the shoulders, period 3.5 s. */
-export const BREATH = {amplitude: 1.5, periodSeconds: 3.5} as const;
+/**
+ * Idle breathing: shoulders rise `amplitude` units, period 3.5 s. Repair round 1: 1.5 -> 3 u (1.3 px at the 0.88 pair
+ * scale was invisible; ART_GUIDE MO10 asks for 2-4 px of chest motion at full-body 1080p).
+ */
+export const BREATH = {amplitude: 3, periodSeconds: 3.5} as const;
 export const breathOffset = (frame: number, fps: number) => {
 	const t = frame / (BREATH.periodSeconds * fps);
 	return -BREATH.amplitude * (0.5 - 0.5 * Math.cos(2 * Math.PI * t));
 };
 
-/** Brow controls (units). inner/outer raise the ends; arch bows the middle; lift moves the whole brow. */
-export type BrowPose = {lift: number; inner: number; outer: number; arch: number};
+/**
+ * Brow controls (units). inner/outer raise the ends; arch bows the middle; lift moves the whole brow; curl (optional)
+ * is the sharp upturn of the inner end (worried panel).
+ */
+export type BrowPose = {lift: number; inner: number; outer: number; arch: number; curl?: number};
+/**
+ * browLift 0..1 -> per-side raise in units. The deadpan raise is ONE brow (Prompt 1: "subtly raised brow"): the
+ * anatomical-left brow (screen right) leads and the other follows a little (repair round 1; v1 raised both by 3.5).
+ */
+export const BROW_LIFT = {left: 4.5, right: 1.6} as const;
 /** Eye controls. lidTop > 0 opens wider; lidBottom > 0 raises the lower lid (smile squint). */
 export type EyePose = {lidTop: number; lidBottom: number; scale: number; iris: number};
 /** Mouth modifiers applied on top of a library shape. */
@@ -145,35 +172,37 @@ const B0: BrowPose = {lift: 0, inner: 0, outer: 0, arch: 0};
 const E0: EyePose = {lidTop: 0, lidBottom: 0, scale: 1, iris: 1};
 export const MOD0: MouthMod = {cornerL: 0, cornerR: 0, openScale: 1, widthScale: 1, wave: 0, moustacheLiftR: 0};
 
-/** Expressions measured from zoo_expr_*.png. Restrained and adult. */
+/** Expressions measured from zoo_expr_*.png (repair round 1 re-measure). Restrained and adult. */
 export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	// Deadpan: flat straight mouth; the anatomical-left (screen-right) brow is subtly raised in its base shape.
 	neutral: {browL: B0, browR: B0, eyes: E0, mouth: 'closed', mod: MOD0, crease: 0},
-	// Small asymmetric smirk: screen-right mouth corner and moustache lift; slight lower-lid squint.
+	// Small asymmetric smirk: a soft closed U-smile with the screen-right corner and moustache lifting more; lower lids
+	// rise (smile squint) while the upper lids stay open.
 	happy: {
 		browL: {lift: 2.6, inner: 0, outer: 0.4, arch: 0.6},
 		browR: {lift: 2.2, inner: 0.4, outer: 0, arch: 0.4},
-		eyes: {lidTop: 0.2, lidBottom: 1.1, scale: 1, iris: 1},
+		eyes: {lidTop: 0.2, lidBottom: 2.4, scale: 1, iris: 1},
 		mouth: 'closed',
-		mod: {...MOD0, cornerL: 1.4, cornerR: 6.4, moustacheLiftR: 3.4},
+		mod: {...MOD0, cornerL: 3.2, cornerR: 6.4, moustacheLiftR: 3.6},
 		crease: 0,
 	},
-	// Worried: inner brow ends up, outer ends down, eyes a touch wider, mouth slightly downturned.
+	// Worried (zoo_expr_worried.png): both inner ends rise ~6-7.5 u with a sharp upturn (curl), the screen-right brow's
+	// arch inverts (~-4 u at its middle), the tails rise ~1.5-2 u; inner-to-tail drop >= 11 u. Mouth slightly down.
 	worried: {
-		browL: {lift: -0.6, inner: 4.6, outer: -1.8, arch: 0},
-		browR: {lift: 1.0, inner: 4.8, outer: -1.6, arch: 0},
+		browL: {lift: 0, inner: 1.5, outer: 1.4, arch: -5, curl: 5},
+		browR: {lift: 0, inner: 2, outer: 2, arch: -2, curl: 5.5},
 		eyes: {lidTop: 0.7, lidBottom: 0, scale: 1, iris: 0.96},
 		mouth: 'closed',
 		mod: {...MOD0, cornerL: -1.3, cornerR: -1.1, wave: 0.7},
 		crease: 1,
 	},
-	// Shocked: brows high, eyes wide with smaller irises, medium open mouth.
+	// Shocked: brows high and arched, eyes wide with smaller irises, a wide open oval (ah at 60% height, 95% width).
 	shocked: {
-		browL: {lift: 6.0, inner: 0.6, outer: 0, arch: 2.4},
-		browR: {lift: 7.4, inner: 0.6, outer: 0, arch: 2.6},
+		browL: {lift: 7.6, inner: 0.6, outer: 0, arch: 3},
+		browR: {lift: 8.2, inner: 0.6, outer: 0, arch: 3},
 		eyes: {lidTop: 4.2, lidBottom: -1.8, scale: 1.1, iris: 0.72},
 		mouth: 'ah',
-		mod: {...MOD0, openScale: 0.7, widthScale: 0.82},
+		mod: {...MOD0, openScale: 0.6, widthScale: 0.95},
 		crease: 0,
 	},
 };

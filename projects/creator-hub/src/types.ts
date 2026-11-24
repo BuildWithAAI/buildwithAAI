@@ -25,6 +25,13 @@ export type Offer = {
 	allowedCountries?: CountryCode[];
 	/** What to do when the visitor's country cannot be determined. Restricted/financial offers MUST use 'block'. */
 	unknownCountry: 'allow' | 'block';
+	/**
+	 * Added 2026-11-24 (optional): true for any offer that promotes a financial product (staking, yield, lending,
+	 * trading, signals, savings), whatever its category. Such offers, like category 'exchange', must use
+	 * unknownCountry 'block' and list blockedCountries or allowedCountries (in the UK a crypto financial
+	 * promotion is restricted by law). Omitted means false.
+	 */
+	financialPromotion?: boolean;
 	active: boolean;
 	expires?: string; // ISO date; after it the offer behaves as inactive
 	termsUrl?: string; // programme terms to re-check before each campaign

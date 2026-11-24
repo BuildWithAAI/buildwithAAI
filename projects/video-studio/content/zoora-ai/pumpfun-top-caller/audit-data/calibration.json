@@ -1,0 +1,576 @@
+{
+ "schema": "pumpfun-top-caller calibration v1",
+ "about": "Aggregate parameters for the FICTIONAL story's synthetic OHLC generator (docs/CHART_SPEC.md section 8). Derived from the anonymized candle files in this folder (real public Solana trades, normalized, no identifiers) and from the checker-corrected audit (../audit.md). OUR ESTIMATES from small samples. Medians and interquartile ranges only. Never present these numbers as data about a real token, wallet or person; charts drawn from them are illustrative (CHART_SPEC L4).",
+ "how_measured": {
+  "candles": "5-second OHLC from every successful venue trade, 10 min before to 30 min after the public wallet's first buy (two late-entry tokens: a systematic 1-in-6 and 1-in-8 sample of trades)",
+  "price_unit": "multiple of the public wallet's first-buy price (1.0 = the public buy)",
+  "time_unit": "seconds after the public wallet's first buy (t = 0)",
+  "quantiles": "median and interquartile range [p25, p75], linear interpolation; n = tokens unless stated",
+  "tool": "candle metrics: python3 scripts/onchain/candle_stats.py <candle files> (caller_window: the Case A-C files; late_entry: the Case D file); event_timing_from_audit is copied from ../audit.md sections 2-3",
+  "groups": {
+   "caller_window": "9 bonding-curve tokens (Cases A-C) where the public wallet bought seconds to minutes after launch; post-buy metrics use 8 of them (one left the curve for its AMM seconds after the buy, so its curve series stops there)",
+   "late_entry": "3 launchpad tokens (Case D) where the public wallet bought 12 hours to 4 days after launch"
+  }
+ },
+ "caller_window": {
+  "token_age_at_public_buy_s": {
+   "n": 9,
+   "median": 54,
+   "iqr": [
+    23,
+    73
+   ]
+  },
+  "runup_into_public_buy_x": {
+   "n": 9,
+   "median": 1.34,
+   "iqr": [
+    1.2,
+    1.49
+   ],
+   "definition": "public-buy price / price 60 s earlier (or / first trade if the token was younger)"
+  },
+  "peak_x": {
+   "n": 8,
+   "median": 2.17,
+   "iqr": [
+    1.47,
+    2.41
+   ]
+  },
+  "time_to_peak_s": {
+   "n": 8,
+   "median": 48,
+   "iqr": [
+    9,
+    112
+   ],
+   "note": "bimodal: quick flips peak within ~10 s, runners at ~1.5-3 min"
+  },
+  "drawdown_peak_to_low": {
+   "n": 8,
+   "median": -0.79,
+   "iqr": [
+    -0.88,
+    -0.6
+   ]
+  },
+  "time_from_peak_to_half_of_peak_s": {
+   "n": 6,
+   "median": 62,
+   "iqr": [
+    22,
+    226
+   ],
+   "note": "2 quick flips never fell to half of their small peak"
+  },
+  "time_until_close_below_public_buy_price_s": {
+   "n": 8,
+   "median": 110,
+   "iqr": [
+    21,
+    426
+   ]
+  },
+  "close_at_30m_x": {
+   "n": 8,
+   "median": 0.55,
+   "iqr": [
+    0.41,
+    0.71
+   ]
+  },
+  "side_exit": {
+   "side_last_sell_after_peak_s": {
+    "n": 8,
+    "median": 28,
+    "iqr": [
+     5,
+     141
+    ]
+   },
+   "drop_within_5m_after_side_last_sell": {
+    "n": 8,
+    "median": -0.47,
+    "iqr": [
+     -0.79,
+     -0.28
+    ]
+   },
+   "drop_from_high_before_side_selling_to_low_5m_after": {
+    "n": 8,
+    "median": -0.7,
+    "iqr": [
+     -0.87,
+     -0.46
+    ]
+   },
+   "note": "side-sell times from the anonymized event markers (one chart's markers are incomplete; see case-C-candles.json)"
+  },
+  "largest_red_candle": {
+   "5s": {
+    "n": 8,
+    "median": -0.27,
+    "iqr": [
+     -0.47,
+     -0.19
+    ]
+   },
+   "1m": {
+    "n": 8,
+    "median": -0.44,
+    "iqr": [
+     -0.6,
+     -0.31
+    ]
+   },
+   "5m": {
+    "n": 8,
+    "median": -0.57,
+    "iqr": [
+     -0.63,
+     -0.35
+    ]
+   }
+  },
+  "volume": {
+   "share_of_30m_volume_in_first_60s": {
+    "n": 8,
+    "median": 0.49,
+    "iqr": [
+     0.24,
+     0.97
+    ]
+   },
+   "share_of_30m_volume_in_first_5m": {
+    "n": 8,
+    "median": 0.92,
+    "iqr": [
+     0.8,
+     1.0
+    ]
+   },
+   "max_5s_bucket_in_first_5m_vs_median_active_bucket_x": {
+    "n": 8,
+    "median": 26,
+    "iqr": [
+     23,
+     49
+    ]
+   },
+   "first_5m_bar_vs_mean_of_next_five_5m_bars_x": {
+    "n": 6,
+    "median": 26,
+    "iqr": [
+     15,
+     495
+    ],
+    "note": "2 more tokens had no volume at all after 5 min"
+   },
+   "first_minute_vs_preceding_minutes_x": {
+    "n": 4,
+    "median": 1.29,
+    "iqr": [
+     0.99,
+     1.55
+    ],
+    "note": "only tokens older than 60 s at the public buy: the buy lands in an already busy launch, so there is no spike against the minutes before it"
+   }
+  },
+  "order_flow": {
+   "buy_share_of_trades_first_30s": {
+    "n": 8,
+    "median": 0.57,
+    "iqr": [
+     0.52,
+     0.63
+    ]
+   },
+   "half_of_first_5m_buys_arrived_by_s": {
+    "n": 8,
+    "median": 55,
+    "iqr": [
+     12,
+     99
+    ]
+   },
+   "eighty_pct_of_first_5m_buys_arrived_by_s": {
+    "n": 8,
+    "median": 132,
+    "iqr": [
+     30,
+     185
+    ]
+   },
+   "share_of_5s_buckets_with_trades_after_10m": {
+    "n": 8,
+    "median": 0.015,
+    "iqr": [
+     0.0,
+     0.055
+    ],
+    "note": "the token goes quiet: trading has mostly stopped 10 minutes after the call"
+   }
+  },
+  "five_minute_bar_view": {
+   "first_bar_high_x": {
+    "n": 8,
+    "median": 2.17,
+    "iqr": [
+     1.47,
+     2.41
+    ]
+   },
+   "first_bar_close_x": {
+    "n": 8,
+    "median": 0.72,
+    "iqr": [
+     0.49,
+     1.67
+    ]
+   },
+   "note": "on 5-minute candles the whole call is usually ONE candle: a long upper wick (high ~2x) that closes near or below the public-buy price"
+  }
+ },
+ "late_entry": {
+  "token_age_at_public_buy_h": {
+   "n": 3,
+   "median": 20.8,
+   "iqr": [
+    16.6,
+    57.7
+   ]
+  },
+  "runup_into_public_buy_x": {
+   "n": 3,
+   "median": 1.04,
+   "iqr": [
+    1.02,
+    1.06
+   ]
+  },
+  "peak_x_within_30m": {
+   "n": 3,
+   "median": 1.59,
+   "iqr": [
+    1.54,
+    1.71
+   ]
+  },
+  "close_at_30m_x": {
+   "n": 3,
+   "median": 1.43,
+   "iqr": [
+    1.34,
+    1.63
+   ]
+  },
+  "drawdown_peak_to_low_within_30m": {
+   "n": 3,
+   "median": -0.18,
+   "iqr": [
+    -0.21,
+    -0.09
+   ]
+  },
+  "largest_red_candle_1m": {
+   "n": 3,
+   "median": -0.23,
+   "iqr": [
+    -0.28,
+    -0.18
+   ]
+  },
+  "trades_first_minute_vs_preceding_minutes_x": {
+   "n": 3,
+   "median": 45,
+   "iqr": [
+    26,
+    54
+   ]
+  },
+  "volume_first_minute_vs_preceding_minutes_x": {
+   "n": 3,
+   "median": 119,
+   "iqr": [
+    63,
+    180
+   ]
+  },
+  "buy_share_of_trades_first_30s": {
+   "n": 3,
+   "median": 0.81,
+   "iqr": [
+    0.69,
+    0.82
+   ]
+  },
+  "note": "the public wallet bought into a quiet, already-traded token and lit it up; price kept rising for the next 30 minutes. The loss came days to weeks later (exits 83-96% below its average entry, from the audit). Two of these series are sampled, so their true highs and lows can be wider."
+ },
+ "event_timing_from_audit": {
+  "note": "Checker-corrected figures from ../audit.md, for event markers on a chart. Pattern names describe what the data showed, not who did it. Seconds relative to the public wallet's first buy; negative = before.",
+  "front_run_seconds": {
+   "side_first_buy_s": {
+    "n": 67,
+    "median": -2,
+    "iqr": [
+     -3,
+     -2
+    ]
+   },
+   "side_first_buy_slots": {
+    "n": 67,
+    "median": -9,
+    "iqr": [
+     -12.5,
+     -7
+    ]
+   },
+   "side_wallets_per_token": {
+    "n": 18,
+    "median": 4,
+    "iqr": [
+     3,
+     4.75
+    ]
+   },
+   "side_first_sell_s": {
+    "n": 66,
+    "median": 12,
+    "iqr": [
+     4,
+     111
+    ]
+   },
+   "side_last_sell_s": {
+    "n": 66,
+    "median": 15,
+    "iqr": [
+     4,
+     118
+    ]
+   },
+   "side_hold_s": {
+    "n": 66,
+    "median": 19,
+    "iqr": [
+     6,
+     121
+    ]
+   },
+   "profitable_late_exit_s": {
+    "n": 24,
+    "median": 185,
+    "iqr": [
+     118,
+     254
+    ]
+   },
+   "public_hold_s": {
+    "n": 124,
+    "median": 43,
+    "iqr": [
+     11,
+     290
+    ]
+   }
+  },
+  "same_block": {
+   "side_first_buy_s": {
+    "n": 25,
+    "median": 0,
+    "iqr": [
+     0,
+     0
+    ]
+   },
+   "side_positions_ahead_in_block": {
+    "n": 25,
+    "median": 7,
+    "iqr": [
+     3,
+     11
+    ]
+   },
+   "side_first_sell_s_weighted": {
+    "n": 22,
+    "median": 43,
+    "iqr": [
+     18,
+     93
+    ]
+   },
+   "side_last_sell_s_weighted": {
+    "n": 22,
+    "median": 109,
+    "iqr": [
+     33,
+     456
+    ]
+   },
+   "public_hold_s_weighted": {
+    "n": 22,
+    "median": 118,
+    "iqr": [
+     33,
+     456
+    ]
+   },
+   "public_entry_premium_vs_first_side_buy": {
+    "n": 25,
+    "median": 0.09,
+    "iqr": [
+     0.08,
+     0.15
+    ]
+   },
+   "buy_size_sol_side": {
+    "n": 75,
+    "median": 1.28,
+    "iqr": [
+     0.91,
+     1.54
+    ]
+   },
+   "buy_size_sol_public": {
+    "n": 25,
+    "median": 1.23,
+    "iqr": [
+     1.16,
+     1.56
+    ]
+   }
+  },
+  "copy_speed_group": {
+   "group_first_buy_s": {
+    "n": 18,
+    "median": 0,
+    "iqr": [
+     -65.5,
+     0
+    ]
+   },
+   "each_group_sell_after_latest_public_buy_s": {
+    "n": 147,
+    "median": 42,
+    "iqr": [
+     13.5,
+     103
+    ]
+   },
+   "group_hold_s_per_wallet": {
+    "n": 66,
+    "median": 89,
+    "iqr": [
+     34,
+     143
+    ]
+   },
+   "public_hold_s": {
+    "n": 18,
+    "median": 134,
+    "iqr": [
+     62,
+     1188
+    ]
+   },
+   "public_first_buy_sol": {
+    "n": 64,
+    "median": 3.0,
+    "iqr": [
+     1.4,
+     10.0
+    ]
+   }
+  },
+  "launch_bundle": {
+   "wallets_in_first_35s_per_token": {
+    "n": 4,
+    "median": 75,
+    "iqr": [
+     66,
+     85
+    ]
+   },
+   "median_stake_pct_of_supply": {
+    "n": 4,
+    "median": 0.48,
+    "iqr": [
+     0.44,
+     0.58
+    ]
+   },
+   "launch_set_hold_min": {
+    "n": 4,
+    "median": 25,
+    "iqr": [
+     20,
+     33
+    ]
+   },
+   "public_first_buy_h_after_launch": {
+    "n": 4,
+    "median": 16.6,
+    "iqr": [
+     9.6,
+     39.3
+    ]
+   },
+   "pool_activity_in_public_buy_minute_vs_previous_10m_x": {
+    "n": 4,
+    "median": 25,
+    "iqr": [
+     5,
+     48
+    ]
+   }
+  }
+ },
+ "generator_mapping": {
+  "recommended_interval_s": 60,
+  "why": "The measured call window is faster than a 5-minute bar: half the peaks come within ~48 s and most of the half hour's volume trades in the first 5 minutes. At intervalSec 300 the pump and the dump collapse into one long-wicked candle; at intervalSec 60 (allowed by CHART_SPEC section 1) they are separate candles.",
+  "suggested_story_at_60s": [
+   {
+    "beat": "launch",
+    "bars": "1-2",
+    "note": "the call lands about a minute after launch (token age median 54 s), with the price already ~1.3x its level a minute earlier"
+   },
+   {
+    "beat": "pump",
+    "bars": "1-3",
+    "target_peak_x": 2.17,
+    "peak_x_iqr": [
+     1.47,
+     2.41
+    ],
+    "volume_note": "the call minute carries about half of the next 30 minutes' volume"
+   },
+   {
+    "beat": "side_exit",
+    "bars": 1,
+    "red_candle": -0.44,
+    "red_candle_iqr": [
+     -0.6,
+     -0.31
+    ],
+    "note": "a red bar of about -30% to -60%; the side wallets' last sell came a median 28 s after the peak (IQR 5 s to ~2.5 min)"
+   },
+   {
+    "beat": "bleed",
+    "bars": "~25",
+    "target_close_x_at_30m": 0.55,
+    "close_x_iqr": [
+     0.41,
+     0.71
+    ],
+    "volume_note": "near zero after ~10 minutes (most 5-s buckets empty)"
+   }
+  ],
+  "differences_from_section_8_defaults": [
+   "Default story puts 30 launch bars and 40 chop bars before the pump; in the audited caller windows the public buy came about a minute after launch, so there is no long chop before the call.",
+   "The rug beat asserts a single red candle of 70% or more; measured side-wallet exits were smaller steps (largest 1-minute red candle median -44%, 5-minute -57%; only 2 of 8 tokens reached -70% in one 5-minute bar). Use rug only for a deliberate worst case, and draw a side exit as a -30% to -60% red bar followed by a bleed.",
+   "Pump >= 2x holds for the median token (2.2x) but quick flips peaked at only 1.1-1.6x; pump volume >= 5x the chop median holds (first 5-minute bar about 26x the next ones in the median token).",
+   "The default bleed keeps a steady trickle of volume (about $2.5K per 5-minute bar). In the audited tokens trading had mostly stopped within ~10 minutes (median 1.5% of 5-second buckets after minute 10 had any trade) and price sat at ~0.55x the call price after 30 minutes, so a flat, near-empty tail is more authentic than a busy bleed."
+  ]
+ }
+}

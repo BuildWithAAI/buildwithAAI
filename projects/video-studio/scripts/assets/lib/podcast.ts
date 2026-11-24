@@ -14,7 +14,7 @@ import {dirname, isAbsolute, join, relative, resolve} from 'node:path';
 import {buildMaster, checkCover, encodeM4a, encodeMp3, measure, probe, squareJpeg, TARGET_I, TARGET_TP, type BadgerCue, type Loudness} from './audio.ts';
 import type {ChannelConfig} from './config.ts';
 import type {Episode} from './episode.ts';
-import {esc} from './html.ts';
+import {esc, isSafeUrl} from './html.ts';
 import {ISO639_2, RSS_LANG, type Strings} from './i18n.ts';
 import {buildId3v23, parseId3, type Id3Chapter} from './id3.ts';
 import {checkDisclosedLinks, lintText, type LintContext, type LintIssue} from './lint.ts';
@@ -72,6 +72,56 @@ export type ItemJson = {
 	files: {mp3: {path: string; bytes: number; type: 'audio/mpeg'}; m4a: {path: string; bytes: number; type: 'audio/x-m4a'}; chapters: string; vtt: string; srt: string; cover: string | null};
 	chapters: {startMs: number; endMs: number; title: string; href: string}[];
 	status: AssetRecord['status'];
+};
+
+const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const SLUG = /^[a-z0-9][a-z0-9-]{0,95}$/;
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+const STATUSES = ['ok', 'draft', 'blocked', 'skipped', 'pending', 'error'];
+
+/**
+ * Checks an item.json read back from disk (the feed builder never trusts it): every field's type, the episodeType
+ * enum, positive whole season and episode numbers, https links, and plain file names, so a changed item can neither
+ * add XML to the feed nor make the builder copy files from outside its folder.
+ */
+export const checkItemJson = (raw: unknown, expect: {channel: string; slug: string}): {ok: true; item: ItemJson} | {ok: false; problems: string[]} => {
+	const p: string[] = [];
+	if (!isRecord(raw)) return {ok: false, problems: ['not a JSON object']};
+	const str = (k: string, max = 10_000) => {
+		if (typeof raw[k] !== 'string' || [...(raw[k] as string)].length > max) p.push(`"${k}" must be a string of at most ${max} characters`);
+	};
+	if (raw.version !== 1) p.push('"version" must be 1');
+	if (raw.channel !== expect.channel) p.push(`"channel" must be "${expect.channel}"`);
+	if (raw.slug !== expect.slug || !SLUG.test(String(raw.slug))) p.push(`"slug" must be "${expect.slug}"`);
+	for (const k of ['lang', 'guid']) str(k, 200);
+	str('title', 500);
+	str('summary', 4000);
+	str('descriptionHtml', 20_000);
+	if (typeof raw.link !== 'string' || !isSafeUrl(raw.link, {httpsOnly: true})) p.push('"link" must be an https URL');
+	if (raw.pubDate !== null && !(typeof raw.pubDate === 'string' && ISO.test(raw.pubDate) && Number.isFinite(Date.parse(raw.pubDate)))) p.push('"pubDate" must be an ISO timestamp or null');
+	if (typeof raw.durationSec !== 'number' || !Number.isFinite(raw.durationSec) || raw.durationSec < 0) p.push('"durationSec" must be a non-negative number');
+	if (typeof raw.explicit !== 'boolean') p.push('"explicit" must be true or false');
+	if (!['full', 'trailer', 'bonus'].includes(raw.episodeType as string)) p.push('"episodeType" must be full, trailer or bonus');
+	for (const k of ['season', 'episode']) if (raw[k] !== undefined && !(typeof raw[k] === 'number' && Number.isSafeInteger(raw[k]) && (raw[k] as number) > 0)) p.push(`"${k}" must be a positive whole number`);
+	if (typeof raw.reviewed !== 'boolean') p.push('"reviewed" must be true or false');
+	if (!STATUSES.includes(raw.status as string)) p.push('"status" is not an asset status');
+	const f = raw.files;
+	if (!isRecord(f)) p.push('"files" must be an object');
+	else {
+		for (const [k, type] of [['mp3', 'audio/mpeg'], ['m4a', 'audio/x-m4a']] as const) {
+			const x = f[k];
+			if (!isRecord(x) || typeof x.path !== 'string' || !FILE_NAME.test(x.path) || typeof x.bytes !== 'number' || !Number.isSafeInteger(x.bytes) || x.bytes < 0 || x.type !== type) p.push(`"files.${k}" must be {path: a plain file name, bytes, type: "${type}"}`);
+		}
+		for (const k of ['chapters', 'vtt', 'srt']) if (typeof f[k] !== 'string' || !FILE_NAME.test(f[k] as string)) p.push(`"files.${k}" must be a plain file name`);
+		if (f.cover !== null && (typeof f.cover !== 'string' || !FILE_NAME.test(f.cover))) p.push('"files.cover" must be a plain file name or null');
+	}
+	if (!Array.isArray(raw.chapters)) p.push('"chapters" must be a list');
+	else
+		raw.chapters.forEach((c, i) => {
+			if (!isRecord(c) || typeof c.startMs !== 'number' || !Number.isFinite(c.startMs) || c.startMs < 0 || typeof c.endMs !== 'number' || !(c.endMs >= c.startMs) || typeof c.title !== 'string' || typeof c.href !== 'string' || !isSafeUrl(c.href, {httpsOnly: true}))
+				p.push(`"chapters[${i}]" must be {startMs, endMs >= startMs, title, href: an https URL}`);
+		});
+	return p.length ? {ok: false, problems: p} : {ok: true, item: raw as unknown as ItemJson};
 };
 
 const MIN_CUE_GAP_MS = 100;

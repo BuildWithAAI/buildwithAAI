@@ -30,10 +30,11 @@
  *   revocation https://oauth2.googleapis.com/revoke.
  */
 import {createHash, randomBytes} from 'node:crypto';
-import {chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+import {chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {createServer} from 'node:http';
 import type {AddressInfo} from 'node:net';
-import {dirname} from 'node:path';
+import {dirname, join, resolve} from 'node:path';
 
 export const SCOPE = 'https://www.googleapis.com/auth/youtube.force-ssl';
 
@@ -150,12 +151,60 @@ export const readOAuthFile = (path: string): OAuthFile | null => {
 	return out;
 };
 
-/** Writes the file readable by the owner only (0600), via a temporary file so it is never half-written. */
-export const writeOAuthFile = (path: string, data: OAuthFile): void => {
+/** The git work tree that contains `path` (the nearest folder with a .git entry), or null. */
+const workTreeOf = (path: string): string | null => {
+	for (let dir = dirname(resolve(path)); ; dir = dirname(dir)) {
+		if (existsSync(join(dir, '.git'))) return dir;
+		if (dirname(dir) === dir) return null;
+	}
+};
+
+/** Exit code of `git check-ignore -q`: 0 ignored, 1 not ignored; throws when git cannot answer. */
+export type GitCheckIgnore = (workTree: string, path: string) => number;
+
+const gitCheckIgnore: GitCheckIgnore = (workTree, path) => {
+	try {
+		execFileSync('git', ['check-ignore', '-q', '--', path], {cwd: workTree, stdio: 'ignore', timeout: 10_000});
+		return 0;
+	} catch (err) {
+		const status = (err as {status?: unknown}).status;
+		if (status === 1) return 1;
+		throw new Error(`git could not check whether ${path} is gitignored (${(err as Error).message})`);
+	}
+};
+
+/**
+ * The repository is public, so a refresh token must never be committable. Inside a git work tree the
+ * credential file must be gitignored (creator-hub ignores config/*.json and any *oauth*.json); outside one
+ * any path is fine. Throws with what to do instead.
+ */
+export const assertCredentialPathIgnored = (path: string, check: GitCheckIgnore = gitCheckIgnore): void => {
+	const workTree = workTreeOf(path);
+	if (workTree === null) return;
+	let status: number;
+	try {
+		status = check(workTree, resolve(path));
+	} catch (err) {
+		throw new AuthError(`Refusing to save YouTube credentials in ${path}: ${(err as Error).message}. Save them outside the repository instead.`);
+	}
+	if (status !== 0) {
+		throw new AuthError(
+			`Refusing to save YouTube credentials in ${path}: that file is inside the git repository ${workTree} and is not gitignored, ` +
+				'so the refresh token could be committed (the repository is public). Use config/youtube-oauth.json or another config/*.json file, ' +
+				'a name ending in -oauth.json, or a path outside the repository.',
+		);
+	}
+};
+
+/**
+ * Writes the file readable by the owner only (0600), and only where git ignores it (see
+ * assertCredentialPathIgnored). It is written in place, not through a temporary file, so no stray copy of
+ * a refresh token is ever left next to it.
+ */
+export const writeOAuthFile = (path: string, data: OAuthFile, check: GitCheckIgnore = gitCheckIgnore): void => {
+	assertCredentialPathIgnored(path, check);
 	mkdirSync(dirname(path), {recursive: true});
-	const temporary = `${path}.${process.pid}.tmp`;
-	writeFileSync(temporary, `${JSON.stringify(data, null, '\t')}\n`, {mode: 0o600});
-	renameSync(temporary, path);
+	writeFileSync(path, `${JSON.stringify(data, null, '\t')}\n`, {mode: 0o600});
 	chmodSync(path, 0o600);
 };
 
@@ -240,6 +289,11 @@ export const authorize = async (options: AuthorizeOptions): Promise<Tokens> => {
 		settle = {resolve, reject};
 	});
 	received.catch(() => {}); // handled where it is awaited; this stops an early rejection counting as unhandled
+	// Only Google's redirect with our state ends the wait. Anything else that reaches the port (a stray
+	// request, a probe from another program or web page, a forged response) is answered with 400 and
+	// ignored, so it cannot abort the owner's sign-in.
+	let settled = false;
+	let ignored = 0;
 	const server = createServer((req, res) => {
 		const url = new URL(req.url ?? '/', 'http://127.0.0.1');
 		const send = (status: number, title: string, message: string) => {
@@ -247,10 +301,12 @@ export const authorize = async (options: AuthorizeOptions): Promise<Tokens> => {
 			res.end(callbackPage(title, message));
 		};
 		if (url.pathname !== '/' || req.method !== 'GET') return send(404, 'Not found', 'This address only receives the Google sign-in.');
+		if (settled) return send(409, 'Sign-in already finished', 'This sign-in is already finished. The command shows the result. You can close this tab.');
 		if (url.searchParams.get('state') !== state) {
-			send(400, 'Sign-in not accepted', 'The sign-in response did not match this request. Run the command again.');
-			return settle?.reject(new AuthError('The OAuth response had the wrong state value, so it was rejected.'));
+			ignored++;
+			return send(400, 'Sign-in not accepted', 'This response does not belong to the sign-in the comment guard is waiting for. If you started it, open the link the command printed.');
 		}
+		settled = true;
 		const error = url.searchParams.get('error');
 		const code = url.searchParams.get('code');
 		if (error || !code) {
@@ -265,7 +321,11 @@ export const authorize = async (options: AuthorizeOptions): Promise<Tokens> => {
 		server.listen(0, '127.0.0.1', () => resolve());
 	});
 	const redirectUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-	const timer = setTimeout(() => settle?.reject(new AuthError('Timed out waiting for the Google sign-in.')), options.timeoutMs ?? 300_000);
+	const timer = setTimeout(() => {
+		settled = true;
+		const note = ignored > 0 ? ` ${ignored} response(s) with the wrong state value were ignored.` : '';
+		settle?.reject(new AuthError(`Timed out waiting for the Google sign-in.${note}`));
+	}, options.timeoutMs ?? 300_000);
 	try {
 		const authUrl = new URL(endpoints.auth);
 		authUrl.search = new URLSearchParams({

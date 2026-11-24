@@ -32,7 +32,7 @@ export const INCOME_CLAIMS: readonly Rule[] = [
 	// es / pt-br equivalents of the strongest claims (the dubs are reviewed too)
 	{label: 'garantizado / garantido', pattern: /\bgarantizad[oa]s?\b|\bgarantid[oa]s?\b|\bganancias? garantizadas?\b|\blucros? garantidos?\b/i},
 	{label: 'sin riesgo / sem risco', pattern: /\bsin riesgos?\b|\bsem riscos?\b/i},
-	{label: 'hacerse rico / ficar rico', pattern: /\bhacerte rico\b|\bhacerse rico\b|\bficar rico\b|\bficar milion[aá]rio\b/i},
+	{label: 'hacerse rico / ficar rico', pattern: /\bhacerte rico\b|\bhacerse rico\b|\bhazte (?:rico|millonario)\b|\bvolverte (?:rico|millonario)\b|\bficar rico\b|\bfique rico\b|\bficar milion[aá]rio\b/i},
 	{label: 'ingresos pasivos / renda passiva', pattern: /\bingresos? pasivos?\b|\brenda passiva\b/i},
 ];
 
