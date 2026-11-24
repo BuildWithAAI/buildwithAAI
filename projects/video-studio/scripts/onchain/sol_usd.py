@@ -42,6 +42,8 @@ def sol_usd_at(rpc, t, max_tx=30, legs_wanted=3):
             continue
         tx = txfetch.get_tx(rpc, r["signature"])
         tried += 1
+        if not tx or not tx.get("meta"):
+            continue  # transient null from the node; not cached, skipped
         best = None
         for owner, d in trades.token_deltas_by_owner(tx).items():
             if USDC in d and WSOL in d and d[WSOL][0] != 0:

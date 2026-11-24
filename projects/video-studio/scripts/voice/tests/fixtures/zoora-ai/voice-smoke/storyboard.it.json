@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "voice-smoke",
+  "sourceLang": "en",
+  "fiction": true,
+  "sources": [
+    {
+      "id": "demo-chart",
+      "title": "Voice-step test fixture (not a real source)",
+      "url": "https://example.com/voice-fixture",
+      "accessed": "2026-11-24",
+      "status": "unverified"
+    }
+  ],
+  "lang": "it",
+  "title": "Prova voce",
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Il prezzo è arrivato a $40.000 nel 2026 [src:demo-chart], più 68,67% in una settimana.",
+      "zoo": {
+        "expression": "neutral"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Poi {1,5 mln di|un milione e mezzo di} token costavano 0,25 SOL. Forse.",
+      "minDurationSec": 3
+    },
+    {
+      "id": "s03",
+      "type": "endscreen",
+      "narration": "",
+      "minDurationSec": 1.2
+    }
+  ]
+}

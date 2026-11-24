@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "voice-smoke",
+  "sourceLang": "en",
+  "fiction": true,
+  "sources": [
+    {
+      "id": "demo-chart",
+      "title": "Voice-step test fixture (not a real source)",
+      "url": "https://example.com/voice-fixture",
+      "accessed": "2026-11-24",
+      "status": "unverified"
+    }
+  ],
+  "lang": "zh",
+  "title": "语音测试",
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "价格在2026年涨到了$40,000[src:demo-chart]，一周内上涨68.67%。",
+      "zoo": {
+        "expression": "neutral"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "然后1.5M个代币只要0.25 SOL。也许吧。",
+      "minDurationSec": 3
+    },
+    {
+      "id": "s03",
+      "type": "endscreen",
+      "narration": "",
+      "minDurationSec": 1.2
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+# Fly.io config for the creator hub. Copy to fly.toml and replace every REPLACE value.
+#
+# First deploy, from projects/creator-hub:
+#   fly apps create REPLACE-app-name
+#   fly volumes create hub_data --size 1 --region REPLACE-region   (one volume: SQLite needs exactly one machine)
+#   fly secrets set HASH_SECRET="$(node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))")"
+#   fly secrets set ADMIN_USER=owner ADMIN_PASSWORD_HASH="$(node src/server/hash-password.ts)"
+#   fly deploy
+#   fly scale count 1
+# Then point a DNS record (e.g. go.<your domain>) at the app and run: fly certs add go.<your domain>
+#
+# Never put secrets in this file. HASH_SECRET, ADMIN_PASSWORD_HASH and PROXY_SECRET go in `fly secrets`.
+
+app = "REPLACE-app-name"
+primary_region = "REPLACE-region" # e.g. "lhr" or "iad": the region closest to most viewers
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PUBLIC_BASE_URL = "https://go.REPLACE-your-domain"
+  BRAND_NAME = "Zoora AI"
+  # CONTACT_EMAIL = "REPLACE@your-domain"
+  #
+  # Visitor IP and country. Fly's proxy reports the client IP in Fly-Client-IP but not the country,
+  # so on Fly alone the country is unknown and offers with unknownCountry "block" (e.g. exchanges)
+  # stay hidden for everyone. That is the safe default.
+  TRUST_PROXY = "header"
+  IP_HEADER = "Fly-Client-IP"
+  #
+  # To show region-restricted offers where they are allowed, proxy the domain through Cloudflare
+  # (orange cloud), add a Cloudflare request-header Transform Rule that sets X-Origin-Secret to a long
+  # random value, set that value with `fly secrets set PROXY_SECRET=...`, and replace the two lines
+  # above with:
+  # TRUST_PROXY = "cloudflare"
+
+[[mounts]]
+  source = "hub_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Keep the single machine running: redirects stay instant and the daily retention purge runs.
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "15s"
+    interval = "30s"
+    method = "GET"
+    path = "/healthz"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

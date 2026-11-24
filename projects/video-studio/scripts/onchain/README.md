@@ -16,7 +16,8 @@ wallet addresses and per-case working scripts belong under the gitignored
 | `cotrade_tokens.py` | CLI: for a list of mints, rebuild every configured wallet's trades in each token from its token-account history; slots where two or more of the wallets traded are read once with getBlock (exact order, fewer calls). |
 | `lead_lag.py` | CLI: per-token lead (side first buy minus public first buy, with same-slot order), side hold times, side sell times relative to the public buy, and SOL PnL per wallet; aggregates with median and quartiles. |
 | `curve_candles.py` | CLI: every successful trade on a Pump.fun bonding curve (or a pool account) in a window around a reference time, priced from the venue's own balance change, then 5-second candles via `candles.py`. |
-| `sol_usd.py` | CLI: SOL/USD at given times from a swap in a liquid SOL-USDC pool (Orca Whirlpool), with the signature kept so each reference can be re-checked. |
+| `sol_usd.py` | CLI: SOL/USD at given times: walks back from each time through transactions touching a liquid SOL-USDC pool (Orca Whirlpool) and takes the median of the last 3 swap legs (an account whose USDC and wSOL moved in opposite directions, at least 10 USDC), keeping each signature so it can be re-checked. Many transactions that touch the pool do not trade (bots that check and exit), so a few days can come back empty or with one odd leg: use the median of at least 2 legs that agree, otherwise interpolate and say so. |
+| `joint_slot_tokens.py` | CLI: documented token sample for a wallet group: slots where at least N of the side wallets had a successful transaction (from their signature lists, no fetching), every k-th of them read with getBlock, and the tokens two or more group wallets traded there recorded. |
 
 Case configs (wallet labels, roles, addresses) are JSON files under `data/private/`, e.g.
 `{"cache_dir": "...", "wallets": [{"label": "P", "role": "public", "address": "..."}]}`.
@@ -44,6 +45,25 @@ batch requests are not used: they would get around the per-call limit.
   record the SOL-equivalent from the venue account's lamport change.
 - **USD conversion.** Only with an on-chain reference: e.g. the SOL-USDC swap leg
   (a Raydium SOL-USDC pool) inside the same transaction, aggregated per hour.
+- **Launch transactions.** `pool_trades()` sets `is_create` when the venue's token
+  account has no pre-balance (supply minted in that transaction) and leaves its
+  price empty: SOL/token there is not a market price and would wreck a candle.
+- **Who bought just before X.** `getSignaturesForAddress(<venue account>, before=<X's
+  tx>)` lists the transactions immediately ahead of X on that curve or pool, in chain
+  order; fetch the ones inside the look-back window and record the buyers. Then
+  count which wallets recur across many tokens, and check whether their timing is
+  locked to X's buy or to the token's launch (compare against the launch time).
+- **Successful is not the same as traded.** Around a busy launch, many successful
+  transactions touch the curve but move nothing (bot programs that check a condition
+  and exit cleanly). `curve_candles.py` keeps only transactions where the curve's
+  balances changed and reports the rest as `ok_without_curve_flow`.
+- **Sampling-weighted totals.** When tokens are found by reading every k-th "joint
+  slot", a token with j joint slots is found with probability about min(1, j/k); weight
+  it by the inverse to estimate totals for the whole period, and bootstrap the tokens
+  for a range. Say clearly that this is an estimate.
+- **Cheap per-wallet, per-token history.** A trader's token account for one mint
+  (read from the token balances of any of its trades) has a short signature list:
+  use it instead of walking a bot's whole history.
 - **What timing can and cannot show.** A wallet buying seconds before another one,
   even repeatedly, does not show common ownership or intent: copy-trading bots,
   shared signal feeds and launch snipers produce the same picture. Funding links are

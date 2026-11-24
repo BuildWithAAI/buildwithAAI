@@ -32,7 +32,7 @@ const MOUTH_VB = '-69.97 -804.76 139.94 90.55';
 const EXPRS: readonly Expression[] = ['neutral', 'happy', 'worried', 'shocked'];
 
 const BUST = {size: 322, x0: 24, gap: 4, y: 640} as const;
-const CHIP = {w: 176, h: 114, x0: 1350, y0: 672, gapX: 12, gapY: 24} as const;
+const CHIP = {w: 176, h: 114, x0: 1338, y0: 672, gapX: 10, gapY: 24} as const;
 
 export const ZooSheet: React.FC = () => (
 	<AbsoluteFill style={{backgroundColor: BRAND.background}}>

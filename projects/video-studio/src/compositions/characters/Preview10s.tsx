@@ -3,12 +3,12 @@
  * Staging reproduces the size-comparison panel (ZOO screen left, Badger view 'left' screen right, one
  * ground line at 85% height, one shared scale). Beats (Prompt 2):
  *   0-3 s   stand together; ZOO blinks (~f39) and lifts his brow (f60-80).
- *   3-6 s   ZOO points to screen right (wind-up f87-92, swing f92-104, hold); Badger's head is replaced
+ *   3-6 s   ZOO points to screen right (wind-up f88-92, swing f92-104, hold); Badger's head is replaced
  *           by threeQuarterRightScreen at f97 (5 frames after the swing starts), covered by a blink.
  *           Badger stands in front of ZOO in depth, so the arm's sweep passes behind his head.
  *   6-10 s  ZOO lowers the arm (f182-197) back to deadpan; Badger looks up at him (front-head breakdown f198-199,
  *           upLeftScreen at f200 with an eased neck raise), holds, then judges (judge f234-242, ears f236-248, chin tilt f238-254,
- *           slow blink f256-272) and holds to the end.
+ *           slow blink f252-268) and holds to the end (about 1 s).
  * No audio. Breathing on both characters is driven by the frame.
  */
 import React from 'react';
@@ -24,7 +24,7 @@ import {BADGER_X, EASE, FRAME, GROUND_Y, PAIR_SCALE, ZOO_X} from './stage';
 export const BEATS = {
 	zooBlink: 38,
 	browLift: [60, 67, 72, 80],
-	windup: [87, 92],
+	windup: [88, 92],
 	pointStart: 92,
 	pointEnd: 104,
 	badgerTurn: 97,
@@ -35,7 +35,7 @@ export const BEATS = {
 	judge: [234, 242],
 	ears: [236, 248],
 	tilt: [238, 254],
-	slowBlink: 256,
+	slowBlink: 252,
 } as const;
 
 const zooTrack = (f: number) => ({

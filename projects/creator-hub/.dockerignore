@@ -1,0 +1,13 @@
+# Allow-list: the image needs only package.json, the server sources, the offer/studio config and the
+# start script. Everything else (data/, node_modules/, tools/, .env files, config/youtube-oauth.json and
+# any other credentials) stays out of the build context.
+**
+!package.json
+!src/**
+!config/offers.json
+!config/offers.example.json
+!config/studio.json
+!config/studio.example.json
+!docker/start.sh
+**/*.test.ts
+src/server/test-helpers.ts

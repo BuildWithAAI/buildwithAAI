@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "offers": [
+    {
+      "id": "hardware-wallet",
+      "name": "Test Hardware Wallet",
+      "url": "https://wallet.shop.test/?ref=fixture",
+      "category": "security",
+      "relationship": "affiliate",
+      "disclosure": "Affiliate link: I may earn a commission if you buy. It costs you nothing extra.",
+      "blockedCountries": [],
+      "unknownCountry": "allow",
+      "active": true,
+      "notes": "Test fixture only, not a real offer."
+    },
+    {
+      "id": "exchange-demo",
+      "name": "Demo Exchange",
+      "url": "https://exchange.test/invite?code=fixture",
+      "category": "exchange",
+      "relationship": "referral",
+      "disclosure": "Referral link: I earn a share of fees if you sign up and trade. Crypto trading is high risk. Not financial advice.",
+      "blockedCountries": ["US", "GB"],
+      "unknownCountry": "block",
+      "active": true,
+      "restrictedReason": "This exchange does not offer its services in your country.",
+      "alternatives": ["hardware-wallet"],
+      "notes": "Test fixture only, not a real offer."
+    },
+    {
+      "id": "paused-tool",
+      "name": "Paused Tool",
+      "url": "https://tool.test/",
+      "category": "tools",
+      "relationship": "affiliate",
+      "disclosure": "Affiliate link: I may earn a commission.",
+      "blockedCountries": [],
+      "unknownCountry": "allow",
+      "active": false,
+      "notes": "Test fixture only, not a real offer."
+    }
+  ]
+}

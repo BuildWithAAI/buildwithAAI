@@ -48,7 +48,9 @@ export type RegistryCheck = {registry: OfferRegistry; errors: string[]; warnings
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const normalizeKey = (key: string): string => key.toLowerCase().replace(/[^a-z]/g, '').replace(/s$/, '');
+/** "allowed_countries", "allowedCountry" and "AllowedCountries" all normalize to "allowedcountry". */
+const normalizeKey = (key: string): string =>
+	key.toLowerCase().replace(/[^a-z]/g, '').replace(/ies$/, 'y').replace(/s$/, '');
 
 const isLaunchpad = (host: string): boolean => LAUNCHPAD_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
 

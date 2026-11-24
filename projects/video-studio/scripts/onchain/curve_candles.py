@@ -50,7 +50,23 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
     rows, meta = rpc.signatures_in_window(venue, t_ref - before, t_ref + after + 1, start_before=cur[0])
     ok = [r for r in rows if not r.get("err")]
     per_slot = collections.Counter(r["slot"] for r in ok)
-    dense = {s for s, c in per_slot.items() if c >= dense_min}
+
+    def tx_cached(sig):
+        for v in (1, 0):
+            p = [sig, {"encoding": "jsonParsed", "maxSupportedTransactionVersion": v, "commitment": "finalized"}]
+            if os.path.exists(rpc._path("getTransaction", p)):
+                return True
+        return False
+
+    def block_cached(slot):
+        p = [slot, {"encoding": "jsonParsed", "transactionDetails": "accounts", "rewards": False,
+                    "maxSupportedTransactionVersion": 1, "commitment": "finalized"}]
+        return os.path.exists(rpc._path("getBlock", p) + ".gz")
+
+    # A slot is read with getBlock when it holds >= dense_min of these transactions,
+    # unless all of them are already cached one by one (then the block is not needed).
+    uncached = collections.Counter(r["slot"] for r in ok if not tx_cached(r["signature"]))
+    dense = {s for s, c in per_slot.items() if c >= dense_min and (uncached[s] > 0 or block_cached(s))}
     out = []
     creations = []
     blocks = {}

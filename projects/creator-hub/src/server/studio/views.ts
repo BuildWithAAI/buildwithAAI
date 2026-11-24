@@ -5,7 +5,7 @@
 import {html, raw, type SafeHtml} from './html.ts';
 import {CUSTOM_PACKAGE_ID, type PortfolioItem, type StudioConfig, type StudioPackage} from './config.ts';
 import {FEATURES, SAFETY_NOTE, STEPS, TERMS} from './copy.ts';
-import {STUDIO_CSS} from './styles.ts';
+import {STUDIO_CSS_HREF} from './styles.ts';
 import {
 	FIELDS,
 	FORM_NAMES,
@@ -69,7 +69,8 @@ const layout = ({meta, title, indexable, nav, quoteHref, body}: LayoutInput): st
 <title>${title}</title>
 <meta name="description" content="${DESCRIPTION}">
 ${head}
-<style>${raw(STUDIO_CSS)}</style>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="${STUDIO_CSS_HREF}">
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content</a>
@@ -84,6 +85,12 @@ ${nav.map(([href, label]) => html`<li><a href="${href}">${label}</a></li>`)}
 ${body}
 </main>
 <footer class="site"><div class="wrap">
+<nav aria-label="Site"><ul>
+<li><a href="/">All links</a></li>
+<li><a href="/subscribe">Newsletter</a></li>
+<li><a href="/disclosures">Disclosures</a></li>
+<li><a href="/privacy">Privacy</a></li>
+</ul></nav>
 <p><strong>Stay safe:</strong> ${SAFETY_NOTE}${mail ? html` Questions? Email ${mail}.` : ''}</p>
 <p>&copy; ${meta.year} ${meta.brandName}</p>
 </div></footer>
@@ -294,7 +301,7 @@ ${consentSpec.error ? html`<p class="field-error" id="f-consent-error"><span cla
 <input type="text" id="f-hp" name="${HONEYPOT_FIELD}" value="" tabindex="-1" autocomplete="off">
 </div>
 <button class="btn" type="submit">Send request</button>
-<p class="hint">We use your details only to reply to this request. We will not add you to a mailing list.</p>
+<p class="hint">We use your details only to reply to this request. We will not add you to a mailing list. <a href="/privacy">Privacy notice</a>.</p>
 </form>
 </div>
 </section>`;

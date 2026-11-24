@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "voice-smoke",
+  "sourceLang": "en",
+  "fiction": true,
+  "sources": [
+    {
+      "id": "demo-chart",
+      "title": "Voice-step test fixture (not a real source)",
+      "url": "https://example.com/voice-fixture",
+      "accessed": "2026-11-24",
+      "status": "unverified"
+    }
+  ],
+  "lang": "hi",
+  "title": "आवाज़ परीक्षण",
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "कीमत 2026 में $40,000 तक पहुँच गई [src:demo-chart], एक हफ़्ते में 68.67% ऊपर।",
+      "zoo": {
+        "expression": "neutral"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "फिर 1.5M टोकन की कीमत 0.25 SOL थी। शायद।",
+      "minDurationSec": 3
+    },
+    {
+      "id": "s03",
+      "type": "endscreen",
+      "narration": "",
+      "minDurationSec": 1.2
+    }
+  ]
+}

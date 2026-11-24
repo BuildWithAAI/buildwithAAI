@@ -4,6 +4,7 @@
  *   GET  /studio         offer page (hero, what you get, process, packages, portfolio, FAQ, terms, form)
  *   POST /studio         rate-limit, drop honeypot hits quietly, validate, store, 303 to /studio/thanks
  *   GET  /studio/thanks  confirmation page
+ *   GET  /studio/style.css  the pages' stylesheet (same-origin file: the core CSP blocks inline styles)
  *
  * Config: HubConfig.studio is the parsed config/studio.json (shape: ../studio/config.ts).
  * Env: NOTIFY_WEBHOOK_URL (optional) receives {id, packageId, ts, text} for each new order; never the
@@ -11,11 +12,12 @@
  */
 import {randomUUID} from 'node:crypto';
 import type {Ctx, Router} from '../http.ts';
+import {createRateLimiter, rateLimitKey, type RateLimiter} from '../security.ts';
 import type {OrderRequest, Source} from '../../types.ts';
 import {loadStudioConfig, type StudioConfig} from '../studio/config.ts';
 import {notifyNewOrder, NOTIFY_TIMEOUT_MS} from '../studio/notify.ts';
-import {createRateLimiter, type RateLimiter} from '../studio/rate-limit.ts';
 import {findRecentDuplicate, insertOrder, recordStudioView} from '../studio/store.ts';
+import {STUDIO_CSS, STUDIO_CSS_PATH} from '../studio/styles.ts';
 import {
 	blankOrderForm,
 	HONEYPOT_FIELD,
@@ -37,15 +39,15 @@ import {
 export type StudioDeps = {
 	now: () => number;
 	env: Record<string, string | undefined>;
-	/** Local stand-in until security.ts exports the shared limiter (see ../studio/rate-limit.ts). */
+	/** Order-form limiter (token bucket from security.ts), on top of the core's global limit. */
 	limiter: RateLimiter;
 	fetch: typeof fetch;
 	log: (line: string) => void;
 	notifyTimeoutMs: number;
 };
 
-/** POST attempts per visitor (by visitorHash): generous enough for a few typos, tight for bots. */
-export const STUDIO_RATE_LIMIT = {max: 6, windowMs: 15 * 60_000};
+/** Order-form posts per client: a burst of 6 (room for a few typos), then one more every 150 s. */
+export const STUDIO_RATE_LIMIT = {capacity: 6, refillPerSecond: 1 / 150};
 /** The same request from the same visitor inside this window is not stored twice (double submit). */
 export const DUPLICATE_WINDOW_MS = 10 * 60_000;
 
@@ -94,10 +96,11 @@ const unavailable = (ctx: Ctx, now: number): void =>
 	);
 
 export const registerStudio = (router: Router, overrides: Partial<StudioDeps> = {}): void => {
+	const clock = overrides.now ?? Date.now;
 	const deps: StudioDeps = {
-		now: Date.now,
+		now: clock,
 		env: process.env,
-		limiter: createRateLimiter(STUDIO_RATE_LIMIT),
+		limiter: createRateLimiter({...STUDIO_RATE_LIMIT, now: clock}),
 		fetch: globalThis.fetch,
 		log: (line) => console.log(line),
 		notifyTimeoutMs: NOTIFY_TIMEOUT_MS,
@@ -136,10 +139,11 @@ export const registerStudio = (router: Router, overrides: Partial<StudioDeps> = 
 			ctx.html(status, renderStudioPage({mode: 'form', meta, config, values, errors, notice, today: isoDay(now)}));
 		const emailUs = meta.contactEmail ? `, or email us at ${meta.contactEmail}` : '';
 
-		const limit = deps.limiter.take(ctx.visitorHash || 'unknown', now);
-		if (!limit.allowed) {
-			ctx.res.setHeader('Retry-After', String(Math.ceil(limit.retryAfterMs / 1000)));
-			return showForm(429, readOrderForm(form), {}, `Too many attempts from your connection. Please wait a few minutes and send again${emailUs}.`);
+		const clientKey = `studio-order:${rateLimitKey(ctx)}`;
+		if (!deps.limiter.take(clientKey)) {
+			ctx.res.setHeader('Retry-After', String(deps.limiter.retryAfter(clientKey)));
+			const notice = `Too many attempts from your connection. Please wait a few minutes and send again${emailUs}.`;
+			return showForm(429, readOrderForm(form), {}, notice);
 		}
 
 		// Bots that fill the hidden field get the normal "thanks" redirect and nothing is stored.
@@ -182,6 +186,14 @@ export const registerStudio = (router: Router, overrides: Partial<StudioDeps> = 
 	});
 
 	router.get(THANKS_PATH, (ctx) => ctx.html(200, renderThanksPage(pageMeta(ctx, deps.now()))));
+
+	router.get(STUDIO_CSS_PATH, (ctx) => {
+		ctx.res.statusCode = 200;
+		ctx.res.setHeader('Content-Type', 'text/css; charset=utf-8');
+		ctx.res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); // the page links a content-hashed URL
+		ctx.res.setHeader('Content-Length', Buffer.byteLength(STUDIO_CSS));
+		ctx.res.end(STUDIO_CSS);
+	});
 };
 
 /** page_events row for the dashboard. A logging failure never breaks the page. */

@@ -1,0 +1,18 @@
+# Voice step, ja + zh G2P (installed by setup.sh unless VOICE_SKIP_CJK=1).
+# misaki is hexgrad's G2P that Kokoro v1.0 (2025-01-27) was trained with. 0.7.4 (2025-02-04) is the
+# last release that allows Python 3.13 (0.7.5+ require <3.13). Everything runs offline: jieba,
+# pypinyin and cn2an ship their dictionaries; unidic-lite ships the MeCab dictionary for fugashi.
+# Licences: misaki Apache-2.0; jieba, pypinyin, cn2an, proces, ordered-set, jaconv, unidic-lite MIT;
+# fugashi MIT AND BSD-3-Clause; mojimoji Apache-2.0; regex Apache-2.0 AND CNRI-Python.
+# mojimoji and jieba/unidic-lite build from source (mojimoji needs a C/C++ compiler).
+misaki==0.7.4
+regex==2026.11.8
+jieba==0.42.1
+pypinyin==0.55.0
+cn2an==0.5.24
+proces==0.1.7
+ordered-set==4.1.0
+fugashi==1.5.2
+unidic-lite==1.0.8
+jaconv==0.5.0
+mojimoji==0.0.13

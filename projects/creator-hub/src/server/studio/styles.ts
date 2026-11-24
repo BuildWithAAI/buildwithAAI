@@ -1,8 +1,12 @@
 /**
- * Stylesheet for the studio pages (inlined in a <style> element; no external CSS, fonts or JS).
+ * Stylesheet for the studio pages, served by routes/studio.ts at STUDIO_CSS_PATH. It is a same-origin
+ * file, not an inline <style>, because the core's Content-Security-Policy (default-src 'self') blocks
+ * inline styles. No external CSS, fonts or JS.
  * Brand: near-black #0B0C0F, off-white #F4F6F8, teal #29B8AD. Measured contrast on the page
  * background: text 18:1, muted 12:1, teal 8:1, error 8.6:1, input borders 4:1 (on cards 4.9:1).
  */
+import {createHash} from 'node:crypto';
+
 export const STUDIO_CSS = `
 :root{--bg:#0B0C0F;--surface:#161A21;--text:#F4F6F8;--muted:#C9CED6;--line:#808894;--rule:#2A303A;--accent:#29B8AD;--accent-hover:#4FCFC5;--error:#FF9B8F;color-scheme:dark}
 *,*::before,*::after{box-sizing:border-box}
@@ -26,7 +30,7 @@ p{margin:0 0 1rem}
 main:focus{outline:none}
 header.site{border-bottom:1px solid var(--rule)}
 header.site .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem 1.5rem;padding-block:.75rem}
-.brand{display:inline-flex;align-items:center;min-height:44px;color:var(--text);font-weight:750;text-decoration:none}
+.brand{display:inline-flex;align-items:center;gap:.3em;min-height:44px;color:var(--text);font-weight:750;text-decoration:none}
 .brand span{color:var(--accent)}
 nav ul{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1.25rem;margin:0;padding:0;list-style:none}
 nav a{display:inline-flex;align-items:center;min-height:44px;color:var(--text)}
@@ -63,7 +67,10 @@ nav .btn{min-height:44px;padding:.45rem 1rem;color:var(--bg)}
 .faq{max-width:46rem}
 .faq details{padding:.25rem 0;border-top:1px solid var(--rule)}
 .faq details:last-child{border-bottom:1px solid var(--rule)}
-.faq summary{display:flex;align-items:center;min-height:44px;padding:.5rem 0;font-weight:650;cursor:pointer}
+.faq summary{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:44px;padding:.5rem 0;font-weight:650;cursor:pointer;list-style:none}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";content:"+" / "";flex:none;color:var(--accent);font-size:1.4rem;font-weight:400;line-height:1}
+.faq details[open] summary::after{content:"\\2212";content:"\\2212" / ""}
 .faq details p{color:var(--muted)}
 .terms{max-width:46rem;padding-left:1.25rem}
 .terms li{margin-bottom:.75rem}
@@ -83,8 +90,15 @@ textarea{min-height:10rem;resize:vertical}
 .error-summary a{color:var(--error);font-weight:650}
 .callout{margin:1.5rem 0;padding:1rem 1.25rem;border-left:4px solid var(--accent);border-radius:0 12px 12px 0;background:var(--surface)}
 .callout h2{font-size:1.25rem}
+.callout>:last-child{margin-bottom:0}
 .hp{position:absolute!important;left:-10000px!important;width:1px;height:1px;overflow:hidden}
 footer.site{padding-block:2rem;border-top:1px solid var(--rule);color:var(--muted);font-size:.95rem}
 footer.site p{margin:0 0 .5rem}
+footer.site nav ul{margin-bottom:.75rem}
+@media (max-width:40rem){header.site nav li:not(:last-child){display:none}}
 @media (forced-colors:active){.btn{border:2px solid ButtonText}.steps li::before{border:1px solid CanvasText}}
 `;
+
+export const STUDIO_CSS_PATH = '/studio/style.css';
+/** Content-hashed URL, so the file can be cached for a year and still update on deploy. */
+export const STUDIO_CSS_HREF = `${STUDIO_CSS_PATH}?v=${createHash('sha256').update(STUDIO_CSS).digest('hex').slice(0, 10)}`;
