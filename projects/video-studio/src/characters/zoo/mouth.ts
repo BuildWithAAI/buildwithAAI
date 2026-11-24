@@ -11,7 +11,16 @@ import type {MouthShape} from '../types';
 import type {Pt} from './geometry';
 
 export type MouthSpec =
-	| {kind: 'line'; line: Pt[]; width: number; lowerLip?: Pt[]; hole: number; jaw: number}
+	| {
+			kind: 'line';
+			line: Pt[];
+			width: number;
+			lowerLip?: Pt[];
+			/** Optional filled lower-lip band in skinShadow under the line (repair round 4: the happy smile, ZOO-E4). */
+			band?: Pt[];
+			hole: number;
+			jaw: number;
+	  }
 	| {
 			kind: 'open';
 			/** Upper edge, left corner -> right corner. */
@@ -110,6 +119,21 @@ export const SHOCKED_MOUTH: MouthSpec = {
 	cavity: [[-14, -7], [14, -7], [14, 3.2], [8, 3.2], [5, 2.2], [0, 1.6], [-5, 2.2], [-8, 3.2], [-14, 3.2]],
 	hole: 4,
 	jaw: 0.6,
+};
+
+/**
+ * The happy expression's own closed mouth (repair round 4, decision ZOO-E4; zoo_expr_happy.png): a wide U-smile line under the
+ * moustache with a soft lower-lip band below it, instead of the flat closed line with its corners nudged up. The expression's
+ * modifiers then make it the locked "small asymmetric smirk" (the screen-right corner and moustache end lift more). Used only
+ * when the expression is happy and no explicit mouth is passed; the lip-sync library is unchanged.
+ */
+export const HAPPY_MOUTH: MouthSpec = {
+	kind: 'line',
+	line: [[-16.4, 0.4], [-11, 1.9], [-4, 2.9], [3, 2.9], [10, 1.9], [16.4, 0.4]],
+	width: 1.8,
+	band: [[-13.6, 1.8], [-8, 3.6], [0, 4.4], [8, 3.6], [13.6, 1.8], [9, 5.6], [0, 7.4], [-9, 5.6]],
+	hole: 0.6,
+	jaw: 0,
 };
 
 /** Openness order used by amplitude-driven sync. */

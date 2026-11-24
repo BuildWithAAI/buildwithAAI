@@ -64,9 +64,10 @@ export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: Mouth
 	if (spec.kind === 'line') {
 		// The sheet's closed mouth is a thin dark-brown lip line (core #5C3D2C ~ beardShadow) with the pale lower lip below.
 		return (
-			<g data-part="mouth" data-shape={shape}>
+			<g data-part="mouth" data-shape={shape} data-variant={override ? 'expression' : undefined}>
+				{spec.band ? <path data-part="lipBand" d={smooth(spec.band.map(M))} fill={ZOO_COLORS.skinShadow} /> : null}
 				{spec.lowerLip ? <Stroke d={line(spec.lowerLip.map(M))} width={ZOO_LINE.fine} color={ZOO_COLORS.skinShadow} /> : null}
-				{mod.cornerR > 2 ? <Stroke name="smirkLip" d={line(([[-8, 3.4], [1, 4.4], [7, 3.8], [11.5, 2.2]] as Pt[]).map(M))} width={ZOO_LINE.fine} color={ZOO_COLORS.skinShadow} /> : null}
+				{!spec.band && mod.cornerR > 2 ? <Stroke name="smirkLip" d={line(([[-8, 3.4], [1, 4.4], [7, 3.8], [11.5, 2.2]] as Pt[]).map(M))} width={ZOO_LINE.fine} color={ZOO_COLORS.skinShadow} /> : null}
 				<Stroke name="lipLine" d={line(spec.line.map(M))} width={spec.width * lineScale} color={ZOO_COLORS.beardShadow} />
 			</g>
 		);
