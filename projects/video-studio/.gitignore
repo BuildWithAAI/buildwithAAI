@@ -4,3 +4,7 @@ out/
 *.log
 # Generated voice audio and renders are rebuilt by the pipeline
 public/generated/
+
+# Voice step: local Python env (Kokoro) and model cache
+.venv-voice/
+__pycache__/
