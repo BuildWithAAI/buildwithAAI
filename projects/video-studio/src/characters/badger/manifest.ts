@@ -242,10 +242,10 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		conventions: [
 			"Prop and part names are ANATOMICAL unless suffixed 'Screen'.",
 			"view 'left': the dog faces SCREEN LEFT and its ANATOMICAL LEFT side faces the camera (badger_coat_left.png).",
-			"In view 'left' the near legs are the anatomical LEFT legs (legFrontNear, legHindNear); the far legs are the RIGHT legs, drawn behind in coatShadow with no visible markings.",
-			"view 'right': the dog faces SCREEN RIGHT and its ANATOMICAL RIGHT side faces the camera (badger_coat_right.png). Near legs are the anatomical RIGHT legs; the far (LEFT) legs are drawn behind in coatShadow. The near ear is the PALE right ear.",
+			"In view 'left' the near legs are the anatomical LEFT legs (legFrontNear, legHindNear); the far legs are the RIGHT legs, drawn behind in coatShadow. Their only marking is an EDGE record (round 4): R-08 where the far forearm's spot wraps round the leg's back contour, as badger_pose_walking.png draws it.",
+			"view 'right': the dog faces SCREEN RIGHT and its ANATOMICAL RIGHT side faces the camera (badger_coat_right.png). Near legs are the anatomical RIGHT legs; the far (LEFT) legs are drawn behind in coatShadow, the far forearm carrying the EDGE record L-09 (round 4). The near ear is the PALE right ear.",
 			"view 'front': anatomical LEFT = SCREEN RIGHT (dark ear on screen right). view 'back': anatomical LEFT = SCREEN LEFT (dark ear on screen left). view 'threeQuarter': the dog's right flank faces the camera, the head turned to screen right (badger_turn_34.png).",
-			"Every view and pose body is its own trace with its own marking records. Two drawings reuse UNMARKED geometry mirrored about their origin: the skull outline, nose, mouths and lower-face shadows of the screen-left 3/4 head (decision BADGER-D36; bilaterally symmetric features; its ears, eyes and markings are its own), and the outline, collar and tag of the left-facing sit and lie bodies (decision BADGER-D23). That sit / lie silhouette is itself asymmetric (head and neck turn, folded haunch, tail curl), so both left-facing poses are PROVISIONAL until the owner explicitly accepts D23 (BADGER_PROVISIONAL_POSES; tools warn, sheets label them). Every marking is authored for its own side from its own coat map: no marking or ear colour is flipped, and no spot path is the x-mirror of another record except a midline M- mark in the two facings of one pose (round 3 removed the one exception, SIT_LEFT_SPOTS R-08, which was L-09 mirrored; src/characters/badger/tests/spotsNoMirror.test.ts enforces it).",
+			"Every view and pose body is its own trace with its own marking records. Two drawings reuse UNMARKED geometry mirrored about their origin: the skull outline, nose, mouths and lower-face shadows of the screen-left 3/4 head (decision BADGER-D36; bilaterally symmetric features; its ears, eyes and markings are its own), and the outline, collar and tag of the left-facing sit and lie bodies (decision BADGER-D23). That sit / lie silhouette is itself asymmetric (head and neck turn, folded haunch, tail curl), so both left-facing poses are PROVISIONAL until the owner explicitly accepts D23 (BADGER_PROVISIONAL_POSES; tools warn, sheets label them). Every marking is authored for its own side from its own coat map: no marking or ear colour is flipped, and no spot path is the x-mirror of another record except a midline M- mark in the two facings of one pose (round 3 removed the one exception, SIT_LEFT_SPOTS R-08, which was L-09 mirrored; src/characters/badger/tests/spotsNoMirror.test.ts enforces it). Round 4: every forearm record (the left sit / lie L-09, the side rigs' far-forearm edge records) is placed from its OWN coat map's measured place on the forearm (dev/trace/coatmaps.py), and the test also fails on NEAR mirrors (within 1 unit in place, or after centring and scaling, for records of the same pose family and part near each other's mirror place) unless the pair is on its explicit coat-map-symmetric allow-list with the evidence (BADGER-D49).",
 			"Front head: anatomical left = screen right. The DARK-capped ear is the anatomical LEFT ear in every head view (screen right in 'front'; the near ear in left-facing views; the far ear in right-facing views).",
 			'The pale anatomical RIGHT ear carries the small spot H-EAR-R-SPOT.',
 			'No view is produced by horizontally flipping the character or any marking (see decisions D-08, D-09). The one mirrored silhouette, the left-facing sit and lie (D-23), is PROVISIONAL pending the owner. The right profile head is traced on coat_right, not mirrored (D-09, revised).',
@@ -253,7 +253,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 	},
 	provisional: {
 		decision: BADGER_PROVISIONAL_DECISION,
-		status: "PROVISIONAL, pending the owner's explicit OK (asked by the coordinator after repair round 3): the left-facing sit and lie keep working, but their silhouette is the right-facing pose outline mirrored about the root.",
+		status: "PROVISIONAL, pending the owner's explicit OK (asked by the coordinator after repair round 3; still pending after round 4): the left-facing sit and lie keep working, but their silhouette is the right-facing pose outline mirrored about the root. Keep view 'left' with sit or lie out of episodes until the owner accepts BADGER-D23.",
 		poses: BADGER_PROVISIONAL_POSES,
 	},
 	views: {
@@ -421,7 +421,8 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		{
 			id: 'BADGER-D13-tag',
 			sheetShowed: 'One round teal tag; edge-on (oval) in side views.',
-			chosen: 'One tag: round disc in the front bust, edge-on oval in the left view, hanging plumb from the collar ring.',
+			chosen:
+				"One tag: round disc in the front bust, edge-on oval in the left view, hanging plumb from the collar ring. Round 4 (gen_right.py TAG_RX): the right view's tag was an elongated oval (teal width / height 0.55 in the right stand, walk and look-up, against 0.63-0.82 on turn_side, coat_right, walking and looking_up); it is widened to 7.7 x 9.6 coat_right px, same height, and reads 0.71 in all three. The left view keeps its edge-on oval (0.42-0.43; coat_left 0.45).",
 			why: 'Single tag per the locked design; orientation follows the view.',
 		},
 		{
@@ -495,7 +496,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			sheetShowed:
 				'The sitting, lying, walking and looking-up panels all face screen right. Episodes stage Badger to the right of Zoo facing left, so a sit or lie beat must be able to face left. The sheet has no left-facing sit or lie panel.',
 			chosen:
-				"PROVISIONAL, pending the owner's explicit OK (status recorded in round 3; the coordinator asks the owner). Sit and lie exist in both facings: view right (or front/back/3/4) uses the traced right-facing bodies with right-side markings; view left uses the right-facing pose's UNMARKED outline, collar and tag mirrored about the root, carrying the LEFT coat map's own markings authored for it (L-WITHERS as the full patch, L-01..L-09, L-NECK, M-CHEST, and R-08 on the far forearm's edge) and head threeQuarterLeftScreen (dark ear near). Round 3: R-08 used to be the right-facing sit's L-09 record x-mirrored (to 0.1 unit), a flipped marking; it is now authored from badger_coat_right.png's own R-08 (35.2% down the forearm, coat_right's own size and tilt, on the far leg's front edge) and src/characters/badger/tests/spotsNoMirror.test.ts fails on any record that is the x-mirror of another (midline M- marks in the two facings of one pose excepted). Both poses keep working; BADGER_PROVISIONAL_POSES (src/characters/badger/provisional.ts, exported from the badger index) lists them so tools can warn, and the sheets should label them provisional until the owner accepts. walk and lookUp are built on both side rigs as before.",
+				"PROVISIONAL, pending the owner's explicit OK (status recorded in round 3; the coordinator asks the owner). Sit and lie exist in both facings: view right (or front/back/3/4) uses the traced right-facing bodies with right-side markings; view left uses the right-facing pose's UNMARKED outline, collar and tag mirrored about the root, carrying the LEFT coat map's own markings authored for it (L-WITHERS as the full patch, L-01..L-09, L-NECK, M-CHEST, and R-08 on the far forearm's edge) and head threeQuarterLeftScreen (dark ear near). Round 3: R-08 used to be the right-facing sit's L-09 record x-mirrored (to 0.1 unit), a flipped marking; it is now authored from badger_coat_right.png's own R-08 (35.2% down the forearm, coat_right's own size and tilt, on the far leg's front edge) and src/characters/badger/tests/spotsNoMirror.test.ts fails on any record that is the x-mirror of another (midline M- marks in the two facings of one pose excepted). Both poses keep working; BADGER_PROVISIONAL_POSES (src/characters/badger/provisional.ts, exported from the badger index) lists them so tools can warn, and the sheets should label them provisional until the owner accepts. walk and lookUp are built on both side rigs as before. Round 4: the left sit / lie L-09 (near forearm) are placed from coat_left's OWN forearm numbers (37.2% down from the elbow tip, 38.5% across from the front contour, coat_left's size and tilt; dev/trace/coatmaps.py), no longer at the right poses' R-08 centres (0.6 / 0.8 units from an x-mirror), and the test also catches moved or rescaled mirrors (BADGER-D49). The silhouette question is unchanged: still PROVISIONAL until the owner answers.",
 			why: "v1.0.0 silently rendered the right-facing body for view left, turning Badger away from Zoo and swapping his visible markings mid-scene. A dedicated left trace would be an invented drawing (no panel exists). The mirrored silhouette is not symmetric anatomy: the head and neck turn, the folded haunch and the tail curl are asymmetric, so under the binding rule 'never horizontally flip an asymmetric character' it needs the owner's acceptance before it is final. The markings are never flipped (round-3 test).",
 		},
 		{
@@ -565,7 +566,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			sheetShowed:
 				'No panel; CLAUDE.md records the owner\'s request that Badger\'s mouth and ears animate from real-dog sound clips through a mouth-open control, with no redesign.',
 			chosen:
-				'Optional prop mouthOpen (0..1) on <Badger/>: each head view\'s own open-mouth drawing (the shocked mouth) grows down from the upper lip with the amount, the jaw line stays, and the ears lift slightly. Below 0.06 the expression\'s own mouth is shown. Nothing renamed.',
+				'Optional prop mouthOpen (0..1) on <Badger/>: each head view\'s own open-mouth drawing (the shocked mouth) grows down from the upper lip with the amount, the jaw line stays, and the ears lift slightly. Below 0.06 the expression\'s own mouth is shown. Nothing renamed. Round 4: the profile and look-up heads drop the jaw instead (BADGER-D54).',
 			why: 'Owner request; reuses the approved shapes only.',
 		},
 		{
@@ -589,7 +590,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			sheetShowed:
 				'The happy panel\'s inset carries the tail high in an upward curve; the art guide asks for breathing of a few px at proof scale.',
 			chosen:
-				'With expression happy the side views carry the tail at least 32 deg above the stand (the wag stays restrained). Breathing scales the chest by 1.5% (was 0.6%), about 2 px at the proof scale.',
+				'REVISED in round 4 (R3 review: at 32 deg the tail still hung 25 deg BELOW horizontal, root to tip): with expression happy the side views carry the tail 85 deg above the stand plus a 10 deg curl toward the tip (SidePose.tailCurl), an upward sickle whose root-to-tip chord is 37 deg (left rig) / 39 deg (right rig) ABOVE horizontal with the tip turned up, as the inset draws it; the restrained wag (tailWag) rides on top. Breathing scales the chest by 1.5% (was 0.6%), about 2 px at the proof scale.',
 			why: 'Pose and expression drawings show the performance; the old breathing was sub-pixel.',
 		},
 		{
@@ -637,7 +638,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			sheetShowed:
 				'badger_pose_looking_up.png: a long lip line inside the muzzle from just under the nose back over about 60% of the muzzle, parallel to the jaw\'s lower contour; a short diagonal cheek mark below the ear; one smooth throat line from the jaw angle to the collar.',
 			chosen:
-				'Round 2 (gen_heads.py build_up; the lip line was moved in round 3, see BADGER-D44): each look-up head draws the lip line 4.5 units inside the pitched jaw contour from 7% to 62% of its length (happy curls its end up, worried down; shocked keeps its open wedge), no commissure hook, a cheek mark placed from the eye as on the panel, and a throat that leaves the jaw along its chord and lands tangent to the neck\'s throat line (no S-curve). The throat still bows slightly forward where it meets the neck: the side rigs\' neck front line sits forward of the raised jaw, so a fully concave throat needs a dedicated look-up neck pose.',
+				'Round 2 (gen_heads.py build_up; the lip line was moved in round 3, see BADGER-D44): each look-up head draws the lip line 4.5 units inside the pitched jaw contour from 7% to 62% of its length (happy curls its end up, worried down; shocked keeps its open wedge), no commissure hook, a cheek mark placed from the eye as on the panel, and a throat that leaves the jaw along its chord and lands tangent to the neck\'s throat line (no S-curve). The throat still bows slightly forward where it meets the neck: the side rigs\' neck front line sits forward of the raised jaw, so a fully concave throat needs a dedicated look-up neck pose. Round 4: done, see BADGER-D51 (dedicated look-up neck, one nape line, one concave throat).',
 			why: 'The reviewers found no lip line, a cheek dash that read as a smile on the throat, a commissure hook and an S-shaped throat with a bump.',
 		},
 		{
@@ -676,7 +677,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			id: 'BADGER-D44-look-up-lip',
 			sheetShowed: 'badger_pose_looking_up.png: a thin lip line clearly apart from the muzzle contour, starting a little behind the nose.',
 			chosen:
-				'Round 3 (gen_heads.py build_up): the lip line runs 8.5 units inside the pitched jaw contour (was 4.5), from 6 units behind the nose tip, at detail weight (LINE.detailWidth); the happy / worried curls follow it. The throat is unchanged: a single concave throat still needs a look-up neck front line (the side rigs\' neck front sits forward of the raised jaw), so it still bows slightly where it meets the neck.',
+				'Round 3 (gen_heads.py build_up): the lip line runs 8.5 units inside the pitched jaw contour (was 4.5), from 6 units behind the nose tip, at detail weight (LINE.detailWidth); the happy / worried curls follow it. The throat is unchanged: a single concave throat still needs a look-up neck front line (the side rigs\' neck front sits forward of the raised jaw), so it still bows slightly where it meets the neck. Round 4: superseded for the throat and nape by BADGER-D51.',
 			why: 'At the proof scale the old lip line merged with the contour into one thick doubled muzzle outline.',
 		},
 		{
@@ -693,6 +694,78 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			chosen:
 				'Round 3 (gen_views.py): the inner contours of both forelegs and the far-hind strip of the front view are least-squares refitted (x = cubic(y), resampled; the ends that meet other contours keep their traced positions); the back view loses its hind-paw toe lines and its skull sides stop where the neck lines take over along the same tangent (the traced hook at (95..99, 105..107) and the corner at (175, 108) are gone).',
 			why: 'The R2 review found tracing wobbles, notches and a foot hook on the front legs and hooked jogs at the back view\'s neck.',
+		},
+		{
+			id: 'BADGER-D47-left-nape',
+			sheetShowed:
+				"badger_coat_left.png: the neck's back line leaves the dark ear at the ear's lower-back corner and runs to the collar; the occiput stays under the ear; the jaw line runs on from under the nose.",
+			chosen:
+				"Round 4 (gen_left.py NAPE_J / NAPE_BACK, gen_heads.py NAPE_L_J / PL_OCCIPUT / PL_BACK_STROKE): the left rig's neck back stroke starts about 12 px up INSIDE the dark ear and leaves it at NAPE_J (187, 76) coat_left px, the ear's lower-back corner; the neck fill's back edge is that stroke's centre line. profileLeftScreen's skull fill comes down from the occiput into the same point and tucks inside the neck line, and the head strokes its back edge from under the crown to there, so the ear (drawn later) hides every join and a folded ear (worried, judge, earsBack 1) uncovers an outlined occiput, not an open edge. Same pass on the left profile and up-left heads: the jaw line now starts inside the nose, tangent into the chin curve (it began 2-3 units below the nose, a bare gap), and the skull fill's chin follows the jaw stroke (it bulged up to 1.5 px past it, a pale sliver). Seal check (coat touching background with no outline between, 1.9 px/u): 0 px on the left stand with profileLeftScreen and on all 8 left walk phases.",
+			why: "The R3 review (major) found no outline pixel at rows 385-388 of the left profile's nape (3.2 px/u) and coat poking up to 3 units outside the line, in every frame of a left walk, the facing Badger walks toward Zoo in.",
+		},
+		{
+			id: 'BADGER-D48-forearm-spots-from-own-maps',
+			sheetShowed:
+				"badger_pose_walking.png shows the far forearm's spot where it wraps round the leg's back contour. badger_coat_left.png puts L-09 37.2% down its forearm (elbow tip to wrist cut) and 38.5% across from the front contour (7.6 x 12.2 px, tilted 1.8 deg back); badger_coat_right.png puts R-08 35.7% down and 41.0% across (8.0 x 12.2 px, 1.6 deg).",
+			chosen:
+				"Round 4 (dev/trace/coatmaps.py, gen_left.py, gen_right.py, gen_poses.py, parts/Leg.tsx, parts/SideBody.tsx): every forearm record is placed from its OWN coat map's measured place, size and tilt. The side rigs' far forelegs carry ONE edge record each: R-08 on the left rig's far (right) forearm, L-09 on the right rig's far (left) forearm, where the mark wraps round the leg's back contour (centre 2.3 units inside it, across-axis foreshortened to 0.70); far legs accept edge records only (LEFT_SPOTS now includes R-08, RIGHT_SPOTS L-09). The left sit and lie place L-09 by coat_left's fractions on their own forearms.",
+			why: "The R3 review found the side stand and walk far forelegs plain where the walking panel draws the edge spot, and SIT_LEFT / LIE_LEFT L-09 sharing the right poses' R-08 centres (0.6 / 0.8 units from an x-mirror).",
+		},
+		{
+			id: 'BADGER-D49-near-mirror-test',
+			sheetShowed:
+				"No panel: the binding rule is that no marking is horizontally flipped to make another view.",
+			chosen:
+				"Round 4 (tests/spotsNoMirror.test.ts): besides exact in-place x-mirrors (0.25 units), the test fails on NEAR mirrors: two records of the same pose family and matching part (legFrontLeft <-> Right and so on) whose centres sit within 20 units of each other's mirror place and whose paths come within 1.0 unit of an x-mirror, in place or after centring and scaling (size ratio up to 1.3), unless the pair is on COAT_MAP_SYMMETRIC with the coat-map evidence. Two pairs are listed: SIT_LEFT L-01 / SIT R-02 (0.14 units; the mid-back spot both maps draw alike) and SIT_LEFT L-09 / SIT R-08 (0.65 units; both placed from their own maps' forearm fractions). A stale allow-list entry fails too, and fixtures re-create the round-3 copies (SIT_LEFT L-09 / SIT R-08, LIE_LEFT L-09 / LIE R-08, SIT_LEFT L-04 / SIT R-03), which must be caught. node --test: 6 / 6 pass.",
+			why: "The R3 review showed the round-3 guard only caught exact copies: a flipped record moved by more than 0.25 units or slightly rescaled passed.",
+		},
+		{
+			id: 'BADGER-D50-pose-spots-whole',
+			sheetShowed:
+				"badger_pose_sitting.png, badger_pose_lying.png and badger_coat_left.png draw every spot whole.",
+			chosen:
+				"Round 4 (gen_poses.py): no pose spot is cut by a later part's unstroked edge. Occlusion check before / after: sit R-01 10% under the haunch -> 0, sit L-09 30% under the torso -> 0, lie R-01 3% -> 0, sitLeft L-02 12% / L-04 62% / R-08 22% -> 0, lieLeft L-02 9% / L-04 36% -> 0; lieLeft L-06 no longer straddles the thigh line. The right sit's sliced croup spot is R-01 (the review called it R-03; R-03 was never covered): it moves to where the sitting panel draws it. The left sit's L-02 / L-04 and the left lie's L-04 sit fully on the torso and L-06 inside the thigh, as coat_left places them, each with coat_left's own size and tilt turned by the pose's turn of that body region. The right sit's torso corner over the far foreleg rises from (240, 282) to (241, 266) panel px so the far forearm's edge mark is no longer cut along it.",
+			why: "The R3 review found spots sliced along unstroked part edges in both sits and the left lie, reading as half-moons.",
+		},
+		{
+			id: 'BADGER-D51-look-up-neck',
+			sheetShowed:
+				"badger_pose_looking_up.png: one smooth nape line from under the hanging ear to the collar and one concave throat line from the jaw angle to the collar.",
+			chosen:
+				"Round 4 (gen_heads.py _neck_up, Head.tsx neckUp, SideBody): each look-up head carries a dedicated look-up neck for its own rig. Nape: ONE cubic from the point where the skull's back contour is still 3.5 units under the hanging ear (the join hidden by the ear) to where the neck's back line goes under the collar, leaving along the contour and arriving along the neck line; the wedge between it and the skull's lower back edge is neck fill (a fillet into the old neck line, tried first, read as an occiput knob over a dent). Throat: one concave cubic from the jaw angle to where the rig's throat line enters the collar. SideBody draws this neck instead of the rig's, and draws its part above the collar's centre line again after the torso (strokes stopping 2.5 units under the collar), so the torso's back-stroke start, which the 20 deg left look-up neck turn exposed above the collar as a stray tick in every frame, stays behind the neck. Seal check: 0 px on both look-ups. An up head on the OTHER rig (cross-facing) keeps the rig neck.",
+			why: "The R3 review found a round-capped stub and Z step at the nape (47 frames of the proof's look-up beat) and a throat that kinked at the jaw and bowed convex.",
+		},
+		{
+			id: 'BADGER-D52-front-mouths',
+			sheetShowed:
+				"badger_expr_worried.png: a closed lens mouth narrower than a bar, drooping corners, the lower lip close under the upper, the cheek lines running into the corners. badger_expr_happy.png: a smooth face contour running on into the neck, single-line smile curls.",
+			chosen:
+				"Round 4 (gen_heads.py FRONT mouth): worried is the neutral construction with the corners 2.5 units lower and 4 px further in each side (59 NF px wide against the old bar's 91), the lower lip 7 px under the corners, the cheek contours running into the corners, no floating frown. Happy loses the jaw stubs and the separate end curls: each curl is the smile stroke itself, continued 9.5 px up along its own curvature (tangent-continuous). Where the front head sits on a SIDE rig (the default left view) its jaw edge meets the background, not the front neck, so the happy mouth carries sideStrokes, one stroke from each cheek's end down the neutral jaw line, along the lower-lip arc and up the other side, drawn only when Head is mounted (prop mounted, set by SideBody); the bust and the front view keep the panel's open lower face. Seal check, happy on the side rigs: 400-500 px of open jaw edge -> 29-35 px (the same small jaw / neck junction that neutral and worried have).",
+			why: "The R3 review found the worried mouth a box-jaw bar with a floating frown, and happy's jaw stubs and knob curls; dropping the stubs alone opened the side-mounted happy face (found by this round's seal check).",
+		},
+		{
+			id: 'BADGER-D53-three-quarter-far-eye',
+			sheetShowed:
+				"badger_turn_34.png: the far eye is a full almond with white between it and the far contour; the bridge is a thin line; the near cheek contour comes out from under the near ear.",
+			chosen:
+				"Round 4 (gen_heads.py rebuild_three_quarter, TQ_FAR_EYE_IN, TQ_BRIDGE, TQ_NEAR_CHEEK, Head.tsx): both 3/4 heads move the far eye and brow 2.5 units inward so white shows past the iris, draw the bridge at detail weight (LINE.detailWidth) and shorten it at the far eye, and start the near cheek stroke under the near ear (its cap is hidden by the ear); the fill's near edge follows the cheek and ear so no background wedge shows between the pale ear and the face.",
+			why: "The R3 review found the far eye fused into the far contour, a full-weight bridge boxing it in, and a round-cap tick at the near ear's corner.",
+		},
+		{
+			id: 'BADGER-D54-profile-jaw-drop',
+			sheetShowed:
+				"No panel; the owner asked for Badger's mouth to animate from real-dog sound clips (mouthOpen), and the side views carry many of them.",
+			chosen:
+				"Round 4 (gen_heads.py _jaw, Head.tsx jawDrop): profile and look-up heads drop the jaw for mouthOpen. The lower jaw is the lens between the mouth line (one cubic from the commissure to the lip front under the nose) and the jaw's underside (the skull's own lower stroke); it rotates about the commissure by 14 deg x lerp(0.3, 1, amount), front down (7.1 / 10.1 / 14 deg at 0.3 / 0.6 / 1). The gap between the fixed mouth line and the rotated one is the open mouth (mouth colour, the tongue riding on the jaw, outlined, its front edge bowing in); the rotated jaw is filled and its underside stroked. The shocked expression keeps its own wedge. Front and 3/4 heads keep growing their own open mouth (D31).",
+			why: "The R3 review found the profile and up heads' sound-clip mouth a thin wedge inside an unchanged muzzle: at mouthOpen 1 it read as a thick lip line, not a bark.",
+		},
+		{
+			id: 'BADGER-D55-head-scale',
+			sheetShowed:
+				"At one body scale the turnaround side head measures 181 px ear-back to nose against 162 for the rig's profile head (coat_right itself draws its head 7% shorter than turn_side); the front head's eye spacing is 57.2 units against 49.4 on badger_turn_front.png but within about 5% of the size panel; crown-to-eye is 45.0 units on the front head and 30.4 on the profile (ratio 0.68, turnaround 0.83).",
+			chosen:
+				"RECORDED in round 4, rescale NOT done: per the reference priority the TURNAROUND controls head size relative to the body (identity and anatomy), and the size panel controls only the overall scale (Zoo against Badger, D01). By that rule the profile, walk and look-up heads are about 10% small against turn_side and the front and 3/4 heads about 16% wide against turn_front, so the target is the turnaround: profiles x1.10 (the up heads follow), front and 3/4 heads about x0.86 in width. Deferred because every head is joined to its rig at measured junctions (left nape NAPE_J, profile throats, the look-up necks, the turned-head napes of D37) and mounted with tuned offsets, and the proof's swap continuity has to be re-measured after any change, which the integrator owns.",
+			why: "The R3 review asked for this decision to be recorded first; recording it without the rescale keeps the delivered proof's swaps stable for this round.",
 		},
 	],
 };

@@ -6,6 +6,13 @@
   round 2) comes from composer/voicegate.py; `voice.indexMinusSsn` is reported (severity "info") and
   the pocket number stays as a warning. The bed loudness window opens to -28 LUFS-S for the beds that
   master 1.5 LU under the others (phone balance).
+- standalone (the theme's full and 15 s cuts): -16 LUFS-I (STANDALONE_LUFS) instead of the engine's -14.
+  Critic round 2 set the acceptance at master-limiter gain reduction <= 4 dB (over 1 dB for at most 8 %
+  of the cue) with Badger within 3 dB of the motif on a phone, and offered -15 as the fallback. At -15
+  the limiter still took 4.8 dB off theme-full's coda button and worked over 1 dB for 10.6 % of
+  theme-15s; at -16 it takes 3.7 and 3.2 dB (1.5 % and 6.3 %). The theme cuts now sit at the stings'
+  -16 LUFS-I. On YouTube a -16 upload plays 2 LU under -14 programme (loud uploads are turned down,
+  quiet ones are not turned up); inside an episode the renderer sets its level anyway.
 - endscreen: the end-screen music with nobody speaking, -18 LUFS-I (the standalone checks, at -18).
 - standalone and endscreen: `aac.truePeak128k` <= -1.0 dBTP after an AAC 128 kb/s encode (critic round
   1: the theme mastered at -1.3 dBTP read -0.3 after AAC); stings report it as a warning (-0.5).
@@ -33,6 +40,7 @@ VOICE_CHECKS = [
     {"id": "voice.indexMinusSsn", "min": 0.0, "severity": "info",
      "why": "information only: against speech-shaped noise at the same loudness (critic round 2: structurally easy with a split duck)"},
 ]
+STANDALONE_LUFS = -16.0  # the theme cuts' loudness target (composer/cues/theme.py THEME_LUFS) and check window centre
 QUIET_BED_MIN_LUFS = -28.0  # the engine's bed window is -27 to -25 LUFS-S; the curious bed masters at -27.5 (phone balance)
 AAC_FAIL = {"id": "aac.truePeak128k", "max": -1.0, "severity": "fail", "why": "true peak after AAC 128 kb/s (YouTube re-encodes): lossy overshoot must stay under -1 dBTP"}
 AAC_WARN = {"id": "aac.truePeak128k", "max": -0.5, "severity": "warn", "why": "true peak after AAC 128 kb/s (YouTube re-encodes)"}
@@ -60,6 +68,10 @@ def music_targets(engine: dict | None = None) -> dict:
             c.update({"min": -18.5, "max": -17.5, "why": "-18 LUFS-I: 4 LU under -14 LUFS narration, music on its own under an end screen"})
     end["checks"].append({"id": "silence.tailEndDbfs", "max": -60.0, "severity": "fail", "why": "it ends with the video: a clean ending, not a cut"})
     prof["endscreen"] = end
+    for c in prof["standalone"]["checks"]:
+        if c["id"] == "loudness.integrated":
+            c.update({"min": STANDALONE_LUFS - 0.5, "max": STANDALONE_LUFS + 0.5,
+                      "why": f"{STANDALONE_LUFS:g} LUFS-I: the theme cuts master 2 LU under -14 so the limiter keeps the hits and Badger (critic round 2)"})
     prof["standalone"]["checks"].append(dict(AAC_FAIL))
     prof["endscreen"]["checks"].append(dict(AAC_FAIL))
     prof["sting"]["checks"].append(dict(AAC_WARN))

@@ -340,11 +340,18 @@ def _process_strips(engine: Mix, strips: list) -> list:
     return [(out, rep) for _, out, rep in res]
 
 
-def shave_peaks(audio, shave_db: float, kind: str = "limit", release_ms: float = 60.0, lookahead_ms: float = 3.0) -> np.ndarray:
+def shave_peaks(audio, shave_db: float = 0.0, kind: str = "limit", release_ms: float = 60.0, lookahead_ms: float = 3.0,
+                max_plr_db: float | None = None) -> np.ndarray:
     """Take `shave_db` off a stem's highest peaks, relative to its own peak (so it does not depend on
     the stem's level); the strip's gain staging then restores the stem's loudness. Used where a sparse
     part's transients, stacked on a hit, would otherwise drive the master limiter and pull the whole
     mix down on that hit (critic round 1: Badger's figure).
+
+    `max_plr_db` (critic round 2) sets the amount from the stem's own loudness instead: every transient
+    more than max_plr_db above the stem's integrated loudness (its peak-to-loudness ratio) is brought
+    down to it. A relative-to-peak shave only touches the loudest hit of a stem; this touches every
+    hit that sticks out (each drum hit's attack, each pluck), which is what drives the master limiter
+    when many parts hit together. Nothing happens to a stem already within the ratio.
 
     kind "limit": a true-peak look-ahead limiter (pedalboard BrickwallLimiter), for pitched parts;
     "clip": oversampled tanh soft clipping (dsp.saturate), for clicks too short for a limiter to
@@ -352,6 +359,9 @@ def shave_peaks(audio, shave_db: float, kind: str = "limit", release_ms: float =
     its anti-alias filter rings back up to about 1.5 dB)."""
     a = np.asarray(audio, dtype=np.float64)
     pk = float(np.max(np.abs(a))) if a.size else 0.0
+    if max_plr_db is not None and pk > 0:
+        lu = loudness.integrated(a)
+        shave_db = max(0.0, 20 * math.log10(pk) - (lu + max_plr_db)) if math.isfinite(lu) else 0.0
     if shave_db <= 0 or pk <= 0:
         return a
     if kind == "clip":

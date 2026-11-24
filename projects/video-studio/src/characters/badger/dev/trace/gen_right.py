@@ -145,8 +145,13 @@ bot_edge = [(464, 179.5), (456, 174.5), (448, 169.5), (440, 162.5), (432, 155.5)
 mid_edge = [(410, 128.5), (424, 140.5), (440, 155), (456, 167.5), (468, 172.5)]
 collar_shadow = mid_edge + [(480, 175, 'c')] + [(480, 179, 'c')] + bot_edge + [(402, 131, 'c'), (403, 128, 'c')]
 tag_ring = [(474, 180), (473, 185), (477, 188), (481, 185), (479, 180)]
-tag = blob(477, 198, 6.2, 9.6, -3)
-tag_shadow = [(479.5, 190.5), (483, 196), (483, 203), (479, 207.5, 'c'), (480.5, 202), (480.5, 195)]
+# Round 4 (R3 review minor): the side-view tag was an elongated oval (teal width / height 0.55 in the right stand, walk and
+# look-up, against 0.63-0.82 on turn_side, coat_right, walking and looking_up; spec: ONE small ROUND teal tag). Widened
+# from 6.2 to 7.7 px half-width, same height, so the teal reads 0.72 wide/high; the shading crescent widens with it.
+TAG_RX, TAG_RX_R3 = 7.7, 6.2
+tag = blob(477, 198, TAG_RX, 9.6, -3)
+tag_shadow = [(477 + (x - 477) * TAG_RX / TAG_RX_R3, y, *rest) for (x, y, *rest) in
+              [(479.5, 190.5), (483, 196), (483, 203), (479, 207.5, 'c'), (480.5, 202), (480.5, 195)]]
 neck = {
     **seg(neck_fill, [nb, nt], NECK_O),
     'headMount': rnd(sub(W(*HEAD_MOUNT), W(*NECK_O))),

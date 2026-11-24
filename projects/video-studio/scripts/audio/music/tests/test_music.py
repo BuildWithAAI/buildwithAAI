@@ -355,6 +355,12 @@ def C_PK(f, db, q):
     return C.PK(f, db, q)
 
 
+def C_LP(f, order):
+    from composer.cues import common as C
+
+    return C.LP(f, order)
+
+
 class MixAutomationTests(unittest.TestCase):
     """Peak shaving (Badger's tracks) and the bus ride (theme-full's arc), critic round 1."""
 
@@ -419,11 +425,16 @@ class MixAutomationTests(unittest.TestCase):
         tr = {t.name: t for t in theme.arrangement("theme-15s", "15s").tracks}
         self.assertEqual(tr["badger_xstick"].peak_shave, theme.BADGER_XSTICK_SHAVE)
         self.assertEqual(tr["badger_mid"].peak_shave, theme.BADGER_MID_SHAVE)
-        # critic round 2: the double at +11 dB drove the master limiter to 8-10 dB on Badger's notes
+        # critic round 2: the double at +11 dB drove the master limiter to 8-10 dB on Badger's notes. Its
+        # compressor and 1.5 kHz lift are the critic's; the level is the measured one (+10 dB: within 3 dB of
+        # the motif on the phone model, master limiter under 4 dB)
         mid = tr["badger_mid"]
-        self.assertEqual(mid.fader_db, 5.0)
+        self.assertEqual(mid.fader_db, theme.BADGER_MID_DB)
+        self.assertLess(theme.BADGER_MID_DB, 11.0)
         self.assertEqual((mid.comp.threshold_db, mid.comp.ratio, mid.comp.attack_ms), (-24.0, 4.0, 0.5))
         self.assertIn(C_PK(1500, 4.0, 1.0), mid.eq)
+        self.assertEqual(tr["badger_xstick"].fader_db, theme.BADGER_XSTICK_DB)
+        self.assertIn(C_LP(theme.BADGER_XSTICK_LP, 2), tr["badger_xstick"].eq)
         self.assertGreaterEqual(db["A' lift"] - db["A'"], 1.0)  # the lift into A's last phrase
         self.assertLessEqual(db["turnaround"] - db["A' lift"], -1.0)  # and the breath before the coda
 
@@ -796,6 +807,34 @@ class RegistryTests(unittest.TestCase):
         sections = [tuple(frozenset(bars.get(b, ())) for b in range(k * 8, k * 8 + 8)) for k in range(3)]
         self.assertEqual(len(set(sections)), 3)
         self.assertGreaterEqual(len({frozenset(v) for v in bars.values()}), 10)
+
+    def test_band_dynamics_and_theme_loudness(self):
+        """Critic round 2: the stacked hits drove the master limiter to 6-10 dB. Band cues compress the
+        drums and stabs fast and hold the piano's hammer peaks; beds keep their own settings; the theme
+        cuts master at -16 LUFS-I and are checked there."""
+        from composer.cues import show_cues, theme
+
+        for cid in ("theme-full", "theme-15s", "theme-5s", "bumper-red-flag", "endscreen-music"):
+            tr = {t.name: t for t in self.arrangements[cid].tracks}
+            for name, comp in theme.BAND_COMPS.items():
+                if name in tr:
+                    self.assertEqual((tr[name].comp.threshold_db, tr[name].comp.ratio, tr[name].comp.attack_ms),
+                                     (comp["threshold_db"], comp["ratio"], comp["attack_ms"]), f"{cid} {name}")
+            self.assertEqual(tr["piano"].peak_shave, theme.BAND_PEAK_SHAVE["piano"], cid)
+        self.assertIn("claps", theme.BAND_COMPS)
+        for cid in ("endscreen-bed", "bed-show-neutral"):  # beds: no band peak control on the piano
+            tr = {t.name: t for t in self.arrangements[cid].tracks}
+            if "piano" in tr:
+                self.assertIsNone(tr["piano"].peak_shave, cid)
+        self.assertEqual(theme.THEME_LUFS, targets.STANDALONE_LUFS)
+        for cid in ("theme-full", "theme-15s"):
+            self.assertEqual(self.arrangements[cid].target_lufs, theme.THEME_LUFS, cid)
+        win = {c["id"]: c for c in targets.music_targets()["profiles"]["standalone"]["checks"]}["loudness.integrated"]
+        self.assertEqual((win["min"], win["max"]), (targets.STANDALONE_LUFS - 0.5, targets.STANDALONE_LUFS + 0.5))
+        # the red-flag bumper's cross-stick track carries its deadpan click too: 2 dB under the theme's
+        rf = {t.name: t for t in self.arrangements["bumper-red-flag"].tracks}
+        self.assertEqual(rf["badger_xstick"].fader_db, theme.BADGER_XSTICK_DB - 2.0)
+        self.assertTrue(callable(show_cues.red_flag))
 
     def test_badger_has_a_mid_register_double_and_his_own_cross_stick(self):
         for cid in ("theme-full", "theme-15s", "theme-5s", "intro-sting-show", "bumper-red-flag"):

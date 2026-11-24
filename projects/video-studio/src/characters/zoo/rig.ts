@@ -109,10 +109,13 @@ export const ARM_POINT_MID: ArmAngles = {shoulder: -24, elbow: -90, wrist: 5};
  */
 export const POINT_HAND_SWITCH = 0.4;
 /**
- * poseAmount from which the relaxed hand is replaced by the loose fist until POINT_HAND_SWITCH (round 2: 0.08, while the
- * forearm is still ~50 deg below horizontal, so no open hand dangles on the way out; round 1: 0.28).
+ * poseAmount from which the pointing arm shows the loose fist whatever its joint angles (a backstop; repair round 4,
+ * ZOO-P6). The swap from the relaxed hand is driven by the forearm's swing (POINT_FIST_SWING, pointHandFor), which closes
+ * the hand at poseAmount ~0.012 on the proof track and keeps it closed on the way down until the arm is near the hang.
+ * Round 2-3: 0.08, as the only rule (so the open hand came back while the forearm was still swung out on the lowering);
+ * round 1: 0.28.
  */
-export const POINT_HAND_CURL = 0.08;
+export const POINT_HAND_CURL = 0.2;
 /**
  * pose="point" defaults (used only when the caller does not pass lookX / headTilt): the eyes and head lean toward the
  * point, scaled by poseAmount (zoo_pose_point.png angles the head toward the hand).
@@ -219,7 +222,7 @@ export const POINT_FIST_SWING = 16;
 export const pointHandFor = (poseAmount: number, ang: ArmAngles): 'relaxed' | 'curl' | 'point' => {
 	if (poseAmount >= POINT_HAND_SWITCH) return 'point';
 	const swing = -(ang.shoulder + ang.elbow);
-	return swing >= POINT_FIST_SWING || poseAmount >= 0.2 ? 'curl' : 'relaxed';
+	return swing >= POINT_FIST_SWING || poseAmount >= POINT_HAND_CURL ? 'curl' : 'relaxed';
 };
 
 /** Options for armAnglesFor. */

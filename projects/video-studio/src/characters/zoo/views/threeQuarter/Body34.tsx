@@ -164,19 +164,37 @@ const NEAR_HAND: HandDrawingSpec = {
 		[[-69.8, -353.4], [-70.4, -365], [-71, -376]],
 	],
 };
+/**
+ * Far hand, repair round 4 (decision ZOO-V9; zoo_turn_34.png skin runs scanned row by row): the curled fingers now end in
+ * separate rounded tips at the lower left, as on the sheet: the middle finger runs diagonally down to a tip at (64, -339),
+ * the index tip sits above it at (64, -350), and the THUMB's tip shows between them and the fold (its lower edge is the
+ * crease that continues up the fold to the knuckles). The little-finger side ends lowest (~-332). The creases are tapered
+ * warm-brown lines (round 3: one untapered fold line and two short ticks, with a 33 u wide back of the hand; now ~31 u,
+ * the sheet's 30).
+ */
 const FAR_HAND: HandDrawingSpec = {
 	outline: [
-		[74.8, -424], [99.4, -424], [101.6, -412], [102.6, -400], [103, -390], [102.6, -378], [101.6, -367], [98.8, -358.4], [96.4, -352.6],
-		[93.6, -347.2], [90.4, -342.6], [86.4, -338.4], [81.6, -335], [77.6, -332.8], [74, -333.8], [71.2, -336.6, 'c'], [67, -337],
-		[64.6, -339.6], [65, -343], [68.6, -344.8, 'c'], [65.6, -346.6], [64.4, -349.4], [65.6, -352.4], [68.8, -353.6], [71, -355.4, 'c'],
-		[70.8, -362], [70.6, -372], [70.4, -384], [70.6, -398], [72, -406], [73.4, -412],
+		[73.4, -424], [97.6, -424], [98.2, -412], [99.6, -402], [100.6, -394], [101.4, -386], [102.6, -379], [103.1, -373], [102.6, -368],
+		[100.8, -364], [99.4, -360], [98, -356], [96.2, -351.6], [94.2, -347.6], [91.6, -343.8], [88.6, -340.4], [85.2, -337], [81.4, -334],
+		[77.6, -332], [74.6, -331.8], [72.4, -333.4], [71.6, -336.4],
+		// the middle finger's tip
+		[69.6, -336], [66.6, -336.2], [64.2, -337.8], [63.6, -340.6], [64.6, -343.4], [66.8, -345.4],
+		// the index tip
+		[64.6, -347], [63.8, -349.6], [64.4, -352.4], [66.4, -354.4], [69.2, -354.8],
+		// up the thumb's outer edge and the side of the hand
+		[70.4, -357.4], [69.6, -361], [69.4, -366], [69.6, -372], [70.2, -380], [70.6, -390], [71.2, -400], [72.2, -408], [73, -416],
 	],
 	shadow: [[110, -426], [97.4, -424], [98, -404], [97.8, -384], [96, -368], [110, -362]],
 	lines: [
-		[[86.2, -384], [84.6, -372], [82.4, -362], [79, -353.4], [74.8, -347.4], [71.2, -344.8]],
-		[[68.6, -344.8], [73, -343.8], [77.6, -341.4]],
-		[[71.2, -336.6], [75.4, -337.6], [79.6, -340.2]],
+		// the thumb tip's lower edge, continuing up the fold toward the knuckles
+		[[69.8, -355.4], [72.6, -352.8], [75.8, -352.6], [78, -354.6], [79.6, -358.4], [81.2, -364.4], [83.2, -372.4], [85.4, -381]],
+		// between the middle finger and the little-finger side
+		[[71.6, -336.4], [73.8, -340], [77.2, -344], [80.8, -348], [83.6, -352.6], [85.6, -357.6]],
+		// under the index tip
+		[[66.8, -345.4], [69.6, -346.2], [72.8, -348.4]],
 	],
+	lineWidth: ZOO_LINE.detail * 1.15,
+	taper: 0.45,
 };
 
 export const FarArm34: React.FC = () => (

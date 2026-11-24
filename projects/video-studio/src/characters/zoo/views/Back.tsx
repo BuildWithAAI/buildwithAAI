@@ -41,7 +41,7 @@ const HAIR: Pt[] = [
 	[-17.6, -892.4], [-12.4, -895.6], [-7, -898.6],
 ];
 /**
- * One flat shadow tone (repair round 2, zoo_turn_back.png). Repair round 4 (decision ZOO-H5; the sheet's back hair
+ * One flat shadow tone (repair round 2, zoo_turn_back.png). Repair round 4 (decision ZOO-H4; the sheet's back hair
  * classified into base / shadow / ink tones at 1 u): the locks read as FILLED shapes, base on top and hairShadow on the
  * underside, instead of ink lines over a flat cap.
  * - The nape (HAIR_SHADOW) starts under four ROUNDED lock ends of unequal length, at the sheet's positions: the far-left
@@ -182,12 +182,18 @@ const BACK_HAND_L: HandDrawingSpec = {
 		[-120.6, -369], [-120.8, -380], [-120.6, -394], [-120.8, -408],
 	],
 	shadow: [[-70, -420], [-95.6, -418], [-93.4, -404], [-92.6, -392], [-92.6, -380], [-93.4, -370], [-70, -366]],
+	// Repair round 4 (ZOO-V9): THREE separations, one from each notch between the four tip lobes up and back along the
+	// curled fingers (~14-17 u, tapered), as on the sheet; round 3 had two short ticks and let the fold line run into the
+	// middle notch, so only two partings read. The fold now stops above them.
 	lines: [
-		// where the curled fingers fold under the back of the hand (sheet: a soft curve from the knuckles to the tips)
-		[[-104.6, -378], [-102.8, -366], [-99, -354.6], [-94.6, -345.4], [-90.6, -339.6]],
-		[[-90.6, -353], [-93.6, -359.4], [-96.6, -365.6]],
-		[[-95.4, -331.6], [-99.4, -336.8], [-103.6, -341.6]],
+		// where the curled fingers fold under the back of the hand (sheet: a soft curve down from the knuckles)
+		[[-104.6, -378], [-103.4, -369], [-100.8, -359.6]],
+		[[-90.6, -353], [-94, -359.6], [-97.6, -365.8]],
+		[[-89, -338], [-93.2, -342.6], [-97.4, -347.8], [-101, -353.4]],
+		[[-95.4, -331.6], [-99.6, -336], [-103.8, -340.6], [-107.2, -345.6]],
 	],
+	lineWidth: ZOO_LINE.detail,
+	taper: 0.4,
 };
 const Arm: React.FC<{side: 1 | -1}> = ({side}) => {
 	const m = (p: Pt[]) => (side === 1 ? p : mirrorX(p, ARM_AXIS));

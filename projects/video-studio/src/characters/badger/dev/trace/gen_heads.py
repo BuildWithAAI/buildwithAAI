@@ -136,9 +136,19 @@ FRONT = {
         # back over the smile's end, read as knobs. badger_expr_happy.png has a smooth face contour (it runs on into the neck
         # line) and single-line curls: the stubs are gone and each curl is the smile stroke itself, continued 9.5 px up past
         # its end along its own curvature (tangent-continuous at (153, 183) / (263, 183), the tip leaning slightly out).
+        # round 4, second pass: dropping the stubs left the lower face OPEN wherever the front head sits on a SIDE rig (the
+        # default left view): there the face's jaw edge meets the background, not the front neck, and nothing stroked it
+        # (seal check: 400-500 px of coat touching background at 2.4 px/u, left and right rigs; neutral, worried and
+        # shocked close it with their own jaw lines). On side mounts only, happy carries the face contour smoothly past
+        # the jaw: ONE stroke from each cheek's end down the neutral mouth's jaw line, along the lower-lip arc and up the
+        # other side (tangent-continuous at every join, no free end). In the bust and the front view the jaw edge lies on
+        # the neck, so they keep the panel's open lower face (smile + lower-lip arc, no stub).
         'happy': {'strokes': ['M 150.8 173.5 C 150.9 176.5 151.6 179.6 153 183 C 157 196 164 207 175 211 C 187 215 199 213 208 206 '
                               'C 217 213 229 215 241 211 C 252 207 259 196 263 183 C 264.4 179.6 265.1 176.5 265.2 173.5'],
-                  'details': ['M 178 224.5 C 193 233.5 223 233.5 238 224.5'], 'fills': []},
+                  'details': ['M 178 224.5 C 193 233.5 223 233.5 238 224.5'], 'fills': [],
+                  # drawn only when the head is mounted on a SIDE rig (Head prop `mounted`), see the comment above
+                  'sideStrokes': ['M 129 175 C 137 190 147 204 160 214 C 166 218.2 172 221.6 178 224.5 C 193 233.5 223 233.5 238 224.5 '
+                                  'C 243.5 221.6 248 218.2 252 214 C 261 204 270 191 278 176']},
         # worried, round-4 repair (R3 review minor): it was a nearly straight bar right across the lower face, meeting both
         # cheek contours at hard corners (91 NF px wide against the neutral mouth's 67) with a short frown floating 14 px
         # below, so the lower face read as a box jaw. badger_expr_worried.png (column scans) draws the same closed LENS as
@@ -254,7 +264,9 @@ def build_from_front(src, fFace, fSkull, fEarR, fEarL, view, eye_w=(1.0, 1.0), e
         'eyes': [eye(e, eye_w[i]) for i, e in enumerate(src['eyes'])],
         'brows': [{'side': s, 'outer': pt(*o, fFace), 'mid': pt(*m, fFace), 'inner': pt(*i, fFace)} for (o, m, i, s) in src['brows']],
         'mouth': {k: {'strokes': [mp(d, fFace) for d in v['strokes']], 'details': [mp(d, fFace) for d in v['details']],
-                      'fills': [{'d': mp(d, fFace), 'color': c} for d, c in v['fills']]} for k, v in src['mouth'].items()},
+                      'fills': [{'d': mp(d, fFace), 'color': c} for d, c in v['fills']],
+                      **({'sideStrokes': [mp(d, fFace) for d in v['sideStrokes']]} if 'sideStrokes' in v else {})}
+                  for k, v in src['mouth'].items()},
         'earsFront': front,
     }
 
@@ -454,6 +466,9 @@ for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen'
     far_side = 'L' if theta > 0 else 'R'
     eye_w = (1.0, 0.86) if theta > 0 else (0.86, 1.0)
     heads[view] = build_from_front(FRONT, fFace, fSkull, fEarR, fEarL, view, eye_w=eye_w, ears_behind=(far_side,))
+    # the front head's side-mount jaw closure is drawn in front-face space; the 3/4 heads close their own jaw (chin line)
+    for _m in heads[view]['mouth'].values():
+        _m.pop('sideStrokes', None)
     # round-1 repair: the far ear shows its outer side only (badger_turn_34.png draws the far dark ear solid), and the
     # irises fill more of the almond, as on the sheet's 3/4 head
     for e in heads[view]['earsBehind']:
@@ -729,13 +744,18 @@ PL_OCCIPUT = 'C 193.6 60.2 193.4 66 191.4 69.4 C 190.1 71.6 188.4 73.6 187 76'
 _pl_crown_tail = _split(*PL_CROWN_BACK, 0.7)[1]
 PL_BACK_STROKE = ('M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f ' % (_pl_crown_tail[0] + _pl_crown_tail[1] + _pl_crown_tail[2]
                                                                     + _pl_crown_tail[3])) + PL_OCCIPUT
+# round 4: the jaw line starts inside the nose (tangent into the chin curve), and the skull fill's chin follows the jaw stroke exactly (it bulged up to
+# 1.5 px past it, a pale sliver outside the outline at the chin on every left profile and up-left frame)
+PL_JAW_START = 'M 44.5 90 C 45.1 92.5 45.3 97.6 46 99 '
 PROFILE_L = {
     'skull_fill': ('M 50 76 C 64 71 79 66 86 60 C 90 55 94 49 101 45 C 112 40 127 37 142 37 C 165 37 185 43 192 57 '
                    + PL_OCCIPUT + ' C 185.2 78.2 183.2 81.4 181.2 85.2 C 177.6 92.2 167.4 108.6 152 116 '
                    'C 140 120 132 122 126 122 C 118 119 108 118 96 118 '
-                   'C 80 119 64 117 54 112 C 47 108 45 100 46 92 C 46 85 47 79 50 76 Z'),
+                   'C 86.9 118 76.6 117.4 67 115 C 57 112 50 107 46 99 C 45.3 97.6 45.1 92.5 44.5 90 C 46 85 47 79 50 76 Z'),
     'skull_strokes': [_crown_under_ear(((142, 37), (165, 37), (185, 43), (192, 57)), 152) + ' C 127 37 112 40 101 45 C 94 49 90 55 86 60 C 79 66 64 71 49 77',
-                      'M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 119 120 123 122 127 124',
+                      # round 4: starts 6 px up, under the nose (drawn later), so no unstroked gap is left between the
+                      # nose's outline and the jaw line (it showed 2-3 units of bare fill edge on every left walk frame)
+                      PL_JAW_START + 'C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 119 120 123 122 127 124',
                       PL_BACK_STROKE],
     'details': ['M 154 101 C 151 107 146 111 139 114'],
     'nose': 'M 49 77.5 C 44 76.5 38 77.5 35 80.5 C 32.5 83.5 32.5 89 35.5 92 C 38 94.5 42 95 45 93.5 C 48 92 49.5 89 49.5 85.5 C 49.5 82 49.5 79.5 49 77.5 Z',
@@ -797,6 +817,86 @@ PROFILE_R = {
 }
 
 
+from erode import parse as _parse, bez as _bez  # noqa: E402 (also used by the look-up section below)
+
+
+def _smooth(pts):
+    """Dense sample list -> a smooth cubic path through every 3rd point (Catmull-Rom)."""
+    P = pts[::3] + ([pts[-1]] if (len(pts) - 1) % 3 else [])
+    out = ['M %.1f %.1f' % P[0]]
+    for i in range(len(P) - 1):
+        p0 = P[i - 1] if i else P[i]
+        p1, p2 = P[i], P[i + 1]
+        p3 = P[i + 2] if i + 2 < len(P) else p2
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        out.append('C %.1f %.1f %.1f %.1f %.1f %.1f' % (c1 + c2 + p2))
+    return ' '.join(out)
+
+
+def _unit(v):
+    L = math.hypot(v[0], v[1]) or 1
+    return (v[0] / L, v[1] / L)
+
+
+# --- Round-4 repair (R3 review minor): the profile and look-up heads' sound-clip mouth (mouthOpen) now DROPS THE JAW.
+# The lower jaw is the lens between the mouth line (commissure P -> lip front F, one cubic) and the jaw's underside
+# contour (F -> P, the skull's own lower stroke). Head.tsx rotates that lens about the commissure by `deg` x the amount
+# (front down), fills the gap between the fixed mouth line and the rotated one with the mouth colour (a wedge with its
+# vertex at the commissure, outlined, the tongue on the lower jaw inside it) and outlines the rotated underside, so the
+# chin visibly drops instead of the old thin wedge inside an unchanged muzzle.
+JAW_MAX_DEG = 14.0
+
+
+def _jaw(lower_stroke, wedge_vertex, f_t, lip_c1, lip_c2, deg):
+    """Jaw geometry in source px: P = the point of the lower stroke nearest the shocked wedge's vertex; F = the lower stroke
+    at parameter f_t of its first segment (just under the nose); lip = P -> F (one cubic, handles given); contour = the
+    lower stroke from F back to P; tongue = a crescent on the lip line (it rides on the lower jaw), 30-85 % along it."""
+    sub = _parse(lower_stroke)[0]
+    segs, p0 = [], sub['start']
+    for c, ps in sub['segs']:
+        segs.append((p0, ps[0], ps[1], ps[2]))
+        p0 = ps[2]
+    best = None
+    for si, s in enumerate(segs):
+        for k in range(201):
+            q_ = _bez(*s, k / 200)
+            dd = math.hypot(q_[0] - wedge_vertex[0], q_[1] - wedge_vertex[1])
+            if best is None or dd < best[0]:
+                best = (dd, si, k / 200)
+    _, si_p, t_p = best
+    _, first_rest = _split(*segs[0], f_t)
+    F = first_rest[0]
+    parts = [first_rest] + segs[1:si_p] if si_p > 0 else []
+    if si_p == 0:
+        (a, _b) = _split(*segs[0], t_p)
+        parts = [_split(*a, f_t / t_p)[1]]
+        P = a[3]
+    else:
+        head_, _tail = _split(*segs[si_p], t_p)
+        parts.append(head_)
+        P = head_[3]
+    contour = 'M %.2f %.2f ' % F + ' '.join('C %.2f %.2f %.2f %.2f %.2f %.2f' % (s[1] + s[2] + s[3]) for s in parts)
+    lip_pts = (P, lip_c1, lip_c2, F)
+    lip = 'M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f' % (P + lip_c1 + lip_c2 + F)
+    # tongue: on the lip line, bulging away from the lower jaw (toward the upper jaw) up to 3.2 px
+    lower_mid = _bez(*segs[min(1, len(segs) - 1)], 0.5)
+    top, bot = [], []
+    for k in range(12):
+        u = 0.30 + 0.55 * k / 11
+        a_ = _bez(*lip_pts, u)
+        b_ = _bez(*lip_pts, min(1.0, u + 0.01))
+        tx, ty = _unit((b_[0] - a_[0], b_[1] - a_[1]))
+        n = (-ty, tx)
+        if (lower_mid[0] - a_[0]) * n[0] + (lower_mid[1] - a_[1]) * n[1] > 0:
+            n = (-n[0], -n[1])
+        h = 3.2 * math.sin(math.pi * (u - 0.30) / 0.55)
+        bot.append(a_)
+        top.append((a_[0] + n[0] * h, a_[1] + n[1] * h))
+    tongue = _smooth(bot + top[::-1][1:-1] + [bot[0]]) + ' Z'
+    return {'pivot': P, 'lip': lip, 'contour': contour, 'tongue': tongue, 'deg': deg}
+
+
 def build_profile(src, f, view, pitch=0.0, base=None):
     e = src['eye']
     cx, cy, w, up, low, drop, inner, ir, idx, idy, side = e
@@ -833,9 +933,17 @@ def build_profile(src, f, view, pitch=0.0, base=None):
         'mouth': {k2: {'strokes': [mp(d, f) for d in v['strokes']], 'details': [mp(d, f) for d in v['details']],
                        'fills': [{'d': mp(d, f), 'color': c} for d, c in v['fills']]} for k2, v in src['mouth'].items()},
         'earsFront': [ear_g],
+        'jaw': {'pivot': pt(*src['jaw']['pivot'], f), 'lip': mp(src['jaw']['lip'], f), 'contour': mp(src['jaw']['contour'], f),
+                'tongue': mp(src['jaw']['tongue'], f), 'deg': src['jaw']['deg']} if 'jaw' in src else None,
     }
 
 
+# jaws (source px): P = the commissure, where the shocked wedge's vertex sits on the lower stroke; F = the lower stroke's
+# start, just under the nose (so no piece of the old lower stroke is left above the opening); the mouth line bows toward the upper jaw, about parallel to the muzzle's lower contour, which leaves a
+# lower-jaw lens 8-9 px deep at mid-muzzle (a jaw, not a lip line, drops). Front down = clockwise for the right-facing
+# profile, counter-clockwise for the left-facing one.
+PROFILE_L['jaw'] = _jaw(PROFILE_L['skull_strokes'][1], (112, 119), 0.0, (96, 113.5), (70, 106.5), -JAW_MAX_DEG)
+PROFILE_R['jaw'] = _jaw(PROFILE_R['skull_strokes'][1], (516, 115), 0.0, (532, 109.5), (558, 102.5), JAW_MAX_DEG)
 heads['profileLeftScreen'] = build_profile(PROFILE_L, C, 'profileLeftScreen')
 heads['profileRightScreen'] = build_profile(PROFILE_R, CRF, 'profileRightScreen')
 
@@ -900,26 +1008,7 @@ def _seg_x(p1, p2, p3, p4):
     return d1 * d2 < 0 and d3 * d4 < 0
 
 
-def _smooth(pts):
-    """Dense sample list -> a smooth cubic path through every 3rd point (Catmull-Rom)."""
-    P = pts[::3] + ([pts[-1]] if (len(pts) - 1) % 3 else [])
-    out = ['M %.1f %.1f' % P[0]]
-    for i in range(len(P) - 1):
-        p0 = P[i - 1] if i else P[i]
-        p1, p2 = P[i], P[i + 1]
-        p3 = P[i + 2] if i + 2 < len(P) else p2
-        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
-        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
-        out.append('C %.1f %.1f %.1f %.1f %.1f %.1f' % (c1 + c2 + p2))
-    return ' '.join(out)
-
-
-def _unit(v):
-    L = math.hypot(v[0], v[1]) or 1
-    return (v[0] / L, v[1] / L)
-
-
-def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=None, cheek=None):
+def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=None, cheek=None, lip_lead_segs=0):
     pitch = sign * UP_PITCH
     fp = compose(base, rotate_about(pitch))
     if inner_band:
@@ -1020,7 +1109,9 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
     # round 3 (R2 review minor): 4.5 units inside the pitched jaw contour the lip line merged with it into one thick muzzle
     # outline at the proof scale; badger_pose_looking_up.png draws it clearly apart, starting a little behind the nose.
     # Now 8.5 units inside the contour, from 6 units behind the nose tip, at detail weight (LINE.detailWidth).
-    LIP_IN, LIP_START = 8.5, 6.0 / acc[-1]
+    # round 4: lip_lead_segs leading segments of lip_cut run up under the nose (PL_JAW_START); the lip line still starts
+    # 6 units behind where the jaw line leaves the nose
+    LIP_IN, LIP_START = 8.5, (6.0 + acc[40 * lip_lead_segs]) / acc[-1]
     lip_line = _smooth(lip_pts(LIP_START, 0.62, LIP_IN))
     ends = lip_pts(0.55, 0.62, LIP_IN)
     e0, e1 = ends[0], ends[-1]
@@ -1068,23 +1159,6 @@ def _poly_dist(p, poly):
         t = max(0.0, min(1.0, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / L2)) if L2 else 0.0
         best = min(best, math.hypot(p[0] - a[0] - vx * t, p[1] - a[1] - vy * t))
     return best
-
-
-def _walk(pts, i0, dist, step):
-    """From index i0 along a sampled polyline (step +1 / -1), the point dist units away, its index and unit tangent."""
-    acc = 0.0
-    i = i0
-    while 0 <= i + step < len(pts):
-        a, b = pts[i], pts[i + step]
-        L = math.hypot(b[0] - a[0], b[1] - a[1])
-        if acc + L >= dist:
-            t = (dist - acc) / L
-            p = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
-            return p, i, _unit((b[0] - a[0], b[1] - a[1]) if step > 0 else (a[0] - b[0], a[1] - b[1]))
-        acc += L
-        i += step
-    a, b = pts[i - step], pts[i]
-    return pts[i], i, _unit((b[0] - a[0], b[1] - a[1]))
 
 
 NAPE_EAR_COVER = 3.5   # the look-up nape leaves the skull this far inside the hanging ear's fill (its join stays hidden)
@@ -1227,13 +1301,13 @@ def _throat_ctrl(J, tJ, L1, tL):
 PROFILE_L_UP = dict(PROFILE_L, skull_fill=('M 50 76 C 64 71 79 66 86 60 C 90 55 94 49 101 45 C 112 40 127 37 142 37 '
                                            'C 165 37 185 43 192 57 C 196 65 194 76 186 84 C 178 96 168 108 152 116 '
                                            'C 140 120 132 122 126 122 C 118 119 108 118 96 118 '
-                                           'C 80 119 64 117 54 112 C 47 108 45 100 46 92 C 46 85 47 79 50 76 Z'))
+                                           'C 86.9 118 76.6 117.4 67 115 C 57 112 50 107 46 99 C 45.3 97.6 45.1 92.5 44.5 90 C 46 85 47 79 50 76 Z'))
 heads['upLeftScreen'] = build_up(
     'upLeftScreen', PROFILE_L_UP, C, 1, 'rigLeft.ts',
-    lip_cut='M 46 99 C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 115 119.3 117 119.6 118.5 120',
+    lip_cut=PL_JAW_START + 'C 50 107 57 112 67 115 C 83 119 101 118 113 119 C 115 119.3 117 119.6 118.5 120',
     back_path='M 142 37 C 165 37 185 43 192 57 C 196 65 194 76 186 84 C 182 89 177 95 171 101',
     inner_band='M 139 39 C 140 44 141 50 141 56 C 143 68 147 80 152 86 C 153 80 151 70 149 60 C 147 52 144 45 139 39 Z',
-    cheek='M 30 42.6 C 26 48.1 20 51.8 13 53.2')
+    cheek='M 30 42.6 C 26 48.1 20 51.8 13 53.2', lip_lead_segs=1)
 heads['upRightScreen'] = build_up(
     'upRightScreen', PROFILE_R, CRF, -1, 'rigRight.ts',
     lip_cut='M 588 95 C 585 102 578 107 568 110 C 552 113 532 113 520 114 C 518 114.2 516 114.6 514.5 115',
@@ -1248,6 +1322,7 @@ for v in heads:
     heads[v].setdefault('clipMouth', False)
     heads[v].setdefault('chin', None)
     heads[v].setdefault('bridge', None)
+    heads[v].setdefault('jaw', None)
 
 # =============================================================================== FRONT NECK (bust)
 FN = lin(208, 250, S_NF, S_NF)

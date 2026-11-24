@@ -62,6 +62,8 @@ export type SidePose = {
 	readonly legs: Record<LegKey, LegAngles>;
 	/** Extra tail rotation (+ = up) added to the wag. */
 	readonly tail: number;
+	/** Optional extra curl toward the tip (+ = tip up; the happy carriage's upward sickle, round 4). */
+	readonly tailCurl?: number;
 	/**
 	 * Optional slide of a leg's mount inside the body (units; x + = forward, y + = down): the scapula / pelvis
 	 * movement of the walk. The leg's top stays hidden inside the torso.
@@ -186,8 +188,9 @@ export const SideBody: React.FC<{
 	const bendUp = tailWag ? (sb > 0 ? 5 : 11) * sb : 0;
 	// wagUp/bendUp use the left rig's SVG sign (negative = tip up); the right rig's tail hangs the other way
 	const tailUp = dir === -1 ? -pose.tail : pose.tail;
+	const curlUp = dir === -1 ? -(pose.tailCurl ?? 0) : pose.tailCurl ?? 0;
 	const wag = (dir === -1 ? wagUp : -wagUp) + tailUp;
-	const bend = dir === -1 ? bendUp : -bendUp;
+	const bend = (dir === -1 ? bendUp : -bendUp) + curlUp;
 	const T = R.torso.pivot;
 	const rootT = `translate(${T.x + dir * pose.body.forward} ${T.y - pose.body.up}) rotate(${pitchSvg})`;
 	const L = pose.legs;
@@ -229,7 +232,8 @@ export const SideBody: React.FC<{
 				<CollarSide geom={R.neck} worldAngle={neckAngle + pitchSvg} />
 			</g>
 			<g transform={headT}>
-				<Head view={head} state={headState} />
+				{/* mounted: the head sits on a side neck, so silhouette edges the front neck would cover are closed (round 4) */}
+				<Head view={head} state={headState} mounted />
 			</g>
 		</g>
 	);

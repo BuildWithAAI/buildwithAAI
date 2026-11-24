@@ -17,7 +17,7 @@ from composer import instruments as I
 from composer import motif
 from composer import synths as S
 from composer.cues import common as C
-from composer.cues.theme import BADGER_KICK, BADGER_XSTICK, STING_FADERS, Theme
+from composer.cues.theme import BADGER_XSTICK, BADGER_XSTICK_DB, STING_FADERS, Theme
 from composer.instruments import K
 from composer.render import STING_CEILING_DBTP, Arrangement, swell
 
@@ -92,11 +92,16 @@ def red_flag() -> Arrangement:
     motif.place(P["pizz"], 0.0, "D4", form="head", vel=86, staccato=0.6)
     motif.place(P["celli_pizz"], 0.0, "D3", form="head", vel=80, staccato=0.6)
     motif.place(P["piano"], 0.0, "D4", form="head", vel=78, octaves=(0, 12), staccato=0.5, last_dur=0.45)
-    P["kit"].hit(K["xstick"], 1.0, 70)
+    # the deadpan click after the head, on Badger's cross-stick track (critic round 2: alone on the kit's
+    # snare track, gain staging made it a -3 dBFS spike that drove the master limiter to 8.8 dB)
+    P["badger_xstick"].hit(K["xstick"], 1.0, 70)
     # a beat and a half of deadpan, then Badger
     th.badger(0, 2.5, vel=104)
     P["piano"].note("D2", 3.5, 1.0, 64)
-    return _arr("bumper-red-flag", th, 3.2, fade=0.7)
+    # the cross-stick track 2 dB under the theme's here: with the click on it, it drove the master limiter
+    # to 3.1 dB on Badger's notes (critic round 2 accepts <= 3); at -2 dB it is 2.3 dB and Badger stays
+    # 1.5 dB under the motif on the phone model (measured)
+    return _arr("bumper-red-flag", th, 3.2, fade=0.7, faders={"badger_xstick": BADGER_XSTICK_DB - 2.0})
 
 
 def one_fix() -> Arrangement:
@@ -233,7 +238,6 @@ def show_intro_sting() -> Arrangement:
     motif.place_badger(P["badger_mid"], STING_HIT2 - spacing, "D4", vel=84, spacing=spacing)  # the mid-register double (as in the theme)
     motif.place_badger(P["basses_pizz"], STING_HIT2 - spacing, "D2", vel=92, spacing=spacing)
     for k, tt in enumerate((STING_HIT2 - spacing, STING_HIT2)):
-        P["kick"].hit(36, tt, BADGER_KICK[k])
         P["badger_xstick"].hit(K["xstick"], tt, BADGER_XSTICK[k])  # his own cross-stick track (see theme.BADGER_XSTICK)
     P["piano"].note("D1", STING_HIT2, 1.6, 66)
     P["piano"].note("D2", STING_HIT2, 1.6, 66)

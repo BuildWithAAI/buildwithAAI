@@ -38,16 +38,20 @@ export const TYPING_LAYOUT = {
 	desk: {x: 70, y: 0},
 	keyboard: {x: 20, y: -344},
 	monitor: {x: 235, y: -344},
-	/** Wrist pivots of the typing hands (repair round 1: hands side by side over the keys, the near hand over the far cuff). */
+	/**
+	 * Wrist pivots of the typing hands (repair round 1: hands side by side over the keys, the near hand over the far cuff).
+	 * Repair round 4: the far wrist 2 u lower (-387 -> -385) so the re-traced far hand's knuckles (-401.5) and fingertips
+	 * (~-360) sit where the sheet has them.
+	 */
 	wristR: {x: -101, y: -384},
-	wristL: {x: -19, y: -387},
+	wristL: {x: -19, y: -385},
 	/** Typing-hand scale: the standing-hand size (v1 drew them ~0.72 x as large). */
 	handScale: {near: 1.36, far: 1.3},
 } as const;
 
 // ---------------------------------------------------------------- seated legs
 /**
- * Far leg (anatomical LEFT): thigh forward to the knee, shin down to the 3/4 far sneaker. Repair round 4 (ZOO-T5): the lap
+ * Far leg (anatomical LEFT): thigh forward to the knee, shin down to the 3/4 far sneaker. Repair round 4 (ZOO-T8): the lap
  * rises to the desk's front face (y ~-322 from x -236 to -80, hidden by the desk) and slopes down to the round-3 thigh line
  * from x ~-50, so with the overshirt cut at the desk edge the lap fills the space under the desk as on the sheet.
  */
@@ -89,37 +93,49 @@ const CUFF_FAR: Pt[] = [[-52.6, -407.8, 'c'], [-21, -406, 'c'], [-19.6, -388.4],
 
 // ---------------------------------------------------------------- typing hand (wrist-local: +x forward, +y down)
 /**
- * One typing hand as ONE silhouette (repair round 2, zoo_pose_typing.png): the back of the hand and four fingertip lobes on
- * the keys, with warm-brown separations along the fingers. Round 1 drew four separately outlined hooked fingers whose tips
- * folded back under their knuckles; the stacked outlines read as black knuckle-dusters.
- * Repair round 4 (decision ZOO-T5; both sheet hands row-scanned): the sheet's hands lie FLAT on the keyboard: a long back
- * that rises only ~4 u from the cuff to the knuckles, the palm's lower edge level with the fingertips (no hollow under the
- * palm), and the fingers reaching ~16-18 u further toward the screen (near tip at world x ~0, far tip ~77, as on the sheet;
- * round 3: -16 / 62). The hand is ~48 u tall at the near scale (round 3: ~53 with a 20 u arch), the lobes are parted by
- * soft ~3 u notches (round 3: 5.6 u corners), and the separations are long creases from each notch up and back to the
- * knuckle line. Unscaled units (TYPING_LAYOUT.handScale applies).
+ * One typing hand as ONE silhouette (repair round 2, zoo_pose_typing.png): the back of the hand, the fingertips on the keys
+ * and warm-brown creases along the fingers. Round 1 drew four separately outlined hooked fingers whose tips folded back
+ * under their knuckles; the stacked outlines read as black knuckle-dusters.
+ * Repair round 4 (decision ZOO-T8): re-traced from the sheet. Both sheet hands were scanned column by column (skin extents
+ * in world units) and share one shape: a low heel pad resting on the keys, a back that rises from the wrist (~-382) to
+ * the knuckles (~-404), a hollow under the palm, and three visible fingertips on the keys parted by narrow slots ~11-14 u
+ * deep, each slot continuing up and back as a short crease. The near hand's trace (heel x -82 .. front tip x 29) is mapped
+ * into the hand's wrist-local frame at 0.955 x horizontally so the heel sits in the cuff, which puts the front tips at world
+ * x ~2 (near) and ~80 (far; sheet ~79) and the knuckle peak of the far hand at x ~38 (sheet 36-44). Round 3's hand was ~16 u
+ * shorter (tips at -16 / 62), ~8 u taller with a high wrist (-399; sheet ~-382) and had four lobes with shallow corner
+ * notches. Unscaled units (TYPING_LAYOUT.handScale applies); finger f3 (the pinky) is hidden in this view.
  */
 type TPt = {p: Pt; f?: number; w?: number};
-/** Silhouette clockwise from the wrist; `f` = finger index whose tap lifts the point (0 = front finger), w = weight. */
+/** Silhouette clockwise from the heel; `f` = finger index whose tap lifts the point (0 = front finger), w = weight. */
 const T_HAND: TPt[] = [
-	{p: [-4, -9.8]}, {p: [8, -11.4]}, {p: [20, -12.4]}, {p: [32, -12.8]}, {p: [42, -12.2]}, {p: [50.6, -10.4]},
-	{p: [58.4, -6.4], f: 0, w: 0.2}, {p: [65, -0.8], f: 0, w: 0.5}, {p: [70, 6], f: 0, w: 0.8}, {p: [73, 12.8], f: 0}, {p: [74, 18.4], f: 0},
-	{p: [72.8, 21.8], f: 0}, {p: [70.2, 23.2], f: 0}, {p: [67.8, 22.6], f: 0, w: 0.6},
-	{p: [66.4, 20.6], f: 0, w: 0.5}, {p: [64.8, 22.8], f: 1}, {p: [62.2, 23.6], f: 1}, {p: [59.6, 22.8], f: 1, w: 0.6},
-	{p: [58.4, 20.8], f: 1, w: 0.5}, {p: [56.8, 22.9], f: 2}, {p: [54.2, 23.8], f: 2}, {p: [51.6, 23], f: 2, w: 0.6},
-	{p: [50.4, 21], f: 2, w: 0.5}, {p: [48.8, 22.9], f: 3}, {p: [46, 23.6], f: 3}, {p: [43.2, 22.8], f: 3, w: 0.6},
-	{p: [40.4, 21.6], f: 3, w: 0.2}, {p: [30, 21.6]}, {p: [18, 21.2]}, {p: [6, 20.4]}, {p: [-4, 19.4]},
+	{p: [-2.9, 16.2]}, {p: [-2.5, 10.3]}, {p: [-1.2, 5.4]}, {p: [0.9, 2.5]}, {p: [4.8, 1]}, {p: [10.4, -1.2]}, {p: [16, -4.4]},
+	{p: [21.7, -7.4]}, {p: [27.3, -10.3]}, {p: [32.9, -12.5]}, {p: [38.5, -13.7]}, {p: [44.1, -14.3]}, {p: [49.7, -13.7]},
+	{p: [55.4, -12.9]}, {p: [59.6, -10.9]}, {p: [63.8, -8.1], f: 0, w: 0.2}, {p: [66.9, -4.7], f: 0, w: 0.4}, {p: [69.7, -1], f: 0, w: 0.6},
+	{p: [71.9, 3.2], f: 0, w: 0.8}, {p: [74, 7.8], f: 0}, {p: [75.5, 12.8], f: 0}, {p: [75.7, 17.4], f: 0}, {p: [74.7, 20.3], f: 0},
+	{p: [72.6, 21.5], f: 0}, {p: [69.8, 21.2], f: 0}, {p: [68.3, 19.1], f: 0, w: 0.7}, {p: [67.6, 15.4], f: 0, w: 0.4},
+	{p: [67, 10], f: 0, w: 0.15}, // slot between the front finger and the next
+	{p: [66.2, 15.4], f: 1, w: 0.4}, {p: [65.5, 19.6], f: 1, w: 0.7}, {p: [63.5, 21.8], f: 1}, {p: [60.7, 21.3], f: 1},
+	{p: [59.2, 18.7], f: 1, w: 0.7}, {p: [58.2, 14.4], f: 1, w: 0.4},
+	{p: [57.3, 8.1], f: 1, w: 0.15}, // slot
+	{p: [56.5, 14.3], f: 2, w: 0.4}, {p: [55.6, 19.7], f: 2, w: 0.7}, {p: [53.5, 22.4], f: 2}, {p: [50.9, 22.4], f: 2},
+	{p: [48.8, 20.4], f: 2, w: 0.8}, {p: [47.2, 17.1], f: 2, w: 0.6}, {p: [45.8, 13.5], f: 2, w: 0.4}, {p: [43.9, 10.7], f: 2, w: 0.2},
+	// the hollow under the palm, then the heel pad on the keys
+	{p: [41.3, 8.8]}, {p: [38.1, 7.4]}, {p: [35, 8.1]}, {p: [33.2, 10.4]}, {p: [31.5, 13.1]}, {p: [28.7, 15]}, {p: [25.9, 16.5]},
+	{p: [23.1, 17.9]}, {p: [20.3, 19.1]}, {p: [17.4, 20.1]}, {p: [13.2, 20.9]}, {p: [7.6, 21]}, {p: [2, 20.9]}, {p: [-0.8, 20]},
+	{p: [-2.5, 18.4]},
 ];
-/** Separations: from each notch up and back along the fingers to the knuckle line. */
+/** Creases: each slot continues up and back toward the knuckles (sheet: ~12 u long). */
 const T_SEPARATIONS: {pts: Pt[]; f: number}[] = [
-	{pts: [[66.4, 20.6], [64.8, 12], [61.8, 3.4], [57.4, -4.4]], f: 0},
-	{pts: [[58.4, 20.8], [56.8, 12.2], [53.8, 3.6], [49.4, -4.8]], f: 1},
-	{pts: [[50.4, 21], [48.8, 12.4], [45.8, 3.8], [41.4, -5]], f: 2},
+	{pts: [[67, 10.4], [64.6, 6.4], [61.6, 2.4], [58.2, -1.8]], f: 0},
+	{pts: [[57.3, 8.6], [54.4, 5.6], [51.2, 3.2], [48, 1.4]], f: 1},
 ];
-/** The underside of the palm: a thin band along its lower edge, short of the fingertip lobes. */
-const T_SHADOW: Pt[] = [[-8, 15.6], [10, 16.6], [26, 17], [38, 17.2], [40, 30], [-8, 30]];
-/** Thumb, tucked under the flat palm toward the space bar (skin, outlined; the hand covers it at rest, as on the sheet). */
-const THUMB: Pt[] = [[10, 6], [20, 9], [27, 12.6], [29.6, 16.4], [27, 18.8], [19, 16.6], [12, 12.4]];
+/** The palm's underside: a thin band along the heel pad and the hollow (clipped to the hand). */
+const T_SHADOW: Pt[] = [
+	[-2, 17.6], [2, 18.3], [7.6, 18.4], [13.2, 18.3], [17.4, 17.5], [20.3, 16.5], [23.1, 15.3], [25.9, 13.9], [28.7, 12.4], [31.5, 10.5],
+	[33.4, 7.8], [35.4, 5.4], [38.2, 4.8], [41.6, 6.2], [44.6, 8.4], [44.6, 30], [-2, 30],
+];
+/** Thumb, under the palm toward the space bar (skin, outlined): the heel pad covers it at rest, as on the sheet. */
+const THUMB: Pt[] = [[6, 10], [14, 12], [20, 14.6], [22, 17], [20, 18.6], [13, 17.4], [8, 14]];
 
 /** Lift angle (deg) of one finger at a frame: short taps on a per-finger rhythm (deterministic). */
 export const fingerLift = (frame: number, hand: 0 | 1, finger: number): number => {
@@ -159,7 +175,7 @@ const torsoT = (sy: number) => {
 };
 
 /**
- * Seated overshirt hem (repair round 4, decision ZOO-T5). On zoo_pose_typing.png the overshirt ends at the desk's front edge:
+ * Seated overshirt hem (repair round 4, decision ZOO-T8). On zoo_pose_typing.png the overshirt ends at the desk's front edge:
  * above the desk it is slate, right under it the lap shows (no slate below y ~-316). The seated torso is cut at torso-local
  * y SEATED_HEM_Y, which lands at world y -326, inside the desk's front face (DESK y -338..-320), and closed with its own hem
  * line, so it also reads as a hem resting on the lap when no desk is drawn. Round 3 hung the standing hem ~45 u below the desk.

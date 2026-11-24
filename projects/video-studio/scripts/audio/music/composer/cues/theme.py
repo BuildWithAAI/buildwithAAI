@@ -25,6 +25,7 @@ from composer.cues import common as C
 from composer.instruments import K
 from composer.notation import grid, line
 from composer.render import Arrangement, humanize_part, swell
+from composer.targets import STANDALONE_LUFS
 
 BPM = 100
 BAR = 4.0
@@ -101,19 +102,27 @@ B_CELLI = ["Bb2", "A2", "G2", "F2", "Eb3", "D3", "E3", "A2"]
 B_VIOLAS = ["D4 A4", "C4 G4", "Bb3 F4", "A3 E4", "G3 D4", "F3 C4", "G3 D4", "G3 C#4"]
 B_VIOLINS = {4: "G5", 5: "A5", 6: "Bb5", 7: "C#6"}
 
-# Badger's cross-stick: its own track (BADGER_XSTICK_DB), velocities 96 and 88. The critic asked for
-# +3 dB, but the VCSL cross-stick sample is about 16 dB quieter than the level-matched snare hits it
-# shared a track with, so on the button it sat 26-40 dB under the mix: now a dry click a phone carries
+# Badger's cross-stick: its own track (BADGER_XSTICK_DB), velocities 96 and 88, a dry click a phone
+# carries (round 1 brought it up: it sat 26-40 dB under the mix). Critic round 2: once his double came
+# down, this click (17 dB peak-to-loudness) was the master limiter's main trigger on his notes, so it
+# is 7 dB lower and low-passed at 5 kHz (BADGER_XSTICK_LP): the knock stays, the needle-sharp top goes.
 BADGER_XSTICK = (96, 88)
-BADGER_XSTICK_DB = 1.0
+BADGER_XSTICK_DB = -6.0
+BADGER_XSTICK_LP = 5000.0
 # Badger's octave-up pizzicato double (E-flat 4 to D4), its own track: fader dB. Critic round 2: at
-# +11 dB it peaked 6-7 dB over every other stem on his notes, so the master limiter took 8-10 dB off
-# the whole mix there (theme-full 8.3 dB, theme-15s 9.9 dB), and the figure read mid-register instead
-# of as his two dry low notes. Now +5 dB, held by a faster compressor, with a 1.5 kHz lift
-# (BADGER_MID_PRESENCE) so a phone speaker still carries him without raw gain.
-BADGER_MID_DB = 5.0
+# +11 dB with a 2 ms compressor its pluck peaked 6-7 dB over every other stem on his notes, so the
+# master limiter took 8-10 dB off the whole mix there (theme-full 8.3 dB, theme-15s 9.9 dB). The
+# compressor now holds the pluck (4:1, 0.5 ms attack, from -24 dB) and a 1.5 kHz lift
+# (BADGER_MID_PRESENCE) carries him on a phone, so the level is set by the phone check (the critic's
+# +5 dB left him 4-5 dB under the motif there): at +10 dB he is within 3 dB of the motif on the phone
+# model in every cue with his figure (theme-full -2.9, theme-15s -2.8, theme-5s -2.9 dB, measured)
+# and the master limiter stays under 4 dB on his notes.
+BADGER_MID_DB = 10.0
 BADGER_MID_COMP = dict(threshold_db=-24.0, ratio=4.0, attack_ms=0.5, release_ms=90.0, knee_db=6.0)
 BADGER_MID_PRESENCE = (1500.0, 4.0, 1.0)  # PK: Hz, dB, Q
+# the basses' pizzicato under his low notes (fader dB): it doubles the bass at the unison, adds peak and
+# no phone presence
+BADGER_BASSES_DB = -11.0
 # Peak control on his two tracks (render.shave_peaks; the gain staging keeps their loudness). Measured
 # on theme-full: his stacked transients (cross-stick 50 %, the double 29 % of the window's peak) drove
 # the master limiter to 9.2 dB of gain reduction on his button, pulling everything down on his notes:
@@ -121,9 +130,26 @@ BADGER_MID_PRESENCE = (1500.0, 4.0, 1.0)  # PK: Hz, dB, Q
 # limiting the double's attack by 8 dB leave the limiter less to do there.
 BADGER_XSTICK_SHAVE = {"shave_db": 12.0, "kind": "clip"}
 BADGER_MID_SHAVE = {"shave_db": 8.0, "kind": "limit", "release_ms": 60.0, "lookahead_ms": 3.0}
-# the kick under his notes (velocity), softer than the band's: its sub is inaudible on a phone but
-# not to the limiter
-BADGER_KICK = (44, 38)
+# (round 1 put a soft kick under each of his notes; critic round 2: its sub is inaudible on a phone but
+# not to the limiter, and on a cue with no other kick the track's gain staging made it full-size: it is gone)
+
+# Band cues (theme, stings, bumpers, the end-screen music): drum and stab compressors fast enough to
+# hold each hit's attack (critic round 2: the turnaround's and the coda button's stacked kick, snare,
+# claps, EP, brass and piano hits drove the master limiter to 6-8 dB). Beds keep the softer, slower
+# settings. Measured on theme-full at -15 LUFS-I: 5.96 dB of limiting without the claps compressor and
+# the piano's peak control (BAND_PEAK_SHAVE), 4.84 dB with them; at the theme's -16 LUFS-I, 3.7 dB.
+BAND_COMPS = {
+    "snare": dict(threshold_db=-18.0, ratio=4.0, attack_ms=1.0, release_ms=80.0, knee_db=4.0),
+    "kick": dict(threshold_db=-18.0, ratio=3.0, attack_ms=2.0, release_ms=80.0, knee_db=4.0),
+    "hats": dict(threshold_db=-20.0, ratio=3.0, attack_ms=1.0, release_ms=60.0, knee_db=4.0),
+    "claps": dict(threshold_db=-20.0, ratio=4.0, attack_ms=0.5, release_ms=80.0, knee_db=4.0),
+    "ep": dict(threshold_db=-24.0, ratio=3.0, attack_ms=3.0, release_ms=120.0, knee_db=6.0),
+    "brass": dict(threshold_db=-22.0, ratio=3.0, attack_ms=3.0, release_ms=120.0, knee_db=6.0),
+}
+# Band cues: the piano's hammer peaks held to 14 dB over its own loudness (render.shave_peaks with
+# max_plr_db: a 2 ms look-ahead limiter on the stem, so only the hits that stick out are touched). The
+# motif's three-octave piano on the coda button was the largest single peak under the limiter.
+BAND_PEAK_SHAVE = {"piano": {"max_plr_db": 14.0, "kind": "limit", "release_ms": 80.0, "lookahead_ms": 2.0}}
 
 DRUM_KEYS = {"snare": K["snare"], "ghost": K["tap"], "hat": K["hat"], "ohat": K["hat_open"], "pedal": K["hat_pedal"],
              "xstick": K["xstick"], "clap": K["clap"], "shaker": K["shaker_down"], "shaker2": K["shaker_up"], "tamb": K["tamb"],
@@ -176,18 +202,17 @@ class Theme:
             grid(self.p["kick"], self.b(bar), {"kick": kick}, {"kick": 36}, vel)
 
     def badger(self, bar: float, beat: float = 0.0, vel: int = 100, spacing: float = 1.0):
-        """Badger's figure (Eb then D, `spacing` beats apart): plucked bass, celli and basses pizzicato,
-        a muted kick and a dry cross-stick under each note. The celli also double it an octave up
-        (Eb4-D4) at velocity 84 (critic round 1: in the low octaves alone the figure fell 2.6-5.0 dB
-        under the motif on a phone speaker; the darker bass no longer carries it there), on its own
-        track so its level is set by measurement, and the cross-stick is 3 dB firmer than before."""
+        """Badger's figure (Eb then D, `spacing` beats apart): plucked bass, celli and basses pizzicato
+        and a dry cross-stick under each note. The celli also double it an octave up (Eb4-D4) at
+        velocity 84 (critic round 1: in the low octaves alone the figure fell 2.6-5.0 dB under the
+        motif on a phone speaker), on its own track so its level is set by measurement. Critic round
+        2: no kick under his notes any more (see BADGER_XSTICK_DB and BADGER_MID_DB for the levels)."""
         t = self.b(bar) + beat
         motif.place_badger(self.p["bass"], t, "D2", vel=vel, spacing=spacing)
         motif.place_badger(self.p["celli_pizz"], t, "D3", vel=vel - 4, spacing=spacing)
         motif.place_badger(self.p["badger_mid"], t, "D4", vel=84, spacing=spacing)
         motif.place_badger(self.p["basses_pizz"], t, "D2", vel=vel - 10, spacing=spacing)
         for k in range(2):
-            self.p["kick"].hit(36, t + k * spacing, BADGER_KICK[k])
             self.p["badger_xstick"].hit(K["xstick"], t + k * spacing, BADGER_XSTICK[k])
 
     def pulse_bar(self, tb: int, root: str, vel: int, beats: int = 4, octave: int = 0):
@@ -420,7 +445,7 @@ class Theme:
             *C.kit_tracks(toms=-10.0, claps=-9.5, hats=-8.0, pocket=pk),
             C.strings("pizz", "violas", "pizz", fader=-7.0, pan=-0.35, width=0.6, hall=-10.0, pocket=pk),
             C.strings("celli_pizz", "celli", "pizz", fader=-6.0, pan=-0.1, width=0.5, hall=-12.0, pocket=pk),
-            C.strings("basses_pizz", "basses", "pizz", fader=-8.0, width=0.3, hall=-14.0, pocket=pk),
+            C.strings("basses_pizz", "basses", "pizz", fader=BADGER_BASSES_DB, width=0.3, hall=-14.0, pocket=pk),
             C.strings("celli", "celli", "slow", expressive=True, fader=-7.0, pan=-0.15, width=0.7, pocket=pk),
             C.strings("violas", "violas", "slow", expressive=True, fader=-8.0, pan=0.2, width=0.7, pocket=pk),
             C.strings("violins", "violins", "slow", expressive=True, fader=-10.0, pan=-0.05, width=0.5, pocket=pk),
@@ -431,13 +456,22 @@ class Theme:
             C.strings("violas_fast", "violas", "fast", fader=-6.0, pan=0.1, width=0.6, hall=-11.0, pocket=pk),
             _badger_mid(pk),
             C.Track("badger_xstick", I.kit("tight"), part="badger_xstick", only={K["xstick"]}, fader_db=BADGER_XSTICK_DB, pan=0.1,
-                    eq=[C.HP(150), C.PK(650, -2.0, 1.4)], width=0.4, sends={"room": -16.0}, peak_shave=dict(BADGER_XSTICK_SHAVE)),
+                    eq=[C.HP(150), C.PK(650, -2.0, 1.4), C.LP(BADGER_XSTICK_LP, 2)], width=0.4, sends={"room": -16.0},
+                    peak_shave=dict(BADGER_XSTICK_SHAVE)),
             C.mallets("vibes_bowed", I.vibes_bowed(), fader=-14.0, pan=-0.15, hall=-8.0, hp=250.0, pocket=pk),
         ]
         used = {n for n, p in self.p.items() if p.notes}
         out = [t for t in tr if (t.part or t.name) in used]
         for name, clip, fader, hall in self.clips:
             out.append(C.audio(name, clip, fader=fader, hall=hall))
+        if not pk:  # band cues: hold the drum, stab and piano attacks (BAND_COMPS, BAND_PEAK_SHAVE)
+            from audiolib.dynamics import Compressor
+
+            for t in out:
+                if t.name in BAND_COMPS:
+                    t.comp = Compressor(**BAND_COMPS[t.name])
+                if t.name in BAND_PEAK_SHAVE:
+                    t.peak_shave = dict(BAND_PEAK_SHAVE[t.name])
         for t in out:
             if faders and t.name in faders:
                 t.fader_db = faders[t.name]
@@ -465,6 +499,15 @@ def full_ride() -> list:
     return pts
 
 
+# theme-full and theme-15s master at -16 LUFS-I, the stings' level (composer/targets.py STANDALONE_LUFS,
+# which also sets their check window). Critic round 2 accepts the theme when the master limiter takes
+# at most 4 dB and works over 1 dB for at most 8 % of the cue, with -15 as its fallback: at -14 the
+# limiter took 7-9 dB off the turnaround hits and Badger's notes, at -15 still 4.8 dB off theme-full's
+# coda button (10.6 % over 1 dB in theme-15s); at -16 it takes 3.7 dB (theme-full) and 3.2 dB
+# (theme-15s, 6.3 %). A -16 upload plays 2 LU under -14 programme on YouTube (it turns loud uploads
+# down, never quiet ones up); inside an episode the renderer sets the level.
+THEME_LUFS = STANDALONE_LUFS
+
 # theme-5s: two video frames of silence before the downbeat, so a placement a frame early never
 # clips the attack (critic round 1: it started with a full-band hit at sample 0)
 PRE_ROLL_5S = 2 / 30.0
@@ -487,7 +530,7 @@ def arrangement(cue_id: str, kind: str) -> Arrangement:
     from composer.render import DEFAULT_GLUE, STANDALONE_CEILING_DBTP, STING_CEILING_DBTP, SafeCompressor
 
     th = Theme()
-    faders, glue, ceiling, pre_roll = None, None, None, 0.0
+    faders, glue, ceiling, pre_roll, target = None, None, None, 0.0, None
     if kind == "full":
         th.intro(0)
         th.a_section(2)
@@ -495,14 +538,14 @@ def arrangement(cue_id: str, kind: str) -> Arrangement:
         th.a_section(18, full=True)
         th.coda(26)
         length, preset, fade = 28 * BAR * SPB + 1.2, "standalone", 1.0
-        faders, glue, ceiling = FULL_FADERS, SafeCompressor(**{**DEFAULT_GLUE, **FULL_GLUE}), STANDALONE_CEILING_DBTP
+        faders, glue, ceiling, target = FULL_FADERS, SafeCompressor(**{**DEFAULT_GLUE, **FULL_GLUE}), STANDALONE_CEILING_DBTP, THEME_LUFS
     elif kind == "15s":
         # | motif solo | Badger + pickup | the band: a vibes answer (no third motif) | turnaround hits | motif in unison | Badger |
         th.intro(0)
         th.a_section(0, bars=[2, 7], at={2: 2, 7: 3}, motif_bars=(), extra_replies={2: REPLY_ON_G})
         th.coda(4)
         length, preset, fade = 15.0, "standalone", 0.8
-        ceiling = STANDALONE_CEILING_DBTP
+        ceiling, target = STANDALONE_CEILING_DBTP, THEME_LUFS
     elif kind == "5s":
         th.coda(0)
         length, preset, fade = 5.0 - PRE_ROLL_5S, "sting", 0.6
@@ -517,7 +560,7 @@ def arrangement(cue_id: str, kind: str) -> Arrangement:
     air = -0.5 if preset == "standalone" else 1.5
     arr = Arrangement(cue_id, th.s, length, th.tracks(faders), preset=preset, reverbs=C.reverbs(), fade_out=fade,
                       bus_eq=[C.PK(250, -1.0, 0.9), C.PK(1000, -1.0, 1.0), C.PK(4500, 2.0, 0.7), C.HS(9000, air)],
-                      ceiling_dbtp=ceiling, pre_roll=pre_roll)
+                      ceiling_dbtp=ceiling, pre_roll=pre_roll, target_lufs=target)
     if glue is not None:
         arr.glue = glue
     if kind == "full":

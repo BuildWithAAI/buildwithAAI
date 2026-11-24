@@ -35,7 +35,17 @@ type EyeGeom = {
 	readonly rot: number;
 };
 type BrowGeom = {readonly side: string; readonly outer: P; readonly mid: P; readonly inner: P};
-type MouthGeom = {readonly strokes: readonly string[]; readonly details: readonly string[]; readonly fills: readonly Fill[]};
+type MouthGeom = {
+	readonly strokes: readonly string[];
+	readonly details: readonly string[];
+	readonly fills: readonly Fill[];
+	/**
+	 * Round 4: strokes drawn only when the head is mounted on a SIDE rig (Head prop `mounted`). The front head's happy
+	 * mouth leaves the lower face open as the panel draws it; on a side neck that edge meets the background, so this
+	 * closes it (cheek -> jaw -> lower lip -> jaw -> cheek, one stroke).
+	 */
+	readonly sideStrokes?: readonly string[];
+};
 export type HeadViewGeom = {
 	/** Optional jaw-to-neck bridge drawn under the skull (profiles / looking up). */
 	readonly throat: {readonly fill: string; readonly stroke: string} | null;
@@ -70,7 +80,14 @@ export type HeadViewGeom = {
 		readonly strokes: readonly string[];
 		readonly over: {readonly fill: string; readonly strokes: readonly string[]};
 	} | null;
+	/**
+	 * Profile and look-up heads (round 4): the lower jaw for mouthOpen. `lip` is the mouth line, ONE cubic from the
+	 * commissure `pivot` to the lip front under the nose; `contour` is the jaw's underside from there back to the pivot (the
+	 * skull's own lower stroke); `tongue` rides on the lower jaw; `deg` is the full-open rotation (front down).
+	 */
+	readonly jaw?: JawGeom | null;
 };
+type JawGeom = {readonly pivot: P; readonly lip: string; readonly contour: string; readonly tongue: string; readonly deg: number};
 
 const COLORS: Record<ColorKey, string> = {
 	coat: BADGER_COLORS.coat,
@@ -114,6 +131,44 @@ const f1 = (n: number) => (Math.round(n * 100) / 100).toString();
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const lerpP = (a: P, b: P, t: number): P => ({x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t)});
 const pp = (p: P) => `${f1(p.x)} ${f1(p.y)}`;
+
+const NUM = /-?\d*\.?\d+(?:e-?\d+)?/g;
+/** Map every coordinate pair of an absolute M/L/C path. */
+const mapPairs = (d: string, f: (p: P) => P): string =>
+	d.replace(/(-?\d*\.?\d+(?:e-?\d+)?)[\s,]+(-?\d*\.?\d+(?:e-?\d+)?)/g, (_m, xs: string, ys: string) => pp(f({x: Number(xs), y: Number(ys)})));
+const rotAbout = (c: P, deg: number) => {
+	const a = (deg * Math.PI) / 180;
+	const cs = Math.cos(a);
+	const sn = Math.sin(a);
+	return (p: P): P => ({x: c.x + (p.x - c.x) * cs - (p.y - c.y) * sn, y: c.y + (p.x - c.x) * sn + (p.y - c.y) * cs});
+};
+
+/**
+ * mouthOpen on a profile / look-up head (round 4, R3 review): the lower jaw (the lens between the mouth line and the jaw's
+ * underside) rotates `deg` about the commissure, front down; the gap between the fixed mouth line and the rotated one is
+ * the open mouth (mouth colour, tongue on the jaw), so the chin visibly drops.
+ */
+const jawDrop = (j: JawGeom, deg: number) => {
+	const n = (j.lip.match(NUM) ?? []).map(Number);
+	const [p, c1, c2, fr] = [0, 2, 4, 6].map((i) => ({x: n[i], y: n[i + 1]}));
+	const r = rotAbout(j.pivot, deg);
+	const rot = (d: string) => mapPairs(d, r);
+	const contour = rot(j.contour);
+	// the opening's front edge bows in toward the commissure (a straight edge read as a hinged flap)
+	const f2 = r(fr);
+	const len = Math.hypot(f2.x - fr.x, f2.y - fr.y);
+	const nx = (fr.y - f2.y) / (len || 1);
+	const ny = (f2.x - fr.x) / (len || 1);
+	const s = (p.x - fr.x) * nx + (p.y - fr.y) * ny > 0 ? 0.14 * len : -0.14 * len;
+	const k1 = {x: lerp(fr.x, f2.x, 1 / 3) + nx * s, y: lerp(fr.y, f2.y, 1 / 3) + ny * s};
+	const k2 = {x: lerp(fr.x, f2.x, 2 / 3) + nx * s, y: lerp(fr.y, f2.y, 2 / 3) + ny * s};
+	return {
+		wedge: `M ${pp(p)} C ${pp(c1)} ${pp(c2)} ${pp(fr)} C ${pp(k1)} ${pp(k2)} ${pp(f2)} C ${pp(r(c2))} ${pp(r(c1))} ${pp(p)} Z`,
+		lower: `${rot(j.lip)} ${contour.replace(/^M\s*\S+\s+\S+\s*/, '')} Z`,
+		contour,
+		tongue: rot(j.tongue),
+	};
+};
 
 /** Per-expression eye scaling: shocked widens the eye opening and shows more white. */
 /** innerLift raises the inner half of the upper lid (worried), as a fraction of `up`. */
@@ -256,7 +311,7 @@ export const headGeom = (view: BadgerHead): HeadViewGeom => {
 };
 
 /** One replaceable head view in head-local space (origin = the head pivot on the neck). */
-export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, state}) => {
+export const Head: React.FC<{view: BadgerHead; state: HeadState; mounted?: boolean}> = ({view, state, mounted = false}) => {
 	const uid = useUid('bh');
 	const L = useStrokes();
 	const g = headGeom(view);
@@ -267,7 +322,10 @@ export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, stat
 	// the jaw line (the front head's first shocked stroke) stays put
 	const open = Math.max(0, Math.min(1, state.mouthOpen ?? 0));
 	const lift = open > MOUTH_OPEN_MIN ? open : 0;
+	// profile / look-up heads drop the jaw instead (round 4)
+	const jd = g.jaw && open > MOUTH_OPEN_MIN && state.expression !== 'shocked' ? jawDrop(g.jaw, g.jaw.deg * lerp(0.3, 1, open)) : null;
 	const m: MouthGeom = (() => {
+		if (jd) return {strokes: [], details: [], fills: []};
 		if (open <= MOUTH_OPEN_MIN || state.expression === 'shocked') return g.mouth[state.expression];
 		const sh = g.mouth.shocked;
 		if (!sh.fills.length) return g.mouth[state.expression];
@@ -322,7 +380,24 @@ export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, stat
 				{m.details.map((d, i) => (
 					<path key={`md${i}`} d={d} {...L.detail} />
 				))}
+				{mounted
+					? (m.sideStrokes ?? []).map((d, i) => <path key={`mm${i}`} d={d} {...L.stroke} />)
+					: null}
 			</g>
+			{jd ? (
+				<g>
+					<clipPath id={`${uid}-jaw`}>
+						<path d={jd.wedge} />
+					</clipPath>
+					<path d={jd.wedge} fill={BADGER_COLORS.mouth} />
+					<g clipPath={`url(#${uid}-jaw)`}>
+						<path d={jd.tongue} fill={BADGER_COLORS.tongue} />
+					</g>
+					<path d={jd.lower} fill={BADGER_COLORS.coat} />
+					<path d={jd.wedge} {...L.stroke} />
+					<path d={jd.contour} {...L.stroke} />
+				</g>
+			) : null}
 			<path d={g.nose.d} fill={BADGER_COLORS.nose} {...{stroke: LINE.color, strokeWidth: LINE.width * L.k, strokeLinejoin: 'round' as const}} />
 			{(g.nose.details ?? []).map((d, i) => (
 				<path key={`nd${i}`} d={d} {...L.detail} />

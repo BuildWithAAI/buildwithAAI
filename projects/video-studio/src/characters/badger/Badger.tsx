@@ -140,8 +140,14 @@ const RIGHT_PARTS = spotsByPart(RIGHT_SPOTS);
 
 const DEFAULT_EARS_BACK: Record<Expression, number> = {neutral: 0, happy: 0, worried: 0.7, shocked: 0.15};
 
-/** Tail carriage for 'happy' in the side views (deg above the standing carriage): the happy panel's inset. */
-const HAPPY_TAIL = 32;
+/**
+ * Tail carriage for 'happy' in the side views: the happy panel's inset draws the tail raised in an upward sickle with
+ * wag lines. Round 4 (R3 review): 32 deg left the tail hanging 25 deg BELOW horizontal (root-to-tip chord); 85 deg plus
+ * a 10 deg curl toward the tip puts the chord 37-39 deg ABOVE horizontal (left / right rig) with the tip turned up, so
+ * the tail runs above the back line. HAPPY_TAIL is added to the whole tail, HAPPY_TAIL_CURL bends the tip (SidePose).
+ */
+const HAPPY_TAIL = 85;
+const HAPPY_TAIL_CURL = 10;
 
 /**
  * Right stand: badger_coat_right.png and badger_turn_side.png show ONE front leg (row scans give a single pair of
@@ -229,7 +235,7 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 	const breath = breathe ? Math.sin(((frame / fps) * Math.PI * 2) / 3.4) : 0;
 	const basePose = sidePoseFor(pose, dir === 1 ? 'right' : 'left', props.walkPhase ?? 0);
 	// happy carries the tail high (the happy panel's inset); the wag itself stays restrained (SideBody)
-	const sidePose: SidePose = expression === 'happy' ? {...basePose, tail: Math.max(basePose.tail, HAPPY_TAIL)} : basePose;
+	const sidePose: SidePose = expression === 'happy' ? {...basePose, tail: Math.max(basePose.tail, HAPPY_TAIL), tailCurl: HAPPY_TAIL_CURL} : basePose;
 	const poseBody = poseBodyPose ? (dir === 1 ? pose : pose === 'sit' ? 'sitLeft' : 'lieLeft') : null;
 	const isSide = !poseBody && (bodyView === 'left' || bodyView === 'right');
 	let body: React.ReactNode = null;
