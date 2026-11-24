@@ -1,6 +1,8 @@
 # Prompt 3 — Use for each episode
 
-Create a Zoora AI episode using the permanent project instructions and the established ZOO/Badger character assets.
+> Owner amendment 2026-11-24: the host is renamed "Zoo" (was "ZOO").
+
+Create a Zoora AI episode using the permanent project instructions and the established Zoo/Badger character assets.
 
 EPISODE INPUTS
 Topic: [INSERT TOPIC]
@@ -16,7 +18,7 @@ Special scene requirements: [DETAILS OR NONE]
 
 Fill only unspecified non-blocking choices with the project defaults and state the assumptions briefly. Match the script to the target duration using the actual voice track when available.
 
-Produce a strong opening, a clear explanation and a dry final beat. Use ZOO's understated delivery and include at least one recognizable Badger appearance/reaction. Humor must fit the topic.
+Produce a strong opening, a clear explanation and a dry final beat. Use Zoo's understated delivery and include at least one recognizable Badger appearance/reaction. Humor must fit the topic.
 
 Build a timed shot list with narration, character actions, scene props and on-screen text. Then create the actual animation using our reusable assets. Keep identity, spots, clothing, palette and relative scale fixed across every shot.
 Use simple charts/props only when they help explain the script. Keep invented examples visibly distinct from real market facts. Do not copy the model-sheet labels into the video.

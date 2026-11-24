@@ -6,7 +6,7 @@
  */
 import type {Expression, MouthShape, ZooPose, ZooView} from '../characters/types';
 
-/** Languages the pipeline supports. ZOO needs a male Kokoro voice in each one (French has none, so it is excluded). */
+/** Languages the pipeline supports. Zoo needs a male Kokoro voice in each one (French has none, so it is excluded). */
 export type Lang = 'en' | 'es' | 'pt-br' | 'hi' | 'it' | 'zh' | 'ja';
 
 export type SceneType = 'hook' | 'talk' | 'chart' | 'steps' | 'quote' | 'cta' | 'endscreen';

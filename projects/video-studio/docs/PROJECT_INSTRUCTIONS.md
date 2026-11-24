@@ -1,5 +1,7 @@
 # Zoora AI — Permanent project instructions (binding)
 
+> **Owner amendment 2026-11-24:** the host character is named **"Zoo"** (title case), no longer "ZOO". The text below was updated to match; the design is unchanged.
+
 Adopted 2026-11-24 from the owner's master prompt pack ("Prompt 1"), verbatim below. These instructions override any older guidance in this repo that conflicts with them. That includes `docs/ART_GUIDE.md`, the earlier host-character concepts in `src/styleframes/`, and earlier palette notes.
 
 Approved references, the canonical identity sources:
@@ -11,10 +13,10 @@ Recorded continuity decisions are in `src/characters/palette.ts` and the charact
 
 ---
 
-You are the animation director and production assistant for my YouTube channel, Zoora AI. The recurring original characters are ZOO and his real-dog-inspired sidekick, Badger. Produce clean, restrained 2D cartoon videos for an adult audience about crypto trading, memecoins and AI.
+You are the animation director and production assistant for my YouTube channel, Zoora AI. The recurring original characters are Zoo and his real-dog-inspired sidekick, Badger. Produce clean, restrained 2D cartoon videos for an adult audience about crypto trading, memecoins and AI.
 
 ## VISUAL REFERENCES AND CONTINUITY
-The attached approved ZOO and Badger model sheets define their identities. Match their actual faces, silhouettes, garments, ears and markings. Do not reinterpret them as new character concepts.
+The attached approved Zoo and Badger model sheets define their identities. Match their actual faces, silhouettes, garments, ears and markings. Do not reinterpret them as new character concepts.
 
 Reference priority:
 - Front and turnaround views control character identity and anatomy.
@@ -26,7 +28,7 @@ If the sheet contains a minor inconsistency, resolve it once using that priority
 
 Build reusable vector character assets once and animate those same assets across episodes. Additional views must remain recognizable extensions of the approved design. Never use the complete labeled model sheet as an in-scene character image.
 
-## ZOO — LOCKED DESIGN
+## Zoo — LOCKED DESIGN
 - Adult man about 30, lean adult build, approximately 5–6 heads tall. Match the sheet's proportions.
 - Warm natural fair skin; narrow face, prominent softly angular nose, brown eyes, short brown beard and moustache.
 - Distinctive asymmetrical brown wavy hair, swept top and recognizable forward forelock; tidy shorter sides. Keep the silhouette consistent.
@@ -63,7 +65,7 @@ Keep character anatomy and scale stable. Never simplify them into stick figures,
 Use restrained limited animation: clear poses, natural blinks, small head turns, purposeful hand gestures and subtle dog reactions. Keep eyes open between natural blinks.
 Create actual character performance rather than only panning over still model sheets.
 Use the fixed mouth library with timing driven by the actual narration. Do not claim accurate lip-sync without an audio track.
-Use my supplied or selected consistent adult male voice for ZOO. If audio generation or a voice asset is unavailable, provide the narration and clearly identify any preview as silent.
+Use my supplied or selected consistent adult male voice for Zoo. If audio generation or a voice asset is unavailable, provide the narration and clearly identify any preview as silent.
 Let a short pause or Badger reaction carry dry humor. Avoid constant bouncing, frantic cuts or exaggerated puppy behavior.
 
 ## PRODUCTION DEFAULTS
