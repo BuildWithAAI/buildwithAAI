@@ -10,8 +10,9 @@ code (modal bodies, filtered noise, friction models) or built from processed VCS
 ```bash
 cd projects/video-studio
 python3 scripts/audio/sfx/build.py --export     # render, finish, measure, review, copy to public/audio/sfx (about 30 s)
+python3 scripts/audio/sfx/sync_check.py         # render a sync check through Remotion and measure it (about 50 s)
 python3 scripts/audio/sfx/build.py --only keyboard --no-metrics   # iterate on one family (no export)
-.venv-audio/bin/python -m unittest discover -s scripts/audio/sfx/tests -t scripts/audio/sfx   # 43 tests, about 2 s
+.venv-audio/bin/python -m unittest discover -s scripts/audio/sfx/tests -t scripts/audio/sfx   # 44 tests, about 3 s
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test scripts/audio/sfx/sfx.test.ts    # TS helper, 7 tests
 ```
 
@@ -88,6 +89,12 @@ const t = sfx(lib, 'typing_burst_03');
   2026-11-24). Start the file on a typing-pose frame `f` with `f % 36 == rig.startRigFrameMod36`
   (`rigStartFrame` finds the next one) and every key falls on a visible finger strike; started
   anywhere else, every key still lands exactly on a frame. If that rig function changes, rebuild.
+- Proven through Remotion: `sync_check.py` renders `SfxSyncCheck` (`remotion/SyncCheck.tsx`, its
+  own entry point and config: the project config's x264 preset blocks WAV output, and AAC would
+  add encoder delay) with eight files placed by `startFrame()`. Cross-correlation finds every file
+  at exactly 0 samples from where `startFrame()` puts it. Attacks land 0.08-2.9 ms after their
+  frames (the tail thump's padded drum is the slowest) and the whoosh's pass-by 0.56 ms from its
+  frame (2026-11-24, Remotion 4.0.541, `Html5Audio`).
 - Needle: `rekt_needle_*` follows `SWEEP_FRAMES = 24` and `EASE.inOut = bezier(0.45, 0, 0.25, 1)`
   from `src/show/graphics/RektMeter.tsx`. Start it on the meter's `start` frame: a detent ticks
   every time the needle passes 1/40 of the dial (louder on the six decade marks), so the ticks
@@ -291,6 +298,8 @@ audio engine and the composer to confirm and fix; this folder does not touch it.
 ```
 scripts/audio/sfx/
   build.py            CLI: render, finish, write, measure, review, export
+  sync_check.py       renders remotion/SyncCheck.tsx through Remotion and measures where every sound lands
+  remotion/           SfxSyncCheck composition, its entry point and its audio-only render config
   sfx.ts, sfx.test.ts typed manifest access for Remotion (startFrame, volume, pick, rigStartFrame)
   sfxlib/             core, prims, vcsl, space, rig, finish, measure, manifest, review
   sfxlib/families/    whoosh, ui, keyboard, desk, notify, rekt, badger

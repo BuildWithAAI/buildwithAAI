@@ -100,3 +100,23 @@ class Library(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+SYNC_RENDER = paths.OUT / "sfx" / "sync" / "sync_check.wav"
+
+
+@unittest.skipUnless(PUBLIC.exists() and SYNC_RENDER.exists(), "run scripts/audio/sfx/sync_check.py first (renders through Remotion)")
+class RemotionSync(unittest.TestCase):
+    """The last Remotion render of SfxSyncCheck: every file placed exactly where startFrame() puts it."""
+
+    def test_every_sound_lands_on_its_frame(self):
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("sync_check", paths.AUDIO_DIR / "sfx" / "sync_check.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        res = mod.check(SYNC_RENDER)
+        self.assertGreaterEqual(len(res["rows"]), 8)
+        for r in res["rows"]:
+            self.assertLessEqual(abs(r["placementErrorSamples"]), 48, r)
+            self.assertTrue(-1.0 <= r["syncErrorMs"] <= 5.0, r)
