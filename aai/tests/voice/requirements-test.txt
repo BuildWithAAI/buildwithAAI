@@ -1,0 +1,5 @@
+# Test-only dependencies for tests/voice (pinned). The real-socket tests in test_hostile_net.py need
+# cryptography to mint a throwaway TLS cert; with CI or AAI_VOICE_STRICT_TESTS set, a missing one fails the run.
+-r ../../aai/voice/requirements.txt
+pytest==9.2.0
+cryptography==50.0.2

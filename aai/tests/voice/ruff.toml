@@ -1,0 +1,5 @@
+# Scoped to Zoora voice so the repo-wide lint config (pyproject has none) is unchanged.
+line-length = 120
+
+[lint.isort]
+known-first-party = ["aai"]
