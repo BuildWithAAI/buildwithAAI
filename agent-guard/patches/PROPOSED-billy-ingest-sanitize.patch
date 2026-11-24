@@ -1,0 +1,17 @@
+--- a/billy-pipeline/src/billy/ingest/sources.py
++++ b/billy-pipeline/src/billy/ingest/sources.py
+@@ -42,6 +42,14 @@
+     ts = rec.get("date") or rec.get("created_at")
+     if not pid or not pid.isdigit() or not text or not ts:
+         return None
++    # agent-guard: tweets are hostile input. Normalise (NFKC, strip invisible/bidi chars) before the
++    # regex parser; posts with HIGH injection flags are dropped from signal generation (still kept in raw files).
++    import sys as _s; _s.path.insert(0, "/workspace/agent-guard")
++    from agent_guard.sanitize import detect_injection, max_severity, normalize
++    flags = detect_injection(str(text))
++    if flags and max_severity(flags) == "HIGH":
++        return None
++    text = normalize(str(text))
+     return Post(
+         id=pid,
+         created_at=_parse_dt(ts),

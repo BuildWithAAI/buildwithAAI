@@ -1,0 +1,14 @@
+--- a/solana-meme-risk/smr/report.py
++++ b/solana-meme-risk/smr/report.py
+@@ -67,7 +67,10 @@
+         b["wallet_age_h_at_buy"] = round((b["block_time"] - info["first_block_time"]) / 3600, 2) if info.get("first_block_time") and b.get("block_time") else None
+     holders = {k: v for k, v in sig["holders"].items() if k != "balances"}
+     flagged = sorted([r for r in sc["rules"] if r["triggered"]], key=lambda r: -r["points"])
+-    sym = sig["coin"].get("symbol")
++    import sys as _s; _s.path.insert(0, "/workspace/agent-guard")
++    from agent_guard import safe_field  # agent-guard: token name/symbol are attacker-chosen text
++    sym = safe_field(sig["coin"].get("symbol"), max_len=32)
++    sig["coin"]["name"] = safe_field(sig["coin"].get("name"), max_len=64)
+     top = [f"{r['rule']} +{r['points']}: {r['reason']}"[:160] for r in flagged[:3]]
+     rid = hashlib.sha256(f"{sig['mint']}|{sig['as_of']}|{mv}".encode()).hexdigest()[:16]
+     doc = {

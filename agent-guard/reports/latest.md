@@ -1,0 +1,658 @@
+# agent-guard audit 2026-11-24 16:25:03 CST
+
+Summary: {'CRITICAL': 105, 'HIGH': 134, 'MEDIUM': 2, 'LOW': 211}
+
+Kill switch: off; audit log ok=True; config ok=True
+
+## Secret hits (redacted)
+- HIGH kv:aai_test_access_token /workspace/flybrain/repo/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/flybrain/repo/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/zoora-style/src/lumen-88/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- CRITICAL evm_private_key /workspace/zoora-style/src/lumen-88/projects/lumen/.next/prerender-manifest.json:8  location only (key material never read out)
+- CRITICAL evm_private_key /workspace/zoora-style/src/lumen-88/projects/lumen/.next/prerender-manifest.json:9  location only (key material never read out)
+- CRITICAL evm_private_key /workspace/zoora-style/src/lumen-88/projects/lumen/.next/server/middleware-manifest.json:24  location only (key material never read out)
+- CRITICAL evm_private_key /workspace/zoora-style/src/lumen-88/projects/lumen/.next/server/middleware-manifest.json:25  location only (key material never read out)
+- HIGH kv:aai_test_access_token /workspace/zoora-style/src/metaverse-91/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- CRITICAL evm_private_key /workspace/zoora-style/src/metaverse-91/projects/lumen/.next/prerender-manifest.json:8  location only (key material never read out)
+- CRITICAL evm_private_key /workspace/zoora-style/src/metaverse-91/projects/lumen/.next/prerender-manifest.json:9  location only (key material never read out)
+- CRITICAL evm_private_key /workspace/zoora-style/src/metaverse-91/projects/lumen/.next/server/middleware-manifest.json:24  location only (key material never read out)
+- CRITICAL evm_private_key /workspace/zoora-style/src/metaverse-91/projects/lumen/.next/server/middleware-manifest.json:25  location only (key material never read out)
+- HIGH kv:aai_test_access_token /workspace/fb/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- HIGH kv:aai_test_access_token /workspace/zl/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/zl/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/rev92/wt346/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/rev92/wt346/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/rev92/wt850/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/rev92/wt850/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/rev92/wte1d/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/rev92/wte1d/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/rev92/repo/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/rev92/repo/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/rev92/wt3db/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/rev92/wt3db/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/claude-review/yt-wt/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- HIGH kv:secret /workspace/claude-review/yt-wt/projects/creator-hub/src/server/routes/go.test.ts:147 orig…(len 40) 
+- HIGH kv:notify_webhook_url /workspace/claude-review/yt-wt/projects/creator-hub/src/server/routes/studio.test.ts:324 http…(len 28) 
+- HIGH kv:notify_webhook_url /workspace/claude-review/yt-wt/projects/creator-hub/src/server/routes/studio.test.ts:339 http…(len 43) 
+- HIGH kv:notify_webhook_url /workspace/claude-review/yt-wt/projects/creator-hub/src/server/routes/studio.test.ts:369 `htt…(len 24) 
+- HIGH kv:notify_webhook_url /workspace/claude-review/yt-wt/projects/creator-hub/src/server/routes/studio.test.ts:390 http…(len 28) 
+- HIGH kv:webhookurl /workspace/claude-review/yt-wt/projects/creator-hub/src/server/studio/notify.test.ts:54 http…(len 37) 
+- HIGH kv:access_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/retention/mock-google.ts:92 at-i…(len 10) 
+- HIGH kv:access_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/retention/mock-google.ts:97 `at-…(len 28) 
+- HIGH kv:yt_analytics_access_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/retention/cli.test.ts:251 at-f…(len 10) 
+- HIGH kv:apikey /workspace/claude-review/yt-wt/projects/creator-hub/tools/newsletter/kit-api.test.ts:112 abc\…(len 8) 
+- HIGH kv:access_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/comment-guard/mock-google.ts:65 at-i…(len 10) 
+- HIGH kv:access_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/comment-guard/mock-google.ts:71 at-r…(len 12) 
+- HIGH kv:accesstoken /workspace/claude-review/yt-wt/projects/creator-hub/tools/comment-guard/youtube.test.ts:37 at-v…(len 8) 
+- HIGH kv:secret /workspace/claude-review/yt-wt/projects/creator-hub/tools/comment-guard/rules.ts:394 Stri…(len 11) 
+- HIGH kv:accesstoken /workspace/claude-review/yt-wt/projects/creator-hub/tools/comment-guard/cli.test.ts:39 at-v…(len 8) 
+- HIGH kv:client_secret /workspace/claude-review/yt-wt/projects/creator-hub/tools/comment-guard/cli.test.ts:219 desk…(len 14) 
+- HIGH kv:consumersecret /workspace/claude-review/yt-wt/projects/creator-hub/tools/announcer/api.test.ts:31 kAcS…(len 43) 
+- HIGH kv:tokensecret /workspace/claude-review/yt-wt/projects/creator-hub/tools/announcer/api.test.ts:33 Lsww…(len 41) 
+- HIGH kv:oauth_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/announcer/api.test.ts:40 3707…(len 50) 
+- HIGH telegram_bot_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/announcer/api.test.ts:85 1234…(len 45) 
+- HIGH telegram_bot_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/announcer/cli.test.ts:14 1234…(len 45) 
+- HIGH kv:secret /workspace/claude-review/yt-wt/projects/creator-hub/tools/dashboard/youtube-api.ts:208 env.…(len 36) 
+- HIGH kv:access_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/dashboard/youtube-api.test.ts:116 fres…(len 11) 
+- HIGH kv:yt_analytics_client_secret /workspace/claude-review/yt-wt/projects/creator-hub/tools/dashboard/youtube-api.test.ts:117 clie…(len 13) 
+- HIGH kv:client_secret /workspace/claude-review/yt-wt/projects/creator-hub/tools/dashboard/youtube-api.test.ts:122 clie…(len 13) 
+- HIGH kv:yt_analytics_access_token /workspace/claude-review/yt-wt/projects/creator-hub/tools/dashboard/cli.test.ts:134 secr…(len 18) 
+- CRITICAL possible_seed_phrase /workspace/claude-review/yt-wt/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- CRITICAL pem_private_key /workspace/claude-review/yt-wt/projects/video-studio/scripts/farm/crypto.ts:202  location only (key material never read out)
+- MEDIUM rpc_url_with_key /workspace/claude-review/yt-wt/projects/video-studio/.claude/skills/remotion-best-practices/remotion-docs/REFERENCE.md:15 http…(len 105) 
+- HIGH kv:x-algolia-api-key /workspace/claude-review/yt-wt/projects/video-studio/.claude/skills/remotion-best-practices/remotion-docs/REFERENCE.md:15 3e42…(len 57) 
+- MEDIUM rpc_url_with_key /workspace/claude-review/yt-wt/projects/video-studio/.claude/skills/remotion-docs/SKILL.md:15 http…(len 105) 
+- HIGH kv:x-algolia-api-key /workspace/claude-review/yt-wt/projects/video-studio/.claude/skills/remotion-docs/SKILL.md:15 3e42…(len 57) 
+- HIGH kv:aai_test_access_token /workspace/claude-review/repo/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/claude-review/repo/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/claude-review/main-wt/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/claude-review/main-wt/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- HIGH kv:aai_test_access_token /workspace/roadmap-audit/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /workspace/roadmap-audit/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+- INFO-platform kv:ndb_password /home/box/sand-data/plugins/cache/cursor-public/notion-workspace/ac92476c9604d8bb7a3a9bd67348527fe6bb9d4b/skills/knowledge-capture/examples/conversation-to-faq.md:93 ****…(len 24) 
+- INFO-platform kv:secret /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/commands/status.md:151 proc…(len 25) 
+- INFO-platform kv:clientsecret /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/skills/auth/SKILL.md:342 proc…(len 33) 
+- INFO-platform kv:clientsecret /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/skills/auth/SKILL.md:347 proc…(len 33) 
+- CRITICAL possible_seed_phrase /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/skills/flags-sdk/SKILL.md:171  location only - verify by hand, do not paste anywhere
+- CRITICAL possible_seed_phrase /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/skills/flags-sdk/upstream/SKILL.md:70  location only - verify by hand, do not paste anywhere
+- INFO-platform kv:personalapikey /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/skills/flags-sdk/upstream/references/providers.md:445 proc…(len 37) 
+- INFO-platform kv:personalapikey /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/skills/flags-sdk/references/providers.md:445 proc…(len 37) 
+- INFO-platform kv:authtoken /home/box/sand-data/plugins/cache/cursor-public/vercel/3b472643cbb1a42479d99b0c9a1d27b8bc84aaa7/skills/vercel-storage/SKILL.md:469 proc…(len 29) 
+- HIGH kv:secret /tmp/gl-yt.json:9 2026…(len 19) 
+- HIGH kv:secret /tmp/gl-yt.json:29 xvz1…(len 22) 
+- HIGH kv:consumersecret /tmp/gl-yt.json:48 kAcS…(len 43) 
+- HIGH kv:secret /tmp/gl-yt.json:49 kAcS…(len 43) 
+- HIGH kv:secret /tmp/gl-yt.json:69 3707…(len 50) 
+- HIGH kv:tokensecret /tmp/gl-yt.json:88 Lsww…(len 41) 
+- HIGH kv:secret /tmp/gl-yt.json:89 Lsww…(len 41) 
+- HIGH kv:secret /tmp/gl-yt.json:109 xvz1…(len 22) 
+- HIGH kv:secret /tmp/gl-yt.json:129 kYjz…(len 42) 
+- HIGH kv:secret /tmp/gl-yt.json:149 3707…(len 50) 
+- HIGH kv:secret /tmp/gl-yt.json:169 C5-s…(len 14) 
+- HIGH kv:secret /tmp/gl-yt.json:189 S3-a…(len 15) 
+- CRITICAL solana_keypair_array /tmp/zoora-validator-pwgjwq59/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-pwgjwq59/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-pwgjwq59/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-pwgjwq59/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-socxrao6/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-socxrao6/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-socxrao6/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-socxrao6/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-hp5p53_c/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-hp5p53_c/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-hp5p53_c/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-hp5p53_c/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-c304wn46/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-c304wn46/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-c304wn46/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-c304wn46/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mehu7ues/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mehu7ues/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mehu7ues/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mehu7ues/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mjqy64e_/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mjqy64e_/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mjqy64e_/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-mjqy64e_/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-61i5xu2i/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-61i5xu2i/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-61i5xu2i/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-61i5xu2i/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-o896mjm1/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-o896mjm1/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-o896mjm1/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-o896mjm1/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-f98sbpiq/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-f98sbpiq/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-f98sbpiq/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-f98sbpiq/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-xlqe9b49/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-xlqe9b49/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-xlqe9b49/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-xlqe9b49/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-5oubin5z/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-5oubin5z/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-5oubin5z/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-5oubin5z/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-a83pi4gy/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-a83pi4gy/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-a83pi4gy/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-a83pi4gy/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-uaezaotr/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-uaezaotr/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-uaezaotr/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-uaezaotr/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-9diqjhur/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-9diqjhur/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-9diqjhur/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-9diqjhur/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sgvr4408/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sgvr4408/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sgvr4408/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sgvr4408/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-49vzw568/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-49vzw568/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-49vzw568/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-49vzw568/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-2irphzlc/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-2irphzlc/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-2irphzlc/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-2irphzlc/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sh9_jeqk/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sh9_jeqk/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sh9_jeqk/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-sh9_jeqk/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-ukywi1r3/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-ukywi1r3/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-ukywi1r3/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-ukywi1r3/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-evjawqgk/ledger/validator-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-evjawqgk/ledger/faucet-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-evjawqgk/ledger/stake-account-keypair.json:1  location only (key material never read out)
+- CRITICAL solana_keypair_array /tmp/zoora-validator-evjawqgk/ledger/vote-account-keypair.json:1  location only (key material never read out)
+- HIGH kv:aai_test_access_token /tmp/zoora-watch/.github/workflows/scanner-tests.yml:81 synt…(len 38) 
+- CRITICAL possible_seed_phrase /tmp/zoora-watch/projects/zoora-agent-community/scripts/live_model_evidence.py:141  location only - verify by hand, do not paste anywhere
+
+## Public listeners
+- INFO-platform :::1337 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 1337 --]
+- INFO-platform :::1338 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 1337 --]
+- INFO-platform 0.0.0.0:1339 platform sandbox service [/exec-daemon/node /usr/local/bin/sand-window-router.mjs 1339]
+- INFO-platform 0.0.0.0:1340 platform sandbox service (not visible to this uid)
+- HIGH 0.0.0.0:2375 Docker Engine API without TLS/auth = root-equivalent; platform-owned
+- INFO-platform 0.0.0.0:6080 platform sandbox service [/usr/bin/python3 -I /usr/local/bin/box-websockify.py --web=/]
+- INFO-platform 0.0.0.0:6081 platform sandbox service [/usr/bin/python3 -I /usr/local/bin/box-websockify.py --web=/]
+- INFO-platform 0.0.0.0:8790 platform sandbox service (not visible to this uid)
+- INFO-platform :::13602 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14002 -]
+- INFO-platform :::13607 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14007 -]
+- INFO-platform :::13611 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14011 -]
+- INFO-platform :::13618 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14018 -]
+- INFO-platform :::14002 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14002 -]
+- INFO-platform :::14007 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14007 -]
+- INFO-platform :::14011 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14011 -]
+- INFO-platform :::14018 platform sandbox service [/exec-daemon/node /exec-daemon/index.js serve --port 14018 -]
+- INFO-platform 0.0.0.0:26500 platform sandbox service (not visible to this uid)
+- INFO-platform 0.0.0.0:50052 platform sandbox service (not visible to this uid)
+
+## AAI HUD
+- pid 530626 AAI_HUD_TOKEN set=True
+
+## Code with order/signing/LLM paths
+- INFO /workspace/solana-meme-risk/executor_design/signal.py private=False signing=True llm=False agent_guard=True
+- INFO /workspace/flybrain/repo/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/flybrain/repo/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/aai-forex/src/aai_fx/execution/mt5_adapter.py private=True signing=False llm=False agent_guard=True
+- INFO /workspace/zoora-style/src/lumen-88/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zoora-style/src/lumen-88/projects/lumen/src/money/rules.ts private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zoora-style/src/metaverse-91/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zoora-style/src/metaverse-91/projects/lumen/src/money/rules.ts private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zl/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zl/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/zl/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/zl/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/zl/projects/lumen/src/money/rules.ts private=False signing=False llm=True agent_guard=False
+- INFO /workspace/rev92/wt346/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wt346/projects/zoora-signer/src/zoora_signer/signing.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt346/projects/zoora-signer/src/zoora_signer/signer.py private=False signing=True llm=False agent_guard=True
+- HIGH /workspace/rev92/wt346/projects/zoora-signer/src/zoora_signer/db.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt346/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/rev92/wt850/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wt850/projects/zoora-signer/src/zoora_signer/signing.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt850/projects/zoora-signer/src/zoora_signer/signer.py private=False signing=True llm=False agent_guard=True
+- HIGH /workspace/rev92/wt850/projects/zoora-signer/src/zoora_signer/db.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt850/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/adv2/conftest.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wte1d/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wte1d/projects/zoora-signer/src/zoora_signer/signing.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wte1d/projects/zoora-signer/src/zoora_signer/signer.py private=False signing=True llm=False agent_guard=True
+- HIGH /workspace/rev92/wte1d/projects/zoora-signer/src/zoora_signer/db.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wte1d/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/rev92/repo/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/repo/projects/zoora-signer/src/zoora_signer/signing.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/repo/projects/zoora-signer/src/zoora_signer/signer.py private=False signing=True llm=False agent_guard=True
+- INFO /workspace/rev92/repo/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/rev92/wt3db/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wt3db/projects/zoora-signer/src/zoora_signer/signing.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt3db/projects/zoora-signer/src/zoora_signer/signer.py private=False signing=True llm=False agent_guard=True
+- INFO /workspace/rev92/wt3db/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/creator-hub/src/server/bots.test.ts private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/creator-hub/src/server/bots.ts private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/claude-review/yt-wt/projects/creator-hub/tools/threat-brief/safety.test.ts private=True signing=False llm=False agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/video-studio/scripts/claims/lib/lexicon.ts private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/video-studio/scripts/radar/radarlib/classify.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/video-studio/scripts/radar/radarlib/safety.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/yt-wt/projects/lumen/src/money/rules.ts private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/claude-review/yt-wt/projects/lumen/bridge/mt5_bridge.py private=True signing=True llm=False agent_guard=False
+- INFO /workspace/claude-review/repo/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/repo/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/repo/projects/lumen/src/money/rules.ts private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/claude-review/repo/projects/lumen/bridge/mt5_bridge.py private=True signing=True llm=False agent_guard=False
+- INFO /workspace/claude-review/main-wt/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/main-wt/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/claude-review/main-wt/projects/lumen/src/money/rules.ts private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/claude-review/main-wt/projects/lumen/bridge/mt5_bridge.py private=True signing=True llm=False agent_guard=False
+- INFO /workspace/aai/aai/zoora.py private=False signing=False llm=True agent_guard=True
+- INFO /workspace/aai/aai/hud.py private=False signing=False llm=True agent_guard=True
+- INFO /workspace/aai/aai/voice/config.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/aai/aai/voice/keys.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/aai/aai/voice/gateway.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/aai/aai/voice/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/roadmap-audit/projects/zoora-platform/zoora_platform/providers.py private=False signing=False llm=True agent_guard=False
+- INFO /workspace/roadmap-audit/projects/zoora-agent-community/scripts/live_model_evidence.py private=False signing=False llm=True agent_guard=False
+- HIGH /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/practice_engine.py private=False signing=True llm=False agent_guard=False
+- INFO /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/__main__.py private=False signing=False llm=True agent_guard=False
+
+## External-text feed points
+- /workspace/solana-meme-risk/smr/config.py sanitized=False
+- /workspace/solana-meme-risk/smr/narrative.py sanitized=False
+- /workspace/solana-meme-risk/smr/report.py sanitized=True
+- /workspace/solana-meme-risk/smr/healthcheck.py sanitized=False
+- /workspace/solana-meme-risk/smr/watch.py sanitized=False
+- /workspace/solana-meme-risk/smr/cli.py sanitized=False
+- /workspace/solana-meme-risk/smr/backtest/report_md.py sanitized=False
+- /workspace/solana-meme-risk/smr/paper/scanner.py sanitized=False
+- /workspace/solana-meme-risk/smr/paper/edge.py sanitized=False
+- /workspace/solana-meme-risk/smr/paper/engine.py sanitized=False
+- /workspace/solana-meme-risk/smr/paper/watcher.py sanitized=False
+- /workspace/solana-meme-risk/tools/grad_gate_check.py sanitized=False
+- /workspace/solana-meme-risk/tools/verify_labels.py sanitized=False
+- /workspace/solana-meme-risk/tools/vet_latency_probe.py sanitized=False
+- /workspace/solana-meme-risk/tools/collect_graduations.py sanitized=False
+- /workspace/solana-meme-risk/tools/label_graduations.py sanitized=False
+- /workspace/flybrain/repo/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/flybrain/repo/src/ecosystem_research/experience.py sanitized=False
+- /workspace/flybrain/repo/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/flybrain/repo/src/ecosystem_research/controller.py sanitized=False
+- /workspace/flybrain/repo/src/multi_brain_research/holder_concentration.py sanitized=False
+- /workspace/flybrain/repo/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/flybrain/repo/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/flybrain/repo/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/flybrain/repo/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/flybrain/repo/src/aai_scanner/transport.py sanitized=False
+- /workspace/flybrain/repo/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/flybrain/repo/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/flybrain/repo/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/aai-forex/src/aai_fx/research/audusd.py sanitized=False
+- /workspace/billy-pipeline/src/billy/config.py sanitized=False
+- /workspace/billy-pipeline/src/billy/cli.py sanitized=False
+- /workspace/billy-pipeline/src/billy/ingest/sources.py sanitized=True
+- /workspace/billy-pipeline/src/billy/ingest/store.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/ecosystem_research/experience.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/ecosystem_research/controller.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/src/aai_scanner/transport.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/zoora-style/src/lumen-88/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/ecosystem_research/experience.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/ecosystem_research/controller.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/src/aai_scanner/transport.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/zoora-style/src/metaverse-91/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/runners/md.py sanitized=False
+- /workspace/runners/bt_md.py sanitized=False
+- /workspace/perps-pipeline/src/perps/cli.py sanitized=False
+- /workspace/perps-pipeline/src/perps/arena/tick.py sanitized=True
+- /workspace/perps-pipeline/src/perps/paper/engine.py sanitized=False
+- /workspace/fb/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/fb/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/fb/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/fb/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/fb/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/fb/src/aai_scanner/transport.py sanitized=False
+- /workspace/zl/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/zl/src/ecosystem_research/experience.py sanitized=False
+- /workspace/zl/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/zl/src/ecosystem_research/controller.py sanitized=False
+- /workspace/zl/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/zl/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/zl/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/zl/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/zl/src/aai_scanner/transport.py sanitized=False
+- /workspace/zl/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/zl/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/zl/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/zl/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/zl/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/zl/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/tg_aaisolmeme/tg_send.py sanitized=False
+- /workspace/rev92/wt346/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/rev92/wt346/src/ecosystem_research/experience.py sanitized=False
+- /workspace/rev92/wt346/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/rev92/wt346/src/ecosystem_research/controller.py sanitized=False
+- /workspace/rev92/wt346/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/rev92/wt346/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/rev92/wt346/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/rev92/wt346/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/rev92/wt346/src/aai_scanner/transport.py sanitized=False
+- /workspace/rev92/wt346/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-signer/src/zoora_signer/signer.py sanitized=True
+- /workspace/rev92/wt346/projects/zoora-signer/src/zoora_signer/vet.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/rev92/wt346/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/rev92/wt346/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/rev92/wt850/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/rev92/wt850/src/ecosystem_research/experience.py sanitized=False
+- /workspace/rev92/wt850/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/rev92/wt850/src/ecosystem_research/controller.py sanitized=False
+- /workspace/rev92/wt850/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/rev92/wt850/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/rev92/wt850/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/rev92/wt850/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/rev92/wt850/src/aai_scanner/transport.py sanitized=False
+- /workspace/rev92/wt850/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-signer/src/zoora_signer/signer.py sanitized=True
+- /workspace/rev92/wt850/projects/zoora-signer/src/zoora_signer/vet.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/rev92/wt850/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/rev92/wt850/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/rev92/wte1d/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/rev92/wte1d/src/ecosystem_research/experience.py sanitized=False
+- /workspace/rev92/wte1d/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/rev92/wte1d/src/ecosystem_research/controller.py sanitized=False
+- /workspace/rev92/wte1d/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/rev92/wte1d/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/rev92/wte1d/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/rev92/wte1d/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/rev92/wte1d/src/aai_scanner/transport.py sanitized=False
+- /workspace/rev92/wte1d/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-signer/src/zoora_signer/signer.py sanitized=True
+- /workspace/rev92/wte1d/projects/zoora-signer/src/zoora_signer/vet.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/rev92/wte1d/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/rev92/wte1d/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/rev92/repo/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/rev92/repo/src/ecosystem_research/experience.py sanitized=False
+- /workspace/rev92/repo/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/rev92/repo/src/ecosystem_research/controller.py sanitized=False
+- /workspace/rev92/repo/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/rev92/repo/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/rev92/repo/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/rev92/repo/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/rev92/repo/src/aai_scanner/transport.py sanitized=False
+- /workspace/rev92/repo/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-signer/src/zoora_signer/signer.py sanitized=True
+- /workspace/rev92/repo/projects/zoora-signer/src/zoora_signer/vet.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/rev92/repo/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/rev92/repo/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/rev92/wt3db/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/rev92/wt3db/src/ecosystem_research/experience.py sanitized=False
+- /workspace/rev92/wt3db/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/rev92/wt3db/src/ecosystem_research/controller.py sanitized=False
+- /workspace/rev92/wt3db/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/rev92/wt3db/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/rev92/wt3db/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/rev92/wt3db/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/rev92/wt3db/src/aai_scanner/transport.py sanitized=False
+- /workspace/rev92/wt3db/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-signer/src/zoora_signer/signer.py sanitized=True
+- /workspace/rev92/wt3db/projects/zoora-signer/src/zoora_signer/vet.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/rev92/wt3db/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/rev92/wt3db/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/claude-review/yt-wt/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/claude-review/yt-wt/src/ecosystem_research/experience.py sanitized=False
+- /workspace/claude-review/yt-wt/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/claude-review/yt-wt/src/ecosystem_research/controller.py sanitized=False
+- /workspace/claude-review/yt-wt/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/claude-review/yt-wt/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/claude-review/yt-wt/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/claude-review/yt-wt/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/claude-review/yt-wt/src/aai_scanner/transport.py sanitized=False
+- /workspace/claude-review/yt-wt/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/topics/topiclib/fake_api.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/topics/tools/build_fixtures.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/audio/music/build.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/audio/music/composer/spec.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/radar/tools/build_fixtures.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/onchain/transfer_scan.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/onchain/around_ref.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/onchain/curve_candles.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/onchain/slot_window.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/video-studio/scripts/onchain/venue_history.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/claude-review/yt-wt/projects/lumen/bridge/mt5_bridge.py sanitized=False
+- /workspace/claude-review/repo/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/claude-review/repo/src/ecosystem_research/experience.py sanitized=False
+- /workspace/claude-review/repo/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/claude-review/repo/src/ecosystem_research/controller.py sanitized=False
+- /workspace/claude-review/repo/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/claude-review/repo/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/claude-review/repo/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/claude-review/repo/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/claude-review/repo/src/aai_scanner/transport.py sanitized=False
+- /workspace/claude-review/repo/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/claude-review/repo/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/claude-review/repo/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/claude-review/repo/projects/lumen/bridge/mt5_bridge.py sanitized=False
+- /workspace/claude-review/main-wt/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/claude-review/main-wt/src/ecosystem_research/experience.py sanitized=False
+- /workspace/claude-review/main-wt/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/claude-review/main-wt/src/ecosystem_research/controller.py sanitized=False
+- /workspace/claude-review/main-wt/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/claude-review/main-wt/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/claude-review/main-wt/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/claude-review/main-wt/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/claude-review/main-wt/src/aai_scanner/transport.py sanitized=False
+- /workspace/claude-review/main-wt/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/claude-review/main-wt/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/claude-review/main-wt/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+- /workspace/claude-review/main-wt/projects/lumen/bridge/mt5_bridge.py sanitized=False
+- /workspace/billy/eval_calls.py sanitized=False
+- /workspace/aai/docs/reviews/zoora-voice-gateway-2026-11-17-artifacts/scanner_probe3_f23ebd9.py sanitized=False
+- /workspace/aai/aai/sources.py sanitized=True
+- /workspace/aai/aai/reports.py sanitized=True
+- /workspace/aai/aai/zoora.py sanitized=True
+- /workspace/aai/aai/store.py sanitized=False
+- /workspace/aai/aai/hud.py sanitized=True
+- /workspace/aai/aai/adapters/solana_meme.py sanitized=False
+- /workspace/roadmap-audit/src/ecosystem_research/reef_adapter.py sanitized=False
+- /workspace/roadmap-audit/src/ecosystem_research/experience.py sanitized=False
+- /workspace/roadmap-audit/src/ecosystem_research/scanner_feed.py sanitized=False
+- /workspace/roadmap-audit/src/ecosystem_research/controller.py sanitized=False
+- /workspace/roadmap-audit/src/multi_brain_research/curve_account_decode.py sanitized=False
+- /workspace/roadmap-audit/src/multi_brain_research/flyvis_smoke.py sanitized=False
+- /workspace/roadmap-audit/src/multi_brain_research/training_lab.py sanitized=False
+- /workspace/roadmap-audit/src/aai_scanner/http_verification.py sanitized=False
+- /workspace/roadmap-audit/src/aai_scanner/transport.py sanitized=False
+- /workspace/roadmap-audit/scripts/run_ecosystem_behavior.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-platform/zoora_platform/ledger.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-economy-simulator/review/scripts/authorization_audit.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-economy-simulator/review/scripts/reservation_audit.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/scripts/railway_container_evidence.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/scripts/legacy_fixture.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/scripts/research_evidence.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/research_identity.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/wallet_proof.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/agent_runner.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/store.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/agent_activity.py sanitized=False
+- /workspace/roadmap-audit/projects/zoora-agent-community/zoora_community/commerce_store.py sanitized=False
+- /workspace/roadmap-audit/projects/sfp-paper-lab/zoora_sfp/notebook.py sanitized=False
+
+Full JSON: /workspace/agent-guard/reports/audit_20261124T162519.json
