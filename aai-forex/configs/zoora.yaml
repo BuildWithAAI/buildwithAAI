@@ -1,0 +1,55 @@
+# Zoora Strategy research config. PAPER/SIMULATED ONLY.
+# Symbols: canonical AUDUSD / XAUUSD; on Bybit MT5 they are AUDUSD+ / XAUUSD+.
+# EVERY contract spec, spread, commission and swap below is an ASSUMPTION until
+# copied from the Bybit MT5 terminal (symbol_info / Specification window).
+account:
+  currency: USD
+  starting_equity: 100000      # research size: avoids 0.01-lot rounding artefacts on gold D1 (see docs)
+
+pairs: [AUDUSD, XAUUSD]
+
+instruments:
+  AUDUSD: {contract_size: 100000, pip_size: 0.0001, lot_step: 0.01, min_lot: 0.01, max_lot: 100, broker_symbol: "AUDUSD+"}
+  XAUUSD: {contract_size: 100,    pip_size: 0.01,   lot_step: 0.01, min_lot: 0.01, max_lot: 100, broker_symbol: "XAUUSD+"}
+
+risk:
+  risk_per_trade_pct: 1.0        # of CURRENT equity -> compounding
+  min_risk_pct: 1.0
+  max_risk_pct: 3.0
+  max_open_risk_pct: 6.0
+  daily_loss_limit_pct: 4.0
+  max_correlated_risk_pct: 4.0
+  max_positions_per_usd_direction: 3
+  kill_switch_drawdown_pct: 20.0 # research runs disable the in-sim kill (breach still recorded)
+  kill_switch_file: state/KILL_SWITCH
+  kill_switch_flatten: true
+  max_lot: 50
+
+costs:
+  commission_per_lot_side: 3.5
+  default: {spread_pips: 1.0, slippage_pips: 0.2, stop_slippage_pips: 0.5}
+  per_pair:
+    # AUDUSD pips (0.0001). Swap % p.a. of notional, negative = cost (assumed).
+    AUDUSD: {spread_pips: 1.0, slippage_pips: 0.2, stop_slippage_pips: 0.5,
+             swap_long_pct_pa: -1.5, swap_short_pct_pa: -1.0}
+    # XAUUSD in pip_size units = $0.01 points: 30 = $0.30 spread. Commission per 100-oz lot per side.
+    XAUUSD: {spread_pips: 30, slippage_pips: 5, stop_slippage_pips: 15, commission_per_lot_side: 3.5,
+             swap_long_pct_pa: -5.0, swap_short_pct_pa: -1.0}
+
+data:
+  provider: dukascopy
+  store_dir: data
+  history:
+    H1: {start: "2008-01-01"}
+
+backtest:
+  oos_fraction: 0.3
+
+reporting:
+  out_dir: reports
+  audit_path: audit/audit.jsonl
+  runs_dir: runs
+
+execution:
+  mode: paper
+  paper_state_dir: state/paper

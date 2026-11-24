@@ -1,0 +1,306 @@
+# Zoora Strategy — EMA 200/800 (and 3-6-9 variant 198/792) on AUDUSD and XAUUSD
+
+Status: **research only. No variant is robust enough to recommend for live trading.**
+Nothing in this repository places real orders. The MT5 adapter (`src/aai_fx/execution/mt5_adapter.py`) is a stub.
+Live orders are refused unless an explicit confirmation flag is passed **and** the agent-guard check
+(`/workspace/agent-guard`: kill switch plus hard limits) approves. MetaTrader5 Python only runs on Windows, so any live use
+would happen on Zoorped's Windows PC with the Bybit MT5 terminal. Agent-guard's forex allowlist currently contains
+only the 7 majors, so `XAUUSD+` would be refused live until Zoorped changes that allowlist himself.
+
+Every number in this document is an engine output from
+`aai-fx -c configs/zoora.yaml zoora`, run on 2026-11-03 at about 07:01 CST.
+The outputs are in `research/zoora/results.{md,json}`, and the cost and swap stress runs are in `research/zoora/sensitivity/`.
+
+## 1. Data
+
+| Source | Used for | Period (post-validation) | Caveats |
+|---|---|---|---|
+| **Dukascopy datafeed** (free, no key), H1 BID and ASK candles, `datafeed.dukascopy.com/datafeed/{SYM}/{YYYY}/{MM-1}/{BID,ASK}_candles_hour_1.bi5` | primary data: AUDUSD and XAUUSD H1, plus H4 and D1 built from H1 | AUDUSD H1 2008-01-02 → 2026-10-30 (117,072 bars). XAUUSD H1 2008-01-01 → 2026-10-30 (113,437 bars). | This is the Dukascopy ECN spot feed, **not Bybit's**. Prices and spreads are close to Bybit's but not identical. Mid = (bid+ask)/2. Hours with zero volume (filler) are dropped. The server is slow and flaky (503/504), so requests are retried and cached in `data/raw/dukascopy/`. |
+| **yfinance** `AUDUSD=X` and `GC=F` (D1) | long-history D1 cross-check | AUDUSD 2006-05-16 → 2026-11-02 (5,323 bars). GC=F 2000-08-30 → 2026-11-02 (6,569 bars). | yfinance has no spot gold (`XAUUSD=X` and `XAU=X` return 404). `GC=F` is the **COMEX front-month future**, so it has roll gaps, a futures basis versus spot, and CME session hours. yfinance FX bars carry no volume or spread. |
+
+H4 and D1 are resampled from H1 on **MT5-style server time (New York + 7h)**, as used by most MT5 brokers. D1 bars
+cover the trading day from 17:00 to 17:00 New York time and are labelled 00:00 UTC of the trading date. Bybit's
+actual server time **must be confirmed** (see §8).
+
+Measured Dukascopy median spreads (close-to-close, H1) were:
+
+| Instrument | Median, all years | Median, 2024 | Median, 2025 | Median, 2026 | p90 |
+|---|---|---|---|---|---|
+| AUDUSD | 1.1 pips | 1.0 | 1.0 | 0.9 | 2.1 |
+| XAUUSD | $0.36 | $0.38 | $0.59 | $0.69 | $0.62 |
+
+## 2. Contract math and costs (configurable)
+
+`configs/zoora.yaml` uses these assumptions. **Every one of them must be confirmed from the Bybit MT5 terminal**
+(Symbol → Specification):
+
+| | AUDUSD+ | XAUUSD+ |
+|---|---|---|
+| Contract size | 100,000 AUD | 100 oz, so $1 move = $100 per 1.00 lot |
+| Pip / point used for costs | 0.0001 | 0.01 (one MT5 point), $1 per lot |
+| Lot step / min / max | 0.01 / 0.01 / 100 | 0.01 / 0.01 / 100 |
+| Spread (assumed) | 1.0 pip | 30 points = $0.30 |
+| Entry/exit slippage, stop slippage | 0.2 / 0.5 pip | 5 / 15 points |
+| Commission | $3.50 per lot per side | $3.50 per lot per side |
+| Swap long / short (% p.a. of notional, assumed) | −1.5 / −1.0 | −5.0 / −1.0 |
+
+You can override the broker spec without code changes in the `instruments:` section of the config
+(`contract_size`, `pip_size`, `lot_step`, `min_lot`, `max_lot`, `broker_symbol`). Swap is charged once per
+UTC calendar day a position is held across, so weekends are included. Some brokers charge triple swap on Wednesday;
+that is not modelled.
+
+Sizing risks **1% of current equity** (compounding). Stop distance plus spread and slippage determine lots, rounded
+**down** to the lot step, and the trade is rejected if even the minimum lot would exceed the risk budget.
+Commission is not part of the sizing distance, so realised risk can exceed 1% by the commission (about $7 per
+round-turn lot). Research equity is **$100,000**. At $10,000, a D1 gold stop of 3×ATR (about $90–180) needs more
+than 0.01 lot × $100 = $1 per $1 of stop, which is up to $180 of risk on a $100 budget, so most D1 gold trades would
+be rejected. Small accounts cannot trade these gold rules at 1% risk.
+
+## 3. EMA warm-up
+
+EMAs use `ewm(adjust=False)` seeded on the first bar. The seed's residual weight after n bars is (1−2/(N+1))^n.
+Values are masked to NaN until that weight falls below 1%:
+
+| EMA | 200 | 198 | 800 | 792 |
+|---|---|---|---|---|
+| Warm-up bars | 461 | 456 | **1,843** | 1,824 |
+
+The backtests exclude the first **1,843 bars for both EMA pairs**, so 200/800 and 198/792 are compared on identical
+bars and walk-forward windows. On D1 that is about 7 years of history, so Dukascopy D1 trading only starts in Feb 2015
+and GC=F D1 in Jan 2008. On H4 it is about 1.2 years (trading from Mar 2009); on H1 it is about 3.5 months (Apr 2008).
+
+## 4. Variants tested (all of them, with no others tried and dropped)
+
+All variants use the same regime definition. On each completed bar:
+`regime = +1` if close > EMA_slow **and** EMA_fast > EMA_slow; `regime = −1` if close < EMA_slow and
+EMA_fast < EMA_slow; otherwise 0. ATR is 14 bars (Wilder). Signals are computed on the bar close and filled at the
+next bar's open with costs applied. Stops are checked intrabar, and a stop fills at the worse of the stop price or
+the gap.
+
+1. **`zoora_trend` (trend filter / hold).** Go long when the regime *changes to* +1, or short when it changes to −1.
+   Initial stop is entry ∓ 3×ATR (fixed, no trailing) and there is no target. Exit when the regime is no longer the
+   position's side. It does not re-enter until the next regime change.
+2. **`zoora_pullback` (pullback to the EMA-fast band).** In regime +1, go long when the bar's low ≤ EMA_fast +
+   0.25×ATR **and** close > EMA_fast; shorts mirror this. Stop is 2×ATR and target is 2R. Exit early if the regime
+   changes. Only one position is held at a time.
+3. **`zoora_cross` (EMA_fast/EMA_slow crossover).** Enter in the direction of a new cross of EMA_fast over or under
+   EMA_slow. Stop is 3×ATR with no target. Exit on the opposite cross, which reverses the position on the next bar.
+   After a stop-out, wait for the next cross.
+
+Each variant has 3–4 parameters, all fixed in advance (EMA pair, ATR period 14, stop multiple, and for the pullback
+the band and target). Walk-forward re-selects **only** `stop_atr ∈ {2, 3}`, choosing by train-window Sharpe and
+requiring at least 5 trades, otherwise the default is used. Train/test window sizes are D1 780/260, H4 4,680/1,560
+and H1 12,480/6,240 bars, that is about 3 years train and 1 year test on D1/H4, and about 2 years train and 1 year test on H1. Test
+windows run as one continuous account, so positions carry across window boundaries.
+IS/OOS uses the first 70% and last 30% of post-warm-up bars, each on a fresh $100k account. Research mode was used:
+the 20% drawdown kill was disabled so the full history could be measured. The first breach date is in
+`results.json`, and most H1 and H4 runs breached 20% at some point.
+
+## 5. Results (every variant × timeframe × symbol × EMA pair)
+
+Columns: trades, CAGR, Sharpe (daily), max drawdown, profit factor and expectancy in R for the full post-warm-up
+period, then IS, OOS and walk-forward (WF), time in market, total swap paid ($), and buy-and-hold return of the
+underlying over the same period, for context. "-" means there were no trades, so the metric is undefined. In-market
+% and B&H are not risk-adjusted. The strategies hold roughly 0.5–1× equity in notional while in a trade (median H4 gold size 0.48 lot), so they will never track
+buy-and-hold.
+
+| src | sym | tf | variant | EMA | trades | CAGR | Sharpe | MaxDD | PF | Exp R | IS trades | IS CAGR | IS ExpR | OOS trades | OOS CAGR | OOS Sharpe | OOS MaxDD | OOS PF | OOS ExpR | WF win | WF trades | WF CAGR | WF Sharpe | WF ExpR | in-mkt | swap $ | B&H full |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| dukascopy | AUDUSD | H1 | trend | 200/800 | 1135 | -2.17% | -0.08 | 69.4% | 0.94 | -0.022 | 742 | 2.21% | 0.058 | 393 | -11.70% | -0.81 | 51.4% | 0.54 | -0.174 | 17 | 1044 | -6.15% | -0.30 | -0.084 | 75% | -39360 | -26% |
+| dukascopy | AUDUSD | H1 | trend | 198/792 | 1148 | -2.39% | -0.09 | 70.3% | 0.93 | -0.026 | 746 | 2.10% | 0.056 | 402 | -12.12% | -0.85 | 52.3% | 0.53 | -0.177 | 17 | 1058 | -7.80% | -0.43 | -0.113 | 74% | -38144 | -26% |
+| dukascopy | AUDUSD | H1 | pullback | 200/800 | 1495 | -8.51% | -0.69 | 84.0% | 0.85 | -0.107 | 1034 | -7.52% | -0.093 | 461 | -10.83% | -0.87 | 51.1% | 0.80 | -0.138 | 17 | 940 | -3.02% | -0.27 | -0.047 | 24% | -7236 | -26% |
+| dukascopy | AUDUSD | H1 | pullback | 198/792 | 1509 | -8.18% | -0.65 | 83.3% | 0.86 | -0.101 | 1043 | -7.20% | -0.088 | 466 | -10.45% | -0.83 | 49.7% | 0.81 | -0.132 | 17 | 988 | -3.96% | -0.36 | -0.059 | 25% | -7428 | -26% |
+| dukascopy | AUDUSD | H1 | cross | 200/800 | 173 | 0.74% | 0.12 | 44.6% | 1.07 | 0.186 | 117 | 2.69% | 0.441 | 56 | -3.68% | -0.27 | 28.1% | 0.55 | -0.348 | 17 | 158 | -4.83% | -0.41 | -0.510 | 48% | -26393 | -26% |
+| dukascopy | AUDUSD | H1 | cross | 198/792 | 175 | 0.67% | 0.12 | 46.4% | 1.06 | 0.179 | 117 | 2.80% | 0.458 | 58 | -4.13% | -0.31 | 28.6% | 0.52 | -0.383 | 17 | 162 | -6.73% | -0.67 | -0.721 | 48% | -25786 | -26% |
+| dukascopy | XAUUSD | H1 | trend | 200/800 | 1056 | 3.32% | 0.27 | 43.5% | 1.19 | 0.090 | 729 | 1.28% | 0.051 | 327 | 8.66% | 0.54 | 24.8% | 1.55 | 0.185 | 16 | 929 | 3.87% | 0.28 | 0.125 | 74% | -64868 | 311% |
+| dukascopy | XAUUSD | H1 | trend | 198/792 | 1075 | 3.23% | 0.27 | 41.1% | 1.19 | 0.088 | 739 | 1.16% | 0.049 | 336 | 8.59% | 0.54 | 24.4% | 1.54 | 0.181 | 16 | 943 | 4.25% | 0.30 | 0.131 | 74% | -62199 | 311% |
+| dukascopy | XAUUSD | H1 | pullback | 200/800 | 1349 | -4.94% | -0.40 | 67.0% | 0.89 | -0.065 | 920 | -5.04% | -0.068 | 429 | -4.73% | -0.39 | 33.9% | 0.89 | -0.060 | 16 | 1061 | -3.88% | -0.33 | -0.058 | 24% | -14018 | 311% |
+| dukascopy | XAUUSD | H1 | pullback | 198/792 | 1356 | -4.68% | -0.37 | 65.2% | 0.89 | -0.061 | 926 | -5.01% | -0.066 | 430 | -4.01% | -0.32 | 30.9% | 0.91 | -0.049 | 16 | 1093 | -4.13% | -0.35 | -0.059 | 24% | -14274 | 311% |
+| dukascopy | XAUUSD | H1 | cross | 200/800 | 163 | 1.15% | 0.15 | 56.8% | 1.18 | 0.272 | 122 | -2.67% | -0.246 | 41 | 10.52% | 0.61 | 26.7% | 3.03 | 1.816 | 16 | 143 | -1.08% | 0.01 | -0.029 | 41% | -34524 | 311% |
+| dukascopy | XAUUSD | H1 | cross | 198/792 | 165 | 1.09% | 0.15 | 57.4% | 1.17 | 0.259 | 123 | -2.71% | -0.251 | 42 | 10.40% | 0.60 | 26.5% | 2.94 | 1.752 | 16 | 144 | 1.30% | 0.16 | 0.288 | 41% | -33872 | 311% |
+| dukascopy | AUDUSD | H4 | trend | 200/800 | 306 | -1.40% | -0.16 | 32.7% | 0.76 | -0.076 | 199 | -0.33% | -0.012 | 107 | -3.56% | -0.51 | 25.0% | 0.45 | -0.179 | 15 | 255 | -2.00% | -0.13 | -0.105 | 74% | -12361 | 7% |
+| dukascopy | AUDUSD | H4 | trend | 198/792 | 303 | -0.89% | -0.08 | 29.0% | 0.85 | -0.050 | 198 | 0.18% | 0.013 | 105 | -3.32% | -0.47 | 24.0% | 0.48 | -0.169 | 15 | 249 | -1.95% | -0.15 | -0.102 | 76% | -13474 | 7% |
+| dukascopy | AUDUSD | H4 | pullback | 200/800 | 348 | -0.05% | 0.02 | 21.6% | 1.00 | 0.014 | 242 | 0.69% | 0.054 | 106 | -1.75% | -0.27 | 15.3% | 0.86 | -0.078 | 15 | 234 | 0.08% | 0.06 | 0.016 | 25% | -7385 | 7% |
+| dukascopy | AUDUSD | H4 | pullback | 198/792 | 354 | -0.31% | -0.02 | 23.7% | 0.98 | 0.000 | 244 | 0.36% | 0.036 | 110 | -1.85% | -0.28 | 16.1% | 0.86 | -0.080 | 15 | 239 | 0.01% | 0.04 | 0.012 | 25% | -7130 | 7% |
+| dukascopy | AUDUSD | H4 | cross | 200/800 | 40 | -1.29% | -0.23 | 31.7% | 0.34 | -0.572 | 28 | -1.31% | -0.578 | 12 | -0.78% | -0.15 | 10.5% | 0.58 | -0.336 | 15 | 35 | -2.07% | -0.31 | -0.882 | 38% | -6076 | 7% |
+| dukascopy | AUDUSD | H4 | cross | 198/792 | 40 | -0.58% | -0.08 | 28.2% | 0.71 | -0.310 | 26 | -0.40% | -0.272 | 14 | -1.01% | -0.20 | 11.6% | 0.51 | -0.380 | 15 | 35 | -2.06% | -0.34 | -0.864 | 43% | -7316 | 7% |
+| dukascopy | XAUUSD | H4 | trend | 200/800 | 246 | 3.23% | 0.34 | 32.0% | 1.70 | 0.346 | 162 | 0.95% | 0.098 | 84 | 8.63% | 0.65 | 26.8% | 2.76 | 0.826 | 15 | 215 | 3.22% | 0.30 | 0.452 | 77% | -46485 | 324% |
+| dukascopy | XAUUSD | H4 | trend | 198/792 | 251 | 2.94% | 0.32 | 36.3% | 1.64 | 0.328 | 163 | 0.30% | 0.045 | 88 | 9.26% | 0.69 | 24.9% | 2.90 | 0.851 | 15 | 217 | 3.99% | 0.34 | 0.530 | 76% | -43114 | 324% |
+| dukascopy | XAUUSD | H4 | pullback | 200/800 | 325 | -0.22% | -0.01 | 27.1% | 0.98 | -0.005 | 216 | -0.63% | -0.027 | 109 | 0.78% | 0.16 | 8.1% | 1.07 | 0.039 | 15 | 244 | -0.74% | -0.11 | -0.038 | 25% | -12967 | 324% |
+| dukascopy | XAUUSD | H4 | pullback | 198/792 | 328 | -0.11% | 0.01 | 26.4% | 0.99 | 0.001 | 216 | -0.51% | -0.021 | 112 | 0.78% | 0.16 | 8.5% | 1.07 | 0.043 | 15 | 248 | -0.69% | -0.10 | -0.034 | 26% | -13509 | 324% |
+| dukascopy | XAUUSD | H4 | cross | 200/800 | 39 | -0.56% | -0.05 | 25.2% | 0.74 | -0.176 | 25 | 0.08% | 0.173 | 14 | -2.05% | -0.46 | 14.3% | 0.18 | -0.798 | 15 | 37 | -0.10% | 0.04 | 0.131 | 35% | -19050 | 324% |
+| dukascopy | XAUUSD | H4 | cross | 198/792 | 36 | -0.36% | -0.02 | 24.2% | 0.82 | -0.093 | 23 | -0.05% | 0.108 | 13 | -1.07% | -0.23 | 12.2% | 0.47 | -0.447 | 15 | 34 | 0.13% | 0.06 | 0.258 | 29% | -18170 | 324% |
+| dukascopy | AUDUSD | D1 | trend | 200/800 | 33 | -0.59% | -0.26 | 12.8% | 0.33 | -0.215 | 25 | -0.48% | -0.161 | 8 | -0.71% | -0.34 | 5.3% | 0.07 | -0.318 | 9 | 28 | -0.70% | -0.19 | -0.221 | 53% | -2056 | -9% |
+| dukascopy | AUDUSD | D1 | trend | 198/792 | 31 | -0.50% | -0.22 | 12.1% | 0.37 | -0.190 | 24 | -0.41% | -0.141 | 7 | -0.56% | -0.26 | 4.8% | 0.09 | -0.284 | 9 | 26 | -0.56% | -0.15 | -0.188 | 52% | -2047 | -9% |
+| dukascopy | AUDUSD | D1 | pullback | 200/800 | 42 | -0.72% | -0.29 | 10.1% | 0.71 | -0.198 | 24 | -0.53% | -0.167 | 19 | -0.97% | -0.34 | 6.4% | 0.74 | -0.194 | 9 | 23 | 0.32% | 0.17 | 0.125 | 27% | -1639 | -9% |
+| dukascopy | AUDUSD | D1 | pullback | 198/792 | 41 | -0.62% | -0.25 | 10.1% | 0.74 | -0.173 | 25 | -0.64% | -0.195 | 17 | -0.40% | -0.14 | 5.5% | 0.87 | -0.094 | 9 | 23 | 0.34% | 0.18 | 0.130 | 26% | -1586 | -9% |
+| dukascopy | AUDUSD | D1 | cross | 200/800 | 3 | -0.27% | -0.42 | 3.9% | 0.00 | -1.067 | 2 | -0.25% | -1.069 | 1 | -0.30% | -0.49 | 1.6% | 0.00 | -1.063 | 9 | 3 | -0.36% | -0.49 | -1.067 | 3% | -177 | -9% |
+| dukascopy | AUDUSD | D1 | cross | 198/792 | 3 | -0.27% | -0.43 | 3.9% | 0.00 | -1.065 | 2 | -0.26% | -1.069 | 1 | -0.30% | -0.49 | 1.3% | 0.00 | -1.058 | 9 | 3 | -0.36% | -0.49 | -1.065 | 3% | -177 | -9% |
+| dukascopy | XAUUSD | D1 | trend | 200/800 | 26 | 0.24% | 0.11 | 13.0% | 1.26 | 0.199 | 26 | -1.16% | -0.375 | 0 | 0.00% | - | -0.0% | - | - | 9 | 7 | 1.34% | 0.34 | 1.991 | 46% | -6656 | 206% |
+| dukascopy | XAUUSD | D1 | trend | 198/792 | 25 | 0.21% | 0.10 | 13.1% | 1.22 | 0.202 | 25 | -1.21% | -0.394 | 0 | 0.00% | - | -0.0% | - | - | 9 | 6 | 1.32% | 0.34 | 2.306 | 46% | -6681 | 206% |
+| dukascopy | XAUUSD | D1 | pullback | 200/800 | 31 | 0.14% | 0.07 | 6.3% | 1.09 | 0.051 | 27 | 0.41% | 0.126 | 4 | -0.52% | -0.28 | 3.2% | 0.49 | -0.453 | 9 | 17 | -0.24% | -0.11 | -0.143 | 27% | -4440 | 206% |
+| dukascopy | XAUUSD | D1 | pullback | 198/792 | 31 | 0.14% | 0.07 | 6.3% | 1.09 | 0.055 | 27 | 0.41% | 0.131 | 4 | -0.52% | -0.28 | 3.2% | 0.49 | -0.453 | 9 | 17 | -0.24% | -0.11 | -0.143 | 27% | -4430 | 206% |
+| dukascopy | XAUUSD | D1 | cross | 200/800 | 5 | -0.43% | -0.74 | 4.9% | 0.00 | -1.058 | 5 | -0.61% | -1.058 | 0 | 0.00% | - | -0.0% | - | - | 9 | 2 | -0.23% | -0.52 | -1.033 | 3% | -245 | 206% |
+| dukascopy | XAUUSD | D1 | cross | 198/792 | 5 | -0.46% | -0.76 | 5.3% | 0.00 | -1.060 | 5 | -0.66% | -1.060 | 0 | 0.00% | - | -0.0% | - | - | 9 | 2 | -0.23% | -0.53 | -1.035 | 4% | -279 | 206% |
+| yfinance_long | AUDUSD | D1 | trend | 200/800 | 35 | -0.59% | -0.28 | 12.3% | 0.30 | -0.239 | 24 | -0.65% | -0.278 | 11 | -0.44% | -0.19 | 5.2% | 0.32 | -0.155 | 11 | 34 | -0.73% | -0.30 | -0.236 | 51% | -1945 | -26% |
+| yfinance_long | AUDUSD | D1 | trend | 198/792 | 34 | -0.56% | -0.25 | 12.4% | 0.31 | -0.228 | 24 | -0.69% | -0.271 | 10 | -0.27% | -0.10 | 5.0% | 0.39 | -0.127 | 11 | 33 | -0.70% | -0.27 | -0.224 | 56% | -2227 | -26% |
+| yfinance_long | AUDUSD | D1 | pullback | 200/800 | 46 | -0.47% | -0.20 | 9.5% | 0.78 | -0.117 | 30 | -0.24% | -0.077 | 16 | -0.75% | -0.25 | 6.5% | 0.73 | -0.135 | 11 | 25 | -0.14% | -0.07 | -0.002 | 31% | -1868 | -26% |
+| yfinance_long | AUDUSD | D1 | pullback | 198/792 | 46 | -0.49% | -0.21 | 9.7% | 0.78 | -0.120 | 30 | -0.26% | -0.077 | 16 | -0.76% | -0.25 | 6.5% | 0.72 | -0.144 | 11 | 25 | -0.16% | -0.08 | -0.010 | 31% | -1876 | -26% |
+| yfinance_long | AUDUSD | D1 | cross | 200/800 | 4 | -0.33% | -0.31 | 4.3% | 0.00 | -1.162 | 3 | -0.33% | -1.203 | 1 | -0.32% | -0.48 | 1.3% | 0.00 | -1.042 | 11 | 3 | -0.32% | -0.28 | -1.206 | 8% | -301 | -26% |
+| yfinance_long | AUDUSD | D1 | cross | 198/792 | 4 | -0.30% | -0.25 | 4.4% | 0.00 | -1.005 | 3 | -0.37% | -1.189 | 1 | -0.12% | -0.10 | 1.7% | 0.00 | -0.453 | 11 | 3 | -0.28% | -0.21 | -0.999 | 13% | -605 | -26% |
+| yfinance_long | XAUUSD | D1 | trend | 200/800 | 30 | 0.32% | 0.10 | 18.3% | 1.44 | 0.275 | 24 | -0.57% | -0.286 | 6 | 2.50% | 0.47 | 12.2% | 12.70 | 2.518 | 15 | 29 | 0.09% | 0.04 | 0.085 | 65% | -11012 | 346% |
+| yfinance_long | XAUUSD | D1 | trend | 198/792 | 31 | 0.31% | 0.10 | 18.3% | 1.43 | 0.251 | 25 | -0.60% | -0.301 | 6 | 2.53% | 0.48 | 12.2% | 14.86 | 2.549 | 15 | 29 | 0.09% | 0.04 | 0.073 | 66% | -10999 | 346% |
+| yfinance_long | XAUUSD | D1 | pullback | 200/800 | 43 | 0.22% | 0.11 | 8.6% | 1.15 | 0.159 | 29 | 0.14% | 0.189 | 14 | 0.44% | 0.20 | 3.7% | 1.32 | 0.098 | 15 | 35 | -0.04% | -0.01 | 0.093 | 27% | -6102 | 346% |
+| yfinance_long | XAUUSD | D1 | pullback | 198/792 | 43 | 0.23% | 0.11 | 8.6% | 1.15 | 0.162 | 29 | 0.14% | 0.189 | 14 | 0.44% | 0.21 | 3.7% | 1.33 | 0.105 | 15 | 35 | -0.04% | -0.00 | 0.094 | 27% | -6096 | 346% |
+| yfinance_long | XAUUSD | D1 | cross | 200/800 | 6 | -0.25% | -0.20 | 8.5% | 0.04 | -0.847 | 6 | -0.36% | -0.847 | 0 | 0.00% | - | -0.0% | - | - | 15 | 6 | -0.30% | -0.22 | -0.847 | 18% | -785 | 346% |
+| yfinance_long | XAUUSD | D1 | cross | 198/792 | 6 | -0.26% | -0.23 | 8.3% | 0.00 | -0.912 | 6 | -0.38% | -0.912 | 0 | 0.00% | - | -0.0% | - | - | 15 | 6 | -0.32% | -0.25 | -0.912 | 18% | -745 | 346% |
+
+### 200/800 vs 198/792 head-to-head (delta = 198/792 minus 200/800)
+
+| src | sym | tf | variant | trades 200/800 | trades 198/792 | entries matched (+-3 bars) | daily-ret corr | dCAGR full | dExpR full | dCAGR OOS | dExpR OOS | dCAGR WF |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| dukascopy | AUDUSD | D1 | cross | 3 | 3 | 100% | 0.992 | -0.00 | 0.002 | 0.00 | 0.005 | -0.00 |
+| dukascopy | AUDUSD | D1 | pullback | 42 | 41 | 95% | 0.981 | 0.10 | 0.025 | 0.58 | 0.099 | 0.01 |
+| dukascopy | AUDUSD | D1 | trend | 33 | 31 | 94% | 0.996 | 0.10 | 0.025 | 0.15 | 0.034 | 0.14 |
+| dukascopy | AUDUSD | H1 | cross | 173 | 175 | 92% | 0.963 | -0.07 | -0.006 | -0.45 | -0.035 | -1.90 |
+| dukascopy | AUDUSD | H1 | pullback | 1495 | 1509 | 98% | 0.987 | 0.33 | 0.006 | 0.38 | 0.007 | -0.93 |
+| dukascopy | AUDUSD | H1 | trend | 1135 | 1148 | 97% | 0.977 | -0.22 | -0.004 | -0.42 | -0.003 | -1.65 |
+| dukascopy | AUDUSD | H4 | cross | 40 | 40 | 82% | 0.811 | 0.71 | 0.262 | -0.23 | -0.044 | 0.01 |
+| dukascopy | AUDUSD | H4 | pullback | 348 | 354 | 99% | 0.990 | -0.26 | -0.014 | -0.10 | -0.002 | -0.07 |
+| dukascopy | AUDUSD | H4 | trend | 306 | 303 | 95% | 0.951 | 0.52 | 0.026 | 0.24 | 0.010 | 0.05 |
+| dukascopy | XAUUSD | D1 | cross | 5 | 5 | 100% | 0.952 | -0.03 | -0.002 | 0.00 | - | -0.00 |
+| dukascopy | XAUUSD | D1 | pullback | 31 | 31 | 97% | 0.999 | -0.00 | 0.004 | 0.00 | 0.000 | 0.00 |
+| dukascopy | XAUUSD | D1 | trend | 26 | 25 | 96% | 0.998 | -0.03 | 0.004 | 0.00 | - | -0.02 |
+| dukascopy | XAUUSD | H1 | cross | 163 | 165 | 92% | 0.991 | -0.07 | -0.013 | -0.12 | -0.064 | 2.38 |
+| dukascopy | XAUUSD | H1 | pullback | 1349 | 1356 | 98% | 0.988 | 0.26 | 0.004 | 0.72 | 0.011 | -0.25 |
+| dukascopy | XAUUSD | H1 | trend | 1056 | 1075 | 96% | 0.993 | -0.09 | -0.002 | -0.07 | -0.004 | 0.37 |
+| dukascopy | XAUUSD | H4 | cross | 39 | 36 | 82% | 0.934 | 0.20 | 0.083 | 0.98 | 0.351 | 0.23 |
+| dukascopy | XAUUSD | H4 | pullback | 325 | 328 | 98% | 0.983 | 0.11 | 0.006 | -0.00 | 0.004 | 0.04 |
+| dukascopy | XAUUSD | H4 | trend | 246 | 251 | 96% | 0.985 | -0.29 | -0.018 | 0.63 | 0.025 | 0.77 |
+| yfinance_long | AUDUSD | D1 | cross | 4 | 4 | 100% | 0.890 | 0.03 | 0.157 | 0.20 | 0.589 | 0.05 |
+| yfinance_long | AUDUSD | D1 | pullback | 46 | 46 | 98% | 0.995 | -0.02 | -0.003 | -0.01 | -0.009 | -0.02 |
+| yfinance_long | AUDUSD | D1 | trend | 35 | 34 | 97% | 0.967 | 0.02 | 0.011 | 0.16 | 0.028 | 0.02 |
+| yfinance_long | XAUUSD | D1 | cross | 6 | 6 | 83% | 0.994 | -0.01 | -0.065 | 0.00 | - | -0.01 |
+| yfinance_long | XAUUSD | D1 | pullback | 43 | 43 | 98% | 0.995 | 0.00 | 0.002 | 0.01 | 0.007 | 0.00 |
+| yfinance_long | XAUUSD | D1 | trend | 30 | 31 | 93% | 0.998 | -0.01 | -0.024 | 0.03 | 0.031 | 0.00 |
+
+### 5a. Cost and swap stress (Dukascopy, both EMA pairs; the full tables are in `research/zoora/sensitivity/*.md`)
+
+Baseline is the costs in §2. The `xau_spread60` stress widens the gold spread to $0.60, matching the 2025–26 measured
+median. The `no_swap` stress zeroes all swaps, as on a swap-free account if Bybit offers one for these symbols. Shown
+here for the only family that was positive in IS, OOS and WF, `zoora_trend` on XAUUSD with 200/800:
+
+| TF | Scenario | Trades | CAGR | Sharpe | MaxDD | PF | Exp R | OOS CAGR | OOS ExpR | WF CAGR | WF Sharpe | Swap $ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| H4 | baseline | 246 | 3.23% | 0.34 | 32.0% | 1.70 | 0.346 | 8.63% | 0.826 | 3.22% | 0.30 | −46,485 |
+| H4 | spread $0.60 | 246 | 2.99% | 0.33 | 33.2% | 1.64 | 0.331 | 8.32% | 0.811 | 2.95% | 0.28 | −44,607 |
+| H4 | no swap | 246 | 5.33% | 0.54 | 25.3% | 2.25 | 0.530 | 11.23% | 1.055 | 5.67% | 0.48 | 0 |
+| H1 | baseline | 1,056 | 3.32% | 0.27 | 43.5% | 1.19 | 0.090 | 8.66% | 0.185 | 3.87% | 0.28 | −64,868 |
+| H1 | spread $0.60 | 1,056 | 1.90% | 0.20 | 51.1% | 1.11 | 0.064 | 7.50% | 0.167 | 1.63% | 0.18 | −54,305 |
+| H1 | no swap | 1,056 | 6.51% | 0.45 | 34.2% | 1.39 | 0.150 | 12.24% | 0.250 | 7.32% | 0.43 | 0 |
+
+Every AUDUSD variant/timeframe stays flat to negative OOS under every scenario. The best AUDUSD OOS figure is
+H4 pullback 198/792 with no swap at −1.39% CAGR.
+
+### 5b. Where the gold "edge" comes from (`zoora_trend`, XAUUSD H4, 200/800, baseline costs)
+
+- **Longs: 147 trades, +$76,693 net, +0.59 R per trade, swap −$43,634.**
+  **Shorts: 99 trades, −$1,306 net, −0.01 R per trade.** The H1 shorts lost −$43,429.
+- Calendar returns: 2009 +8.6%, 2010 +12.4%, 2011 −0.1%, 2012 −7.9%, 2013 +21.7%, 2014 −11.3%, 2015 +2.6%,
+  2016 +0.8%, 2017 −15.2%, 2018 +1.5%, 2019 +12.0%, 2020 +1.5%, 2021 −15.9%, 2022 +0.8%, 2023 −6.9%,
+  **2024 +22.1%, 2025 +52.7%**, 2026 YTD −3.0%. The account ended at $175,387 from $100,000.
+- That result is a lagged, swap-taxed, part-time long position in a 17-year gold bull market (gold B&H +324% over
+  the same window). Most of the profit came in 2024–25. The rules produced nothing on AUDUSD, the second instrument.
+  The same family on AUDUSD H4 lost money long (−$11,157) and short (−$10,875).
+
+## 6. 198/792 vs 200/800: verdict
+
+**It makes no meaningful difference.** Across all 24 matched (source × symbol × timeframe × variant) pairs:
+
+- **Signals.** A median of **96.5%** of 200/800 entries have a same-side 198/792 entry within ±3 bars (minimum
+  82%, on the H4 crossover). Daily equity returns have a median correlation of **0.988** (minimum 0.811).
+- **Full-period CAGR delta (198/792 minus 200/800).** Median −0.001 pp, mean +0.05 pp, largest |Δ| 0.71 pp. It
+  was better in 11 of 24 and worse in 13.
+- **Expectancy delta.** Median +0.003 R, largest |Δ| 0.26 R, and that largest one was on a 40-trade sample.
+  **Sharpe delta:** median −0.001, largest |Δ| 0.15.
+- **OOS CAGR delta.** Median +0.002 pp, better in 12, worse in 8, with 4 having no OOS trades in either.
+  **WF CAGR delta:** median +0.004 pp, better in 13, worse in 10. The largest WF gaps (H1 crossover: AUDUSD
+  −1.90 pp, XAUUSD +2.38 pp) have opposite signs on the two symbols. That comes from a slightly different stop_atr
+  being chosen on ~160-trade samples, not from a real effect.
+
+These differences are the size of noise from shifting the EMA length by 1%. Neither pair dominates, and the sign
+flips between symbol, timeframe and segment. Choose whichever is convenient. There is no evidence that the
+3-6-9 divisibility adds anything.
+
+## 7. Recommendation: no robust candidate
+
+The robustness bar, fixed before looking at results, was:
+(a) positive expectancy in IS, OOS **and** walk-forward,
+(b) on **both** symbols, or on one symbol across at least two timeframes,
+(c) surviving the cost and swap stress,
+(d) OOS Sharpe ≥ 0.5 **and** max DD ≤ 25% at 1% risk.
+
+- **No variant passes.** Nothing works on AUDUSD.
+- **Closest to passing.** `zoora_trend` on XAUUSD H4 (and H1) meets (a) and (c), with IS ExpR only +0.10 on H4.
+  It fails (b) on the "both symbols" reading and fails (d): max DD 32% (H4) or 43% (H1) and full-period Sharpe
+  0.34. Its result rests on the 2024–25 gold rally and on long trades only.
+- **Never trade it live as it stands.** If Zoorped wants to keep studying it, these are the exact rules of the
+  research candidate. Treat it as a hypothesis for paper trading or Bybit-data re-testing only:
+
+```
+Instrument  XAUUSD+ (Bybit MT5), timeframe H4 (server time), completed bars only
+Indicators  EMA200 and EMA800 of close (EMA198/EMA792 equivalent), ATR(14) Wilder
+Warm-up     ignore signals until 1,843 H4 bars of history exist
+Regime      +1 if close > EMA800 and EMA200 > EMA800; -1 if close < EMA800 and EMA200 < EMA800; else 0
+Entry       on the bar where regime changes to +1 (-1): buy (sell) at the next bar open
+            (a long-only version was NOT tested in the grid; shorts were ~break-even, but dropping them
+             after seeing the results would be curve-fitting -- re-test it out of sample first)
+Stop        entry -/+ 3.0 x ATR(14) at the signal bar, fixed, no trailing (walk-forward picked 2.0 in 10/15 windows)
+Exit        at the next bar open after regime != position side; no profit target
+Size        1% of current equity / (stop distance + spread + slippage) x $100 per $1 per lot,
+            rounded down to 0.01 lot; skip if 0.01 lot exceeds the budget
+One position at a time; no pyramiding.
+```
+
+## 8. What data from Zoorped's Bybit MT5 terminal would help most (in priority order)
+
+1. **Contract specs for `XAUUSD+` and `AUDUSD+`** (right-click symbol → Specification): contract size, digits/point,
+   min/step/max lot, **swap long/short and swap type** (points, % or money), the triple-swap day, and the
+   commission per lot for the account type. Swaps were the largest single cost (about $46k on the H4 gold
+   candidate), so this matters most.
+2. **Server time zone and DST rule.** Compare the MT5 Market Watch clock against UTC, in both summer and winter.
+   This sets where D1 and H4 bars start.
+3. **Exported history from the terminal**, using the History Center or `copy_rates_range` on the Windows PC: M1 or
+   H1 bars for both symbols back as far as Bybit provides, so the backtests can be re-run on Bybit's own prices and
+   bar boundaries.
+4. **Spread history.** Export ticks (`copy_ticks_range`) or read the `spread` column of exported bars for a few
+   recent weeks, including Asian session, rollover (about 17:00 New York) and news. Measured Dukascopy gold spreads
+   have doubled since 2024 ($0.38 to $0.69).
+5. **Account details.** Currency, leverage, stop-out level, and whether a swap-free option exists for these symbols.
+6. Agent-guard: before any live use Zoorped must add `XAUUSD`/`XAUUSD+` to the allowlist **himself**. This research
+   did not change the agent-guard configuration.
+
+## 9. Known limitations
+
+- The data is Dukascopy spot and GC=F futures, not Bybit. Bybit's quotes, spreads, gaps and server-time bar
+  boundaries will differ.
+- D1 has only about 11.7 years post-warm-up on Dukascopy. That is about 3–5 crossover trades, which is
+  statistically meaningless. Some OOS segments have **zero** trades: Dukascopy XAUUSD D1 trend and cross, and GC=F
+  D1 cross. That happens because the fresh OOS account must wait for a new regime change or cross.
+- Swaps are flat % p.a. assumptions, with no triple-Wednesday charge and no variation over time. Commission is
+  excluded from the sizing distance.
+- The H4 validation report shows many "missing bars". This is an artefact of DST-shifting server-time H4 labels
+  against a fixed UTC grid, not missing data. H1 gaps are 720 for AUDUSD and 4,004 for XAUUSD (mostly the daily gold
+  maintenance hour and holidays).
+- These are single-symbol accounts. No portfolio combination of AUDUSD and XAUUSD was tested.
+- Past results, even out-of-sample, do not predict future returns.
+
+## Reproduce
+
+```
+cd /workspace/aai-forex && . .venv/bin/activate
+aai-fx -c configs/zoora.yaml zoora            # download/refresh Dukascopy + yfinance, run the full grid
+aai-fx -c configs/zoora.yaml zoora --no-prepare   # reuse stored data
+python scripts/zoora_sensitivity.py            # cost / swap stress scenarios
+pytest -q
+```

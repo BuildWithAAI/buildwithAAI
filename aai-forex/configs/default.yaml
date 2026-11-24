@@ -1,0 +1,85 @@
+# AAI-FX default configuration. PAPER/SIMULATED ONLY.
+account:
+  currency: USD
+  starting_equity: 10000
+
+pairs: [EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD, NZDUSD]
+
+risk:
+  risk_per_trade_pct: 1.0        # user range 1-3%
+  min_risk_pct: 1.0
+  max_risk_pct: 3.0              # hard-capped at 3.0 in code
+  max_open_risk_pct: 6.0         # sum of initial risk across open + pending entries
+  daily_loss_limit_pct: 4.0      # vs. equity at UTC day start; blocks new entries for the day
+  max_correlated_risk_pct: 4.0   # same-direction USD exposure (e.g. long EURUSD + short USDJPY = both short USD)
+  max_positions_per_usd_direction: 3
+  kill_switch_drawdown_pct: 20.0 # peak-to-trough; halts all new entries until manual reset
+  kill_switch_file: state/KILL_SWITCH
+  kill_switch_flatten: true      # close all positions at next open when the kill switch engages
+  max_lot: 50
+
+costs:
+  # Assumed retail ECN-ish costs. Tune to your broker's real spreads/commission.
+  commission_per_lot_side: 3.5   # USD per 100k lot per side (= $7 round turn)
+  default: {spread_pips: 1.0, slippage_pips: 0.2, stop_slippage_pips: 0.5}
+  per_pair:
+    EURUSD: {spread_pips: 0.6, slippage_pips: 0.1, stop_slippage_pips: 0.3}
+    GBPUSD: {spread_pips: 0.9, slippage_pips: 0.2, stop_slippage_pips: 0.5}
+    USDJPY: {spread_pips: 0.7, slippage_pips: 0.1, stop_slippage_pips: 0.3}
+    USDCHF: {spread_pips: 1.1, slippage_pips: 0.2, stop_slippage_pips: 0.5}
+    AUDUSD: {spread_pips: 0.8, slippage_pips: 0.2, stop_slippage_pips: 0.4}
+    USDCAD: {spread_pips: 1.2, slippage_pips: 0.2, stop_slippage_pips: 0.5}
+    NZDUSD: {spread_pips: 1.3, slippage_pips: 0.2, stop_slippage_pips: 0.5}
+
+data:
+  provider: yfinance
+  store_dir: data
+  history:
+    D1:  {start: "2012-01-01"}
+    H1:  {lookback_days: 729}
+    H4:  {lookback_days: 729}   # resampled from 1h
+    M15: {lookback_days: 59}
+    M5:  {lookback_days: 59}
+    M1:  {lookback_days: 29}
+
+strategies:
+  trend_swing:              # swing, D1
+    timeframe: D1
+    params: {ema_fast: 50, ema_slow: 200, entry_lookback: 20, exit_lookback: 10, atr_period: 14, stop_atr: 2.0, target_r: null}
+  trend_swing_h4:           # swing, H4 entries with D1 bias
+    impl: trend_swing
+    timeframe: H4
+    params: {ema_fast: 50, ema_slow: 200, entry_lookback: 30, exit_lookback: 15, atr_period: 14, stop_atr: 2.5, target_r: null}
+  session_breakout:         # intraday/scalp-style, M15
+    timeframe: M15
+    params: {range_start_hour: 0, range_end_hour: 7, entry_end_hour: 11, flat_hour: 16, buffer_datr: 0.05,
+             min_range_datr: 0.15, max_range_datr: 0.8, stop_mode: mid, target_r: 1.5}
+  session_breakout_h1:      # same logic on H1 for a ~2y sample
+    impl: session_breakout
+    timeframe: H1
+    scan: false
+    params: {range_start_hour: 0, range_end_hour: 7, entry_end_hour: 11, flat_hour: 16, buffer_datr: 0.05,
+             min_range_datr: 0.15, max_range_datr: 0.8, stop_mode: mid, target_r: 1.5}
+
+backtest:
+  oos_fraction: 0.3
+  walkforward:
+    trend_swing:
+      train_bars: 780     # ~3y of D1
+      test_bars: 260      # ~1y
+      objective: sharpe
+      grid: {entry_lookback: [20, 55], stop_atr: [2.0, 3.0]}
+    session_breakout_h1:
+      train_bars: 3000    # ~6 months of H1 (24x5)
+      test_bars: 1500
+      objective: expectancy_r
+      grid: {target_r: [1.0, 1.5, 2.0], stop_mode: [mid, opposite]}
+
+reporting:
+  out_dir: reports
+  audit_path: audit/audit.jsonl
+  runs_dir: runs
+
+execution:
+  mode: paper
+  paper_state_dir: state/paper
