@@ -251,7 +251,10 @@ sl = MirroredPose(sp, 'sitLeft')
 # neighbour, so they sit a little lower along the back than the right-sit R- spots)
 sl.spot('L-WITHERS', 'left', 'torso', [(190, 133, 'c'), (198, 156), (198, 173), (191, 186), (178, 197), (157, 204, 'c'), (148, 200), (170, 160), (185, 135)],
         'the large LEFT withers patch on the near side, along the sloping back at the withers (coat_left)')
-sl.spot('L-01', 'left', 'torso', (155, 227, 13, 7.2, -50), 'mid back behind the withers patch')
+# Round 4: L-01 and L-05 take coat_left's own tilt turned by the sit's turn of that body region, like L-02 / L-04 below
+# (the region turn is the sit's R- record against coat_right's: mid back R-02 -58 - 4.5 = -62.5 deg; lower ribs R-05
+# -60 - -10.6 = -49.4 deg). L-01: coat_left -4 deg -> 4 mirrored + -62.5 = -58.5 deg (was a hand-set -50).
+sl.spot('L-01', 'left', 'torso', (155, 227, 13, 7.2, -58.5), 'mid back behind the withers patch')
 # Round-4 repair (R3 review minor, sliced spots): L-02 and L-04 lay 12% and 62% under the haunch fill (drawn over the
 # torso): L-02 was cut along the haunch's unstroked top edge and L-04 showed only as a cap above the thigh line. Each now
 # sits fully on the torso, and takes coat_left's OWN shape: its size and its tilt on badger_coat_left.png, turned by how
@@ -264,7 +267,8 @@ sl.spot('L-03', 'left', 'torso', (194, 204, 10, 11.5, -60), 'shoulder blade')
 # L-04: the mid flank just above the thigh line (2 px clear of its stroke), 6 px further back than the sit's R-03;
 # coat_left tilt -8 deg (long axis 10 px) -> 8 deg mirrored + -22.2 = -14.2 deg.
 sl.spot('L-04', 'left', 'torso', (160, 245, 10, 8, -14.2), 'mid flank, above the thigh line')
-sl.spot('L-05', 'left', 'torso', (183, 242, 8.5, 5.5, -50), 'lower ribs above the brisket line')
+# L-05: coat_left -6 deg -> 6 mirrored + -49.4 = -43.4 deg (was a hand-set -50)
+sl.spot('L-05', 'left', 'torso', (183, 242, 8.5, 5.5, -43.4), 'lower ribs above the brisket line')
 sl.spot('M-CHEST', 'midline', 'torso', (261.9, 184.5, 7.8, 4.2, 86.7), 'midline chest spot, turned with the chest', size_k=1.0)
 sl.spot('L-06', 'left', 'haunch', (171, 298, 7.5, 11.5, -60), 'front of the left thigh (on the folded haunch)')
 sl.spot('L-07', 'left', 'haunch', (125, 300, 5, 9.2, -40), 'back of the left thigh (rear of the folded haunch)')

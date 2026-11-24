@@ -202,8 +202,12 @@ fv.part('tagRing', ring, [ring + [ring[0]]], color='silver', group='tag')
 tagp = blob(158.5, 197, 8.2, 9.0, 0)
 fv.part('tag', tagp, [tagp + [tagp[0]]], color='tag', group='tag')
 fv.part('tagShadow', [(162, 189.5), (166, 194), (166.5, 200), (162, 205.5, 'c'), (163.8, 199.5), (163.5, 193.5)], [], color='tagShadow', group='tag')
-fv.spot('R-NECK', 'right', 'neck', (127.0, 141.0, 2.6, 7.0, 0), (127, 141), CF, 'right neck spot R-NECK seen from the front (screen left)')
-fv.spot('L-NECK', 'left', 'neck', (187.0, 141.0, 2.6, 7.0, 0), (187, 141), CF, 'left neck spot L-NECK seen from the front (screen right)')
+# Round 4 (R3 review): each neck spot is its own measurement on badger_turn_front.png (moments of its dark component; the
+# two records used to be one shared 2.6 x 7.0 upright oval at mirror places). The panel draws them as near mirror images:
+# both lean out at the top, the screen-left (right) one 7.6 x 2.8 px semi-axes at 82.1 deg, the screen-right (left) one
+# 6.9 x 2.3 px at -80.9 deg (allow-listed in tests/spotsNoMirror.test.ts with these numbers).
+fv.spot('R-NECK', 'right', 'neck', (127.71, 143.11, 7.59, 2.76, 82.1), (128, 143), CF, 'right neck spot R-NECK seen from the front (screen left)')
+fv.spot('L-NECK', 'left', 'neck', (187.06, 143.98, 6.92, 2.33, -80.9), (187, 144), CF, 'left neck spot L-NECK seen from the front (screen right)')
 fv.pivot('neck', 157, 160)
 fv.pivot('headCentroid', 157.4, 81.9)   # eyes+nose centroid of the sheet's front head
 fv.pivot('tagAnchor', 158.5, 182)
