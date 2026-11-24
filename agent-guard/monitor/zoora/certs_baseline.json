@@ -1,0 +1,26 @@
+{
+  "collected_at": "2026-11-10T16:54:16.376311-06:00",
+  "count": 2,
+  "certs": [
+    {
+      "id": 29256500162,
+      "logged_at": null,
+      "not_before": "2026-09-02T02:23:23",
+      "not_after": "2026-12-01T02:23:22",
+      "name_value": "www.zoora.ai",
+      "issuer_name": "C=US, O=Let's Encrypt, CN=YE1",
+      "common_name": "www.zoora.ai",
+      "serial_number": "054cabda94990f2d49fe25f933625dbc04c8"
+    },
+    {
+      "id": 29686178948,
+      "logged_at": null,
+      "not_before": "2026-09-02T02:23:23",
+      "not_after": "2026-12-01T02:23:22",
+      "name_value": "www.zoora.ai",
+      "issuer_name": "C=US, O=Let's Encrypt, CN=YE1",
+      "common_name": "www.zoora.ai",
+      "serial_number": "054cabda94990f2d49fe25f933625dbc04c8"
+    }
+  ]
+}

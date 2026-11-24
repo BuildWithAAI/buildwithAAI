@@ -1,0 +1,86 @@
+{
+  "established_at": "2026-11-10T16:56:21.774139-06:00",
+  "source": "first monitor run; matches Nov 10 2:47 PM CST pre-launch report (GitHub Pages, no Fly cutover)",
+  "cutover_seen": false,
+  "normalized": {
+    "zoora.ai": {
+      "nxdomain": false,
+      "types": {
+        "A": [
+          "185.199.108.153",
+          "185.199.109.153",
+          "185.199.110.153",
+          "185.199.111.153"
+        ],
+        "AAAA": [],
+        "CNAME": [],
+        "MX": [
+          "10 eforward1.registrar-servers.com.",
+          "10 eforward2.registrar-servers.com.",
+          "10 eforward3.registrar-servers.com.",
+          "15 eforward4.registrar-servers.com.",
+          "20 eforward5.registrar-servers.com."
+        ],
+        "TXT": [
+          "v=spf1 include:spf.efwd.registrar-servers.com ~all"
+        ],
+        "CAA": [],
+        "NS": [
+          "dns1.registrar-servers.com.",
+          "dns2.registrar-servers.com."
+        ],
+        "DS": []
+      }
+    },
+    "www.zoora.ai": {
+      "nxdomain": false,
+      "types": {
+        "CNAME": [
+          "buildwithaai.github.io."
+        ]
+      }
+    },
+    "_dmarc.zoora.ai": {
+      "nxdomain": true,
+      "types": {
+        "A": [],
+        "AAAA": [],
+        "CNAME": [],
+        "MX": [],
+        "TXT": [],
+        "CAA": [],
+        "NS": [],
+        "DS": []
+      }
+    },
+    "world.zoora.ai": {
+      "nxdomain": true,
+      "types": {
+        "A": [],
+        "AAAA": [],
+        "CNAME": [],
+        "MX": [],
+        "TXT": [],
+        "CAA": [],
+        "NS": [],
+        "DS": []
+      }
+    }
+  },
+  "informational": {
+    "lumen-tidepool.fly.dev": {
+      "nxdomain": true,
+      "types": {
+        "A": [],
+        "AAAA": [],
+        "CNAME": [],
+        "MX": [],
+        "TXT": [],
+        "CAA": [],
+        "NS": [],
+        "DS": []
+      }
+    }
+  },
+  "raw_file": "dns_current.json"
+}

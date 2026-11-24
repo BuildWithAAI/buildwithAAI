@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "_doc": "Hard limits enforced by agent_guard.risk.check_order(). Unknown agent, venue or symbol => DENY. Missing equity => DENY. Percentages are of current account equity. Tighten freely; loosening is a human-only change (see SECURITY_POLICY.md).",
+  "defaults": {
+    "max_notional_pct_equity": 25.0,
+    "max_risk_pct_per_trade": 2.0,
+    "max_daily_loss_pct": 3.0,
+    "max_trades_per_hour": 4,
+    "max_trades_per_day": 20,
+    "max_leverage": 3.0,
+    "approval_required_above_notional_usd": 500.0,
+    "max_order_notional_usd": 5000.0
+  },
+  "agents": {
+    "perps": {
+      "_who": "Perps Agent (Bybit/Blofin USDT perps)",
+      "venues": [
+        "bybit",
+        "blofin",
+        "paper"
+      ],
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT"
+      ],
+      "max_leverage": 5.0,
+      "max_notional_pct_equity": 100.0,
+      "max_risk_pct_per_trade": 2.0
+    },
+    "forex": {
+      "_who": "Forex Agent (MT5 EAs, runs live only on the Windows PC)",
+      "venues": [
+        "mt5",
+        "paper"
+      ],
+      "symbols": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "USDCHF",
+        "AUDUSD",
+        "USDCAD",
+        "NZDUSD",
+        "AUDUSD+",
+        "XAUUSD+"
+      ],
+      "max_leverage": 10.0,
+      "max_notional_pct_equity": 300.0,
+      "max_risk_pct_per_trade": 3.0,
+      "approval_required_above_notional_usd": 50000.0,
+      "max_order_notional_usd": 100000.0,
+      "symbol_limits": {
+        "XAUUSD+": {
+          "_why": "gold is more volatile than FX majors: tighter leverage and per-order size",
+          "max_leverage": 5.0,
+          "max_order_notional_usd": 25000.0,
+          "max_notional_pct_equity": 150.0
+        }
+      }
+    },
+    "billy": {
+      "_who": "Billy Style Agent (signals from @cryptoWZRD_ posts; paper only)",
+      "venues": [
+        "paper"
+      ],
+      "symbols": [
+        "BTCUSDT",
+        "ETHUSDT",
+        "SOLUSDT",
+        "XRPUSDT",
+        "LINKUSDT",
+        "LTCUSDT"
+      ],
+      "max_leverage": 3.0
+    },
+    "solana_meme": {
+      "_who": "Solana Meme Risk (pump.fun risk scoring only: SKIP/REDUCED/NORMAL). NO TRADING - locked by Zoorped 2026-11-09 18:51 CT.",
+      "enabled": false,
+      "venues": [],
+      "symbols": [],
+      "max_leverage": 0.0,
+      "max_order_notional_usd": 0.0,
+      "approval_required_above_notional_usd": 0.0,
+      "max_trades_per_hour": 0,
+      "max_trades_per_day": 0,
+      "max_notional_pct_equity": 0.0
+    },
+    "aai_terminal": {
+      "_who": "AAI Terminal (HUD/orchestrator; paper OMS only, routes commands, never executes live)",
+      "venues": [
+        "paper"
+      ],
+      "symbols": [
+        "*"
+      ],
+      "max_leverage": 5.0
+    },
+    "stocks": {
+      "_who": "Stocks Agent (Roth IRA): drafts tickets only, the human places every trade",
+      "venues": [],
+      "symbols": []
+    },
+    "longterm_2040": {
+      "_who": "2040 Future Agent (long-term): drafts tickets only, the human places every trade",
+      "venues": [],
+      "symbols": []
+    },
+    "security": {
+      "_who": "Security agent: read-only, never trades",
+      "venues": [],
+      "symbols": []
+    }
+  },
+  "money_movement": {
+    "_doc": "Withdrawals, transfers, bridge/swap-out to external addresses: ALWAYS blocked unless a single-use, unexpired human approval token matches agent+action+asset+amount+destination exactly.",
+    "allowed_destinations": []
+  }
+}

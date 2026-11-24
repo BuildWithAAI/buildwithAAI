@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Usage: killswitch on --reason "why" | killswitch off --confirm RESUME --reason "why" | killswitch status
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec env PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}" python3 -m agent_guard.cli killswitch "$@"

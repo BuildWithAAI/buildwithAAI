@@ -1,0 +1,242 @@
+{
+  "summary": {
+    "apex_A": [
+      "185.199.108.153",
+      "185.199.109.153",
+      "185.199.110.153",
+      "185.199.111.153"
+    ],
+    "apex_AAAA": [],
+    "apex_is_github_pages": true,
+    "www_CNAME": [
+      "buildwithaai.github.io."
+    ],
+    "www_points_github_pages": true,
+    "fly_app_resolves": false,
+    "fly_app_addrs": {
+      "A": [],
+      "AAAA": []
+    },
+    "points_to_fly": false
+  },
+  "collected_at": "2026-11-10T16:54:12.299371-06:00",
+  "records": {
+    "zoora.ai": {
+      "A": {
+        "Status": 0,
+        "Answer": [
+          "185.199.108.153",
+          "185.199.109.153",
+          "185.199.110.153",
+          "185.199.111.153"
+        ]
+      },
+      "AAAA": {
+        "Status": 0,
+        "Answer": []
+      },
+      "CNAME": {
+        "Status": 0,
+        "Answer": []
+      },
+      "MX": {
+        "Status": 0,
+        "Answer": [
+          "10 eforward1.registrar-servers.com.",
+          "10 eforward2.registrar-servers.com.",
+          "10 eforward3.registrar-servers.com.",
+          "15 eforward4.registrar-servers.com.",
+          "20 eforward5.registrar-servers.com."
+        ]
+      },
+      "TXT": {
+        "Status": 0,
+        "Answer": [
+          "v=spf1 include:spf.efwd.registrar-servers.com ~all"
+        ]
+      },
+      "CAA": {
+        "Status": 0,
+        "Answer": []
+      },
+      "NS": {
+        "Status": 0,
+        "Answer": [
+          "dns1.registrar-servers.com.",
+          "dns2.registrar-servers.com."
+        ]
+      },
+      "DS": {
+        "Status": 0,
+        "Answer": []
+      }
+    },
+    "www.zoora.ai": {
+      "A": {
+        "Status": 0,
+        "Answer": [
+          "185.199.108.153",
+          "185.199.109.153",
+          "185.199.110.153",
+          "185.199.111.153",
+          "buildwithaai.github.io."
+        ]
+      },
+      "AAAA": {
+        "Status": 0,
+        "Answer": [
+          "2606:50c0:8000::153",
+          "2606:50c0:8001::153",
+          "2606:50c0:8002::153",
+          "2606:50c0:8003::153",
+          "buildwithaai.github.io."
+        ]
+      },
+      "CNAME": {
+        "Status": 0,
+        "Answer": [
+          "buildwithaai.github.io."
+        ]
+      },
+      "MX": {
+        "Status": 0,
+        "Answer": [
+          "buildwithaai.github.io."
+        ]
+      },
+      "TXT": {
+        "Status": 0,
+        "Answer": [
+          "buildwithaai.github.io."
+        ]
+      },
+      "CAA": {
+        "Status": 0,
+        "Answer": [
+          "0 issue \"digicert.com\"",
+          "0 issue \"letsencrypt.org\"",
+          "0 issue \"sectigo.com\"",
+          "0 issuewild \"digicert.com\"",
+          "0 issuewild \"letsencrypt.org\"",
+          "0 issuewild \"sectigo.com\"",
+          "buildwithaai.github.io."
+        ]
+      },
+      "NS": {
+        "Status": 0,
+        "Answer": [
+          "buildwithaai.github.io."
+        ]
+      },
+      "DS": {
+        "Status": 0,
+        "Answer": [
+          "buildwithaai.github.io."
+        ]
+      }
+    },
+    "_dmarc.zoora.ai": {
+      "A": {
+        "Status": 3,
+        "Answer": []
+      },
+      "AAAA": {
+        "Status": 3,
+        "Answer": []
+      },
+      "CNAME": {
+        "Status": 3,
+        "Answer": []
+      },
+      "MX": {
+        "Status": 3,
+        "Answer": []
+      },
+      "TXT": {
+        "Status": 3,
+        "Answer": []
+      },
+      "CAA": {
+        "Status": 3,
+        "Answer": []
+      },
+      "NS": {
+        "Status": 3,
+        "Answer": []
+      },
+      "DS": {
+        "Status": 3,
+        "Answer": []
+      }
+    },
+    "world.zoora.ai": {
+      "A": {
+        "Status": 3,
+        "Answer": []
+      },
+      "AAAA": {
+        "Status": 3,
+        "Answer": []
+      },
+      "CNAME": {
+        "Status": 3,
+        "Answer": []
+      },
+      "MX": {
+        "Status": 3,
+        "Answer": []
+      },
+      "TXT": {
+        "Status": 3,
+        "Answer": []
+      },
+      "CAA": {
+        "Status": 3,
+        "Answer": []
+      },
+      "NS": {
+        "Status": 3,
+        "Answer": []
+      },
+      "DS": {
+        "Status": 3,
+        "Answer": []
+      }
+    },
+    "lumen-tidepool.fly.dev": {
+      "A": {
+        "Status": 3,
+        "Answer": []
+      },
+      "AAAA": {
+        "Status": 3,
+        "Answer": []
+      },
+      "CNAME": {
+        "Status": 3,
+        "Answer": []
+      },
+      "MX": {
+        "Status": 3,
+        "Answer": []
+      },
+      "TXT": {
+        "Status": 3,
+        "Answer": []
+      },
+      "CAA": {
+        "Status": 3,
+        "Answer": []
+      },
+      "NS": {
+        "Status": 3,
+        "Answer": []
+      },
+      "DS": {
+        "Status": 3,
+        "Answer": []
+      }
+    }
+  },
+  "errors": []
+}
