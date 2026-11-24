@@ -12,11 +12,19 @@ export const FRAME = {width: 1920, height: 1080, fps: 30} as const;
 export const GROUND_Y = Math.round(FRAME.height * 0.85); // 918
 /** One shared scale for both characters: ZOO = 900 * 0.88 = 792 px tall, top of hair at y=126. */
 export const PAIR_SCALE = 0.88;
-const pairCentre = (SIZE_COMPARISON.pairExtent.minX + SIZE_COMPARISON.pairExtent.maxX) / 2;
+/**
+ * Ground-point spacing for scenes where ZOO points to screen right over Badger (decision INT-P2): the panel's 482.9
+ * units put Badger's head inside the arc of any sideways arm lift; with the point path of INT-Z3 the arm clears his
+ * head from 554 units, so the pair stands 560 units apart (77 units wider than the panel). Scale and ground line are
+ * the panel's; use SIZE_COMPARISON.spacingUnits for shots without that gesture.
+ */
+export const PAIR_SPACING = 560;
+const pairMaxX = PAIR_SPACING + (SIZE_COMPARISON.pairExtent.maxX - SIZE_COMPARISON.spacingUnits);
+const pairCentre = (SIZE_COMPARISON.pairExtent.minX + pairMaxX) / 2;
 /** ZOO's ground point; the pair (ZOO hands .. Badger tail tip) is centred horizontally. */
 export const ZOO_X = Math.round(FRAME.width / 2 - pairCentre * PAIR_SCALE);
-/** Badger's footprint centre, SIZE_COMPARISON.spacingUnits to screen right of ZOO. */
-export const BADGER_X = Math.round(ZOO_X + SIZE_COMPARISON.spacingUnits * PAIR_SCALE);
+/** Badger's footprint centre, PAIR_SPACING units to screen right of ZOO. */
+export const BADGER_X = Math.round(ZOO_X + PAIR_SPACING * PAIR_SCALE);
 
 /** Easing curves (cubic bezier) used by the proof animation. */
 export const EASE = {

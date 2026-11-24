@@ -250,6 +250,10 @@ def pool_trades(tx, pool_owner, mint, signature=None, tx_index=None):
         td, tdec = mints[mint]
         traders.append({"owner": owner, "token_delta": td / (10 ** tdec)})
     tokens = abs(d_raw) / (10 ** dec)
+    # Launch transaction: the venue's token account has no pre-balance (supply is
+    # minted into it in this tx), so SOL/token here is not a market price.
+    pre_owners = {(tb.get("owner"), tb["mint"]) for tb in tx["meta"].get("preTokenBalances") or []}
+    is_create = d_raw > 0 and (pool_owner, mint) not in pre_owners
     if abs(pool_usd) > STABLE_EPS:
         quote, sol = pool_sym, abs(pool_usd)
     else:
@@ -260,6 +264,7 @@ def pool_trades(tx, pool_owner, mint, signature=None, tx_index=None):
         # pool receives tokens => traders sold
         "side": "sell" if d_raw > 0 else "buy",
         "token_amount": tokens, "quote": quote, "quote_amount": sol,
-        "price_quote_per_token": (sol / tokens) if tokens else None,
+        "price_quote_per_token": None if is_create else ((sol / tokens) if tokens else None),
+        "is_create": is_create,
         "traders": traders, "venue": venue_of(tx),
     }

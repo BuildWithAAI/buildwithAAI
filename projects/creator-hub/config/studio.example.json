@@ -1,0 +1,98 @@
+{
+  "_readme": [
+    "Copy to config/studio.json (gitignored), edit, then check it: node src/server/studio/check-config.ts config/studio.json",
+    "Keys starting with _ are notes and are ignored. Any other unknown key is an error.",
+    "priceUsd: null shows 'Contact for a quote'. Only enter a price you have decided on.",
+    "turnaroundDays: whole days from an approved brief to delivery. null shows 'Agreed after the brief'.",
+    "revisions: revision rounds included. null shows 'Agreed in your quote'.",
+    "Deliverables, budget ranges and FAQ answers below are starting suggestions: edit them to match what you will actually deliver.",
+    "portfolio: real, published work you are allowed to show, as {title, url (https), description?, client?}. Empty hides the section.",
+    "stripePaymentLinks: optional map of package id to a Stripe Payment Link (https). A pay button shows only for packages listed here."
+  ],
+  "version": 1,
+  "packages": [
+    {
+      "id": "explainer-60-90",
+      "name": "Explainer 60–90 s",
+      "summary": "One clear idea in about a minute. Good for a landing page, a launch post or a pinned video.",
+      "deliverables": [
+        "Research-backed script with sources",
+        "Storyboard for your approval",
+        "60–90 second animated video, 16:9 (1920×1080)",
+        "Captions as SRT and VTT files",
+        "One vertical 9:16 cut for Shorts, TikTok and Reels"
+      ],
+      "turnaroundDays": null,
+      "priceUsd": null,
+      "revisions": null
+    },
+    {
+      "id": "explainer-3-5-min",
+      "name": "Explainer 3–5 min",
+      "summary": "A deeper walkthrough: how your product works, who it is for and what to watch out for.",
+      "deliverables": [
+        "Research-backed script with sources",
+        "Storyboard for your approval",
+        "3–5 minute animated video, 16:9 (1920×1080)",
+        "Captions as SRT and VTT files",
+        "Vertical 9:16 cuts for Shorts, TikTok and Reels",
+        "Thumbnail for YouTube"
+      ],
+      "turnaroundDays": null,
+      "priceUsd": null,
+      "revisions": null
+    },
+    {
+      "id": "shorts-pack-3",
+      "name": "Shorts pack (3)",
+      "summary": "Three vertical videos made from your brief or from a video you already have.",
+      "deliverables": [
+        "3 vertical 9:16 videos (1080×1920), each up to 60 seconds",
+        "Burned-in captions, plus SRT files",
+        "Suggested post text for each video"
+      ],
+      "turnaroundDays": null,
+      "priceUsd": null,
+      "revisions": null
+    }
+  ],
+  "budgetRanges": [
+    "Under $1,000",
+    "$1,000 to $2,500",
+    "$2,500 to $5,000",
+    "$5,000 to $10,000",
+    "Over $10,000"
+  ],
+  "faq": [
+    {
+      "q": "Do you guarantee views, subscribers or sales?",
+      "a": "No. We make the video; results depend on your product, your audience and how the video is distributed. See the terms below."
+    },
+    {
+      "q": "Will you make a video for a token, exchange or trading product?",
+      "a": "Sometimes, within limits. We do not make videos that promise returns, predict prices or promote unlicensed financial products.\n\nIf the video is a crypto financial promotion aimed at a region where that is restricted, such as the UK, we need to see the required approval before we start."
+    },
+    {
+      "q": "What do you need from me to start?",
+      "a": "A short brief: who the video is for, the one thing viewers should understand, links to your docs, your brand assets, and sources for any claims you want the video to make."
+    },
+    {
+      "q": "Do you use AI?",
+      "a": "As tools, yes, and we tell you where. Scripts may be drafted with AI help, and every claim is checked against sources before you see it. The animation is drawn in code as vector shapes, not stock footage.\n\nNarration can be a synthetic text-to-speech voice or a voice-over you supply; we agree which in the quote. We never clone a real person's voice."
+    },
+    {
+      "q": "Can you post our video on your channel?",
+      "a": "Featuring is not part of any package unless your quote says so. Paid client videos are never posted on our channels without a clear disclosure that they are paid."
+    },
+    {
+      "q": "Who owns the finished video?",
+      "a": "Usage rights, including where you may publish the video, are written into your quote before work starts."
+    },
+    {
+      "q": "How does payment work?",
+      "a": "You get a written quote with scope, timeline and price first. You only pay after you have accepted it."
+    }
+  ],
+  "portfolio": [],
+  "stripePaymentLinks": {}
+}

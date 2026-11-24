@@ -88,14 +88,30 @@ export const ARM_POINT: ArmAngles = {shoulder: -36, elbow: -107, wrist: 21};
  * Positive shoulder/elbow = clockwise = toward the body for the anatomical-left arm.
  */
 export const ARM_POINT_WINDUP: ArmAngles = {shoulder: 3, elbow: 6, wrist: -8};
-/** poseAmount at which the hand swaps from relaxed to pointing. */
-export const POINT_HAND_SWITCH = 0.35;
+/**
+ * In-between key of the point gesture at poseAmount 0.5 (integration decision INT-Z3, 2026-11-24): the elbow stays
+ * in at the side while the forearm lifts and the hand trails at the wrist (drag); then the upper arm opens and the
+ * hand follows through into the point. Badger stands beside ZOO's hand, and a straight sideways swing passed through
+ * his head; this path keeps the hand above head height before it travels right (it clears a dog whose ground point
+ * is >= 554 units to screen right at any scale, checked numerically on the joint chain).
+ */
+export const ARM_POINT_MID: ArmAngles = {shoulder: 6, elbow: -125, wrist: 75};
+/** poseAmount at which the hand swaps from relaxed to pointing (the index is then near horizontal, not pointing down). */
+export const POINT_HAND_SWITCH = 0.75;
 /** Rotation (deg) that maps the pointing-hand drawing (index along +x) into the hand's local frame. */
 export const POINT_HAND_FRAME = 110;
 
-/** Smooth, slightly overlapping joint blend: shoulder leads, elbow follows, wrist settles last. */
-export const armAnglesFor = (target: ArmAngles, amount: number): ArmAngles => {
+/**
+ * Joint angles along the gesture. With an in-between key (ARM_POINT_MID for ARM_POINT) the angles follow a quadratic
+ * Bezier from rest through the key at 0.5 to the target: one smooth arc with a small elbow overshoot and wrist
+ * follow-through and no stop at the key. Without one: a slightly overlapping blend (shoulder leads, wrist last).
+ */
+export const armAnglesFor = (target: ArmAngles, amount: number, mid: ArmAngles | null = target === ARM_POINT ? ARM_POINT_MID : null): ArmAngles => {
 	const a = clamp01(amount);
+	if (mid) {
+		const q = (m: number, t: number) => 2 * a * (1 - a) * (2 * m - t / 2) + a * a * t;
+		return {shoulder: q(mid.shoulder, target.shoulder), elbow: q(mid.elbow, target.elbow), wrist: q(mid.wrist, target.wrist)};
+	}
 	const s = smoothstep(a / 0.85);
 	const e = smoothstep((a - 0.05) / 0.85);
 	const w = smoothstep((a - 0.15) / 0.85);
