@@ -1,0 +1,55 @@
+{
+  "report_version": "1.0",
+  "agent": "2040_future",
+  "generated_at": "2026-11-01T16:00:00Z",
+  "kind": "monthly_review",
+  "capital_bucket": "longterm",
+  "regime": "crypto bear-cycle accumulation; equities: no thesis changes",
+  "status_line": "Nov 2026 review: no thesis changes, keep accumulating per plan. No live balances yet, so actual weights are unknown.",
+  "ideas": [],
+  "open_paper_positions": [],
+  "flags": [
+    {"severity": "warn", "code": "NO_HOLDINGS_FEED", "text": "OnePay Roth, Robinhood and all crypto wallets/exchanges have no connected feed; actual weights are null."},
+    {"severity": "info", "code": "SECURITY_EVENT", "text": "Binance hack reported 29 Oct 2026; Zoorped is not on Binance. Keep long-term coins on Trezor."}
+  ],
+  "no_trades_placed": true,
+  "longterm": {
+    "accounts_covered": ["onepay_roth", "robinhood", "trezor", "phantom", "exodus", "bybit", "blofin"],
+    "holdings_source": "none",
+    "holdings_as_of": null,
+    "holdings": [],
+    "weights": [
+      {"key": "core", "scope": "sleeve", "target_pct": 60, "actual_pct": null, "band": [55, 65], "breach": "unknown"},
+      {"key": "TMC", "scope": "symbol", "target_pct": 1.5, "actual_pct": null, "breach": "unknown"},
+      {"key": "SPCE", "scope": "symbol", "target_pct": 1.0, "actual_pct": null, "breach": "unknown"},
+      {"key": "SLDP", "scope": "symbol", "target_pct": 1.0, "actual_pct": null, "breach": "unknown"},
+      {"key": "speculative_total", "scope": "speculative_total", "target_pct": 10, "actual_pct": null, "breach": "unknown"}
+    ],
+    "thesis_status": [
+      {"symbol": "TMC", "status": "watch", "change": "none", "next_catalyst": "Q3 results; NOAA permit decision pending", "next_catalyst_date": "2026-11-12"},
+      {"symbol": "SPCE", "status": "watch", "change": "none", "next_catalyst": "Q3 results; first Delta commercial flight now early Q2 2027", "next_catalyst_date": "2026-11-12"},
+      {"symbol": "SLDP", "status": "intact", "change": "none", "next_catalyst": "Q3 results", "next_catalyst_date": "2026-11-03"}
+    ],
+    "material_developments": [],
+    "crypto_core": {
+      "cycle_phase": "bear_accumulation",
+      "action": "accumulate",
+      "coins": [
+        {"symbol": "BTC", "month_change_pct": -7.2, "price_usd": 77582, "custody": ["trezor"], "floor_respected": null},
+        {"symbol": "ETH", "month_change_pct": -21.7, "price_usd": 2171, "custody": [], "floor_respected": null},
+        {"symbol": "SOL", "month_change_pct": -25.8, "price_usd": 92, "custody": ["phantom"], "floor_respected": null},
+        {"symbol": "XRP", "month_change_pct": -17.0, "price_usd": 1.20, "custody": [], "floor_respected": null}
+      ]
+    },
+    "accumulation_plan": {
+      "account_order": ["onepay_roth", "robinhood"],
+      "monthly_amount_usd": null,
+      "split_pct": {"core": 60, "ai_infra": 14, "space": 10, "minerals": 6.75, "robotics": 4, "future_energy": 3.25, "frontier": 2},
+      "priority_buys": ["TMC 1.5%", "SPCE 1%", "SLDP 1%"],
+      "changes_vs_last": "none"
+    },
+    "caps_check": {"speculative_total_pct": null, "speculative_cap_pct": 10, "per_name_breaches": []},
+    "draft_tickets": []
+  },
+  "sources": ["https://cursor.com/canvas/store-e3603d5b-4ad2-4766-ad5a-18e633523e8b/f0439a79-52c2-4792-a259-0f6946249c52"]
+}

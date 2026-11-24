@@ -1,0 +1,8 @@
+# Example OnePay Roth holdings CSV for `aai lt-holdings-import`
+# Required: symbol, quantity. Optional: cost_basis_usd, price_usd, value_usd, verified.
+# Audit only — never creates order tickets. OnePay Roth stays user-executed.
+symbol,quantity,price_usd,value_usd,verified
+VTI,20,300,6000,true
+TMC,100,4,400,true
+SPCE,10,10,100,true
+PLTR,5,100,500,true

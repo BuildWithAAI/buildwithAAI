@@ -1,0 +1,1 @@
+{"key": "https://www.okx.com/api/v5/public/open-interest?{\"instId\": \"ETH-USDT-SWAP\", \"instType\": \"SWAP\"}", "recorded_at": 1793756937.405342, "as": "json", "body": {"code": "0", "data": [{"instId": "ETH-USDT-SWAP", "instType": "SWAP", "oi": "6326142.2400000213", "oiCcy": "632614.22400000213", "oiUsd": "1431795773.179204820829", "ts": "1793756937286"}], "msg": ""}}
