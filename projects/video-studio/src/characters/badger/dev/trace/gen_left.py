@@ -95,15 +95,13 @@ fu_strokes = [
     'M 199 250 C 194 262 191 276 190 292 C 193 322 196 360 197 398',
     'M 239 263 C 240 272 240 282 240 290 C 236 318 233 355 231 398',
 ]
-# Joints are round cut-out joints: each child segment has a cap centred on its pivot that stays hidden under
-# the parent at rest and closes the outline when the joint bends (walk). Visible edges are unchanged.
-fl_line = 'M 188 413 C 193 410 196 404 197 398 ' + arc_path(214, 398, 17, 17, 180, 360) + ' C 230 405 228 410 224 416'
-fl_fill = fl_line + ' L 222.5 418.5 L 190 418.5 Z'
-fl_strokes = [fl_line]
-fp_line = ('M 188 413 C 178 413 168 419 163 427 C 159 434 160 441 168 442 L 214 443 C 220 443 223 438 223 430 '
-           'C 223 425 223 420 224 416 L 222.5 416.5 ' + arc_path(207, 416.5, 15.5, 15.5, 360, 180))
-fp_fill = fp_line + ' L 188 413 Z'
-fp_strokes = [fp_line]
+# Joints are round cut-out joints (Leg.tsx): parent and child meet on a flat cut through the joint pivot and a
+# disk of the joint radius behind them closes the outline when the joint bends (walk). Visible edges unchanged.
+fl_fill = 'M 188 413 C 193 410 196 404 197 398 L 231 398 C 230 405 228 410 224 416 L 222.5 416.5 L 191.5 416.5 Z'
+fl_strokes = ['M 197 398 C 196 404 193 410 188 413', 'M 231 398 C 230 405 228 410 224 416']
+fp_fill = ('M 188 413 C 178 413 168 419 163 427 C 159 434 160 441 168 442 L 214 443 C 220 443 223 438 223 430 '
+           'C 223 425 223 420 224 416 L 222.5 416.5 L 191.5 416.5 Z')
+fp_strokes = ['M 188 413 C 178 413 168 419 163 427 C 159 434 160 441 168 442 L 214 443 C 220 443 223 438 223 430 C 223 425 223 420 224 416']
 fp_details = ['M 172 431 C 170 435 170 439 172 442', 'M 182 432 C 180 436 180 439 182 442']
 
 # ---------------------------------------------------------------- hind leg
@@ -114,13 +112,11 @@ hu_strokes = [
     'M 402 248 C 407 258 412 268 418 282 C 428 302 440 318 452 333 C 462 345 474 352 481 357 C 484 361 485 366 486 372',
     'M 504 268 C 503 278 501 285 500 292 C 499 310 499 325 504 338 C 510 348 518 352 524 356 C 526 362 526 367 526 372',
 ]
-hl_line = 'M 488 417 C 488 404 487 388 486 372 ' + arc_path(506, 372, 20, 20, 180, 360) + ' C 526 390 526 405 525 418'
-hl_fill = hl_line + ' L 524 420.5 L 488 420.5 Z'
-hl_strokes = [hl_line]
-hp_line = ('M 488 417 C 482 418 477 424 476 431 C 475 438 478 442 484 443 L 520 443 C 525 443 527 439 527 433 '
-           'C 527 428 526 423 525 418 L 524 418 ' + arc_path(506.5, 418, 17.5, 17.5, 360, 180))
-hp_fill = hp_line + ' L 488 417 Z'
-hp_strokes = [hp_line]
+hl_fill = 'M 488 417 C 488 404 487 388 486 372 L 526 372 C 526 390 526 405 525 418 L 524 418 L 489 418 Z'
+hl_strokes = ['M 486 372 C 487 388 488 404 488 417', 'M 526 372 C 526 390 526 405 525 418']
+hp_fill = ('M 488 417 C 482 418 477 424 476 431 C 475 438 478 442 484 443 L 520 443 C 525 443 527 439 527 433 '
+           'C 527 428 526 423 525 418 L 524 418 L 489 418 Z')
+hp_strokes = ['M 488 417 C 482 418 477 424 476 431 C 475 438 478 442 484 443 L 520 443 C 525 443 527 439 527 433 C 527 428 526 423 525 418']
 hp_details = ['M 486 432 C 484 436 484 439 486 442', 'M 495 433 C 493 437 493 440 495 442']
 
 # ---------------------------------------------------------------- tail (authored outline, CL px)
@@ -194,6 +190,8 @@ rig = {
         'lower': seg(fl_fill, fl_strokes, FRONT_WRIST),
         'pawPivot': rnd(sub(W(*FRONT_PAW), W(*FRONT_WRIST))),
         'paw': seg(fp_fill, fp_strokes, FRONT_PAW, fp_details),
+        'lowerJointR': round(17 * KX, 2),
+        'pawJointR': round(15.5 * KX, 2),
     },
     'legHind': {
         'upper': seg(hu_fill, hu_strokes, HIND_HIP),
@@ -201,6 +199,8 @@ rig = {
         'lower': seg(hl_fill, hl_strokes, HIND_HOCK),
         'pawPivot': rnd(sub(W(*HIND_PAW), W(*HIND_HOCK))),
         'paw': seg(hp_fill, hp_strokes, HIND_PAW, hp_details),
+        'lowerJointR': round(20 * KX, 2),
+        'pawJointR': round(17.5 * KX, 2),
     },
     'tail': {**seg(tail_fill, tail_strokes, TAIL_ROOT), 'tip': rnd(sub(W(*TAIL_TIP), W(*TAIL_ROOT)))},
 }

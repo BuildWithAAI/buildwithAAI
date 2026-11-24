@@ -77,3 +77,21 @@ export const BADGER_COLORS = {
 	tag: BRAND.teal,
 	tagShadow: '#1F8E86',
 } as const;
+
+/**
+ * Story props drawn in the character style (added 2026-11-24 for ZOO's typing pose, decision ZOO-T3).
+ * Sampled from the "Sitting at a desk typing" panel of zoo_model_sheet_v1.png: desk ~#C2C3C6,
+ * chair ~#5F5F66, monitor bezel ~#67676C / screen ~#4E4E54, keyboard ~#211E21. Each colour has at
+ * most one flat shadow tone; the desk uses brand silver.
+ */
+export const PROP_COLORS = {
+	desk: BRAND.silver,
+	deskShadow: '#A9AEB6',
+	chair: '#5F6067',
+	chairShadow: '#48494F',
+	chairBase: '#35363A',
+	monitor: '#67686E',
+	monitorShadow: '#4E4F55', // also the screen face
+	keyboard: '#2A2B31',
+	keyboardShadow: BRAND.slate,
+} as const;

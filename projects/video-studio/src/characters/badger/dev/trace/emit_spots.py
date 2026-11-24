@@ -4,7 +4,10 @@ import sys
 
 left = json.load(open(sys.argv[1]))
 heads = json.load(open(sys.argv[2])) if len(sys.argv) > 3 else {'head': [], 'frontNeck': []}
-extra = [json.load(open(p)) for p in sys.argv[3:-1]]
+extra = []
+for p in sys.argv[3:-1]:
+    d = json.load(open(p))
+    extra.extend(d if isinstance(d, list) else [d])
 out = sys.argv[-1]
 
 
@@ -33,7 +36,14 @@ export type BadgerPartId =
 	| 'legHindFar'
 	| 'tail'
 	| 'head'
-	| 'frontNeck';
+	| 'frontNeck'
+	// parts of the front / back / three-quarter views and the sit / lie pose bodies
+	| 'legFrontRight'
+	| 'legFrontLeft'
+	| 'legHindRight'
+	| 'legHindLeft'
+	| 'haunch'
+	| 'pawHindNear';
 
 export type BadgerSpot = {
 	readonly id: string;

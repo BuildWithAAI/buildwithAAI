@@ -133,13 +133,11 @@ front_upper = seg(fu_fill, [ff, fr], FRONT_SHOULDER)
 # lower (pastern): round top centred on the wrist pivot (hidden under the upper at rest), flat bottom at the paw cut
 fl_rear = [(395, 408), (392, 404), (388.2, 398)]
 fl_front = [(420.8, 398), (422, 403), (423, 408)]
-fl_cap = arc_over(404.5, 398, 16.3)[1:-1]
-fl_line = fl_rear + fl_cap + fl_front
-front_lower = seg(fl_line, [fl_line], FRONT_WRIST)
+front_lower = seg(fl_rear + [(388.2, 398, 'c'), (420.8, 398, 'c')] + fl_front + [(423, 408, 'c'), (395, 408, 'c')],
+                  [fl_rear[::-1], fl_front], FRONT_WRIST)
 fp = pts('fp_outline')
 fp_vis = [(395, 408), (397, 412)] + [p for p in fp if p[1] >= 414] + [(424, 412), (423, 408)]
-fp_line = fp_vis + arc_over(409, 408, 14)[::-1][1:-1]
-front_paw = seg(fp_line, [fp_line], FRONT_PAW, [[(437, 431), (437, 436), (438, 440)], [(447, 432), (447, 436), (448, 439)]])
+front_paw = seg(fp_vis + [(423, 408, 'c'), (395, 408, 'c')], [fp_vis], FRONT_PAW, [[(437, 431), (437, 436), (438, 440)], [(447, 432), (447, 436), (448, 439)]])
 
 # ---------------------------------------------------------------- hind leg
 hr = until('hl_rear', ymax=366) + [(92, 368)]
@@ -148,12 +146,11 @@ hu_fill = ([(220, 244, 'c'), (206, 222), (176, 210), (146, 208), (124, 214), (11
 hind_upper = seg(hu_fill, [hr, hf], HIND_HIP)
 hl_rear = [(93, 410), (92.5, 390), (92, 368)]
 hl_front = [(124, 368), (122.5, 382), (120.5, 396), (120, 410)]
-hl_line = hl_rear + arc_over(108, 368, 16)[1:-1] + hl_front
-hind_lower = seg(hl_line, [hl_line], HIND_HOCK)
+hind_lower = seg(hl_rear + [(92, 368, 'c'), (124, 368, 'c')] + hl_front + [(120, 410, 'c'), (93, 410, 'c')],
+                 [hl_rear[::-1], hl_front], HIND_HOCK)
 hp = pts('hp_outline')
 hp_vis = [(93, 410)] + [p for p in hp if p[1] >= 418 or p[0] < 100] + [(121, 413), (120, 410)]
-hp_line = hp_vis + arc_over(106.5, 410, 13.5)[::-1][1:-1]
-hind_paw = seg(hp_line, [hp_line], HIND_PAW, [[(125, 431), (125, 436), (126, 440)], [(133, 432), (133, 436), (134, 440)]])
+hind_paw = seg(hp_vis + [(120, 410, 'c'), (93, 410, 'c')], [hp_vis], HIND_PAW, [[(125, 431), (125, 436), (126, 440)], [(133, 432), (133, 436), (134, 440)]])
 
 # ---------------------------------------------------------------- tail (behind the torso and near thigh)
 tt = pts('tail_top')
@@ -213,6 +210,8 @@ rig = {
         'lower': front_lower,
         'pawPivot': rnd(sub(W(*FRONT_PAW), W(*FRONT_WRIST))),
         'paw': front_paw,
+        'lowerJointR': round(16.3 * KX, 2),
+        'pawJointR': round(14 * KX, 2),
     },
     'legHind': {
         'upper': hind_upper,
@@ -220,6 +219,8 @@ rig = {
         'lower': hind_lower,
         'pawPivot': rnd(sub(W(*HIND_PAW), W(*HIND_HOCK))),
         'paw': hind_paw,
+        'lowerJointR': round(16 * KX, 2),
+        'pawJointR': round(13.5 * KX, 2),
     },
     'tail': tail,
 }

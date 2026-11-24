@@ -183,7 +183,7 @@ const SHOE_FAR_LINES: Pt[][] = [
 	[[64, -23.6], [82, -22], [99, -23]],
 ];
 
-const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; shadow: Pt[]; lines: Pt[][]; name: string}> = ({outline, sole, shadow, lines, name}) => {
+export const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; shadow: Pt[]; lines: Pt[][]; name: string}> = ({outline, sole, shadow, lines, name}) => {
 	const d = smooth(outline);
 	return (
 		<g data-part={name}>
@@ -199,6 +199,10 @@ const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; shadow: Pt[]; lines: Pt[][];
 		</g>
 	);
 };
+
+/** The 3/4 sneakers on their own (the seated typing pose puts the feet in the same place). */
+export const FarShoe34: React.FC = () => <Sneaker outline={SHOE_FAR} sole={SHOE_FAR_SOLE} shadow={SHOE_FAR_SHADOW} lines={SHOE_FAR_LINES} name="shoeL" />;
+export const NearShoe34: React.FC = () => <Sneaker outline={SHOE_NEAR} sole={SHOE_NEAR_SOLE} shadow={SHOE_NEAR_SHADOW} lines={SHOE_NEAR_LINES} name="shoeR" />;
 
 export const Legs34: React.FC = () => (
 	<g data-part="legs" data-view="threeQuarter">

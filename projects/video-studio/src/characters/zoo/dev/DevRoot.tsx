@@ -8,6 +8,8 @@ import {AbsoluteFill, Composition, useCurrentFrame} from 'remotion';
 import {BRAND} from '../../palette';
 import type {Expression, MouthShape} from '../../types';
 import {ZooRig} from '../Zoo';
+import {Chair, Desk, Keyboard, Monitor} from '../props';
+import {TYPING_LAYOUT} from '../views/Typing';
 
 const Bg: React.FC<{children: React.ReactNode}> = ({children}) => <AbsoluteFill style={{backgroundColor: BRAND.background}}>{children}</AbsoluteFill>;
 
@@ -80,6 +82,54 @@ export const ZooSideHeadsDev: React.FC = () => (
 				</svg>
 			))}
 		</div>
+	</Bg>
+);
+
+/** zoo_pose_typing.png: 520x500 px framed at 1.555 u/px, origin crop (252, 478) (decision ZOO-T1). */
+const TYPING_VB = '-391.86 -743.29 808.6 777.5';
+const L = TYPING_LAYOUT;
+/** Seated typing pose with its props; finger taps run from the frame. */
+export const ZooTypingDev: React.FC<{typing?: boolean}> = ({typing = true}) => (
+	<Bg>
+		<svg width="100%" height="100%" viewBox={TYPING_VB}>
+			<Chair x={L.chair.x} y={L.chair.y} />
+			<ZooRig
+				pose="typing"
+				typing={typing}
+				between={
+					<>
+						<Desk x={L.desk.x} y={L.desk.y} />
+						<Monitor x={L.monitor.x} y={L.monitor.y} />
+						<Keyboard x={L.keyboard.x} y={L.keyboard.y} />
+					</>
+				}
+			/>
+		</svg>
+	</Bg>
+);
+
+/**
+ * Turnaround row laid out like the sheet: view origins at sheet x = 445 / 707 / 955 / 1187.25 px on the
+ * ground line y = 320 px, 1 sheet px = 900/315 u (crop offsets found by matching the crops in the sheet).
+ * viewBox = sheet region x 340..1290, y 0..350.
+ */
+const TURN_U = 900 / 315;
+const TURN_X = {front: 0, threeQuarter: (707 - 445) * TURN_U, side: (955 - 445) * TURN_U, back: (1187.25 - 445) * TURN_U} as const;
+const TURN_VB = `${(340 - 445) * TURN_U} ${-320 * TURN_U} ${950 * TURN_U} ${350 * TURN_U}`;
+const TURN_LABELS: [keyof typeof TURN_X, string][] = [['front', 'Front'], ['threeQuarter', '3/4'], ['side', 'Side'], ['back', 'Back']];
+export const ZooTurnaroundDev: React.FC = () => (
+	<Bg>
+		<svg width="100%" height="100%" viewBox={TURN_VB}>
+			<line x1={(360 - 445) * TURN_U} y1={1.5} x2={(1270 - 445) * TURN_U} y2={1.5} stroke={BRAND.nearBlack} strokeWidth={3} />
+			{TURN_LABELS.map(([v, label]) => (
+				<g key={v}>
+					<ZooRig view={v} x={TURN_X[v]} breathe={false} />
+					<text x={TURN_X[v]} y={58} textAnchor="middle" fontFamily="sans-serif" fontWeight={700} fontSize={44} fill={BRAND.nearBlack}>
+						{label}
+					</text>
+				</g>
+			))}
+		</svg>
 	</Bg>
 );
 
@@ -178,6 +228,8 @@ export const ZooDevRoot: React.FC = () => (
 		<Composition id="ZooExpressions34" component={ZooExpressions34Dev} durationInFrames={1} fps={30} width={1600} height={400} />
 		<Composition id="ZooMouths34" component={ZooMouths34Dev} durationInFrames={1} fps={30} width={1020} height={440} />
 		<Composition id="ZooSideHeads" component={ZooSideHeadsDev} durationInFrames={1} fps={30} width={1500} height={600} />
+		<Composition id="ZooTurnaround" component={ZooTurnaroundDev} durationInFrames={1} fps={30} width={1900} height={700} />
+		<Composition id="ZooTyping" component={ZooTypingDev} durationInFrames={90} fps={30} width={1040} height={1000} />
 		<Composition id="Zoo34" component={ZooViewDev} durationInFrames={1} fps={30} width={640} height={1320} defaultProps={{view: 'threeQuarter' as const}} />
 		<Composition id="ZooSide" component={ZooViewDev} durationInFrames={1} fps={30} width={560} height={1320} defaultProps={{view: 'side' as const}} />
 		<Composition id="ZooBack" component={ZooViewDev} durationInFrames={1} fps={30} width={640} height={1320} defaultProps={{view: 'back' as const}} />

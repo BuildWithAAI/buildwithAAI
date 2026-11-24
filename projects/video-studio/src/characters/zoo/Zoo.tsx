@@ -1,8 +1,8 @@
 /**
  * <Zoo/>: the reusable ZOO character (v1.0.0). Implements ZooProps from ../types exactly.
  * World units: ZOO is 900 units tall at scale 1; (x, y) is the screen position of his ground
- * contact point. This rig version draws the FRONT view; other views are built separately and the
- * front view is used as the fallback (see manifest.ts, knownGaps).
+ * contact point. Views: front (parts/), threeQuarter, side and back (views/). Pose 'typing' is a
+ * seated 3/4 pose with props (views/Typing.tsx, props/). See manifest.ts for pivots and decisions.
  */
 import React from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
@@ -17,6 +17,9 @@ import {Neck} from './parts/Neck';
 import {CollarBack, Torso} from './parts/Torso';
 import {ZooThreeQuarter} from './views/ThreeQuarter';
 import {ZooSide} from './views/Side';
+import {ZooBack} from './views/Back';
+import {ZooTyping, type TypingLayer} from './views/Typing';
+import {PIVOTS_34, PIVOTS_BACK, PIVOTS_SIDE, PIVOTS_TYPING} from './views/pivots';
 import type {ViewHeadProps} from './views/types';
 
 export type ZooExtraProps = {
@@ -26,6 +29,15 @@ export type ZooExtraProps = {
 	embed?: boolean;
 	/** Overrides the frame used for idle breathing (e.g. to hold a still). */
 	breathFrame?: number;
+	/** pose="typing": animate finger taps from the current frame. */
+	typing?: boolean;
+	/**
+	 * Which part to draw. 'back' = everything behind a desk (body, legs, head); 'front' = the parts in
+	 * front of a desk (pose="typing": forearms and hands; other poses: nothing). Default 'all'.
+	 */
+	layer?: TypingLayer;
+	/** Drawn in ZOO's world space between the back and front layers (e.g. a desk and keyboard). */
+	between?: React.ReactNode;
 };
 
 const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | 'browLift' | 'lookX' | 'lookY' | 'headTilt' | 'poseAmount'>> &
@@ -69,18 +81,27 @@ const OtherView: React.FC<{view: Exclude<ZooProps['view'], 'front' | undefined>;
 	const breath = breathe ? breathOffset(breathFrame ?? frame, fps) : 0;
 	if (view === 'threeQuarter') return <ZooThreeQuarter head={head} breath={breath} />;
 	if (view === 'side') return <ZooSide head={head} breath={breath} />;
-	return null;
+	return <ZooBack head={head} breath={breath} />;
 };
 
-const PivotMarkers: React.FC = () => (
+/** The seated typing pose is authored in 3/4 facing screen right (as on the sheet) for every view. */
+const TypingPose: React.FC<{head: ViewHeadProps; breathe: boolean; breathFrame?: number; typing: boolean; layer: TypingLayer; between?: React.ReactNode}> = (p) => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const breath = p.breathe ? breathOffset(p.breathFrame ?? frame, fps) : 0;
+	return <ZooTyping head={p.head} breath={breath} typing={p.typing} layer={p.layer} between={p.between} />;
+};
+
+const PivotMarkers: React.FC<{table?: Record<string, {x: number; y: number}>}> = ({table = PIVOTS}) => (
 	<g data-part="pivots">
-		{Object.entries(PIVOTS).map(([k, v]) => (
+		{Object.entries(table).map(([k, v]) => (
 			<g key={k}>
 				<circle cx={v.x} cy={v.y} r={3} fill={BRAND.teal} stroke={BRAND.nearBlack} strokeWidth={1} />
 			</g>
 		))}
 	</g>
 );
+const VIEW_PIVOTS = {threeQuarter: PIVOTS_34, side: PIVOTS_SIDE, back: PIVOTS_BACK} as const;
 
 /** The rig as an SVG group in world units (origin = ground contact point). */
 export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
@@ -100,6 +121,9 @@ export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
 	breathe = true,
 	breathFrame,
 	showPivots,
+	typing = false,
+	layer = 'all',
+	between,
 }) => {
 	const head: ViewHeadProps = {
 		expression,
@@ -110,10 +134,21 @@ export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
 		lookY: clamp(lookY, -1, 1),
 		headTilt: clamp(headTilt, -12, 12),
 	};
+	if (pose === 'typing') {
+		return (
+			<g data-character="zoo" data-view="threeQuarter" data-pose="typing" transform={`translate(${x} ${y}) scale(${scale})`}>
+				<TypingPose head={head} breathe={breathe} breathFrame={breathFrame} typing={typing} layer={layer} between={between} />
+				{showPivots && layer !== 'back' ? <PivotMarkers table={PIVOTS_TYPING} /> : null}
+			</g>
+		);
+	}
+	if (layer === 'front') return null;
 	if (view !== 'front') {
 		return (
 			<g data-character="zoo" data-view={view} transform={`translate(${x} ${y}) scale(${scale})`}>
 				<OtherView view={view} head={head} breathe={breathe} breathFrame={breathFrame} />
+				{layer === 'all' ? between : null}
+				{showPivots ? <PivotMarkers table={VIEW_PIVOTS[view]} /> : null}
 			</g>
 		);
 	}
@@ -134,6 +169,7 @@ export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
 			breathFrame={breathFrame}
 			showPivots={showPivots}
 		/>
+		{layer === 'all' ? between : null}
 	</g>
 	);
 };

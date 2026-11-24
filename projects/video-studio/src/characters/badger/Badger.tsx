@@ -57,7 +57,7 @@ export const RIGHT_HEAD_MOUNT: Record<BadgerHead, HeadMount> = {
 	threeQuarterLeftScreen: {neck: -7, dx: 8, dy: 16, rot: 0},
 	profileRightScreen: {neck: 0, dx: 0, dy: 0, rot: 0},
 	profileLeftScreen: {neck: -9, dx: -12, dy: 4, rot: 0},
-	upRightScreen: {neck: -20, dx: 0, dy: 0, rot: 0},
+	upRightScreen: {neck: -2, dx: -7, dy: 1, rot: 0},
 	upLeftScreen: {neck: -14, dx: -10, dy: 2, rot: 0},
 };
 
@@ -85,6 +85,8 @@ export const sidePoseFor = (pose: BadgerPose, view: 'left' | 'right', walkPhase 
 };
 
 const lookUpHead = (dir: 1 | -1): BadgerHead => (dir === 1 ? 'upRightScreen' : 'upLeftScreen');
+/** The sheet's walking pose uses the profile head. */
+const walkHead = (dir: 1 | -1): BadgerHead => (dir === 1 ? 'profileRightScreen' : 'profileLeftScreen');
 
 /**
  * <Badger/>: renders an SVG <g>; place it inside an <svg> whose user units are pixels.
@@ -109,7 +111,7 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 	} = props;
 	const bodyView: BadgerView = IMPLEMENTED_VIEWS.includes(view) ? view : 'left';
 	const dir: 1 | -1 = bodyView === 'right' ? 1 : -1;
-	const head = props.head ?? (pose === 'lookUp' ? lookUpHead(dir) : DEFAULT_HEAD[bodyView]);
+	const head = props.head ?? (pose === 'lookUp' ? lookUpHead(dir) : pose === 'walk' ? walkHead(dir) : DEFAULT_HEAD[bodyView]);
 	const headState: HeadState = {
 		expression,
 		blink: clamp01(props.blink),
