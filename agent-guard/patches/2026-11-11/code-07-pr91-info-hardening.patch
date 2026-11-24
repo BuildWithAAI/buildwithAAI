@@ -1,0 +1,147 @@
+From 30a4e630da611f0b003b1e8ccfd4601e8789ae84 Mon Sep 17 00:00:00 2001
+From: Head of Security <security@buildwithaai.invalid>
+Date: Wed, 11 Nov 2026 03:59:51 -0600
+Subject: [PATCH] Close the Re-check 2 Info items
+
+- moderateNote also rejects every Default_Ignorable_Code_Point (Hangul fillers, invisible
+  operators, Khmer inherent vowels, musical format controls).
+- Nearby filters private chunks before the 64-row cap and returns the freshest guests first.
+- The chain refuses a Zoora-actor privacy-off row, not only the setChunkPrivacy wrapper.
+- An import-graph test keeps visitor data out of brain, money, identity, research,
+  integrations, trading and shop.
+- .env.example lists LUMEN_VISITORS_ENABLED (off) and LUMEN_CLAIM_CEILING (empty).
+---
+ projects/lumen/.env.example               |  4 ++
+ projects/lumen/src/brain/social.ts        |  2 +-
+ projects/lumen/src/world/chunkEdits.ts    |  1 +
+ projects/lumen/src/world/visitors.ts      |  7 +++-
+ projects/lumen/tests/visitorSinks.test.ts | 46 +++++++++++++++++++++++
+ 5 files changed, 58 insertions(+), 2 deletions(-)
+ create mode 100644 projects/lumen/tests/visitorSinks.test.ts
+
+diff --git a/projects/lumen/.env.example b/projects/lumen/.env.example
+index c027b4c..22f45d8 100644
+--- a/projects/lumen/.env.example
++++ b/projects/lumen/.env.example
+@@ -70,3 +70,7 @@ LUMEN_PRUSA_URL=
+ LUMEN_JARVIS_TOKEN=
+ LUMEN_JARVIS_WEBHOOK_URL=
+ LUMEN_JARVIS_WEBHOOK_SECRET=
++# Visiting agents stay off unless this is exactly "true". See docs/METAVERSE.md.
++LUMEN_VISITORS_ENABLED=false
++# Optional owner cap on Zoora's claim radius (integer, at least 16). Empty means no cap.
++LUMEN_CLAIM_CEILING=
+diff --git a/projects/lumen/src/brain/social.ts b/projects/lumen/src/brain/social.ts
+index e273820..c1ba46a 100644
+--- a/projects/lumen/src/brain/social.ts
++++ b/projects/lumen/src/brain/social.ts
+@@ -22,7 +22,7 @@ export function moderateNote(input: unknown, max = NOTE_MAX): { ok: true; note:
+   if (input == null || input === "") return { ok: true, note: "" };
+   if (typeof input !== "string") return { ok: false, reason: "NOTE_TYPE" };
+   if (input.length > max) return { ok: false, reason: "NOTE_TOO_LONG" };
+-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\u3164\uFE00-\uFE0F\uFEFF\uFFF9-\uFFFB\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/u.test(input)) {
++  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u0080-\u009F\u00AD\u034F\u061C\u180E\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060\u2066-\u2069\u3164\uFE00-\uFE0F\uFEFF\uFFF9-\uFFFB\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}\u2061-\u2064\u{1D173}-\u{1D17A}]|\p{Default_Ignorable_Code_Point}/u.test(input)) {
+     return { ok: false, reason: "NOTE_CONTROL" };
+   }
+   const note = input.trim().replace(/\s+/g, " ");
+diff --git a/projects/lumen/src/world/chunkEdits.ts b/projects/lumen/src/world/chunkEdits.ts
+index 856fd00..d47d6bb 100644
+--- a/projects/lumen/src/world/chunkEdits.ts
++++ b/projects/lumen/src/world/chunkEdits.ts
+@@ -258,6 +258,7 @@ function enforceTerritory(db: DatabaseSync, input: ChunkEditInput, payload: stri
+     if (zone === "buffer") throw new Error("BUFFER");
+     throw new Error("ACTOR");
+   }
++  if (input.kind === "privacy" && parsed.private !== true) throw new Error("OWNER");
+   if (input.kind === "expand") {
+     if (shrinking) throw new Error("VETO");
+     if (territoryFrozen(db)) throw new Error("FROZEN");
+diff --git a/projects/lumen/src/world/visitors.ts b/projects/lumen/src/world/visitors.ts
+index 7aa8e75..33096d8 100644
+--- a/projects/lumen/src/world/visitors.ts
++++ b/projects/lumen/src/world/visitors.ts
+@@ -26,6 +26,8 @@ export const VISITOR_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+ export const QUARANTINE_KEEP = 1_000;
+ export const QUARANTINE_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+ export const NEARBY_LIMIT = 64;
++/** Rows read before the private-chunk filter. The whole table is capped at VISITOR_MAX_ROWS. */
++const NEARBY_SCAN_LIMIT = 256;
+ export const VISITOR_CAP_ALERT_MS = 60 * 60 * 1000;
+ 
+ const CAP_TITLE = "Visitor registration cap";
+@@ -415,7 +417,8 @@ export function nearbyGuests(db: DatabaseSync, cx: number, cy: number, radius: n
+      FROM world_visitors
+      WHERE status = 'active' AND seen_at > ? AND expires_at > ?
+        AND chunk_x BETWEEN ? AND ? AND chunk_y BETWEEN ? AND ?
+-     LIMIT ${NEARBY_LIMIT}`,
++     ORDER BY seen_at DESC
++     LIMIT ${NEARBY_SCAN_LIMIT}`,
+   ).all(now - VISITOR_IDLE_MS, now, cx - span, cx + span, cy - span, cy + span) as VisitorRow[];
+   const privacy = new Map<string, boolean>();
+   const hidden = (x: number, y: number) => {
+@@ -426,8 +429,10 @@ export function nearbyGuests(db: DatabaseSync, cx: number, cy: number, radius: n
+     privacy.set(key, value);
+     return value;
+   };
++  // Filter private chunks before the cap, so guests parked in a private chunk cannot crowd out public ones.
+   return rows
+     .filter((row) => chunkDistance({ cx, cy }, { cx: row.chunk_x, cy: row.chunk_y }) <= span && !hidden(row.chunk_x, row.chunk_y))
++    .slice(0, NEARBY_LIMIT)
+     .map(toGuest);
+ }
+ 
+diff --git a/projects/lumen/tests/visitorSinks.test.ts b/projects/lumen/tests/visitorSinks.test.ts
+new file mode 100644
+index 0000000..a0d4967
+--- /dev/null
++++ b/projects/lumen/tests/visitorSinks.test.ts
+@@ -0,0 +1,46 @@
++import { readdirSync, readFileSync, statSync } from "node:fs";
++import { join } from "node:path";
++import { describe, expect, it } from "vitest";
++import { moderateNote } from "../src/brain/social";
++
++const ROOT = new URL("../src", import.meta.url).pathname;
++/** Code that decides, spends, remembers, or prompts. Visitor data must never be imported here. */
++const SINK_DIRS = ["brain", "money", "identity", "research", "integrations", "trading", "shop"];
++
++function files(dir: string): string[] {
++  let out: string[] = [];
++  for (const name of readdirSync(dir)) {
++    const full = join(dir, name);
++    if (statSync(full).isDirectory()) out = out.concat(files(full));
++    else if (/\.(ts|tsx)$/.test(name)) out.push(full);
++  }
++  return out;
++}
++
++describe("visitor data sinks", () => {
++  it("no sink module imports the visitor store or names its tables", () => {
++    const offenders: string[] = [];
++    for (const dir of SINK_DIRS) {
++      let list: string[] = [];
++      try {
++        list = files(join(ROOT, dir));
++      } catch {
++        continue;
++      }
++      for (const file of list) {
++        const text = readFileSync(file, "utf8");
++        if (/from\s+["'][^"']*world\/visitors["']|import\(\s*["'][^"']*world\/visitors["']\s*\)/.test(text)) offenders.push(`${file}: import`);
++        if (/world_visitors|visitor_quarantine|["'`]world_["'`]\s*\+|["'`]visitor_["'`]\s*\+/.test(text)) offenders.push(`${file}: table`);
++      }
++    }
++    expect(offenders).toEqual([]);
++  });
++
++  it("rejects default-ignorable characters in notes", () => {
++    for (const cp of [0x115f, 0x1160, 0xffa0, 0x2061, 0x2064, 0x206a, 0x17b4, 0x1d173, 0x180b, 0xfff0]) {
++      expect(moderateNote(`hi${String.fromCodePoint(cp)}there`, 140).ok).toBe(false);
++    }
++    expect(moderateNote("Meet me by the reef at 10:30, ok?", 140).ok).toBe(true);
++    expect(moderateNote("café naïve 日本語 🙂", 140).ok).toBe(true);
++  });
++});
+-- 
+2.47.3
+

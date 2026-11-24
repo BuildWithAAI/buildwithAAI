@@ -1,0 +1,192 @@
+From db4e71b91e74abd76909646d7d8adecb27bd6805 Mon Sep 17 00:00:00 2001
+From: Head of Security <security@buildwithaai.invalid>
+Date: Wed, 11 Nov 2026 03:57:32 -0600
+Subject: [PATCH] Make predeploy a read-only check that something actually runs
+ (L-15)
+
+- Opens the file read-only, never creates it, never migrates, never writes an alert.
+- A missing file, old-hash rows, or a broken chain exits 1.
+- Declares vite-node, which the script needs and which only arrived through vitest.
+- HOSTING_FLY.md: check a VACUUM INTO copy of /data before a redeploy.
+---
+ projects/lumen/docs/HOSTING_FLY.md            | 10 ++++
+ projects/lumen/package-lock.json              |  3 +-
+ projects/lumen/package.json                   |  1 +
+ .../lumen/scripts/predeploy-chunk-chain.ts    | 35 ++++++++++--
+ projects/lumen/tests/metaverse.test.ts        |  3 +-
+ .../lumen/tests/predeployReadonly.test.ts     | 55 +++++++++++++++++++
+ 6 files changed, 100 insertions(+), 7 deletions(-)
+ create mode 100644 projects/lumen/tests/predeployReadonly.test.ts
+
+diff --git a/projects/lumen/docs/HOSTING_FLY.md b/projects/lumen/docs/HOSTING_FLY.md
+index f67f881..992899a 100644
+--- a/projects/lumen/docs/HOSTING_FLY.md
++++ b/projects/lumen/docs/HOSTING_FLY.md
+@@ -121,6 +121,16 @@ fly secrets import -a lumen-tidepool < secrets.env
+ 
+ ## Deploy one machine
+ 
++On a redeploy (a volume that already has data), check the chunk chain on a copy first. The check is read-only and never touches the live file. Skip it on the first deploy.
++
++```powershell
++fly ssh console -a lumen-tidepool -C "node -e \"new (require('node:sqlite').DatabaseSync)('/data/lumen.sqlite').exec(\\\"VACUUM INTO '/data/precheck.sqlite'\\\")\""
++fly ssh sftp get /data/precheck.sqlite ./precheck.sqlite -a lumen-tidepool
++$env:LUMEN_DATA = "./precheck.sqlite"; npm run predeploy
++```
++
++Exit code 1 means do not deploy: the desk would come up in degraded mode. Delete `precheck.sqlite` on both sides afterwards.
++
+ ```powershell
+ fly deploy --ha=false -a lumen-tidepool
+ ```
+diff --git a/projects/lumen/package-lock.json b/projects/lumen/package-lock.json
+index 6b23389..a136b8e 100644
+--- a/projects/lumen/package-lock.json
++++ b/projects/lumen/package-lock.json
+@@ -20,8 +20,9 @@
+         "@types/react-dom": "^19.1.9",
+         "@types/suncalc": "^1.9.2",
+         "@types/three": "^0.170.0",
+-        "playwright": "^1.55.1",
++        "playwright": "1.55.1",
+         "typescript": "^5.9.2",
++        "vite-node": "^3.2.4",
+         "vitest": "^3.2.4"
+       },
+       "engines": {
+diff --git a/projects/lumen/package.json b/projects/lumen/package.json
+index 0d1d514..81383ee 100644
+--- a/projects/lumen/package.json
++++ b/projects/lumen/package.json
+@@ -30,6 +30,7 @@
+     "@types/three": "^0.170.0",
+     "playwright": "1.55.1",
+     "typescript": "^5.9.2",
++    "vite-node": "^3.2.4",
+     "vitest": "^3.2.4"
+   },
+   "engines": {
+diff --git a/projects/lumen/scripts/predeploy-chunk-chain.ts b/projects/lumen/scripts/predeploy-chunk-chain.ts
+index c682358..2d5b925 100644
+--- a/projects/lumen/scripts/predeploy-chunk-chain.ts
++++ b/projects/lumen/scripts/predeploy-chunk-chain.ts
+@@ -1,10 +1,35 @@
+-import { openDatabase } from "../src/db/db";
+-import { noteChunkChainBroken, verifyChunkChain } from "../src/world/chunkEdits";
++import { existsSync } from "node:fs";
++import { DatabaseSync } from "node:sqlite";
++import { verifyChunkChain } from "../src/world/chunkEdits";
++
++/**
++ * Read-only chain check for a copy of the prod database. It never creates a file,
++ * never runs migrations, and never writes an alert. Exit 1 means do not deploy.
++ */
++function line(event: string, status: number, detail?: string): void {
++  console.log(JSON.stringify({ ts: new Date().toISOString(), event, status, route: "predeploy", ...(detail ? { detail } : {}) }));
++}
+ 
+ const file = process.env.LUMEN_DATA ?? `${process.cwd()}/data/lumen.sqlite`;
+-const db = openDatabase(file);
++if (!existsSync(file)) {
++  line("chunk_chain_missing", 500, "LUMEN_DATA does not point at a database file");
++  process.exit(1);
++}
++const db = new DatabaseSync(file, { readOnly: true });
++const table = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunk_edits'").get();
++if (!table) {
++  line("chunk_chain_empty", 200, "no chunk_edits table yet");
++  process.exit(0);
++}
++const pending = db.prepare("SELECT 1 FROM pragma_table_info('chunk_edits') WHERE name = 'hash_version'").get()
++  ? Number((db.prepare("SELECT COUNT(*) AS n FROM chunk_edits WHERE hash_version < 2").get() as { n: number }).n)
++  : Number((db.prepare("SELECT COUNT(*) AS n FROM chunk_edits").get() as { n: number }).n);
++if (pending > 0) {
++  line("chunk_chain_needs_migration", 500, "rows on the old hash; boot the new build on a copy first");
++  process.exit(1);
++}
+ if (!verifyChunkChain(db)) {
+-  noteChunkChainBroken(db);
+-  console.log(JSON.stringify({ ts: new Date().toISOString(), event: "chunk_chain_broken", status: 500, route: "predeploy" }));
++  line("chunk_chain_broken", 500);
+   process.exit(1);
+ }
++line("chunk_chain_ok", 200);
+diff --git a/projects/lumen/tests/metaverse.test.ts b/projects/lumen/tests/metaverse.test.ts
+index bd3d39d..a73e380 100644
+--- a/projects/lumen/tests/metaverse.test.ts
++++ b/projects/lumen/tests/metaverse.test.ts
+@@ -665,8 +665,9 @@ describe("visiting agents", () => {
+     db.close();
+     const failed = runPredeploy(broken);
+     expect(failed.status).toBe(1);
++    // Predeploy is read-only. The desk notice comes from the boot path, not from this check.
+     const noticed = openDatabase(broken);
+-    expect(noticed.prepare("SELECT title FROM owner_alerts WHERE title = 'Chunk chain broken'").get()).toBeTruthy();
++    expect(noticed.prepare("SELECT title FROM owner_alerts WHERE title = 'Chunk chain broken'").get()).toBeUndefined();
+     noticed.close();
+     const clean = join(dir, "clean.sqlite");
+     openDatabase(clean).close();
+diff --git a/projects/lumen/tests/predeployReadonly.test.ts b/projects/lumen/tests/predeployReadonly.test.ts
+new file mode 100644
+index 0000000..f74cc92
+--- /dev/null
++++ b/projects/lumen/tests/predeployReadonly.test.ts
+@@ -0,0 +1,55 @@
++import { spawnSync } from "node:child_process";
++import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { describe, expect, it, vi } from "vitest";
++import { openDatabase } from "../src/db/db";
++import { appendChunkEdit } from "../src/world/chunkEdits";
++
++function run(file: string) {
++  return spawnSync(process.execPath, [join("node_modules", "vite-node", "vite-node.mjs"), "scripts/predeploy-chunk-chain.ts"], {
++    env: { PATH: process.env.PATH ?? "", LUMEN_DATA: file },
++    encoding: "utf8",
++    timeout: 60_000,
++  });
++}
++
++function seed(file: string) {
++  const db = openDatabase(file);
++  appendChunkEdit(db, {
++    id: "edit-pd1", atMs: 10, chunkX: 1, chunkY: 1, tileX: 1, tileY: 1, kind: "decor", actor: "zoora", idempotencyKey: "pd1",
++    payload: { buildId: "build-pd01", version: 1, title: "Dock bell", hue: 20, parts: 3, twist: 0.2, form: 1, size: 0.8 },
++  });
++  return db;
++}
++
++describe("predeploy chunk chain check", () => {
++  it("passes a good chain, fails a broken one, and never creates or writes a file", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const dir = mkdtempSync(join(tmpdir(), "lumen-predeploy-"));
++    try {
++      const good = join(dir, "good.sqlite");
++      seed(good).close();
++      const before = statSync(good).mtimeMs;
++      expect(run(good).status).toBe(0);
++      expect(statSync(good).mtimeMs).toBe(before);
++
++      const bad = join(dir, "bad.sqlite");
++      const db = seed(bad);
++      db.exec("DROP TRIGGER chunk_edits_no_update");
++      db.exec("UPDATE chunk_edits SET payload = replace(payload, 'Dock bell', 'Evil bell')");
++      db.close();
++      const broken = run(bad);
++      expect(broken.status).toBe(1);
++      expect(broken.stdout).toContain("chunk_chain_broken");
++      expect(Number((openDatabase(bad).prepare("SELECT COUNT(*) AS n FROM owner_alerts").get() as { n: number }).n)).toBe(0);
++
++      const missing = join(dir, "missing.sqlite");
++      expect(run(missing).status).toBe(1);
++      expect(existsSync(missing)).toBe(false);
++    } finally {
++      rmSync(dir, { recursive: true, force: true });
++      vi.restoreAllMocks();
++    }
++  }, 60_000);
++});
+-- 
+2.47.3
+

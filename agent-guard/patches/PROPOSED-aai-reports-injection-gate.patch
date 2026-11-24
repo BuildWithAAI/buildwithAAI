@@ -1,0 +1,20 @@
+--- a/aai/aai/reports.py
++++ b/aai/aai/reports.py
+@@ -26,6 +26,17 @@
+     if errs:
+         audit.record(store, "agent_report_rejected", actor=actor, inputs={"agent": report.get("agent")}, outcome="rejected", reasons=errs[:20])
+         return {"ok": False, "errors": errs}
++    try:  # agent-guard: reports from other agents are untrusted text; reject on HIGH injection flags
++        import sys as _s; _s.path.insert(0, "/workspace/agent-guard")
++        from agent_guard import detect_injection, max_severity
++        flags = detect_injection(dumps(report))
++        worst = max_severity(flags) if flags else None
++    except Exception:  # noqa: BLE001  fail closed
++        flags, worst = [{"severity": "HIGH", "code": "agent_guard_unavailable"}], "HIGH"
++    if worst == "HIGH":
++        audit.record(store, "agent_report_rejected", actor=actor, inputs={"agent": report.get("agent")}, outcome="rejected",
++                     reasons=["injection:" + f["code"] for f in flags][:20])
++        return {"ok": False, "errors": ["untrusted content flagged: " + ",".join(f["code"] for f in flags)]}
+     cur = store.execute("INSERT INTO agent_reports(received_at,agent,kind,capital_bucket,generated_at,status_line,report) VALUES(?,?,?,?,?,?,?)",
+                         (time.time(), report["agent"], report.get("kind"), report.get("capital_bucket"), report["generated_at"],
+                          report["status_line"], dumps(report)))

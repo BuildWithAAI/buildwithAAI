@@ -1,0 +1,72 @@
+# PROPOSED (not applied) by Head of Security executor, Nov 10 2026 ~4:15 PM CST.
+# Apply from /workspace/agent-guard with:  patch -p1 --dry-run < patches/PROPOSED-audit-skip-public-clones.patch
+# Effect on the live box at ~16:14 CST: secret scan 9C/26H/63L -> 5C/19H/11L, loose perms 13 -> 4, scan 25s -> 14s.
+# Untracked files inside clones (test.env, .env, reports) are still scanned.
+--- a/audit.py
++++ b/audit.py
+@@ -29,10 +29,17 @@
+              ".mypy_cache", ".pytest_cache", "Cache", "Code Cache", "GPUCache", "Service Worker", "IndexedDB",
+              "backups", "proc", "sys", "extensions", "managed-skills", "browser-profiles", "chromium", "chrome-profile",
+              "plugin-skills", "google-chrome-headless", "google-chrome", "chromium-browser", "node-compile-cache",
+-             "ZxcvbnData", "hyphen-data", "CRX_INSTALL", "_metadata"}
++             "ZxcvbnData", "hyphen-data", "CRX_INSTALL", "_metadata", ".next"}
+ SKIP_DIR_PREFIXES = ("scoped_dir", ".org.chromium", "puppeteer_dev_profile")
+ SKIP_PREFIXES = ("/opt/sand", "/workspace/agent-guard/agent_guard", "/workspace/agent-guard/tests",
+                  "/workspace/agent-guard/reports", "/workspace/agent-guard/backups", "/proc", "/sys")
++# Tracked files in a checkout of a PUBLIC repo are already public and are covered by gitleaks in CI; rescanning every
++# scratch clone (/tmp/zsec-clone, /tmp/lumen-r19, /workspace/zl, ...) only multiplies the same fixtures. Untracked and
++# ignored files in those checkouts (test.env, .env, build output) are still scanned.
++PUBLIC_REPO_REMOTES = ("github.com/buildwithaai/buildwithaai",)
++# Release bundles of scanner tools: their README/LICENSE carry sample "secrets" by design.
++TOOL_BUNDLE_MARKERS = ("gitleaks",)
++TOOL_BUNDLE_DOCS = {"README.md", "LICENSE"}
+ PLATFORM_PREFIXES = ("/home/box/sand-data", "/home/box/agent-data", "/tmp/exec-daemon")
+ TEXT_EXT = {".py", ".mq5", ".mq4", ".mqh", ".json", ".toml", ".yaml", ".yml", ".ini", ".cfg", ".conf", ".env",
+             ".txt", ".md", ".sh", ".js", ".ts", ".csv", ".jsonl", ""}
+@@ -76,7 +83,32 @@
+                            r"metadata|token_name|\bname\b.*symbol)")
+ 
+ 
++def _git_remote(dp, depth=0):
++    try:
++        cfg = open(os.path.join(dp, ".git", "config"), encoding="utf-8", errors="ignore").read()
++    except OSError:
++        return ""
++    m = re.search(r'(?m)^\s*url\s*=\s*(\S+)', cfg)
++    url = m.group(1) if m else ""
++    if depth < 2 and url.startswith("/") and os.path.isdir(os.path.join(url, ".git")):
++        return _git_remote(url, depth + 1)  # a local clone of a local clone
++    return url
++
++
++def _public_tracked(dp):
++    """Tracked files of a public-repo checkout at dp (absolute paths), or an empty set."""
++    url = re.sub(r"\.git$", "", _git_remote(dp).lower())
++    if not any(r in url for r in PUBLIC_REPO_REMOTES):
++        return set()
++    try:
++        out = subprocess.run(["git", "-C", dp, "ls-files", "-z"], capture_output=True, timeout=20).stdout
++    except (OSError, subprocess.SubprocessError):
++        return set()
++    return {os.path.join(dp, f) for f in out.decode("utf-8", "ignore").split("\0") if f}
++
++
+ def iter_files(roots):
++    tracked = set()
+     for root in roots:
+         if not os.path.exists(root):
+             continue
+@@ -86,8 +118,13 @@
+             if dp.startswith(SKIP_PREFIXES):
+                 dns[:] = []
+                 continue
++            if os.path.isdir(os.path.join(dp, ".git")):
++                tracked |= _public_tracked(dp)
++            bundle = any(m in fns for m in TOOL_BUNDLE_MARKERS)
+             for fn in fns:
+                 p = os.path.join(dp, fn)
++                if p in tracked or (bundle and fn in TOOL_BUNDLE_DOCS):
++                    continue
+                 try:
+                     st = os.lstat(p)
+                 except OSError:

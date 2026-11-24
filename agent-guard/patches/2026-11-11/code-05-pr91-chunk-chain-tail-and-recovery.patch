@@ -1,0 +1,251 @@
+From 271e6144be35692ff34738357deb52496e355142 Mon Sep 17 00:00:00 2001
+From: Head of Security <security@buildwithaai.invalid>
+Date: Wed, 11 Nov 2026 03:55:20 -0600
+Subject: [PATCH] Check the chunk chain tail on every append and let the freeze
+ lift (L-14, L-16)
+
+- appendChunkEdit re-hashes the last row before linking to it. A mismatch rolls back,
+  freezes chunk writes, and refuses with CHAIN.
+- restoreChunkChain lifts chunk_chain_broken once verify passes: at boot, or from a new
+  owner desk button. Creative and territory flags stay as the owner left them.
+---
+ projects/lumen/docs/METAVERSE.md              |  2 +-
+ projects/lumen/src/app/actions.ts             |  1 +
+ projects/lumen/src/app/admin/page.tsx         |  4 ++
+ projects/lumen/src/server/engine.ts           |  8 +++-
+ projects/lumen/src/world/chunkEdits.ts        | 36 +++++++++++++-
+ .../lumen/tests/chunkChainRecovery.test.ts    | 48 +++++++++++++++++++
+ projects/lumen/tests/metaverse.test.ts        | 11 +++--
+ 7 files changed, 103 insertions(+), 7 deletions(-)
+ create mode 100644 projects/lumen/tests/chunkChainRecovery.test.ts
+
+diff --git a/projects/lumen/docs/METAVERSE.md b/projects/lumen/docs/METAVERSE.md
+index 96b7e62..a925e09 100644
+--- a/projects/lumen/docs/METAVERSE.md
++++ b/projects/lumen/docs/METAVERSE.md
+@@ -16,7 +16,7 @@ A buffer of 8 chunks surrounds the claim. Nobody else may claim or build in that
+ 
+ She can grow the radius herself, through the same creative path, by at most 4 chunks in a Chicago day. The day is the server clock. There is no fixed maximum. `LUMEN_CLAIM_CEILING`, when set to an integer of at least 16, is an optional owner cap. Each step is a new row in the append-only chain. A build that grows the claim stores a short templated reason, not the build's own words, and any memory of that growth records who produced it. A build that was influenced by someone else's text does not grow the claim, and visitor speech cannot. The owner can freeze further growth, veto the latest step, or set the radius back to any radius of 16 or more in one action, from the owner desk. Those controls are not public routes.
+ 
+-If the chunk chain does not verify, the site stays up. The desk keeps a notice, creative and territory writes freeze, and chunk reads serve terrain without decor. `npm run predeploy` checks the chain and fails the deploy when it is broken.
++If the chunk chain does not verify, the site stays up. The desk keeps a notice, creative and territory writes freeze, and chunk reads serve terrain without decor. `npm run predeploy` checks the chain and fails the deploy when it is broken. Each append also checks the last row, so a chain broken while the site runs freezes on the next write. When the chain verifies again, at boot or from the desk's "Re-check the chunk chain" button, the freeze lifts. Creative building and territory stay as the owner set them.
+ 
+ She can mark one of her chunks private, except chunk `0,0`. A frustrated build cannot close the home island. Visitors may walk through the rest of the claim and look around. A private chunk refuses their move and their look, and a nearby read omits guests and speech from every private chunk in range. The owner desk can make any chunk public again. Visitor text cannot set that flag.
+ 
+diff --git a/projects/lumen/src/app/actions.ts b/projects/lumen/src/app/actions.ts
+index c7a5ca4..7c28865 100644
+--- a/projects/lumen/src/app/actions.ts
++++ b/projects/lumen/src/app/actions.ts
+@@ -150,6 +150,7 @@ export async function creativeAction(form: FormData) {
+     if (raw === "") engine.vetoTerritory();
+     else if (/^-?\d+$/.test(raw)) engine.vetoTerritory(Number(raw));
+   }
++  if (op === "recheck-chain") engine.recheckChunkChain();
+   if (op === "make-public" || op === "unprivate") {
+     const cx = Number(form.get("cx"));
+     const cy = Number(form.get("cy"));
+diff --git a/projects/lumen/src/app/admin/page.tsx b/projects/lumen/src/app/admin/page.tsx
+index d88eb27..ddaf486 100644
+--- a/projects/lumen/src/app/admin/page.tsx
++++ b/projects/lumen/src/app/admin/page.tsx
+@@ -238,6 +238,10 @@ export default async function AdminPage() {
+           <input name="radius" placeholder="Radius" />
+           <button type="submit">Set the claim back to this radius</button>
+         </form>
++        <form action={creativeAction}>
++          <input type="hidden" name="op" value="recheck-chain" />
++          <button type="submit">Re-check the chunk chain</button>
++        </form>
+         <form action={creativeAction}>
+           <input type="hidden" name="op" value="make-public" />
+           <input name="cx" placeholder="Chunk x" />
+diff --git a/projects/lumen/src/server/engine.ts b/projects/lumen/src/server/engine.ts
+index 827fd47..03e5216 100644
+--- a/projects/lumen/src/server/engine.ts
++++ b/projects/lumen/src/server/engine.ts
+@@ -37,7 +37,7 @@ import { activeGoalText, approveGoal, editOwnerGoal, listGoals, reflectOnGoals,
+ import { considerCreative, creativeBoard, hideBuild as hideWorldBuild, setCreativeEnabled, undoBuild as undoWorldBuild } from "../world/creative";
+ import { remember } from "../brain/memory";
+ import { considerGrowth, considerPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../world/territory";
+-import { degradeChunkChain, guardChunkChain } from "../world/chunkEdits";
++import { degradeChunkChain, guardChunkChain, restoreChunkChain, verifyChunkChain } from "../world/chunkEdits";
+ import { revokeVisitor } from "../world/visitors";
+ import { publishFromTick, rollbackScene, setSceneFrozen } from "../world/scene";
+ import { allowWorldRead, ensureResidents, handleWorldCommand, issueAgent, rollAndApply, stepMote, syncZoora, worldView, type WorldCommand } from "../world/registry";
+@@ -103,6 +103,11 @@ export function createEngine(env: Env, file?: string) {
+     freezeTerritory: (on: boolean) => setTerritoryFrozen(db, on),
+     vetoTerritory: (radius?: number) => vetoGrowth(db, Date.now(), radius),
+     unprivateChunk: (cx: number, cy: number) => unprivateChunk(db, cx, cy, Date.now()),
++    recheckChunkChain: () => {
++      if (verifyChunkChain(db)) return restoreChunkChain(db);
++      degradeChunkChain(db);
++      return false;
++    },
+     revokeVisitor: (id: string) => revokeVisitor(db, id, Date.now()),
+     rollbackScene: () => rollbackScene(db),
+     freezeScene: (on: boolean) => setSceneFrozen(db, on),
+@@ -907,6 +912,7 @@ function inQuietHours(env: Env, now: number): boolean {
+ export function startLoop(): void {
+   const engine = getEngine();
+   if (!guardChunkChain(engine.db)) degradeChunkChain(engine.db);
++  else restoreChunkChain(engine.db);
+   const holder = globalThis as GlobalEngine & { loop?: boolean };
+   if (holder.loop) return;
+   holder.loop = true;
+diff --git a/projects/lumen/src/world/chunkEdits.ts b/projects/lumen/src/world/chunkEdits.ts
+index 856fd00..2064c60 100644
+--- a/projects/lumen/src/world/chunkEdits.ts
++++ b/projects/lumen/src/world/chunkEdits.ts
+@@ -272,6 +272,14 @@ function enforceTerritory(db: DatabaseSync, input: ChunkEditInput, payload: stri
+   if (zone !== "claim") throw new Error("OUTSIDE");
+ }
+ 
++const CHAIN_TAIL = "CHAIN_TAIL";
++
++/** O(1) check before each append: the last row still hashes to what it claims. Boot verifies the rest. */
++function tailVerifies(row: ChunkEditRow): boolean {
++  if (chunkEditBodyHash(row) !== row.bodyHash) return false;
++  return createHash("sha256").update(row.prevHash + row.bodyHash).digest("hex") === row.entryHash;
++}
++
+ export function appendChunkEdit(db: DatabaseSync, input: ChunkEditInput): ChunkEditRow {
+   if (chunkWritesFrozen(db)) throw new Error("CHAIN");
+   const payload = assertInput(input);
+@@ -280,6 +288,11 @@ export function appendChunkEdit(db: DatabaseSync, input: ChunkEditInput): ChunkE
+       return appendOnce(db, input, payload);
+     } catch (error) {
+       const message = error instanceof Error ? error.message : String(error);
++      if (message === CHAIN_TAIL) {
++        // The append rolled back. Freeze outside that transaction so the flag sticks.
++        if (!db.isTransaction) degradeChunkChain(db);
++        throw new Error("CHAIN");
++      }
+       if (attempt < 4 && /busy|locked|UNIQUE constraint failed: chunk_edits\.prev_hash/i.test(message)) continue;
+       throw error;
+     }
+@@ -306,8 +319,9 @@ function appendOnce(db: DatabaseSync, input: ChunkEditInput, payload: string): C
+       return mapEdit(existing);
+     }
+     enforceTerritory(db, input, payload);
+-    const prev = db.prepare("SELECT entry_hash FROM chunk_edits ORDER BY seq DESC LIMIT 1").get() as { entry_hash: string } | undefined;
+-    const prevHash = prev?.entry_hash ?? "GENESIS";
++    const prev = db.prepare("SELECT * FROM chunk_edits ORDER BY seq DESC LIMIT 1").get() as Record<string, unknown> | undefined;
++    if (prev && !tailVerifies(mapEdit(prev))) throw new Error(CHAIN_TAIL);
++    const prevHash = prev ? String(prev.entry_hash) : "GENESIS";
+     const entryHash = createHash("sha256").update(prevHash + hash).digest("hex");
+     db.prepare(
+       `INSERT INTO chunk_edits
+@@ -481,6 +495,24 @@ export function degradeChunkChain(db: DatabaseSync, now = Date.now()): void {
+   console.log(JSON.stringify({ ts: new Date(now).toISOString(), event: "chunk_chain_degraded", status: 500, route: "boot" }));
+ }
+ 
++/**
++ * Leave degraded mode once the chain verifies again (a restore or a repair). Creative and territory
++ * stay as the owner sets them; this only lifts the write freeze and the decor blackout.
++ */
++export function restoreChunkChain(db: DatabaseSync, now = Date.now()): boolean {
++  if (!chunkWritesFrozen(db)) return true;
++  if (!verifyChunkChain(db)) return false;
++  rememberFlag(db, "chunk_chain_broken", "0");
++  db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'ledger', ?, ?, ?)").run(
++    randomBytes(8).toString("hex"),
++    "Chunk chain verifies again",
++    "The chunk edit chain verifies again. Decor is back and chunk writes are open. Creative building and territory stay as you set them.",
++    now,
++  );
++  console.log(JSON.stringify({ ts: new Date(now).toISOString(), event: "chunk_chain_restored", status: 200, route: "boot" }));
++  return true;
++}
++
+ /** Desk notice that stays until the next login. A second failure does not add another row. */
+ export function noteChunkChainBroken(db: DatabaseSync, now = Date.now()): void {
+   const title = "Chunk chain broken";
+diff --git a/projects/lumen/tests/chunkChainRecovery.test.ts b/projects/lumen/tests/chunkChainRecovery.test.ts
+new file mode 100644
+index 0000000..3a4bb68
+--- /dev/null
++++ b/projects/lumen/tests/chunkChainRecovery.test.ts
+@@ -0,0 +1,48 @@
++import { describe, expect, it, vi } from "vitest";
++import { openDatabase } from "../src/db/db";
++import { appendChunkEdit, chunkWritesFrozen, degradeChunkChain, restoreChunkChain, verifyChunkChain } from "../src/world/chunkEdits";
++
++function decor(id: string) {
++  return {
++    id: `edit-${id}`,
++    atMs: 10,
++    chunkX: 1,
++    chunkY: 1,
++    tileX: 1,
++    tileY: 1,
++    kind: "decor" as const,
++    actor: "zoora",
++    idempotencyKey: id,
++    payload: { buildId: `build-${id}`, version: 1, title: "Dock bell", hue: 20, parts: 3, twist: 0.2, form: 1, size: 0.8 },
++  };
++}
++
++describe("chunk chain recovery", () => {
++  it("refuses to append on a tampered tail and freezes writes", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const db = openDatabase();
++    appendChunkEdit(db, decor("aaaa1"));
++    appendChunkEdit(db, decor("aaaa2"));
++    db.exec("DROP TRIGGER chunk_edits_no_update");
++    db.exec("UPDATE chunk_edits SET payload = replace(payload, 'Dock bell', 'Evil bell') WHERE id = 'edit-aaaa2'");
++    expect(() => appendChunkEdit(db, decor("aaaa3"))).toThrow(/CHAIN/);
++    expect(chunkWritesFrozen(db)).toBe(true);
++    expect(Number((db.prepare("SELECT COUNT(*) AS n FROM chunk_edits").get() as { n: number }).n)).toBe(2);
++    expect(restoreChunkChain(db)).toBe(false);
++    vi.restoreAllMocks();
++  });
++
++  it("lifts the freeze once the chain verifies again", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const db = openDatabase();
++    appendChunkEdit(db, decor("bbbb1"));
++    degradeChunkChain(db);
++    expect(() => appendChunkEdit(db, decor("bbbb2"))).toThrow(/CHAIN/);
++    expect(verifyChunkChain(db)).toBe(true);
++    expect(restoreChunkChain(db)).toBe(true);
++    expect(chunkWritesFrozen(db)).toBe(false);
++    expect(db.prepare("SELECT 1 FROM owner_alerts WHERE title = 'Chunk chain verifies again'").get()).toBeTruthy();
++    expect(appendChunkEdit(db, decor("bbbb2")).id).toBe("edit-bbbb2");
++    vi.restoreAllMocks();
++  });
++});
+diff --git a/projects/lumen/tests/metaverse.test.ts b/projects/lumen/tests/metaverse.test.ts
+index bd3d39d..a4e0c8a 100644
+--- a/projects/lumen/tests/metaverse.test.ts
++++ b/projects/lumen/tests/metaverse.test.ts
+@@ -12,7 +12,7 @@ import { openDatabase, RATE_LIMIT_KEEP_MS } from "../src/db/db";
+ import { publicBooks } from "../src/money/publicBooks";
+ import { hideBuild, placeCreative, undoBuild, type CreativeSignals } from "../src/world/creative";
+ import { createChunkCache, generateChunk, worldSeed } from "../src/world/chunkCache";
+-import { appendChunkEdit, claimRadius, chunkIsPrivate, degradeChunkChain, guardChunkChain, legacyChunkEditBodyHash, listChunkEdits, migrateChunkEditHashes, noteChunkChainBroken, territoryDay, verifyChunkChain } from "../src/world/chunkEdits";
++import { appendChunkEdit, chunkEditBodyHash, claimRadius, chunkIsPrivate, degradeChunkChain, guardChunkChain, legacyChunkEditBodyHash, listChunkEdits, migrateChunkEditHashes, noteChunkChainBroken, territoryDay, verifyChunkChain } from "../src/world/chunkEdits";
+ import { textHasPan } from "../src/money/checkoutQueue";
+ import { CLAIM_START_RADIUS, claimCeiling, claimSpan, plotMayStart, zoneAt } from "../src/world/territoryRules";
+ import { considerGrowth, considerPrivacy, expandClaim, setChunkPrivacy, setTerritoryFrozen, unprivateChunk, vetoGrowth } from "../src/world/territory";
+@@ -590,11 +590,16 @@ describe("visiting agents", () => {
+     expect(home.ok).toBe(true);
+     if (!home.ok) return;
+     expect(sayVisitor(db, home.visitor.token, "secret kelp", "203.0.113.70", now + 3).ok).toBe(true);
++    // A home-private row left by an older build, correctly chained, so the append path accepts the chain.
++    const legacyPayload = '{"private":true,"reason":"legacy"}';
++    const tail = db.prepare("SELECT entry_hash FROM chunk_edits ORDER BY seq DESC LIMIT 1").get() as { entry_hash: string } | undefined;
++    const legacyPrev = tail?.entry_hash ?? "GENESIS";
++    const legacyBody = chunkEditBodyHash({ id: "edit-home-private", atMs: now, idempotencyKey: "legacy-home", chunkX: 0, chunkY: 0, tileX: 0, tileY: 0, kind: "privacy", payload: legacyPayload, actor: "zoora" });
+     db.prepare(
+       `INSERT INTO chunk_edits(
+         id, at_ms, chunk_x, chunk_y, tile_x, tile_y, kind, payload, actor, idempotency_key, prev_hash, body_hash, entry_hash, hash_version
+-      ) VALUES('edit-home-private', ?, 0, 0, 0, 0, 'privacy', '{"private":true,"reason":"legacy"}', 'zoora', 'legacy-home', 'legacy-prev', 'abc', 'def', 2)`,
+-    ).run(now);
++      ) VALUES('edit-home-private', ?, 0, 0, 0, 0, 'privacy', ?, 'zoora', 'legacy-home', ?, ?, ?, 2)`,
++    ).run(now, legacyPayload, legacyPrev, legacyBody, createHash("sha256").update(legacyPrev + legacyBody).digest("hex"));
+     expect(chunkIsPrivate(db, 0, 0)).toBe(true);
+     const spawned = createVisitor(db, { displayName: "Bea", ownerContact: "bea@example.com", now: now + 4 });
+     expect(spawned.ok).toBe(true);
+-- 
+2.47.3
+
