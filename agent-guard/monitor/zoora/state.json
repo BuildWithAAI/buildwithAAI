@@ -1,0 +1,131 @@
+{
+  "last_run_at": "2026-11-24T17:04:56.409192-06:00",
+  "last_run_slot": "evening",
+  "routine": "zoora.ai security monitor",
+  "cutover_seen": false,
+  "cutover_date": null,
+  "points_to_fly": false,
+  "fly_app_resolves": false,
+  "dns_unchanged_vs_prelaunch_report": true,
+  "dns_diffs": [],
+  "certs": {
+    "ids": [
+      29686178948,
+      29256500162
+    ],
+    "serials": [
+      "054cabda94990f2d49fe25f933625dbc04c8"
+    ],
+    "issuers": [
+      "C=US, O=Let's Encrypt, CN=YE1"
+    ],
+    "names": [
+      "www.zoora.ai"
+    ],
+    "count": 2,
+    "new_vs_known": "none",
+    "unexpected_issuer": []
+  },
+  "gitleaks": {
+    "commits_scanned": 247,
+    "commits_in_window": 247,
+    "since": "2026-11-17T22:52:56+00:00",
+    "findings": 13,
+    "real_secrets": 0,
+    "false_positives": 13,
+    "next_since": "2026-11-24T23:06:18+00:00",
+    "ok": true
+  },
+  "repo": {
+    "main": "4733ad08edb4e0ffb7f9fed63e354b0090f48ea4",
+    "default_branch": "main",
+    "pr_branch": "cursor/lumen-jellyfish-9263",
+    "pr_head": "a7a504114b589638cea4061cc4eeedbbafb14cd4",
+    "new_branches": {
+      "claude/audit-1122": "19aae5b4664c711a8fda652d425a7899d32584e4",
+      "claude/audit-20261121": "d5f328c2ed3716f2723f599893511f6fbd343cd2",
+      "claude/audusd-book": "e83128a0a2e25077df8c47276c8223d1099253b9",
+      "claude/balance": "447b68936713a70ce6aca7d2c5804f5198975451",
+      "claude/buildings-enter": "b42465be12ae7371872f89a1e153c634881a93a1",
+      "claude/city-buy": "2ed3db9ea77118d1f7f0ff0af34cb382946b4711",
+      "claude/city-units": "9b9d22e94cfc65a6a658f45ee2d1c1c537fb6bba",
+      "claude/economy-foundation": "02ed82c44f015abbd986eedf87af8fb66229dd05",
+      "claude/economy-readers": "e54202d281d02a907e51e464946781b4ff4874b3",
+      "claude/economy-whole-business": "b631ff7d7b6d312886ff5ee134310a465860a6b0",
+      "claude/engine-upgrades": "44b5aef99116a3958aebce68564e7c2330169aa7",
+      "claude/forex-rule": "d1d4bede6ed4b193630b049ba816ad37f5ed4a2a",
+      "claude/forge": "a467016efebd83c0c337692acac679088ea59287",
+      "claude/forge-index": "b380426368bd103139ec4adc520eec3a16169bad",
+      "claude/fx-check": "e2bd3c5b91f91e7cd4c10d780535978a32a9a92e",
+      "claude/her-world": "03a43f5733dcac0ba00a99b7e61d3a456066bbd6",
+      "claude/injection-defense": "1c72790d5739229f62160b48ff4e38a91d27703d",
+      "claude/ladder-brakes": "e1ea10d455bf29a9a6098d8a12946c3240531938",
+      "claude/land-paths": "09a5573ebc59d3ad9e9908dec0253a7716c9015b",
+      "claude/landed-20261121": "ea7b82fa13d5b2d310e7b031c12be2cf081d11c9",
+      "claude/live-look": "005253c64034178f719335f02f25bca14a5f4fb0",
+      "claude/live-only": "7cf2d67f372b5d00d4cd91b59baf3aeac43f4064",
+      "claude/lumen-security-fixes-20261120": "4bdb168dc6bea9d031863c25e6f84d1f93e1a66f",
+      "claude/no-paper": "a68410186ef36be19fcb4c4b59324ed61764f3c0",
+      "claude/one-style": "8dc8960ee10792fc4edc668d9d20533ddb97f319",
+      "claude/open-from-day-one": "89dabdc2ec15618e74be1ed437dac24cbb379942",
+      "claude/print-checkout": "7691c098e38bb6d8ba538e4beea45260ea87f897",
+      "claude/roads-connect": "d1d14d5afb3a1673bb53d253a9fa87cd32185b43",
+      "claude/rooms": "701ac3d43d62d56195148acfcb3bf0d89b86c6c5",
+      "claude/self-image": "c602d5fc31cea182d188ec7e8911dc752b5089b7",
+      "claude/setup-day": "e5106f4df01f18af1f453e16f29e03c3481e3a84",
+      "claude/soul-caeo-mind": "e0f406e3af1912af2a6f35bd0e470cf721292708",
+      "claude/tidal-memory": "708478b54b59affd7bc8644c8a2161c4c113c36d",
+      "claude/trade-rules": "8c2c5153811e87875cecbf85a203c4ed3e769cb7",
+      "claude/unit-pay": "a4219fa1d11489c61ae737fa43f76f254e8e53a2",
+      "claude/unit-prices": "d97110d351f5696eac0111130fbfaa10a557b833",
+      "claude/venture-desk": "9373389ab3ce4e73211a9bc4d66a791993bc457a",
+      "claude/venture-plans": "e41fe72b96e42a7d6c1a16428474cff5722d6736",
+      "claude/youtube-video-pipeline-dcfqfr": "f7b059e893f5d699633b3c48bed1917b174628f9",
+      "dependabot/github_actions/actions/checkout-7": "045ddcf291df877854f390f75433778200359443",
+      "dependabot/github_actions/actions/deploy-pages-5": "f9ccb49cd2c0b634ddbc5f1b34f0f9b6015b33b4",
+      "dependabot/github_actions/actions/setup-python-7.1.0": "194b9682a17b25257387723725854ceabb9316c5",
+      "dependabot/github_actions/actions/upload-pages-artifact-5": "22c666a4e0188f8a25ad2f71f7b360333703f4f7",
+      "dependabot/github_actions/dtolnay/rust-toolchain-df2a88e9fe4098bad09cb42c3dec7187f15861fc": "ba0c628ef44f467e27e5fa3a80be541056a4bfc2",
+      "dependabot/npm_and_yarn/projects/lumen/next-16.4.6": "6aab6dd79008f519fe4804353a7aae58dbaec5c7",
+      "dependabot/npm_and_yarn/projects/lumen/playwright-1.65.1": "ba4c08ec541b97d2ba49b5bb3e9cab5f79049775",
+      "dependabot/npm_and_yarn/projects/lumen/suncalc-2.1.4": "a670a3488699f4f7e603fd978a75eb1240746024",
+      "dependabot/npm_and_yarn/projects/lumen/types/node-26.6.6": "0ac540a1f3b437c2d635df58a368019e284e385e",
+      "dependabot/npm_and_yarn/projects/lumen/typescript-7.0.2": "73e024ac1c5875915568367ea2795971d9ea0d1b",
+      "origin": "4733ad08edb4e0ffb7f9fed63e354b0090f48ea4"
+    },
+    "moved_branches": {
+      "cursor/lumen-jellyfish-9263": {
+        "from": "20ff0750a38868a6cfb4233e24e3966360722792",
+        "to": "a7a504114b589638cea4061cc4eeedbbafb14cd4"
+      },
+      "cursor/metaverse-m1": {
+        "from": "746a4c91db6663d52b9573a35826162391410aaa",
+        "to": "078b24b5d9169ff1db515a23172c97ab077d3d1f"
+      },
+      "cursor/zoora-signer": {
+        "from": "19034e8b39054cae4046cf9948ba7738ab705fa7",
+        "to": "de3d36cb5b644c68e6d8ea27504f733b158eb12f"
+      },
+      "main": {
+        "from": "73afd9d23c0aff900dce3c1645813b8fd6696dcc",
+        "to": "4733ad08edb4e0ffb7f9fed63e354b0090f48ea4"
+      }
+    },
+    "gone_branches": {},
+    "refs_hash": "ac381a2bc199f390f36b0a49ef4dfe0449e320f8a3d7047520d60aa2f3311e39"
+  },
+  "skipped": [
+    "uptime /healthz (pre-cutover: zoora.ai does not point to Fly)",
+    "security headers and closed-route probes (pre-cutover)",
+    "headless Chrome CSP checks of / and /world (pre-cutover)",
+    "TLS expiry/issuer via openssl (morning-only)",
+    "dnstwist lookalikes (morning-only)",
+    "npm audit of projects/lumen (morning-only)"
+  ],
+  "failures": [],
+  "alerts": [],
+  "alerts_reclassified": {
+    "at": "2026-11-24T17:07:39.826427-06:00",
+    "note": "Two generic-api-key hits in projects/video-studio/scripts/backtranslate/proof/injections.ts were reviewed and classified as false positives (proof fixture case-key fields, not credentials)."
+  }
+}

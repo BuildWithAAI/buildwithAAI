@@ -1,0 +1,158 @@
+From 1012a38c02fad6c5e05b63596e75e3c3b8b00436 Mon Sep 17 00:00:00 2001
+From: Head of Security <security@buildwithaai.invalid>
+Date: Wed, 11 Nov 2026 03:47:49 -0600
+Subject: [PATCH] Open the ledger without a crash loop or a cold-start lock
+ race
+
+- busy_timeout is set before journal_mode and the schema, and both retry on SQLITE_BUSY.
+- The unique prev_hash index is created after the schema. A file that is already forked
+  boots with money killed, a desk notice, and one log line instead of exiting.
+---
+ projects/lumen/src/db/db.ts             | 53 +++++++++++++++++++++++--
+ projects/lumen/tests/ledgerFork.test.ts | 51 ++++++++++++++++++++++++
+ 2 files changed, 101 insertions(+), 3 deletions(-)
+ create mode 100644 projects/lumen/tests/ledgerFork.test.ts
+
+diff --git a/projects/lumen/src/db/db.ts b/projects/lumen/src/db/db.ts
+index c666c9d..0f780ef 100644
+--- a/projects/lumen/src/db/db.ts
++++ b/projects/lumen/src/db/db.ts
+@@ -1,3 +1,4 @@
++import { randomBytes } from "node:crypto";
+ import { DatabaseSync } from "node:sqlite";
+ import { mkdirSync } from "node:fs";
+ import path from "node:path";
+@@ -69,7 +70,6 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
+   prev_hash TEXT NOT NULL,
+   entry_hash TEXT NOT NULL
+ );
+-CREATE UNIQUE INDEX IF NOT EXISTS ledger_prev_hash ON ledger_entries(prev_hash);
+ CREATE TABLE IF NOT EXISTS flags (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS webhook_events (
+   event_id TEXT PRIMARY KEY,
+@@ -440,9 +440,11 @@ BEGIN SELECT RAISE(ABORT, 'append-only'); END;
+ export function openDatabase(file = ":memory:"): DatabaseSync {
+   if (file !== ":memory:") mkdirSync(path.dirname(file), { recursive: true });
+   const db = new DatabaseSync(file);
+-  db.exec(SCHEMA);
+-  db.exec("PRAGMA journal_mode = WAL");
++  // Wait on a lock before any DDL, so two processes opening a fresh file do not race to "database is locked".
+   db.exec("PRAGMA busy_timeout = 5000");
++  execWhileBusy(db, "PRAGMA journal_mode = WAL");
++  execWhileBusy(db, SCHEMA);
++  guardLedgerPrevIndex(db);
+   ensureColumn(db, "ledger_entries", "charge_id", "charge_id TEXT");
+   ensureColumn(db, "ledger_entries", "payment_intent_id", "payment_intent_id TEXT");
+   ensureColumn(db, "ledger_entries", "merchant", "merchant TEXT");
+@@ -463,6 +465,51 @@ export function openDatabase(file = ":memory:"): DatabaseSync {
+   return db;
+ }
+ 
++/** journal_mode and first-time DDL can return SQLITE_BUSY without the busy handler. Retry for up to 5 s. */
++function execWhileBusy(db: DatabaseSync, sql: string): void {
++  const pause = new Int32Array(new SharedArrayBuffer(4));
++  for (let attempt = 0; ; attempt += 1) {
++    try {
++      db.exec(sql);
++      return;
++    } catch (error) {
++      const message = error instanceof Error ? error.message : String(error);
++      if (attempt >= 50 || !/locked|busy/i.test(message)) throw error;
++      Atomics.wait(pause, 0, 0, 100);
++    }
++  }
++}
++
++export const LEDGER_FORK_TITLE = "Ledger fork detected";
++
++/**
++ * The unique prev_hash index is what stops a second writer from forking the ledger.
++ * A file that is already forked cannot take the index. Instead of crashing on every boot,
++ * stay up with money killed, leave a desk notice, and log one line. Clearing it is a manual repair.
++ */
++export function guardLedgerPrevIndex(db: DatabaseSync, now = Date.now()): boolean {
++  const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'ledger_prev_hash'").get();
++  if (exists) return true;
++  const fork = db.prepare("SELECT prev_hash FROM ledger_entries GROUP BY prev_hash HAVING COUNT(*) > 1 LIMIT 1").get();
++  if (!fork) {
++    db.exec("CREATE UNIQUE INDEX IF NOT EXISTS ledger_prev_hash ON ledger_entries(prev_hash)");
++    return true;
++  }
++  db.prepare("INSERT INTO flags(key, value) VALUES('kill', '1') ON CONFLICT(key) DO UPDATE SET value = '1'").run();
++  db.prepare("INSERT INTO flags(key, value) VALUES('ledger_forked', '1') ON CONFLICT(key) DO UPDATE SET value = '1'").run();
++  const noted = db.prepare("SELECT 1 FROM owner_alerts WHERE title = ?").get(LEDGER_FORK_TITLE);
++  if (!noted) {
++    db.prepare("INSERT INTO owner_alerts(id, kind, title, detail, created_at) VALUES(?, 'ledger', ?, ?, ?)").run(
++      randomBytes(8).toString("hex"),
++      LEDGER_FORK_TITLE,
++      "Two ledger rows share a previous hash. Money is killed and the site stays up. Repair the ledger before turning money back on.",
++      now,
++    );
++  }
++  console.log(JSON.stringify({ ts: new Date(now).toISOString(), event: "ledger_fork_detected", status: 500, route: "boot" }));
++  return false;
++}
++
+ function ensureColumn(db: DatabaseSync, table: string, column: string, ddl: string): void {
+   const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+   if (!cols.some((col) => col.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+diff --git a/projects/lumen/tests/ledgerFork.test.ts b/projects/lumen/tests/ledgerFork.test.ts
+new file mode 100644
+index 0000000..ced253c
+--- /dev/null
++++ b/projects/lumen/tests/ledgerFork.test.ts
+@@ -0,0 +1,51 @@
++import { mkdtempSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { DatabaseSync } from "node:sqlite";
++import { afterEach, describe, expect, it, vi } from "vitest";
++import { LEDGER_FORK_TITLE, flag, openDatabase } from "../src/db/db";
++
++const dirs: string[] = [];
++afterEach(() => {
++  vi.restoreAllMocks();
++  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
++});
++
++function forkedFile(): string {
++  const dir = mkdtempSync(join(tmpdir(), "lumen-fork-"));
++  dirs.push(dir);
++  const file = join(dir, "lumen.sqlite");
++  openDatabase(file).close();
++  const raw = new DatabaseSync(file);
++  raw.exec("DROP INDEX ledger_prev_hash");
++  const insert = raw.prepare(
++    `INSERT INTO ledger_entries(id, at_ms, kind, amount_cents, currency, status, provider, idempotency_key, body_hash, note, prev_hash, entry_hash)
++     VALUES(?, 1, 'sale', 100, 'usd', 'settled', 'test', ?, 'b', 'n', 'GENESIS', ?)`,
++  );
++  insert.run("a", "ka", "ea");
++  insert.run("b", "kb", "eb");
++  raw.close();
++  return file;
++}
++
++describe("ledger fork at boot", () => {
++  it("stays up with money killed instead of crash-looping", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const file = forkedFile();
++    const db = openDatabase(file);
++    expect(flag(db, "kill")).toBe("1");
++    expect(flag(db, "ledger_forked")).toBe("1");
++    expect(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'ledger_prev_hash'").get()).toBeUndefined();
++    db.close();
++    const again = openDatabase(file);
++    const alerts = again.prepare("SELECT COUNT(*) AS n FROM owner_alerts WHERE title = ?").get(LEDGER_FORK_TITLE) as { n: number };
++    expect(Number(alerts.n)).toBe(1);
++    again.close();
++  });
++
++  it("creates the unique index on a clean file", () => {
++    const db = openDatabase(":memory:");
++    expect(db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'ledger_prev_hash'").get()).toBeTruthy();
++    expect(flag(db, "ledger_forked")).toBe("0");
++  });
++});
+-- 
+2.47.3
+
