@@ -109,7 +109,9 @@ const EYE_SCALE: Record<
 	neutral: {w: 1, up: 1, low: 1, iris: 1, open: 1, irisUp: 0, innerLift: 0, drop: 1},
 	happy: {w: 1, up: 0.95, low: 0.74, iris: 1, open: 0.96, irisUp: 0, innerLift: 0, drop: 0.9},
 	worried: {w: 0.98, up: 1.12, low: 1.06, iris: 0.97, open: 1, irisUp: 0.22, innerLift: 0.35, drop: -0.25},
-	shocked: {w: 1.06, up: 1.75, low: 1.45, iris: 0.8, open: 1, irisUp: 0, innerLift: 0, drop: 0.4},
+	// round 3: the sheet's shocked irises are big and round and the opening is rounder (height 0.76 of its width on
+	// badger_expr_shocked.png); the lid opening carries the shock (iris was 0.8 and read as pin-pupilled)
+	shocked: {w: 1.04, up: 1.95, low: 1.6, iris: 1, open: 1, irisUp: 0, innerLift: 0, drop: 0.4},
 };
 
 /** Brow offsets (head-local units, + = down) per expression: [outer, mid, inner]. */

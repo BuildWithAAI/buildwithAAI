@@ -25,7 +25,7 @@ export type HandShape = 'relaxed' | 'point' | 'curl';
  * and the hand as a mitten; round 1's 3 u black notch read as a talon.
  */
 const RELAXED: Pt[] = [
-	[-17, -8], [12, -8], [12.4, 6], [12.8, 20], [14, 31], [14.8, 40], [14.4, 48], [13.2, 55], [12, 60.5],
+	[-15, -8], [12, -8], [12.4, 6], [12.8, 20], [14, 31], [14.8, 40], [14.4, 48], [13.2, 55], [12, 60.5],
 	// little finger
 	[11, 64.8], [10.1, 68.3], [8.4, 70.4], [6.1, 68.9, 'c'],
 	// ring finger
@@ -37,7 +37,7 @@ const RELAXED: Pt[] = [
 	[-19, 70.8], [-18, 66.2], [-17.6, 61.2, 'c'],
 	// thumb: tip, then its outer edge back up to the wrist
 	[-21.2, 63.6], [-24, 67], [-26.4, 69.4], [-28.6, 68.4], [-30, 64.6], [-30.4, 57], [-30, 47], [-29.4, 37], [-28.2, 28.6],
-	[-26, 21], [-22.6, 14], [-19.2, 7.6], [-17.6, 0],
+	[-26, 21], [-22.6, 14], [-19.2, 7.6], [-16.8, 0],
 ];
 /** The small V between the thumb tip and the index (key points 32..35 of RELAXED): drawn at the detail width. */
 const RELAXED_THIN = {from: 32, to: 35} as const;

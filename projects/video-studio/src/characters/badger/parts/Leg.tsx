@@ -109,6 +109,69 @@ const firstCrossing = (A: Pt[], B: Pt[]): {p: Pt; ia: number; ta: number; ib: nu
 	}
 	return best;
 };
+/** Closest points of segments p0-p1 and q0-q1: fractions along each and the distance. */
+const segClosest = (p0: Pt, p1: Pt, q0: Pt, q1: Pt): {t: number; u: number; d: number} => {
+	const r = sub(p1, p0);
+	const q = sub(q1, q0);
+	const w = sub(p0, q0);
+	const a = r.x * r.x + r.y * r.y;
+	const e = q.x * q.x + q.y * q.y;
+	const f = q.x * w.x + q.y * w.y;
+	const clamp = (v: number) => Math.max(0, Math.min(1, v));
+	let t = 0;
+	let u = 0;
+	if (a < 1e-12 && e < 1e-12) return {t, u, d: dist(p0, q0)};
+	if (a < 1e-12) {
+		u = clamp(f / e);
+	} else {
+		const c = r.x * w.x + r.y * w.y;
+		if (e < 1e-12) {
+			t = clamp(-c / a);
+		} else {
+			const b = r.x * q.x + r.y * q.y;
+			const den = a * e - b * b;
+			t = den > 1e-12 ? clamp((b * f - c * e) / den) : 0;
+			u = (b * t + f) / e;
+			if (u < 0) {
+				u = 0;
+				t = clamp(-c / a);
+			} else if (u > 1) {
+				u = 1;
+				t = clamp((b - c) / a);
+			}
+		}
+	}
+	const pa = {x: p0.x + r.x * t, y: p0.y + r.y * t};
+	const pb = {x: q0.x + q.x * u, y: q0.y + q.y * u};
+	return {t, u, d: dist(pa, pb)};
+};
+const NEAR_MISS = 3;
+/**
+ * Round-3 repair (R2 final review minor): edges that meet without crossing (at their joint vertex, or with a gap under
+ * NEAR_MISS units) leave the same sharp V as a crossing, e.g. the far hock in the left walk at phase 1/8, but got no
+ * fillet. On the INSIDE of the bend only (the caller checks the side), the closest approach of the two polylines is used
+ * as the crossing. (On the outside of the bend the edges separate and the joint disk closes the gap.)
+ */
+const nearMiss = (A: Pt[], B: Pt[]): {p: Pt; ia: number; ta: number; ib: number; tb: number} | null => {
+	let best: {p: Pt; ia: number; ta: number; ib: number; tb: number; d: number; sa: number; sb: number} | null = null;
+	let sa = 0;
+	for (let i = 0; i + 1 < A.length; i++) {
+		const la = dist(A[i], A[i + 1]);
+		let sb = 0;
+		for (let j = 0; j + 1 < B.length; j++) {
+			const lb = dist(B[j], B[j + 1]);
+			const c = segClosest(A[i], A[i + 1], B[j], B[j + 1]);
+			if (c.d < NEAR_MISS && (!best || c.d < best.d - 1e-6)) {
+				const pa = {x: A[i].x + (A[i + 1].x - A[i].x) * c.t, y: A[i].y + (A[i + 1].y - A[i].y) * c.t};
+				const pb = {x: B[j].x + (B[j + 1].x - B[j].x) * c.u, y: B[j].y + (B[j + 1].y - B[j].y) * c.u};
+				best = {p: {x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2}, ia: i, ta: c.t, ib: j, tb: c.u, d: c.d, sa: sa + c.t * la, sb: sb + c.u * lb};
+			}
+			sb += lb;
+		}
+		sa += la;
+	}
+	return best;
+};
 /** The polyline from a crossing (segment i, fraction t) outward for `len` units: its points, end point and end tangent. */
 const walkOut = (P: Pt[], i: number, t: number, len: number): {pts: Pt[]; end: Pt; tan: Pt} | null => {
 	let cur = {x: P[i].x + (P[i + 1].x - P[i].x) * t, y: P[i].y + (P[i + 1].y - P[i].y) * t};
@@ -138,7 +201,16 @@ const FILLET_MAX = 15;
  * pass, so the inside of the joint reads as one soft curve. The outside of the bend is closed by the round joint disk.
  * Paths are in the PARENT segment's space (upper for the wrist / hock, lower for the pastern).
  */
-const jointFillets = (edges: JointEdges, pivot: Pt, deg: number): {fill: string; arc: string}[] => {
+/**
+ * Round-3 repair (R2 final review minor): a far leg's strongly bent hock (left walk, phase ~1/8: 56-65 deg) left a deep V whose
+ * tip, with the near leg in front, enclosed a 20-30 unit window of background. Past 40 deg of bend a far leg's fillet grows
+ * (radius up to 24, cut back up to 34 units) so the front of the hock reads as one smooth concave curve, as on a real hock.
+ */
+const filletSize = (deg: number, far: boolean): {r: number; max: number} => {
+	const k = far ? Math.max(0, Math.min(1, (Math.abs(deg) - 40) / 20)) : 0;
+	return {r: FILLET_R + (24 - FILLET_R) * k, max: FILLET_MAX + (34 - FILLET_MAX) * k};
+};
+const jointFillets = (edges: JointEdges, pivot: Pt, deg: number, far = false): {fill: string; arc: string}[] => {
 	if (Math.abs(deg) < 8) return [];
 	const th = (deg * Math.PI) / 180;
 	const c = Math.cos(th);
@@ -149,7 +221,8 @@ const jointFillets = (edges: JointEdges, pivot: Pt, deg: number): {fill: string;
 		for (const ce of edges.child) {
 			if (ce.side !== pe.side) continue;
 			const B = ce.pts.map(toParent);
-			const X = firstCrossing(pe.pts, B);
+			// a positive (clockwise) bend swings the child's far end toward -x, so the inside of the bend is side -sign(deg)
+			const X = firstCrossing(pe.pts, B) ?? (ce.side === -Math.sign(deg) ? nearMiss(pe.pts, B) : null);
 			if (!X) continue;
 			// outward tangents at the crossing
 			const ta = walkOut(pe.pts, X.ia, X.ta, 1);
@@ -158,7 +231,8 @@ const jointFillets = (edges: JointEdges, pivot: Pt, deg: number): {fill: string;
 			const cosA = Math.max(-1, Math.min(1, ta.tan.x * tb.tan.x + ta.tan.y * tb.tan.y));
 			const alpha = Math.acos(cosA); // opening of the V between the two visible edges
 			if (alpha > (165 * Math.PI) / 180 || alpha < (10 * Math.PI) / 180) continue;
-			const dd = Math.min(FILLET_MAX, FILLET_R / Math.tan(alpha / 2));
+			const fs = filletSize(deg, far);
+			const dd = Math.min(fs.max, fs.r / Math.tan(alpha / 2));
 			const ra = walkOut(pe.pts, X.ia, X.ta, dd);
 			const rb = walkOut(B, X.ib, X.tb, dd);
 			if (!ra || !rb) continue;
@@ -232,7 +306,7 @@ export const Leg: React.FC<{
 	const lowerBent = Math.abs(angles.lower) > 0.25;
 	const pawBent = Math.abs(angles.paw) > 0.25;
 	const E = jointEdges(geom);
-	const fillets = jointFillets(E.lower, geom.lowerPivot, angles.lower);
+	const fillets = jointFillets(E.lower, geom.lowerPivot, angles.lower, far);
 	const pawFillets = jointFillets(E.paw, geom.pawPivot, angles.paw);
 	return (
 		<g>

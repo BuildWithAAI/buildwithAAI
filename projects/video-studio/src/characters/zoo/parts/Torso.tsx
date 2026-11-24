@@ -30,12 +30,14 @@ const TEE_RIB = line([[-25.6, -709.6], [-13, -701.4], [0, -699.2], [13, -701.4],
  * width show outside it; below y ~-490 the side steps in to ~85 and the sleeve hangs free of it (background between
  * them, as on the sheet). Round 1 kept the panel at +-101..118, which hid ~13 u of each sleeve and made the torso boxy.
  * The screen-left panel uses the garment mirror of this contour (no markings on it); the plackets differ.
+ * Repair round 3: the hem corner is a rounder, tighter arc (from y ~-434), so at y -424 the silhouette has come in to ~81
+ * as on the sheet (round 2's squarer corner still reached ~85 there; with Legs.tsx's hip corner fixed).
  */
 const OUTER_SR: Pt[] = [
 	[28, -735], [46, -725], [60, -714.4], [76, -704.6], [96, -695.6], [106, -690.4], [110.4, -686.4, 'c'], [106.4, -680.6],
 	[104, -672], [101.8, -663], [99.6, -655], [97.4, -647.6], [94.4, -640.6], [91, -633.4], [89.4, -622], [88, -600], [87, -575],
-	[86.6, -550], [87, -528], [87.6, -510], [87.2, -497], [86.2, -485], [85.7, -470], [85.8, -452], [85.6, -440], [83.9, -429.4],
-	[78.8, -422.4], [70, -419.6], [50, -418.6],
+	[86.6, -550], [87, -528], [87.6, -510], [87.2, -497], [86.2, -485], [85.7, -470], [85.8, -456], [85.6, -444], [85, -434.4],
+	[82.6, -427.6], [77.2, -422.6], [68, -420.2], [50, -418.6],
 ];
 /** Screen-left panel (wearer's right front, carries the buttons). */
 const PANEL_SL: Pt[] = [

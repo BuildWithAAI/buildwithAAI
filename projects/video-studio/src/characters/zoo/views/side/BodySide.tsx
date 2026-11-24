@@ -128,21 +128,24 @@ const LEG_CREASE = line([[-6, -404], [-12, -320], [-18, -240], [-24, -160], [-28
 
 // Repair round 1 (zoo_turn_side.png): toe extended ~12 u to x ~78 and rounded, toe box ~30 u tall (v1 was 142 u long with a
 // low pointed toe; the sheet's shoe is ~156 u).
-// Repair round 2 (zoo_turn_side.png): a chunky low-top: the toe box keeps its top at ~-33..-31 until ~8 u from the tip and
-// ends in a round nose (round 1 tapered from x 46 to a low point, ~24 u high 10 u behind the tip vs ~31 on the sheet).
+// Repair round 3 (column and row scans of zoo_turn_side.png, outline centres): the instep falls more steeply from the
+// collar to a flat toe cap (top at -37 / -32 / -30.6 / -27.7 at x 30 / 40 / 46 / 62) and the toe ends in a tall, round
+// front face at x ~73-74 from y -22 down to the sole (front edge 59 / 72 / 75 at y -30 / -22 / -15 against the sheet's
+// 59-61 / 72-73 / 75-76). Round 2's long low toe ran ~6 u further forward at every height (73 / 79 / 81) and its top
+// sat 3-6 u above the sheet's, so the sneaker read as a slipper.
 const SHOE: Pt[] = [
-	[-71, -42], [-60, -40], [-45, -39], [-30, -41.4], [-16, -46.4], [-4, -53], [4, -55.4], [14, -48.4], [30, -41], [46, -36], [58, -33.4],
-	[66, -31.6], [72.4, -28.4], [77.2, -22.4], [79.6, -14.4], [79.2, -7.6], [74.6, -1.75], [0, -1.75], [-66, -1.75], [-71.4, -6],
-	[-72.4, -22], [-71.6, -34],
+	[-71, -42], [-60, -40], [-45, -39], [-30, -41.4], [-16, -46.4], [-4, -53], [4, -55.4], [12, -49.8], [20, -43.4], [30, -37.4],
+	[40, -32.6], [48, -30.8], [56, -29.4], [62, -27.8], [66.4, -25.6], [70, -22], [72.6, -16.8], [73.8, -10.8], [73.4, -5.4],
+	[70.4, -1.75], [0, -1.75], [-66, -1.75], [-71.4, -6], [-72.4, -22], [-71.6, -34],
 ];
-const SHOE_SOLE: Pt[] = [[-76, -11], [0, -10.4], [82, -11.4], [82, 2], [-76, 2]];
+const SHOE_SOLE: Pt[] = [[-76, -11], [0, -10.4], [76, -11.2], [76, 2], [-76, 2]];
 const SHOE_SHADOW: Pt[] = [[-76, -44], [-58, -44], [-56, -26], [-60, -11], [-76, -11]];
 const SHOE_LINES: Pt[][] = [
-	[[-71.4, -10.8], [0, -10.2], [77.4, -11]],
+	[[-71.4, -10.8], [0, -10.2], [72, -11]],
 	[[8, -49], [14, -45.4]],
 	[[14, -43.6], [21, -40]],
 	[[21, -39], [28, -35.4]],
-	[[44, -25], [62, -23.4], [76, -23.8]],
+	[[44, -24], [58, -22.6], [67.6, -22.2]],
 	[[-70, -34], [-58, -31], [-52, -22]],
 ];
 

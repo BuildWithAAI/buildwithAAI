@@ -613,7 +613,7 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			sheetShowed:
 				'badger_turn_34.png (eyes aligned, 50 crop px = 46.4 units): the nose sits about 7 units beyond the far eye and 32 below the eye line, the far silhouette runs from under the far ear straight to the nose, a bridge line runs from below the far eye to the nose, the mouth rises to the far lip corner under the nose, the chin line is outlined about 15 units higher than the front head\'s, the far upper lip is shaded left of the philtrum, the far cheek spot is hidden by the muzzle, and the far dark ear is one solid shape.',
 			chosen:
-				'Round 2 (gen_heads.py rebuild_three_quarter): the screen-right 3/4 head\'s skull outline, nose, bridge line, philtrum, four mouths, jaw and lip shadows and near cheek spot are re-authored on those measurements; the skull outline is one stroke over the top, round a rounded far-top corner behind the far ear, round the muzzle behind the nose and along the chin line; the far ear is one silhouette with one outline (the front-view inner and fold fills and strokes are gone). The screen-left head uses the same unmarked outline, nose and mouth geometry with x -> -x (as INT-B1 did); its ears, eyes and markings keep their own construction (pale far ear with its spot H-EAR-R-SPOT; near cheek spot H-CHEEK-L; far cheek spot hidden).',
+				'Round 2 (gen_heads.py rebuild_three_quarter): the screen-right 3/4 head\'s skull outline, nose, bridge line, philtrum, four mouths, jaw and lip shadows and near cheek spot are re-authored on those measurements; the skull outline is one stroke over the top, round a rounded far-top corner behind the far ear, round the muzzle behind the nose and along the chin line; the far ear is one silhouette with one outline (the front-view inner and fold fills and strokes are gone). The screen-left head uses the same unmarked outline, nose and mouth geometry with x -> -x (as INT-B1 did); its ears, eyes and markings keep their own construction (pale far ear with its spot H-EAR-R-SPOT; near cheek spot H-CHEEK-L; far cheek spot hidden). Round 3: the screen-left head\'s near cheek spot H-CHEEK-L is placed by the front view\'s own left-cheek position relative to the right one (1.1 units higher), no longer the right cheek\'s 3/4 position mirrored (src/characters/badger/tests/spotsNoMirror.test.ts had measured that pair 0.32 units from an x-mirror).',
 			why: 'Turnaround views control identity. The reviewers found the nose under the far eye and 9 units low, a short muzzle, a white crescent in the far dark ear and a black needle and white nick at the far pale ear\'s root.',
 		},
 		{
@@ -637,8 +637,62 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			sheetShowed:
 				'badger_pose_looking_up.png: a long lip line inside the muzzle from just under the nose back over about 60% of the muzzle, parallel to the jaw\'s lower contour; a short diagonal cheek mark below the ear; one smooth throat line from the jaw angle to the collar.',
 			chosen:
-				'Round 2 (gen_heads.py build_up): each look-up head draws the lip line 4.5 units inside the pitched jaw contour from 7% to 62% of its length (happy curls its end up, worried down; shocked keeps its open wedge), no commissure hook, a cheek mark placed from the eye as on the panel, and a throat that leaves the jaw along its chord and lands tangent to the neck\'s throat line (no S-curve). The throat still bows slightly forward where it meets the neck: the side rigs\' neck front line sits forward of the raised jaw, so a fully concave throat needs a dedicated look-up neck pose.',
+				'Round 2 (gen_heads.py build_up; the lip line was moved in round 3, see BADGER-D44): each look-up head draws the lip line 4.5 units inside the pitched jaw contour from 7% to 62% of its length (happy curls its end up, worried down; shocked keeps its open wedge), no commissure hook, a cheek mark placed from the eye as on the panel, and a throat that leaves the jaw along its chord and lands tangent to the neck\'s throat line (no S-curve). The throat still bows slightly forward where it meets the neck: the side rigs\' neck front line sits forward of the raised jaw, so a fully concave throat needs a dedicated look-up neck pose.',
 			why: 'The reviewers found no lip line, a cheek dash that read as a smile on the throat, a commissure hook and an S-shaped throat with a bump.',
+		},
+		{
+			id: 'BADGER-D40-ear-crown-junction',
+			sheetShowed:
+				'badger_coat_right.png and badger_turn_side.png: the forehead line runs over the crown straight into the pale ear\'s top edge; badger_turn_34.png: the skull top runs on under the near pale ear.',
+			chosen:
+				"Round 3 (gen_heads.py): every crown stroke STARTS UNDER ITS EAR and lies on the skull fill's own edge, so the ear (drawn later, earsFront) covers the overlap and the crown emerges from under the ear's outline. Profiles: _crown_under_ear takes the fill's top cubic from x 470 (right, CR px) / 152 (left, CL px) back to the visible crown; the right fill's crown control moved 1 px (514 36 -> 514 35) so the top is tangent-continuous at (500, 35). 3/4 heads: TQ_CROWN_UNDER_EAR continues the dome backward on its own osculating circle (G1 at (-29.4, -102.2), to (-39.1, -98.1)) and the fill's top-left corner follows it (its flat shoulder under the ear is gone); the screen-left head uses the same unmarked outline with x -> -x (D36). Look-up heads inherit the profile crowns; their back contour starts exactly where the crown passes (no step). Checked at 6-16x: right stand, walk 0, look-up right, 3/4, sit and lie right, every head view with earsBack 1, judge 1 and mouthOpen 1.",
+			why: 'The R2 review found a white notch where the pale ear meets the crown on the right profile and 3/4-right heads (on screen for the proof\'s whole 3 s turn beat, f97-189) and a jog at the same junction on the look-up heads.',
+		},
+		{
+			id: 'BADGER-D41-shocked-mouth',
+			sheetShowed:
+				'badger_expr_shocked.png (column scans, mapped by the nose: k 0.92): a gasp. The top edge arches from the corners to an apex under the philtrum, the corners are pointed, the bottom is shallow, and a thin pink tongue lens sits low in the opening. Width 0.89 of the nose, height 0.43 of the nose height; drawn slightly off-centre (that head is tilted).',
+			chosen:
+				"Round 3 (gen_heads.py SHOCKED MOUTH): one template in apex-relative NF px (least-squares cubic per half on the scanned drops), apex 8.8 units above the corners, bottom 1.7 units below them, width 25.3 units, height 10.5 units, tongue lens 15.3 x 3.6 units; centred on the philtrum (the rig's front head is symmetric). The 3/4 heads map the same template foreshortened (near half 0.86, far 0.59, height 0.76 for their smaller nose) with the apex at the end of the philtrum. mouthOpen grows this shape down from its apex, so 0.3 / 0.6 / 1.0 read as a slightly open mouth, a bark and a gasp (dev BadgerMouthOpen). The review's '4.5 units above the corners' did not match the panel (measured 8.8) and would not reach 0.45 of the nose height with a shallow bottom; the panel was followed.",
+			why: 'The R2 review found the shocked mouth upside down (flat top over a deep bowl) so it read as a grin, and every sound-clip mouthOpen inherited it.',
+		},
+		{
+			id: 'BADGER-D42-front-eyes',
+			sheetShowed:
+				'badger_expr_neutral.png: the irises fill most of the eye and tuck under the upper lid (iris about 0.24-0.25 of the eye spacing, eye width 0.45 of it); badger_expr_shocked.png: big round irises in a rounder, taller opening.',
+			chosen:
+				'Round 3: front-head iris r 10.6 -> 12.2 NF px and eye half-width 21 -> 22.5 (iris 0.237, eye 0.437 of the spacing); shocked keeps the full iris (EYE_SCALE.shocked iris 0.8 -> 1) and opens the lids instead (up 1.95, low 1.6, w 1.04: height about 0.76 of the width). The 3/4 heads keep the eye width and iris they were fitted to on badger_turn_34.png (factors compensated in gen_heads.py); profiles are unchanged.',
+			why: 'The R2 review measured the irises 18% (neutral) and 25% (shocked) smaller than the sheet, so too much white showed and shocked read as pin-pupilled.',
+		},
+		{
+			id: 'BADGER-D43-happy-mouth',
+			sheetShowed:
+				'badger_expr_happy.png: one interior smile line about 0.75 of the face width with only a small upturn at each end, a notch at the philtrum, the jaw line leaving the cheek and stopping short outside the smile, and a lower-lip arc about 19 px under the smile\'s low points (0.19 of the eye spacing).',
+			chosen:
+				"Round 3 (gen_heads.py FRONT['mouth']['happy']): the smile ends 19 px inside the face edge (153 / 263 NF px) with 3.5-unit end curls (were 6 units), the jaw pieces are short stubs from the cheek (they ran parallel to the smile and doubled the cheek line), and the lower lip keeps the panel's distance (0.16 of the eye spacing; the review's suggested 3 units under the smile would not match the panel).",
+			why: 'The R2 review found a broad double smile: jaw pieces parallel to the smile on each cheek, long dimple hooks and an open lower face.',
+		},
+		{
+			id: 'BADGER-D44-look-up-lip',
+			sheetShowed: 'badger_pose_looking_up.png: a thin lip line clearly apart from the muzzle contour, starting a little behind the nose.',
+			chosen:
+				'Round 3 (gen_heads.py build_up): the lip line runs 8.5 units inside the pitched jaw contour (was 4.5), from 6 units behind the nose tip, at detail weight (LINE.detailWidth); the happy / worried curls follow it. The throat is unchanged: a single concave throat still needs a look-up neck front line (the side rigs\' neck front sits forward of the raised jaw), so it still bows slightly where it meets the neck.',
+			why: 'At the proof scale the old lip line merged with the contour into one thick doubled muzzle outline.',
+		},
+		{
+			id: 'BADGER-D45-far-hock',
+			sheetShowed: 'badger_pose_walking.png: the far hind leg passes behind the near one without a window of background at its hock.',
+			chosen:
+				"Round 3: parts/Leg.tsx fillets edges that meet without crossing (a vertex or a gap under 3 units) on the inside of a bend, and a far leg's fillet grows past 40 deg of bend (radius 9 -> 24, cut back 15 -> 34 units); parts/gait.ts keeps the swinging FAR hind leg's reach at 0.95 of its length at mid-swing (WALK.swingReachHindFar; the hip slides inside the body, maxSlide 36), so its hock folds 36 deg instead of 56-65 at left-walk phase 0.125-0.15. dev/walkCheck.ts still passes both facings (no paw below the ground, no stance drift).",
+			why: 'The R2 review found a 20-30 unit triangle of background enclosed by the far gaskin, the far cannon and the near leg at left walk phase 1/8; it is now a sliver of about 4 units at that phase.',
+		},
+		{
+			id: 'BADGER-D46-view-contour-refits',
+			sheetShowed:
+				'badger_turn_front.png: straight, smooth inner fore-leg columns and a smooth far-hind strip; badger_turn_back.png: heels only on the hind paws (no toe splits) and smooth concave curves from the skull sides into the neck.',
+			chosen:
+				'Round 3 (gen_views.py): the inner contours of both forelegs and the far-hind strip of the front view are least-squares refitted (x = cubic(y), resampled; the ends that meet other contours keep their traced positions); the back view loses its hind-paw toe lines and its skull sides stop where the neck lines take over along the same tangent (the traced hook at (95..99, 105..107) and the corner at (175, 108) are gone).',
+			why: 'The R2 review found tracing wobbles, notches and a foot hook on the front legs and hooked jogs at the back view\'s neck.',
 		},
 	],
 };

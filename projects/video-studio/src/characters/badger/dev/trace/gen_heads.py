@@ -119,18 +119,22 @@ FRONT = {
              'C 190 190 185 181 185 170 C 185 159 192 154 208 154 Z'),
     'philtrum': 'M 208 197 L 208 211',
     # eyes: (cx, cy, half-width, up, low, inner-corner drop, inner dir, iris r, iris dx, iris dy, side)
-    'eyes': [(156, 103, 21, 10.5, 10, 10, 1, 10.6, 0.5, 1, 'R'), (259, 103, 21, 10.5, 10, 10, -1, 10.6, -0.5, 1, 'L')],
+    # round 3 (R2 review minor): the sheet's irises fill more of the eye and tuck under the upper lid (iris 0.24-0.25 of the
+    # eye spacing on badger_expr_neutral.png, eye opening 0.45 of it); was half-width 21 and iris r 10.6 (0.21 and 0.41)
+    'eyes': [(156, 103, 22.5, 10.5, 10, 10, 1, 12.2, 0.5, 1, 'R'), (259, 103, 22.5, 10.5, 10, 10, -1, 12.2, -0.5, 1, 'L')],
     'brows': [((139, 85), (157, 76), (176, 81), 'R'), ((277, 85), (259, 76), (240, 81), 'L')],
     'mouth': {
         'neutral': {'strokes': ['M 129 175 C 137 190 147 204 160 214 C 176 219 193 217 208 211 C 223 217 240 219 252 214 C 261 204 270 191 278 176'],
                     'details': ['M 185 228 C 197 231 219 231 231 228'], 'fills': []},
-        # happy (retraced from badger_expr_happy.png, mapped by the nose): the jaw runs on from the cheeks, a separate
-        # wide smile with raised corners sits inside it with a notch at the philtrum, short upturned creases at the
-        # corners, and a lower-lip arc below
-        'happy': {'strokes': ['M 129 175 C 134 187 141 198 150 206', 'M 278 176 C 273 188 266 198 257 206',
-                              'M 142 185 C 148 199 157 209 168 213 C 181 218 197 216 208 207 C 219 216 235 218 248 213 C 259 209 268 199 274 185'],
-                  'details': ['M 142 185 C 139.5 182 138.5 178 139.5 174', 'M 274 185 C 276.5 182 277.5 178 276.5 174',
-                              'M 178 226 C 193 235 223 235 238 226'], 'fills': []},
+        # happy, round-3 repair (R2 review minor; badger_expr_happy.png, normalised by the eye spacing): the panel's smile is ONE
+        # interior line about 0.75 of the face width at that height (ends 19 px inside the face edge, 23 px above the philtrum
+        # notch, low points 8 px below it), with only a small upturn at each end; the jaw line leaves the cheek and stops
+        # short, outside the smile, instead of running parallel to it (that read as a doubled cheek line and a broad double
+        # smile); the lower-lip arc sits about 19 px under the smile's low points, as on the panel
+        'happy': {'strokes': ['M 129 175 C 130 179.5 131.3 183.5 133.2 187', 'M 278 176 C 277 180.5 275.7 184.5 273.8 188',
+                              'M 153 183 C 157 196 164 207 175 211 C 187 215 199 213 208 206 C 217 213 229 215 241 211 C 252 207 259 196 263 183'],
+                  'details': ['M 153 183 C 151.8 181 151.6 178.8 152.4 176.8', 'M 263 183 C 264.2 181 264.4 178.8 263.6 176.8',
+                              'M 178 224.5 C 193 233.5 223 233.5 238 224.5'], 'fills': []},
         'worried': {'strokes': ['M 129 175 C 137 190 147 205 161 215 C 176 216 192 222 208 217 C 222 213 238 220 252 215 C 261 204 270 191 278 176'],
                     'details': ['M 190 231 C 200 228 216 228 226 231'], 'fills': []},
         # shocked: the round-3 gasp (SHOCKED MOUTH above) under the philtrum; the jaw contour stays continuous below it
@@ -443,8 +447,11 @@ for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen'
         for fl in e['fills']:
             if fl['color'] == 'earPaleInner':
                 fl['color'] = 'earCap' if e['side'] == 'L' else 'coat'
+    # round 3: the front eye grew (half-width 21 -> 22.5, iris 10.6 -> 12.2 NF px); the 3/4 heads keep the eye width and the
+    # iris they were fitted to on badger_turn_34.png (iris 1.15 x the old front iris, now the same as the new front iris)
     for e in heads[view]['eyes']:
-        e['irisR'] = round(e['irisR'] * 1.15, 2)
+        e['irisR'] = round(e['irisR'] * 1.15 * 10.6 / 12.2, 2)
+        e['w'] = round(e['w'] * 21.0 / 22.5, 2)
     # the chin is outlined now (fix_three_quarter), so the front head's lower-lip detail would double it
     for k in ('neutral', 'happy', 'worried'):
         heads[view]['mouth'][k]['details'] = []
@@ -908,8 +915,12 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
                 n_ = (-n_[0], -n_[1])
             out.append((p_[0] + n_[0] * offs, p_[1] + n_[1] * offs))
         return out
-    lip_line = _smooth(lip_pts(0.07, 0.62, 4.5))
-    ends = lip_pts(0.55, 0.62, 4.5)
+    # round 3 (R2 review minor): 4.5 units inside the pitched jaw contour the lip line merged with it into one thick muzzle
+    # outline at the proof scale; badger_pose_looking_up.png draws it clearly apart, starting a little behind the nose.
+    # Now 8.5 units inside the contour, from 6 units behind the nose tip, at detail weight (LINE.detailWidth).
+    LIP_IN, LIP_START = 8.5, 6.0 / acc[-1]
+    lip_line = _smooth(lip_pts(LIP_START, 0.62, LIP_IN))
+    ends = lip_pts(0.55, 0.62, LIP_IN)
     e0, e1 = ends[0], ends[-1]
     te = _unit((e1[0] - e0[0], e1[1] - e0[1]))
     toward_eye = _unit((eye_c[0] - e1[0], eye_c[1] - e1[1]))
@@ -918,9 +929,9 @@ def build_up(view, src, base, sign, rig_name, lip_cut, back_path, inner_band=Non
         return 'M %.1f %.1f C %.1f %.1f %.1f %.1f %.1f %.1f' % (e1[0], e1[1], e1[0] + te[0] * 2.2, e1[1] + te[1] * 2.2,
                                                                 tip[0] - toward_eye[0] * k_up * 0.4, tip[1] - toward_eye[1] * k_up * 0.4,
                                                                 tip[0], tip[1])
-    g['mouth']['neutral'] = {'strokes': [lip_line], 'details': [], 'fills': []}
-    g['mouth']['happy'] = {'strokes': [lip_line], 'details': [curl(3.2)], 'fills': []}
-    g['mouth']['worried'] = {'strokes': [lip_line], 'details': [curl(-2.6)], 'fills': []}
+    g['mouth']['neutral'] = {'strokes': [], 'details': [lip_line], 'fills': []}
+    g['mouth']['happy'] = {'strokes': [], 'details': [lip_line, curl(3.2)], 'fills': []}
+    g['mouth']['worried'] = {'strokes': [], 'details': [lip_line, curl(-2.6)], 'fills': []}
     if cheek:
         ex, ey = eye_c
         g['skull']['details'] = [map_path(cheek, lambda x, y: (x + ex, y + ey))]

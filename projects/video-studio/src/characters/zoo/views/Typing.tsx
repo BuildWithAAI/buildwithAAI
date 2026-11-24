@@ -85,28 +85,31 @@ const CUFF_FAR: Pt[] = [[-52.6, -407.8, 'c'], [-21, -406, 'c'], [-19.6, -388.4],
 // ---------------------------------------------------------------- typing hand (wrist-local: +x forward, +y down)
 /**
  * One typing hand as ONE silhouette (repair round 2, zoo_pose_typing.png): the back of the hand rises from the wrist to the
- * knuckles and the four fingers arc down and forward onto the keys; their tips are small lobes stepping back from the
- * front finger, 5-8 u ahead of the knuckle line, on the key surface (y ~-356 in the layout). Thin warm-brown separations
- * follow the finger arcs. Round 1 drew four separately outlined hooked fingers whose tips folded back under their
- * knuckles; the stacked outlines read as black knuckle-dusters. Unscaled units (TYPING_LAYOUT.handScale applies).
+ * knuckles and the four fingers arc down and forward onto the keys; their tips are rounded lobes stepping back from the
+ * front finger, parted by ~6 u notches. Warm-brown separations follow the finger arcs. Round 1 drew four separately
+ * outlined hooked fingers whose tips folded back under their knuckles; the stacked outlines read as black knuckle-dusters.
+ * Repair round 3: the four finger arcs are ~4.5 u longer (tips at y ~27-28, round 2: ~23), the notches drop with them so
+ * each lobe reads as a fingertip rather than a short paddle "toe", the skin shadow no longer reaches under the lobes, and
+ * the separations are tapered creases at ZOO_LINE.detail. Unscaled units (TYPING_LAYOUT.handScale applies).
  */
 type TPt = {p: Pt; f?: number; w?: number};
 /** Silhouette clockwise from the wrist; `f` = finger index whose tap lifts the point (0 = front finger), w = weight. */
 const T_HAND: TPt[] = [
 	{p: [-4, -11]}, {p: [10, -14]}, {p: [24, -15.6]}, {p: [36, -14]}, {p: [46, -9.6]}, {p: [54, -2.6]},
-	{p: [59.6, 6], f: 0, w: 0.3}, {p: [62, 14], f: 0, w: 0.8}, {p: [61.4, 20], f: 0}, {p: [58, 22.6], f: 0}, {p: [54.6, 21], f: 0},
-	{p: [53, 17.6, 'c'], f: 0, w: 0.5}, {p: [51.6, 21.4], f: 1}, {p: [48, 23.2], f: 1}, {p: [44.6, 21.6], f: 1},
-	{p: [43.2, 18, 'c'], f: 1, w: 0.5}, {p: [41.4, 22], f: 2}, {p: [37.6, 23.4], f: 2}, {p: [34.4, 21.6], f: 2},
-	{p: [33, 18.4, 'c'], f: 2, w: 0.5}, {p: [31.4, 22.2], f: 3}, {p: [27.6, 22.8], f: 3}, {p: [24.4, 20.4], f: 3, w: 0.7},
-	{p: [18, 15]}, {p: [8, 10.4]}, {p: [0, 7.6]}, {p: [-4, 3]},
+	{p: [59.6, 6], f: 0, w: 0.3}, {p: [62.4, 15], f: 0, w: 0.8}, {p: [62.2, 22.4], f: 0}, {p: [59.4, 26.8], f: 0}, {p: [55.6, 26.2], f: 0},
+	{p: [53.4, 21.2, 'c'], f: 0, w: 0.5}, {p: [51.8, 25.6], f: 1}, {p: [48.2, 27.8], f: 1}, {p: [44.8, 26.6], f: 1},
+	{p: [43.4, 21.6, 'c'], f: 1, w: 0.5}, {p: [41.6, 26.4], f: 2}, {p: [37.8, 28], f: 2}, {p: [34.4, 26.4], f: 2},
+	{p: [33.2, 21.8, 'c'], f: 2, w: 0.5}, {p: [31.4, 26.4], f: 3}, {p: [27.6, 27.2], f: 3}, {p: [24.2, 24.4], f: 3, w: 0.7},
+	{p: [18, 17.6]}, {p: [8, 11.4]}, {p: [0, 7.6]}, {p: [-4, 3]},
 ];
 /** Separations: from each tip notch diagonally up and back along the finger arcs toward the knuckles. */
 const T_SEPARATIONS: {pts: Pt[]; f: number}[] = [
-	{pts: [[53, 17.6], [52, 8], [47.4, -1], [40.4, -7.4]], f: 0},
-	{pts: [[43.2, 18], [42.4, 9], [38, 0.4], [31.4, -5.6]], f: 1},
-	{pts: [[33, 18.4], [32.4, 10], [28.6, 2.6], [22.6, -2.4]], f: 2},
+	{pts: [[53.4, 21.2], [52.4, 9], [47.4, -1], [40.4, -7.4]], f: 0},
+	{pts: [[43.4, 21.6], [42.6, 10], [38, 0.4], [31.4, -5.6]], f: 1},
+	{pts: [[33.2, 21.8], [32.6, 11], [28.6, 2.6], [22.6, -2.4]], f: 2},
 ];
-const T_SHADOW: Pt[] = [[-8, 3], [8, 8.6], [20, 14.4], [30, 19.6], [66, 19.6], [66, 34], [-8, 34]];
+/** The underside of the palm behind the fingers (it stops short of the fingertip lobes). */
+const T_SHADOW: Pt[] = [[-8, 3], [8, 9.2], [17, 14.6], [22, 20], [22, 34], [-8, 34]];
 /** Thumb, tucked under the palm toward the space bar (skin, outlined; the hand covers its root, only its tip peeks out). */
 const THUMB: Pt[] = [[10, 6], [20, 9], [27, 12.6], [29.6, 16.4], [27, 18.8], [19, 16.6], [12, 12.4]];
 
@@ -133,7 +136,7 @@ const TypingHand: React.FC<{x: number; y: number; s?: number; lifts: number[]; n
 	return (
 		<g data-part={name}>
 			<Shape d={smooth(THUMB.map(place))} fill={ZOO_COLORS.skin} />
-			<HandDrawing hand={{outline, shadow: T_SHADOW.map(place), lines: seps}} name={`${name}Shape`} />
+			<HandDrawing hand={{outline, shadow: T_SHADOW.map(place), lines: seps, lineWidth: ZOO_LINE.detail, taper: 0.45}} name={`${name}Shape`} />
 		</g>
 	);
 };

@@ -94,12 +94,14 @@ export const ARM_POINT: ArmAngles = {shoulder: -44, elbow: -93, wrist: 22};
 export const ARM_POINT_WINDUP: ArmAngles = {shoulder: 3, elbow: 6, wrist: -8};
 /**
  * In-between key of the point gesture at poseAmount 0.5 (repair round 2, ZOO-P4; was INT-Z3/ZOO-P2's elbow-tucked key
- * {10, -146, 38}): the upper arm is already abducted 20 deg, so the elbow sits ~70 u OUTSIDE the overshirt's side, the
- * forearm rises ~23 deg above horizontal and the wrist is nearly straight. Round 1 kept the elbow behind the torso, so
+ * {10, -146, 38}): the upper arm is already abducted ~24 deg, so the elbow sits ~70 u OUTSIDE the overshirt's side, the
+ * forearm rises ~25 deg above horizontal and the wrist is nearly straight. Round 1 kept the elbow behind the torso, so
  * only a forearm stub stuck out of the side at waist height (the "chicken wing") with the open hand drooping 45-60 deg.
  * With the monotone interpolation and POINT_OVERLAP timing in armAnglesFor the hand travels up and out without reversing.
+ * Round 3: {-20, -92, 5} -> {-24, -90, 5}, re-timed with POINT_OVERLAP (searched together for the widest fist clearance
+ * to Badger's head in the proof staging that still opens the upper arm >= 10 deg by the forearm's horizontal crossing).
  */
-export const ARM_POINT_MID: ArmAngles = {shoulder: -20, elbow: -92, wrist: 5};
+export const ARM_POINT_MID: ArmAngles = {shoulder: -24, elbow: -90, wrist: 5};
 /**
  * poseAmount at which the loose fist opens into the pointer: the forearm is then ~12 deg above horizontal at chest height
  * and the index ~13 deg below horizontal, so it extends almost along the line to the target (v1: 0.75, round 1: 0.5).
@@ -157,11 +159,14 @@ const monotoneThrough = (m: number, t: number, a: number): number => {
  * option scales it), so the forearm lifts before the upper arm opens and the hand rises before it travels out. Both
  * warps meet poseAmount at 0.5, so ARM_POINT_MID is still exactly the pose at 0.5. Why: in the proof staging (decision
  * INT-P2, Badger 560 u away) an arm that opens while the forearm is still low sweeps the fist past Badger's forehead.
- * Round 3: shoulderLag 2.5 -> 1.4. At 2.5 the upper arm still hung (0-7 deg) when the forearm crossed horizontal, so for
- * 3-4 frames the elbow stayed pinned at the waist under a level forearm (a "tray-carry" in-between); now the upper arm is
- * abducted ~13 deg there and opens with the forearm. The tuck shrinks to 4 deg so it does not cancel that early opening.
+ * Round 3 (with ARM_POINT_MID {-24, -90, 5}): shoulderLag 2.5 -> 1.5, elbowLead 0.65 -> 0.6, tuckUntil 0.4 -> 0.32. At 2.5
+ * the upper arm still hung (0-7 deg) when the forearm crossed horizontal, so for 3-4 frames the elbow stayed pinned at the
+ * waist under a level forearm (a "tray-carry" in-between); now it is abducted ~10 deg at the crossing (11 deg in the proof
+ * frame where the forearm is level) and opens with the forearm. The cost is fist clearance: opening the arm earlier moves
+ * the fist out sooner, so in the proof staging its closest pass to Badger's head drops from ~31 to ~24 u (21 px at 0.88;
+ * a grid over lag, lead, tuck and the mid key found no timing with >= 10 deg that keeps more).
  */
-export const POINT_OVERLAP = {elbowLead: 0.65, shoulderLag: 1.4, tuck: 4, tuckUntil: 0.4} as const;
+export const POINT_OVERLAP = {elbowLead: 0.6, shoulderLag: 1.5, tuck: 6, tuckUntil: 0.32} as const;
 const leadLag = (a: number, p: number) => (a >= 0.5 ? a : 0.5 * Math.pow(2 * a, p));
 
 /** Options for armAnglesFor. */

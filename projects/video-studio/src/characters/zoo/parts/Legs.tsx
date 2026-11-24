@@ -12,8 +12,10 @@ import {Clipped, Outline, Shape, Stroke} from './Shape';
 
 // Repair round 1: the hem drapes over the shoe tongue. Repair round 2: the break is raised 8 u (-44.6 -> -52.6 in the middle),
 // so ~52 u of sneaker shows below it as on zoo_turn_front.png (~55; round 1 showed ~46).
+// Repair round 3: the outer top point is a corner. As a smooth point the spline bulged ~5 u outward just under the overshirt
+// hem (trouser edge at ~85 at y -425 against the sheet's ~78), which showed once the hem corner was rounded.
 const LEG: Pt[] = [
-	[0, -434], [78, -434], [78.2, -380], [77.6, -300], [79.4, -200], [80.6, -120], [81.8, -70], [81.4, -58.2, 'c'], [66, -54.2],
+	[0, -434], [78, -434, 'c'], [78.2, -380], [77.6, -300], [79.4, -200], [80.6, -120], [81.8, -70], [81.4, -58.2, 'c'], [66, -54.2],
 	[52, -52.6], [36, -54], [26.4, -56, 'c'], [22.2, -100], [15.6, -170], [10.2, -250], [5, -320], [1.6, -372], [0, -392],
 ];
 /** Under the shirt hem, and along the inseam. */

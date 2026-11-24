@@ -117,6 +117,8 @@ export const WALK = {
 	reachHind: [0.84, 0.99],
 	/** Reach band of a swinging fore leg (the carpus folds, so the leg may shorten a little more). */
 	swingReachFront: [0.93, 0.985],
+	/** Round 3: reach floor of the swinging FAR hind leg at mid-swing (the stance floor is reachHind[0]). */
+	swingReachHindFar: 0.95,
 	maxSlide: 36,
 	/** Heel-up roll onto the toes at the end of stance (deg, toes-down), about the paw's real ground contact point. */
 	roll: 20,
@@ -289,7 +291,13 @@ export const walkPose = (R: SideRig, dir: 1 | -1, t: number, nearSide: 'left' | 
 			// target itself), the carpus fold does the rest. The reach band eases from the stance band so the leg top
 			// never jumps at toe-off or landing.
 			const k = Math.sin(sp * Math.PI);
-			swingBand = s.front ? [lerp(band[0], W.swingReachFront[0], k), lerp(band[1], W.swingReachFront[1], k)] : band;
+			// round 3: the FAR hind leg keeps more reach through its swing (the hip slides down inside the body instead), so
+			// its hock folds less; at 56-65 deg the folded far hock framed a window of background against the near leg
+			swingBand = s.front
+				? [lerp(band[0], W.swingReachFront[0], k), lerp(band[1], W.swingReachFront[1], k)]
+				: s.key === 'hindFar'
+					? [lerp(band[0], W.swingReachHindFar, k), band[1]]
+					: band;
 			slide = slideFor(target, swingBand);
 			// the carpus / hock folds the paw toes-down after toe-off (eased in, so the toe lifts clean) and opens it
 			// again before landing; capped so the paw never hangs straight down

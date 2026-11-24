@@ -65,6 +65,51 @@ def straight_past(points, y0, y1, ys):
     return out
 
 
+def refit_x_of_y(points, n=6, pin_first=True, pin_last=True):
+    """Round 3 (R2 final review minor): a near-vertical traced edge refitted as x = cubic(y) by least squares and resampled
+    at n points evenly in y, so the spline through them has no tracing wobble (S-bends, notches, foot hooks). The ends that
+    meet other contours keep their traced positions (pin_first / pin_last)."""
+    P = [(float(p[0]), float(p[1])) for p in points]
+    ys = [p[1] for p in P]
+    y0, y1 = min(ys), max(ys)
+    m = (y0 + y1) / 2.0
+    h = (y1 - y0) / 2.0 or 1.0
+    # normal equations for x = a0 + a1 t + a2 t^2 + a3 t^3, t = (y - m) / h
+    A = [[0.0] * 4 for _ in range(4)]
+    b = [0.0] * 4
+    for x, y in P:
+        t = (y - m) / h
+        v = [1.0, t, t * t, t * t * t]
+        for i in range(4):
+            b[i] += v[i] * x
+            for j in range(4):
+                A[i][j] += v[i] * v[j]
+    for i in range(4):  # Gauss-Jordan
+        piv = max(range(i, 4), key=lambda r: abs(A[r][i]))
+        A[i], A[piv] = A[piv], A[i]
+        b[i], b[piv] = b[piv], b[i]
+        for r in range(4):
+            if r != i:
+                f = A[r][i] / A[i][i]
+                for c in range(4):
+                    A[r][c] -= f * A[i][c]
+                b[r] -= f * b[i]
+    a = [b[i] / A[i][i] for i in range(4)]
+    fx = lambda y: a[0] + a[1] * ((y - m) / h) + a[2] * ((y - m) / h) ** 2 + a[3] * ((y - m) / h) ** 3
+    first, last = P[0], P[-1]
+    out = []
+    for k in range(n):
+        y = first[1] + (last[1] - first[1]) * k / (n - 1)
+        out.append((round(fx(y), 2), round(y, 2)))
+    if pin_first:
+        d = first[0] - out[0][0]
+        out = [(round(x + d * (1 - k / (n - 1)), 2), y) for k, (x, y) in enumerate(out)]
+    if pin_last:
+        d = last[0] - out[-1][0]
+        out = [(round(x + d * (k / (n - 1)), 2), y) for k, (x, y) in enumerate(out)]
+    return out
+
+
 class View:
     def __init__(self, name, cx):
         self.name = name
@@ -112,6 +157,9 @@ CF = 'badger_turn_front.png'
 # round-1 repair: the strip's line runs down into the inner contour of the leg in front of it (the trace ended in a
 # U-hook that read as a stepped outline)
 hl = pts(F, 'hind_line')[:-2] + [(134.5, 446)]
+# round 3 (R2 review minor): the strip carried an S-wiggle at y 384-400 and a hook at its foot; refitted as one smooth
+# curve (its traced top corner and its foot on the leg's inner contour are kept)
+hl = hl[:2] + refit_x_of_y(hl[1:], n=6)[1:]
 fv.part('hindBehind', [(134, 298, 'c'), (147, 301, 'c')] + hl[1:] + [(131, 446, 'c'), (131, 380)],
         [hl], color='coat')  # coat white, as the turnaround draws it
 # round-1 repair: the outer forearm contours were traced round the inner edge of the forearm spots R-08 / L-09 (a
@@ -126,8 +174,10 @@ oLb = [p for p in outL if p[1] >= 280]
 oRb = [p for p in outR if p[1] >= 280]
 pawL = pts(F, 'paw_L')
 pawR = pts(F, 'paw_R')
-inL = pts(F, 'in_L')
-inR = pts(F, 'in_R')
+# round 3 (R2 review minor): the inner contours of both forelegs carried tracing S-bends and notches near the paws;
+# badger_turn_front.png draws straight, smooth columns. Refitted (their ends at the brisket and the paws are kept).
+inL = refit_x_of_y(pts(F, 'in_L'), n=6)
+inR = refit_x_of_y(pts(F, 'in_R'), n=6)
 fv.part('legFrontRight', oLb + pawL[1:] + rev(inL)[1:] + [(118, 276, 'c')], [oLb, pawL, inL],
         [[(104, 469), (103.5, 476), (103, 483)], [(119, 470), (118.5, 476), (118, 483)]])
 fv.part('legFrontLeft', [(195, 276, 'c')] + inR + pawR[1:] + rev(oRb)[1:], [oRb, pawR, inR],
@@ -165,15 +215,19 @@ bv = View('back', 130.5)
 CB = 'badger_turn_back.png'
 # head from behind (drawn first: it is the farthest part)
 skull = pts(B, 'skull_top')
-sideL = pts(B, 'side_L')
-sideR = pts(B, 'side_R')
+# round 3 (R2 review minor): the traced skull sides ended in a small hooked jog where they meet the neck (side_L ran down
+# to (95, 107), back up to (99, 105) and down again; side_R turned a corner at (175, 108)); the panel draws one smooth
+# concave curve from the skull side into the neck. The skull side now stops where the neck line takes over, along the
+# same tangent, and the neck line runs from there to the collar.
+sideL = pts(B, 'side_L')[:-2]
+sideR = pts(B, 'side_R')[:-1] + [(177, 106)]
 bv.part('headBack', skull + [(183, 45), (182, 58)] + sideR + [(137, 112, 'c')] + rev(sideL) + [(97, 60), (104, 44)],
         [skull, sideL, sideR], group='headBack')
 earR = pts(B, 'earR')
 bv.part('earRightBack', earR + [(176, 50), (178, 36)], [earR], [pts(B, 'earR_fold1'), pts(B, 'earR_fold2')], group='headBack')
 bv.part('earLeftBack', pts(B, 'earL'), [pts(B, 'earL') + [pts(B, 'earL')[0]]], color='earCap', group='headBack')
-nL = pts(B, 'neck_L')
-nR = pts(B, 'neck_R')
+nL = [(95, 107), (96.6, 113)] + pts(B, 'neck_L')[2:]
+nR = [(177, 106), (175.6, 112)] + pts(B, 'neck_R')[1:]
 bv.part('neckBack', [(100, 104, 'c'), (174, 104, 'c')] + nR + [(176, 150, 'c'), (98, 150, 'c')] + rev(nL), [nL, nR], group='neckBack')
 bodyL = pts(B, 'body_L')
 bodyR = pts(B, 'body_R')
@@ -193,10 +247,9 @@ pL = pts(B, 'paw_L')
 pR = pts(B, 'paw_R')
 lL = pts(B, 'legin_L')
 lR = pts(B, 'legin_R')
-bv.part('legHindLeft', bLb + pL[1:] + rev(lL)[1:] + [(108, 262, 'c')], [bLb, pL, lL],
-        [[(62, 470), (62, 476), (62, 482)], [(78, 471), (78, 476), (78, 482)]])
-bv.part('legHindRight', [(168, 262, 'c')] + lR + pR[1:] + rev(bRb)[1:], [bRb, pR, lR],
-        [[(195, 471), (195, 476), (195, 482)]])
+# round 3 (R2 review minor): from behind only the heels show (badger_turn_back.png draws no toe splits on the hind paws)
+bv.part('legHindLeft', bLb + pL[1:] + rev(lL)[1:] + [(108, 262, 'c')], [bLb, pL, lL])
+bv.part('legHindRight', [(168, 262, 'c')] + lR + pR[1:] + rev(bRb)[1:], [bRb, pR, lR])
 tl = pts(B, 'tail_L')
 tr_ = pts(B, 'tail_R')
 bv.part('tail', [(126, 255, 'c'), (155, 255, 'c')] + tr_ + rev(tl)[1:], [tl, tr_], group='tail')
