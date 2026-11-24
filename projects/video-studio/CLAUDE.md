@@ -32,6 +32,7 @@ Stop for owner review at the end of every phase.
 ## Channel 2: crypto security news (working slug `zoora-security`, display name TBD) — owner rules, 2026-11-24 (binding)
 
 - **Format:** "The ZOO & Badger Show", a talk-show / podcast set. ZOO hosts and talks. Badger is the nonverbal co-host (PROJECT_INSTRUCTIONS): his reactions carry the jokes. Recurring segments: Rekt Meter, Badger's Red Flag, ZOO's One Fix, Scam of the Week.
+- **Badger vocalizations (owner request, 2026-11-24):** Badger may make REAL dog sounds recorded from the owner's actual dog (Snapchat clips the owner will supply), such as huffs, grumbles, whines and "talking". He stays nonverbal: no words, no synthesized dog voice. Clips must contain no background music, no Snapchat sounds, lenses or voice filters, and no other people's voices. Use them sparingly (1-3 per Short), as punchlines AFTER ZOO's lines, never over his speech. Badger's mouth and ears are animated from the clip's amplitude (a small rig extension: a mouth-open control, with no redesign). Joke captions such as "[Badger: absolutely not]" are optional and need the owner's OK.
 - **Cadence:** a daily Short (one incident, how it worked, one fix), "what we know" Shorts for major incidents, a weekly long-form round-up with fund-flow analysis, and evergreen explainers that every news video links to.
 - **Pipeline:**
   1. The news radar drafts with sources.
