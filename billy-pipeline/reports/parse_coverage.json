@@ -1,0 +1,45 @@
+{
+  "outlooks": 953,
+  "first_post_ts": "2023-07-05T00:36:04+00:00",
+  "last_post_ts": "2026-11-01T01:32:09+00:00",
+  "by_asset": {
+    "XRP": 188,
+    "ETH": 187,
+    "BTC": 210,
+    "LTC": 185,
+    "LINK": 183
+  },
+  "asset_detected_pct": 100.0,
+  "close_label_parsed_pct": 99.9,
+  "actionable_pct": 86.7,
+  "no_trade_pct": 13.3,
+  "unparsed_pct": 0.0,
+  "structured_pct": 100.0,
+  "with_target_pct_of_actionable": 19.6,
+  "with_explicit_trade_pct_of_actionable": 64.3,
+  "close_labels": {
+    "indecisive": 533,
+    "bullish": 144,
+    "bearish": 121,
+    "slightly_bearish": 58,
+    "slightly_bullish": 35,
+    "strongly_bullish": 29,
+    "strongly_bearish": 12,
+    "doji": 7,
+    "dragonfly_doji": 7,
+    "gravestone_doji": 3,
+    "upper_wick": 2,
+    "bullish_engulfing": 1,
+    "unknown": 1
+  },
+  "condition_types": {
+    "sideways": 127,
+    "breakout": 721,
+    "retest": 105
+  },
+  "directions": {
+    "long": 599,
+    "short": 227
+  },
+  "scenarios_total": 1337
+}
