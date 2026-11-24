@@ -9,7 +9,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import type {Lang, Storyboard, StoryboardScene, TimelineScene} from '../types';
 import {C, OUTLINE, R} from '../theme';
-import {BADGE_AREA, FICTION_CARD, LOWER_THIRD, SOURCES_CARD, type Format} from '../layout/specs';
+import {BADGE_AREA, FICTION_CARD, LAYOUTS, LOWER_THIRD, type Format, type TextSpec} from '../layout/specs';
 import {Lines, useFit} from '../text/FitText';
 import {fontFor} from '../i18n/fonts';
 import {uiLabel} from '../i18n/ui';
@@ -64,36 +64,52 @@ export const FictionCard: React.FC<{format: Format; sb: Storyboard}> = ({format,
 	);
 };
 
-/** Frames at which each cited source is spoken (the word that ends its claim). */
-export const sourceCues = (sc: StoryboardScene, tl: TimelineScene, fps: number): Array<{id: string; frame: number}> => {
+const SENTENCE_END = /[.!?…。！？]$/;
+
+/**
+ * When each cited source is spoken: from the first word of the sentence that carries the claim to the word that ends
+ * it (the [src:id] tag sits right after the claim).
+ */
+export const sourceCues = (sc: StoryboardScene, tl: TimelineScene, fps: number): Array<{id: string; from: number; claimEnd: number}> => {
 	const display = displayText(sc.narration);
 	return sourceOffsets(sc.narration).map(({id, offset}) => {
 		const wi = wordIndexAtOffset(tl.words, display, offset);
-		return {id, frame: wi >= 0 ? msToFrame(tl.words[wi].startMs, fps) : 0};
+		if (wi < 0) return {id, from: 0, claimEnd: 0};
+		let first = wi;
+		while (first > 0 && !SENTENCE_END.test(tl.words[first - 1].text)) first--;
+		return {id, from: msToFrame(tl.words[first].startMs, fps), claimEnd: msToFrame(tl.words[wi].endMs, fps)};
 	});
+};
+
+/** Where a scene type puts its sources line (null: none, e.g. the quote shows its own source). */
+const sourcesSpec = (type: StoryboardScene['type'], format: Format): TextSpec | null => {
+	const l = (LAYOUTS as unknown as Record<string, Record<Format, {sources?: TextSpec}>>)[type]?.[format];
+	return l?.sources ?? null;
 };
 
 export const SourcesCard: React.FC<{format: Format; sb: Storyboard; sc: StoryboardScene; tl: TimelineScene; fps: number; frames: number}> = ({format, sb, sc, tl, fps, frames}) => {
 	const frame = useCurrentFrame();
-	const spec = SOURCES_CARD[format];
-	const on = showsSources(sc);
+	const spec = sourcesSpec(sc.type, format);
+	const on = !!spec && showsSources(sc);
 	const cues = on ? sourceCues(sc, tl, fps) : [];
-	// the card for the most recent cited claim, held 4 s (or to the end of the scene)
-	const cur = [...cues].reverse().find((c) => frame >= c.frame - 6);
-	const src = cur ? sb.sources.find((s) => s.id === cur.id) : undefined;
+	// the most recent cited claim whose sentence has started; held until 3 s after the claim (at least 4 s)
+	const cur = [...cues].reverse().find((c) => frame >= c.from - 6);
+	const src = cur ? sb.sources.find((x) => x.id === cur.id) : undefined;
 	const label = uiLabel(sb, 'sources') ?? '';
 	const text = src ? `${label ? `${label}: ` : ''}${src.title} · ${domainOf(src.url)}` : '';
-	const fit = useFit(text || ' ', spec, sb.lang);
-	if (!cur || !src) return null;
-	const to = Math.min(frames, cur.frame + 120);
-	const p = inOut(frame, cur.frame - 6, to);
+	const fit = useFit(text || ' ', spec ?? FICTION_CARD[format], sb.lang);
+	if (!cur || !src || !spec) return null;
+	const to = Math.min(frames, Math.max(cur.from + 120, cur.claimEnd + 90));
+	const p = inOut(frame, cur.from - 6, to);
 	if (p <= 0) return null;
-	const w = Math.ceil(fit.width) + 2 * 16;
+	const padX = 16;
+	const w = Math.ceil(fit.width) + 2 * padX;
 	const h = spec.box.h + 12;
+	const x = spec.align === 'right' ? spec.box.x + spec.box.w - w : spec.box.x;
 	return (
-		<div style={{position: 'absolute', left: spec.box.x, top: spec.box.y - 6, width: w, height: h, clipPath: `inset(0 ${(1 - p) * 100}% 0 0)`}}>
+		<div style={{position: 'absolute', left: x, top: spec.box.y - 6, width: w, height: h, clipPath: spec.align === 'right' ? `inset(0 0 0 ${(1 - p) * 100}%)` : `inset(0 ${(1 - p) * 100}% 0 0)`}}>
 			<div style={{position: 'absolute', inset: 0, backgroundColor: C.card, borderRadius: R.s, border: `2px solid ${C.ink}`, boxSizing: 'border-box'}} />
-			<Lines fit={fit} spec={spec} lang={sb.lang} color={C.ink} box={{x: 16, y: 6, w: spec.box.w, h: spec.box.h}} />
+			<Lines fit={fit} spec={{...spec, align: 'left'}} lang={sb.lang} color={C.ink} box={{x: padX, y: 6, w: spec.box.w, h: spec.box.h}} />
 		</div>
 	);
 };

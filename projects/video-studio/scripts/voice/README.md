@@ -61,7 +61,7 @@ French has no male Kokoro v1.0 voice, so it is not supported.
 ## Text normalization (`voicelib/normalize/`)
 
 Numbers, currencies, percentages, dates and symbols become words per language, from hand-written tables
-(no num2words: it is LGPL-2.1 and has no Hindi). Captions keep the written form, and each display token
+(no num2words: 0.5.14 is LGPL-2.1 and has no Hindi or Chinese module). Captions keep the written form, and each display token
 maps to its own spoken string. Tested cases include `$40,000`, `68.67%`, `2026`, `1.5M` and `0.25 SOL` in
 all six languages (`tests/test_normalize.py`).
 

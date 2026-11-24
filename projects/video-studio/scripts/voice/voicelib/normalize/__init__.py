@@ -2,9 +2,9 @@
 
 Space-separated languages (en, es, pt-br, it, hi) normalize token by token (one spoken string per
 display token, see common.SpacedNormalizer). zh and ja normalize spans (see zh.spans, ja.spans).
-Hand-written tables, not num2words: num2words is LGPL-2.1, has no Hindi, and its output for
-currency and decimals does not match how these scripts are read; these tables are unit-tested in
-tests/test_normalize.py.
+Hand-written tables, not num2words: num2words 0.5.14 (checked 2026-11-24) is LGPL-2.1 and has no
+Hindi or Chinese module (it has es, it, pt_BR, ja), and adding it would change the pinned set; these
+tables are unit-tested in tests/test_normalize.py.
 """
 
 from . import ja, zh
