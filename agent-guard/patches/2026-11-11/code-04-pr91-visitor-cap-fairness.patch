@@ -1,0 +1,218 @@
+From cd90236ac304d7c3052a3d7e71248b74098a86d2 Mon Sep 17 00:00:00 2001
+From: Head of Security <security@buildwithaai.invalid>
+Date: Wed, 11 Nov 2026 03:54:04 -0600
+Subject: [PATCH] Stop a few addresses from holding every visitor slot (N-1r)
+
+- One address (IPv6 /64) can keep at most 8 distinct visitors alive per idle window,
+  across move, say and resume.
+- When the list is full of active rows, the prefix holding the most rows (over 16) gives
+  up its oldest-created visitor.
+- The cap and eviction run after the prefix and rate checks, so a refused request never
+  evicts anyone.
+---
+ projects/lumen/src/world/visitors.ts         | 67 +++++++++++++++--
+ projects/lumen/tests/visitorFairness.test.ts | 79 ++++++++++++++++++++
+ 2 files changed, 138 insertions(+), 8 deletions(-)
+ create mode 100644 projects/lumen/tests/visitorFairness.test.ts
+
+diff --git a/projects/lumen/src/world/visitors.ts b/projects/lumen/src/world/visitors.ts
+index 7aa8e75..bdc62ce 100644
+--- a/projects/lumen/src/world/visitors.ts
++++ b/projects/lumen/src/world/visitors.ts
+@@ -27,6 +27,10 @@ export const QUARANTINE_KEEP = 1_000;
+ export const QUARANTINE_KEEP_MS = 7 * 24 * 60 * 60 * 1000;
+ export const NEARBY_LIMIT = 64;
+ export const VISITOR_CAP_ALERT_MS = 60 * 60 * 1000;
++/** One address (or IPv6 /64) may keep at most this many distinct visitors alive inside the idle window. */
++export const VISITOR_IP_ACTIVE_TOKENS = 8;
++/** When the list is full of active visitors, a prefix holding more than this many rows gives up its oldest one. */
++export const VISITOR_FAIR_SHARE = 16;
+ 
+ const CAP_TITLE = "Visitor registration cap";
+ 
+@@ -167,6 +171,44 @@ function evictIdleVisitor(db: DatabaseSync, now: number): boolean {
+   return true;
+ }
+ 
++/** Full of active rows: take the oldest-created visitor from the prefix that holds the most, if it is over its share. */
++function evictOverShare(db: DatabaseSync): boolean {
++  const heavy = db.prepare(
++    "SELECT reg_prefix, COUNT(*) AS n FROM world_visitors GROUP BY reg_prefix ORDER BY n DESC, reg_prefix ASC LIMIT 1",
++  ).get() as { reg_prefix: string; n: number } | undefined;
++  if (!heavy || Number(heavy.n) <= VISITOR_FAIR_SHARE) return false;
++  const row = db.prepare(
++    "SELECT id FROM world_visitors WHERE reg_prefix = ? ORDER BY created_at ASC, id ASC LIMIT 1",
++  ).get(heavy.reg_prefix) as { id: string } | undefined;
++  if (!row) return false;
++  db.prepare("DELETE FROM visitor_quarantine WHERE visitor_id = ?").run(row.id);
++  db.prepare("DELETE FROM world_visitors WHERE id = ?").run(row.id);
++  return true;
++}
++
++function addressKey(ip: string): string {
++  return ipv6Prefix64(ip) ?? ip.slice(0, 64);
++}
++
++/**
++ * Keepalive fairness. Rate limits are per address, so one address could keep hundreds of tokens fresh.
++ * This caps the distinct tokens an address acts for inside the idle window.
++ */
++function allowTokenFromAddress(db: DatabaseSync, ip: string, tokenHash: string, now: number): boolean {
++  const prefix = `visitor:ipt:${addressKey(ip)}:`;
++  const since = now - VISITOR_IDLE_MS;
++  const mine = db.prepare("SELECT 1 FROM rate_limits WHERE bucket = ? AND at_ms >= ? LIMIT 1").get(prefix + tokenHash, since);
++  if (!mine) {
++    const distinct = Number((db.prepare(
++      "SELECT COUNT(DISTINCT bucket) AS n FROM rate_limits WHERE bucket >= ? AND bucket < ? AND at_ms >= ?",
++    ).get(prefix, `${prefix}\uffff`, since) as { n: number }).n);
++    if (distinct >= VISITOR_IP_ACTIVE_TOKENS) return false;
++  }
++  db.prepare("DELETE FROM rate_limits WHERE bucket = ? AND at_ms < ?").run(prefix + tokenHash, since);
++  db.prepare("INSERT INTO rate_limits(bucket, at_ms) VALUES(?, ?)").run(prefix + tokenHash, now);
++  return true;
++}
++
+ function noteVisitorCap(db: DatabaseSync, now: number, evicted: boolean): void {
+   const recent = db.prepare("SELECT created_at FROM owner_alerts WHERE title = ? ORDER BY created_at DESC LIMIT 1").get(CAP_TITLE) as { created_at: number } | undefined;
+   if (recent && now - recent.created_at < VISITOR_CAP_ALERT_MS) return;
+@@ -259,14 +301,6 @@ export function registerVisitor(
+   input: { displayName: unknown; ownerContact: unknown; ip: string; now: number },
+ ): { ok: true; visitor: VisitorToken } | { ok: false; reason: string; status: number } {
+   pruneVisitors(db, input.now);
+-  if (visitorCount(db) >= VISITOR_MAX_ROWS) {
+-    const evicted = evictIdleVisitor(db, input.now);
+-    noteVisitorCap(db, input.now, evicted);
+-    if (!evicted || visitorCount(db) >= VISITOR_MAX_ROWS) {
+-      logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
+-      return { ok: false, reason: "CAP", status: 429 };
+-    }
+-  }
+   const prefix = registrationPrefix(input.ip);
+   const prefixRows = Number((db.prepare(
+     "SELECT COUNT(*) AS n FROM world_visitors WHERE reg_prefix = ? AND status != 'revoked' AND expires_at > ?",
+@@ -282,6 +316,15 @@ export function registerVisitor(
+     logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
+     return { ok: false, reason: "RATE_LIMIT", status: 429 };
+   }
++  // The cap runs after the prefix and rate checks, so a refused request never evicts anyone.
++  if (visitorCount(db) >= VISITOR_MAX_ROWS) {
++    const evicted = evictIdleVisitor(db, input.now) || evictOverShare(db);
++    noteVisitorCap(db, input.now, evicted);
++    if (!evicted || visitorCount(db) >= VISITOR_MAX_ROWS) {
++      logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors" });
++      return { ok: false, reason: "CAP", status: 429 };
++    }
++  }
+   const created = createVisitor(db, input);
+   if (!created.ok) return { ok: false, reason: created.reason, status: 400 };
+   logSecurity({ event: "visitor_register", status: 201, route: "/api/world/visitors" });
+@@ -316,6 +359,10 @@ function authorize(
+   }
+   if (current.status === "paused") return { ok: false, reason: "PAUSED", status: 409 };
+   if (!hasScope(current.scopes, scope)) return { ok: false, reason: "SCOPE", status: 403 };
++  if (write && !allowTokenFromAddress(db, ip, hash, now)) {
++    logSecurity({ event: "rate_limited", status: 429, route });
++    return { ok: false, reason: "RATE_LIMIT", status: 429 };
++  }
+   return { ok: true, row: current };
+ }
+ 
+@@ -336,6 +383,10 @@ export function resumeVisitor(
+     return { ok: false, reason: "RATE_LIMIT", status: 429 };
+   }
+   if (row.status !== "paused" && now - row.seen_at < VISITOR_IDLE_MS) return { ok: true, guest: toGuest(row) };
++  if (!allowTokenFromAddress(db, ip, row.token_hash, now)) {
++    logSecurity({ event: "rate_limited", status: 429, route: "/api/world/visitors/resume" });
++    return { ok: false, reason: "RATE_LIMIT", status: 429 };
++  }
+   db.prepare("UPDATE world_visitors SET status = 'active', seen_at = ? WHERE id = ?").run(now, row.id);
+   const next = rowByToken(db, token, now);
+   if (!next) return { ok: false, reason: "UNAUTHORIZED", status: 401 };
+diff --git a/projects/lumen/tests/visitorFairness.test.ts b/projects/lumen/tests/visitorFairness.test.ts
+new file mode 100644
+index 0000000..d8d9a34
+--- /dev/null
++++ b/projects/lumen/tests/visitorFairness.test.ts
+@@ -0,0 +1,79 @@
++import { describe, expect, it, vi } from "vitest";
++import { openDatabase } from "../src/db/db";
++import { moveVisitor, registerVisitor, resumeVisitor, VISITOR_IP_ACTIVE_TOKENS, VISITOR_MAX_ROWS } from "../src/world/visitors";
++
++const reg = (db: ReturnType<typeof openDatabase>, ip: string, now: number, name = "Bot") =>
++  registerVisitor(db, { displayName: name, ownerContact: "owner@example.com", ip, now });
++const rows = (db: ReturnType<typeof openDatabase>) => Number((db.prepare("SELECT COUNT(*) AS n FROM world_visitors").get() as { n: number }).n);
++
++describe("visitor cap fairness", () => {
++  it("one address cannot keep more than the allowed number of visitors alive", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const db = openDatabase();
++    const tokens: string[] = [];
++    let t = 1_000_000;
++    for (let i = 0; i < VISITOR_IP_ACTIVE_TOKENS + 4; i += 1) {
++      const made = reg(db, `198.51.100.${i + 1}`, t);
++      if (made.ok) tokens.push(made.visitor.token);
++      t += 1_000;
++    }
++    const results = tokens.map((token, i) => moveVisitor(db, token, { cx: 0, cy: 0, tx: 1 + i, ty: 2 }, "192.0.2.77", t + i));
++    expect(results.filter((r) => r.ok).length).toBe(VISITOR_IP_ACTIVE_TOKENS);
++    expect(results.filter((r) => !r.ok && r.reason === "RATE_LIMIT").length).toBe(tokens.length - VISITOR_IP_ACTIVE_TOKENS);
++    vi.restoreAllMocks();
++  });
++
++  it("a full list of active rows from a few prefixes still lets a newcomer in", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const db = openDatabase();
++    let t = 1_000_000;
++    const tokens: string[] = [];
++    for (let p = 0; p < 7 && tokens.length < VISITOR_MAX_ROWS; p += 1) {
++      for (let k = 0; k < 32 && tokens.length < VISITOR_MAX_ROWS; k += 1) {
++        const made = reg(db, `2001:db8:${p}::${k + 1}`, t);
++        if (made.ok) tokens.push(made.visitor.token);
++        else { t += 61_000; k -= 1; }
++      }
++    }
++    expect(tokens.length).toBe(VISITOR_MAX_ROWS);
++    // Every row has been active within the idle window.
++    db.prepare("UPDATE world_visitors SET seen_at = ?, status = 'active'").run(t);
++    db.prepare("UPDATE world_visitors SET created_at = created_at - 1").run();
++    const legit = reg(db, "203.0.113.10", t + 1, "Legit");
++    expect(legit.ok).toBe(true);
++    expect(rows(db)).toBe(VISITOR_MAX_ROWS);
++    vi.restoreAllMocks();
++  });
++
++  it("a refused registration does not evict anyone", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const db = openDatabase();
++    let t = 1_000_000;
++    let made = 0;
++    for (let i = 0; made < VISITOR_MAX_ROWS && i < 3000; i += 1) {
++      if (reg(db, `198.51.${Math.floor(i / 200)}.${i % 200}`, t).ok) made += 1;
++      if (i % 25 === 24) t += 61_000;
++    }
++    t += 61_000;
++    for (let k = 0; k < 8; k += 1) reg(db, "192.0.2.200", t + k);
++    const before = rows(db);
++    for (let k = 0; k < 50; k += 1) expect(reg(db, "192.0.2.200", t + 100 + k).ok).toBe(false);
++    expect(rows(db)).toBe(before);
++    vi.restoreAllMocks();
++  });
++
++  it("resume counts toward the same address budget", () => {
++    vi.spyOn(console, "log").mockImplementation(() => {});
++    const db = openDatabase();
++    const tokens: string[] = [];
++    for (let i = 0; i < VISITOR_IP_ACTIVE_TOKENS + 1; i += 1) {
++      const made = reg(db, `198.51.100.${i + 1}`, 1_000 + i);
++      if (made.ok) tokens.push(made.visitor.token);
++    }
++    const later = 1_000 + 16 * 60_000;
++    db.prepare("UPDATE world_visitors SET status = 'paused'").run();
++    const ok = tokens.map((token, i) => resumeVisitor(db, token, "192.0.2.9", later + i)).filter((r) => r.ok).length;
++    expect(ok).toBe(VISITOR_IP_ACTIVE_TOKENS);
++    vi.restoreAllMocks();
++  });
++});
+-- 
+2.47.3
+
