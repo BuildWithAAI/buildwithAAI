@@ -1,0 +1,13 @@
+/* Zoora offline shell — external so CSP style-src 'self' allows it. */
+html,body{margin:0;min-height:100%;background:#02060b;color:#bfefff;font:15px/1.45 system-ui,sans-serif}
+main{min-height:100vh;display:grid;place-items:center;padding:24px}
+.card{width:min(420px,92vw);border:1px solid rgba(62,240,255,.35);border-radius:14px;padding:28px 24px;
+  background:linear-gradient(160deg,rgba(10,32,46,.9),rgba(4,13,21,.96));box-shadow:0 0 40px rgba(62,240,255,.08)}
+h1{margin:0 0 6px;letter-spacing:.28em;font-size:18px;color:#3ef0ff}
+.sub{color:#7fa9b8;font-size:13px;margin:0 0 18px}
+p{margin:0 0 12px;color:#c9e8f2}
+.chip{display:inline-block;padding:4px 10px;border:1px solid rgba(255,181,71,.5);color:#ffb547;border-radius:999px;
+  font-size:11px;letter-spacing:.14em;margin-bottom:14px}
+a{color:#3ef0ff}
+.foot{margin-top:18px;font-size:12px;color:#6a8a97}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#9fd}

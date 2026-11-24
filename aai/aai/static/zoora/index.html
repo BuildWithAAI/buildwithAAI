@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#02060b">
+<meta name="color-scheme" content="dark">
+<meta name="application-name" content="Zoora">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zoora">
+<link rel="manifest" href="/static/zoora/manifest.webmanifest" crossorigin="use-credentials">
+<link rel="apple-touch-icon" href="/static/zoora/icon-192.png">
+<title>ZOORA · AAI Command HUD</title>
+<link rel="icon" href="/static/zoora/favicon.svg?v={{V}}" type="image/svg+xml">
+<link rel="stylesheet" href="/static/zoora/zoora.css?v={{V}}">
+</head>
+<body class="booting">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="bg-vignette" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="sweep" aria-hidden="true"></div>
+
+<div id="offlineBanner" class="offline-banner" hidden role="status" aria-live="polite">OFFLINE · shell cached · live data needs local aai hud</div>
+
+<!-- boot sequence -->
+<div id="boot" role="status" aria-live="polite">
+  <div class="boot-inner">
+    <div class="boot-logo">
+      <svg viewBox="0 0 120 120" class="boot-ring" aria-hidden="true">
+        <circle cx="60" cy="60" r="52" class="r1"/><circle cx="60" cy="60" r="40" class="r2"/><circle cx="60" cy="60" r="28" class="r3"/>
+      </svg>
+      <div class="boot-word">ZOORA</div>
+    </div>
+    <div class="boot-sub">AAI COMMAND HUD · PAPER ONLY</div>
+    <ol id="bootLog" class="boot-log"></ol>
+    <div class="boot-bar"><i id="bootBar"></i></div>
+    <div class="boot-skip">press any key to skip</div>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div>
+      <div class="brand-word">ZOORA</div>
+      <div class="brand-sub">AAI COMMAND HUD <span class="sep">//</span> ZOORPED</div>
+    </div>
+  </div>
+  <div class="sys-chips" id="sysChips">
+    <span class="chip chip-paper" title="No live-order code exists. place_order returns 403.">PAPER ONLY</span>
+    <span class="chip" id="chipLink"><i class="led"></i><span>LINK</span></span>
+    <span class="chip" id="chipAuth">AUTH</span>
+    <span class="chip" id="chipLLM">LLM</span>
+    <span class="chip" id="chipGuard">GUARD</span>
+    <span class="chip" id="chipOffline" hidden title="Browser reports offline or the HUD server is unreachable">OFFLINE</span>
+  </div>
+  <div class="clock" aria-label="Time in America/Chicago">
+    <div class="clock-time" id="clockTime">--:--:--</div>
+    <div class="clock-date"><span id="clockDate">—</span> <b>CT</b></div>
+  </div>
+</header>
+
+<section class="alarm" id="alarm" aria-label="System alarms">
+  <div class="alarm-keys">
+    <div class="kill" id="killGlobal" title="agent-guard global kill switch (bin/killswitch). The AAI ledger follows it."><span>GLOBAL KILL</span><b>—</b></div>
+    <div class="kill" id="killAAI" title="AAI ledger kill switch. Trips automatically at 5% daily loss or 15% drawdown."><span>AAI KILL</span><b>—</b></div>
+    <div class="sev-counts" id="sevCounts"></div>
+  </div>
+  <div class="alarm-track" id="alarmTrack" tabindex="0" aria-live="off" aria-label="Active alarms"></div>
+  <div class="sr-only" id="srAlarm" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div class="sr-only" id="srAlarmUrgent" role="alert" aria-live="assertive" aria-atomic="true"></div>
+  <button class="icon-btn" id="muteBtn" title="Toggle alert chime" aria-pressed="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>
+  </button>
+</section>
+
+<main class="grid">
+  <div class="col">
+  <section class="panel" id="p-risk" data-focus="risk">
+    <h2><em>01</em>Risk exposure <small id="riskEq"></small></h2>
+    <div class="gauges" id="gauges"></div>
+    <div class="sectors" id="sectors"></div>
+    <div class="rules" id="rules"></div>
+  </section>
+  <section class="panel" id="p-positions" data-focus="positions">
+    <h2><em>02</em>Paper positions &amp; P&amp;L</h2>
+    <div class="pnl" id="pnl"></div>
+    <div class="eqc" id="eqCurve" role="img" aria-label="Paper equity curve"></div>
+    <div class="table-wrap"><table class="tbl" id="posTable"><thead><tr><th>Symbol</th><th>Side</th><th class="n hide-sm">Entry</th><th class="n">Mark</th><th class="n">uP&amp;L</th><th class="n">R</th></tr></thead><tbody></tbody></table></div>
+    <div class="sub-books" id="subBooks"></div>
+  </section>
+  <section class="panel" id="p-longterm" data-focus="longterm">
+    <h2><em>07</em>Long-term · 2040 bucket <small>audit only</small></h2>
+    <div class="lt" id="lt"></div>
+  </section>
+  <section class="panel" id="p-fresh" data-focus="fresh">
+    <h2><em>08</em>Data freshness <small>stale &gt; 48h</small></h2>
+    <ul class="fresh" id="fresh"></ul>
+  </section>
+  </div>
+  <div class="col">
+  <!-- CORE -->
+  <section class="panel core" id="p-core" aria-label="Zoora voice core">
+    <div class="core-stage">
+      <canvas id="orb" width="560" height="560" aria-hidden="true"></canvas>
+      <div class="core-state" id="coreState">STANDBY</div>
+      <div class="zv-ring" id="zvRing" hidden aria-hidden="true"><i class="zv-arc"></i><span class="zv-count" id="zvCount">0:60</span><span class="zv-rec" id="zvRecLabel">CONNECTING MIC…</span></div>
+      <div class="zv-hint" id="zvHint" aria-hidden="true">HOLD ORB · SPACE</div>
+    </div>
+    <div class="zv-dock" id="zvDock">
+      <button type="button" class="zv-status" id="zvStatus" aria-live="polite"><span class="zv-led" aria-hidden="true"></span><span id="zvStatusText">VOICE · CHECKING</span></button>
+      <form class="zv-ask" id="zvAskForm" autocomplete="off" role="search">
+        <input id="zvAskInput" maxlength="2000" placeholder="Ask Zoora anything (web)…" aria-label="Ask Zoora anything, typed" enterkeyhint="send">
+        <button type="submit" class="zv-go" aria-label="Ask Zoora">ASK</button>
+      </form>
+      <button type="button" class="zv-mute" id="zvMute" aria-pressed="false" title="Voice UI sounds on" aria-label="Mute Zoora voice UI sounds">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg>
+      </button>
+    </div>
+    <div class="zv-note" id="zvNote" aria-live="polite"></div>
+    <div class="caption" id="caption" aria-live="polite">
+      <div class="cap-you" id="capYou"></div>
+      <div class="cap-zoora" id="capZoora">Zoora online. Hold <kbd>Space</kbd> or tap the mic to talk.</div>
+    </div>
+    <form class="cmd" id="cmdForm" autocomplete="off">
+      <button type="button" class="mic" id="micBtn" aria-label="Push to talk" title="Push to talk (hold Space)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>
+      </button>
+      <input id="cmdInput" name="q" placeholder="Ask Zoora… e.g. “what’s broken?”" aria-label="Command" maxlength="500" enterkeyhint="send">
+      <button class="send" type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+    <div class="quick" id="quick">
+      <button data-q="status">Status</button><button data-q="risk and exposure">Risk</button>
+      <button data-q="open positions and P&amp;L">Positions</button><button data-q="today's ideas">Ideas</button>
+      <button data-q="security alerts">Security</button><button data-q="long-term plan status">2040</button>
+      <button data-q="economy ladder">Economy</button><button data-q="what's broken?">Blockers</button><button data-q="run a healthcheck">Healthcheck</button>
+      <button data-q="brief me" class="q-intel">Brief me</button><button data-q="calendar" class="q-intel">Calendar</button><button data-q="funding" class="q-intel">Funding</button>
+    </div>
+    <div class="voice-row">
+      <label class="toggle"><input type="checkbox" id="wakeToggle"><span></span>“Hey Zoora” wake word</label>
+      <label class="toggle"><input type="checkbox" id="speakToggle" checked><span></span>Voice replies</label>
+      <label class="voice-pick" for="voiceSelect">Voice
+        <select id="voiceSelect" aria-label="Spoken reply voice" title="English TTS voice (saved on this device)"></select>
+      </label>
+      <span class="voice-note" id="voiceNote"></span>
+    </div>
+  </section>
+  <section class="panel" id="p-ideas" data-focus="ideas">
+    <h2><em>04</em>Ideas by sector</h2>
+    <div class="tabs" id="ideaTabs" role="tablist"></div>
+    <ul class="ideas" id="ideas"></ul>
+  </section>
+  <section class="panel" id="p-audit" data-focus="audit">
+    <h2><em>09</em>Audit log · hash chain <small id="auditMeta"></small></h2>
+    <ol class="audit" id="audit"></ol>
+  </section>
+  </div>
+  <div class="col">
+  <section class="panel" id="p-pipelines" data-focus="pipelines">
+    <h2><em>03</em>Pipelines <small id="healthAge" class="hc-age" hidden></small><button class="mini" id="refreshHeavy" title="Re-run live pipeline health checks">RE-CHECK</button></h2>
+    <ul class="pipes" id="pipes"></ul>
+  </section>
+  <section class="panel" id="p-memes" data-focus="memes">
+    <h2><em>05</em>Solana meme-risk</h2>
+    <div class="meme-health" id="memeHealth"></div>
+    <ul class="scores" id="scores"></ul>
+    <form class="score-form" id="scoreForm" autocomplete="off">
+      <input id="mintInput" placeholder="Mint address to score" aria-label="Mint address" spellcheck="false" maxlength="44">
+      <button class="mini" type="submit">SCORE</button>
+    </form>
+  </section>
+  <section class="panel" id="p-security" data-focus="security">
+    <h2><em>06</em>Security intel <small id="secMeta"></small></h2>
+    <ul class="sec" id="sec"></ul>
+  </section>
+  <section class="panel" id="p-economy" data-focus="economy" aria-label="Economy ladder">
+    <h2><em>10</em>Economy ladder <small id="econMeta">paper · eligibility only</small></h2>
+    <div class="econ-sum" id="econSum"></div>
+    <div class="table-wrap econ-wrap"><table class="tbl econ" id="econTable"><thead><tr><th>Strategy</th><th>Stage</th><th class="n">Trades</th><th class="n" title="Expectancy in R. Below it, the last 14 daily snapshots (CT): line = expectancy R around a dashed 0R line, cyan steps = stage S0-S3, ring = stage change, red tick = killed day; ▲▼ = expectancy change across the window. Hover a row for the per-day list.">Exp R <small>14D</small></th><th class="n hide-sm">Max DD</th><th class="n">Weight</th></tr></thead><tbody></tbody></table></div>
+    <div class="econ-feed" id="econFeed" aria-live="polite"><h3>Stage changes <small id="econSnap">daily snapshot</small></h3><ul id="econEvents"></ul></div>
+    <div class="econ-foot" id="econFoot">Read-only. S = computed eligibility, G = stage a human granted (CLI only, paper); effective = the lower. Any real money needs Zoorped&rsquo;s sign-off.</div>
+  </section>
+  </div>
+</main>
+
+<!-- INTEL: institutional market intelligence (GET /api/intel, read-only, keyless public sources, cached in SQLite) -->
+<section class="intel" id="intel" aria-labelledby="intelTitle">
+  <div class="intel-head">
+    <h2 class="intel-title" id="intelTitle"><span class="intel-mark" aria-hidden="true"></span>INTEL <span class="sep">//</span> ALL-IN TERMINAL</h2>
+    <div class="intel-sum" id="intelSum" aria-live="polite">linking intel bus…</div>
+  </div>
+  <div class="tape" id="intelTape" aria-label="Cross-asset quotes"></div>
+  <div class="igrid">
+    <section class="panel ip-regime" id="p-regime" data-focus="intel">
+      <h2><em>11</em>Cross-asset regime <small>heuristic · not a signal</small></h2>
+      <div class="fmeta" data-feeds="markets"></div>
+      <div class="regime" id="regimeBody"></div>
+    </section>
+    <section class="panel ip-macro" id="p-macro" data-focus="macro">
+      <h2><em>12</em>Macro &amp; rates <small id="macroMeta"></small></h2>
+      <div class="fmeta" data-feeds="rates,fred"></div>
+      <div class="curve-wrap"><svg id="curveSvg" class="curve" viewBox="0 0 320 120" preserveAspectRatio="none" role="img" aria-label="US Treasury par yield curve"></svg></div>
+      <div class="kv-grid" id="ratesKv"></div>
+      <div class="table-wrap"><table class="tbl" id="fredTable"><thead><tr><th>FRED series</th><th class="n">Value</th><th class="n">1w</th><th class="n hide-sm">1m</th><th class="n">As of</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel ip-cal" id="p-calendar" data-focus="calendar">
+      <h2><em>13</em>Economic calendar <button class="mini" id="calFilter" aria-pressed="true" title="Toggle high-impact only / all events">HIGH ONLY</button></h2>
+      <div class="fmeta" data-feeds="calendar"></div>
+      <div class="fx-sess" id="fxSess" role="group" aria-label="FX trading sessions (approximate retail hours, local time)"></div>
+      <div class="cal-next" id="calNext"></div>
+      <div class="table-wrap cal-wrap"><table class="tbl cal" id="calTable"><thead><tr><th>When (CT)</th><th></th><th>Ccy</th><th>Event</th><th class="n">Fcst</th><th class="n hide-sm">Prev</th><th class="n">T-</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel ip-deriv" id="p-derivs" data-focus="derivs">
+      <h2><em>14</em>Crypto derivatives <small>funding · OI · basis · options</small></h2>
+      <div class="fmeta" data-feeds="deriv_blofin,deriv_okx,options_deribit,fear_greed,stablecoins"></div>
+      <div class="table-wrap"><table class="tbl" id="derivTable"><thead><tr><th>Perp</th><th>Venue</th><th class="n">Mark</th><th class="n">Fund/8h</th><th class="n hide-sm">APR</th><th class="n">OI</th><th class="n">Basis</th></tr></thead><tbody></tbody></table></div>
+      <div class="kv-grid" id="optKv"></div>
+    </section>
+    <section class="panel ip-cot" id="p-cot" data-focus="cot">
+      <h2><em>15</em>Positioning · CFTC COT <small id="cotMeta"></small></h2>
+      <div class="fmeta" data-feeds="cot"></div>
+      <div class="cot" id="cotBody"></div>
+      <div class="econ-foot">Bars: net position as % of open interest (lev funds where reported, else non-commercial specs). Δ = week-on-week change in net contracts. 26w = where net sits in its 26-week range (0 low, 100 high).</div>
+    </section>
+    <section class="panel ip-fxd" id="p-fxdesk" data-focus="fxdesk" aria-label="FX pair desk">
+      <h2><em>17</em>FX pair desk <small id="fxdMeta">COT bias · next event · quote</small></h2>
+      <div class="fmeta" data-feeds="markets,cot,calendar"></div>
+      <div class="table-wrap"><table class="tbl fxd" id="fxdTable"><thead><tr><th>Pair</th><th class="n">Last</th><th class="n">1D</th><th>Specs (pair terms)</th><th class="hide-sm" title="Weekly specs net % of OI in pair terms, last 12 reports">12W</th><th class="n hide-sm">26W</th><th class="hide-sm">Flow</th><th>Next event (either leg)</th><th class="n">T-</th></tr></thead><tbody></tbody></table></div>
+      <div class="econ-foot">Read-only context from cached feeds: COT net % of open interest converted to the pair's direction (USD-base pairs flipped), 26W = where specs sit in their 26-week range in pair terms (26W HIGH ≥90, 26W LOW ≤10); 12W = the last 12 weekly reports of that same net % OI in pair terms (dashed line is flat; hover for the dates). Hover the bias for leveraged-fund net. Amber rows have a high-impact release for either leg inside 24 h. Not a signal; paper only.</div>
+    </section>
+    <section class="panel ip-fil" id="p-filings" data-focus="filings">
+      <h2><em>16</em>Filings · SEC EDGAR <small id="filMeta"></small></h2>
+      <div class="fmeta" data-feeds="filings"></div>
+      <div class="fil-buys" id="filBuys"></div>
+      <div class="table-wrap fil-wrap"><table class="tbl fil" id="filTable"><thead><tr><th>Filed</th><th>Tkr</th><th>Form</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+</section>
+
+<footer class="foot">
+  <span>ZOORA <b id="ver">—</b></span>
+  <span>127.0.0.1 only · no public tunnel</span>
+  <span>updated <b id="lastUpd">—</b></span>
+  <span>uptime <b id="uptime">—</b></span>
+  <button type="button" class="foot-keys" id="hcBtn" aria-pressed="false" title="High-contrast theme (C)">&#9680; CONTRAST</button>
+  <button type="button" class="foot-keys" id="rmBtn" aria-pressed="false" title="Reduced motion (R)">&#9633; REDUCE</button>
+  <button type="button" class="foot-keys" id="keysBtn" aria-haspopup="dialog" aria-controls="keysDlg" title="Keyboard shortcuts (?)">? KEYS</button>
+  <span class="foot-note">Paper only. Voice can read data, run checks, score a mint, or log a paper idea. Nothing else.</span>
+</footer>
+
+<div class="keys-dlg" id="keysDlg" role="dialog" aria-modal="true" aria-labelledby="keysTitle" hidden>
+  <div class="keys-card">
+    <h2 id="keysTitle">Keyboard shortcuts</h2>
+    <dl class="keys-list">
+      <dt><kbd>Space</kbd> <span>hold</span></dt><dd>Push to talk to Zoora (also stops a spoken reply). With Zoora voice set up, holding Space or the orb asks Zoora anything (60 s max)</dd>
+      <dt><kbd>/</kbd></dt><dd>Type a command</dd>
+      <dt><kbd>&uarr;</kbd> <kbd>&darr;</kbd></dt><dd>Command history (in the command box)</dd>
+      <dt><kbd>1</kbd>&ndash;<kbd>9</kbd>, <kbd>0</kbd></dt><dd>Jump to panel 1&ndash;9, 0 for panel 10</dd>
+      <dt><kbd>I</kbd></dt><dd>Jump to the Intel terminal (panels 11&ndash;16)</dd>
+      <dt><kbd>M</kbd></dt><dd>Mute or unmute alarm chimes</dd>
+      <dt><kbd>S</kbd></dt><dd>Toggle London/New York session-open chime (off by default)</dd>
+      <dt><kbd>C</kbd></dt><dd>Toggle the high-contrast theme (follows your system setting until you choose)</dd>
+      <dt><kbd>R</kbd></dt><dd>Toggle reduced motion for the orb, sweep and grid (follows your system setting until you choose)</dd>
+      <dt><kbd>?</kbd></dt><dd>Show or hide this help</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Stop Zoora talking (barge-in), close this help, or leave the command box</dd>
+    </dl>
+    <p class="keys-foot">Shortcuts only read and navigate. Nothing here can trade or change state. Installable on this desktop (PWA); the offline shell never caches live API data.</p>
+    <button type="button" class="keys-close" id="keysClose">CLOSE</button>
+  </div>
+</div>
+
+<div class="zv-layer" id="zvLayer" hidden>
+  <section class="zv-holo zv-answer" id="zvAnswer" role="dialog" aria-modal="false" aria-labelledby="zvAnswerTag" hidden>
+    <i class="zv-c tl"></i><i class="zv-c tr"></i><i class="zv-c bl"></i><i class="zv-c br"></i>
+    <header><span class="zv-tag" id="zvAnswerTag">ZV · RESPONSE</span><span class="zv-sig" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b></span>
+      <button type="button" class="zv-close" aria-label="Close">✕</button></header>
+    <p class="zv-q" id="zvQ"></p>
+    <p class="zv-a" id="zvA" aria-live="polite"></p>
+    <footer>ZOORA VOICE · READ-ONLY · CANNOT TRADE, SPEND OR EDIT THE WORLD</footer>
+  </section>
+  <section class="zv-holo zv-sources" id="zvSources" role="dialog" aria-modal="false" aria-labelledby="zvSrcTag" hidden>
+    <i class="zv-c tl"></i><i class="zv-c tr"></i><i class="zv-c bl"></i><i class="zv-c br"></i>
+    <header><span class="zv-tag" id="zvSrcTag">SOURCES <em id="zvSrcCount"></em></span><button type="button" class="zv-close" aria-label="Close">✕</button></header>
+    <ol class="zv-src-list" id="zvSrcList"></ol>
+    <footer>WEB RESULTS ARE UNTRUSTED · LINKS OPEN IN A NEW TAB</footer>
+  </section>
+  <section class="zv-holo zv-setup" id="zvSetup" role="dialog" aria-modal="false" aria-labelledby="zvSetupTag" hidden>
+    <i class="zv-c tl"></i><i class="zv-c tr"></i><i class="zv-c bl"></i><i class="zv-c br"></i>
+    <header><span class="zv-tag" id="zvSetupTag">ZV · SETUP REQUIRED</span><button type="button" class="zv-close" aria-label="Close">✕</button></header>
+    <p class="zv-a" id="zvSetupMsg"></p>
+    <ul class="zv-slots" id="zvSlots"></ul>
+    <p class="zv-how">On your PC: <code>pip install -r aai/voice/requirements.txt</code>, then <code>py -m keyring set zoora-voice xai-key</code> (and <code>brave-key</code> for web search). Keys stay in the OS keyring, never in files.</p>
+    <footer>VOICE STAYS OFF UNTIL KEYS ARE IN THE OS KEYRING</footer>
+  </section>
+</div>
+
+<script src="/static/zoora/sessions.js?v={{V}}"></script>
+<script src="/static/zoora/zoora.js?v={{V}}"></script>
+<script src="/static/zoora/zoora-voice.js?v={{V}}"></script>
+</body>
+</html>

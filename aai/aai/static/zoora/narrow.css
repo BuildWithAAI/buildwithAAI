@@ -1,0 +1,10 @@
+/* 390 px console harness — external so CSP style-src 'self' stays strict (no inline). */
+html, body { margin: 0; background: #02060b; color: #7fa9b8; font: 12px/1.4 system-ui, sans-serif; }
+header { text-align: center; padding: 10px 12px 6px; letter-spacing: .08em; }
+header b { color: #3ef0ff; }
+#wrap {
+  width: 390px; height: 844px; margin: 0 auto 16px;
+  border: 1px solid #0a3a46; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 0 40px #0ff2; background: #02060b;
+}
+iframe { width: 390px; height: 844px; border: 0; display: block; background: #02060b; }
