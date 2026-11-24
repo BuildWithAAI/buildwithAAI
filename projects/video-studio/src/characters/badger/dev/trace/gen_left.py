@@ -2,16 +2,17 @@
 reference/crops/badger_coat_left.png ("CL" pixel space, 2x crop of the approved sheet).
 
 CL -> world mapping (binding scale from badger_size_comparison.png, ZOO = 900 units):
-  withers outer edge CL y=144 -> -312.6 ; ground CL y=443 -> 0          => ky = 1.0455
-  chest front CL x=137 -> -192 ; rump rear CL x=500 -> +156 (346 body)  => kx = 0.9587
+  withers outer edge CL y=144 -> -312.6 ; ground CL y=443 -> 0              => ky = 1.0455
+  chest front (outer) CL x=137 .. rump rear (outer) CL x=505 = 368 px -> 346 => kx = 0.9398
+  origin x: centre of the footprint (far-front toe CL 133 .. near-hind heel CL 527) -> 0
 """
 import json
 import sys
 sys.path.insert(0, __import__('os').path.dirname(__file__))
 from pathmap import map_path, ellipse_path
 
-KX, KY = 0.9587, 1.0455
-OX = -323.3
+KX, KY = 0.9398, 1.0455
+OX = -310.1
 
 
 def W(x, y):
@@ -74,8 +75,9 @@ torso_strokes = [
 torso_details = ['M 169 241 C 173 249 176 257 179 266']
 
 # ---------------------------------------------------------------- neck
-neck_fill = '''M 186 72 C 196 90 206 106 216 120 C 226 132 236 142 250 150 L 232 206 L 136 206
-L 140 190 C 141 178 141 168 139 158 C 136 146 131 133 126 120 C 122 108 132 92 150 84 C 164 77 176 71 186 72 Z'''
+# the hidden extension below the collar stays inside the chest for neck rotations of -5..+22 deg
+neck_fill = '''M 186 72 C 196 90 206 106 216 120 C 226 132 236 142 248 148 L 238 168 L 186 196 L 152 194
+L 142 183 C 141 176 141 168 139 158 C 136 146 131 133 126 120 C 122 108 132 92 150 84 C 164 77 176 71 186 72 Z'''
 neck_strokes = [
     'M 183 76 C 194 90 205 106 216 120 C 220 125 224 128 229 132',
     'M 125 118 C 130 130 135 143 139 156 C 141 165 141 172 141 179',

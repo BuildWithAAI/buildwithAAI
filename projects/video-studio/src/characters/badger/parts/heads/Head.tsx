@@ -28,10 +28,14 @@ type EyeGeom = {
 	readonly irisDX: number;
 	readonly irisDY: number;
 	readonly profile: boolean;
+	/** Rotation of the eye almond in degrees (pitched heads). */
+	readonly rot: number;
 };
 type BrowGeom = {readonly side: string; readonly outer: P; readonly mid: P; readonly inner: P};
 type MouthGeom = {readonly strokes: readonly string[]; readonly details: readonly string[]; readonly fills: readonly Fill[]};
 export type HeadViewGeom = {
+	/** Optional jaw-to-neck bridge drawn under the skull (profiles / looking up). */
+	readonly throat: {readonly fill: string; readonly stroke: string} | null;
 	readonly earsBehind: readonly EarGeom[];
 	readonly skull: {readonly fill: string; readonly strokes: readonly string[]; readonly details: readonly string[]};
 	readonly shadows: readonly Fill[];
@@ -42,6 +46,10 @@ export type HeadViewGeom = {
 	readonly brows: readonly BrowGeom[];
 	readonly mouth: Record<Expression, MouthGeom>;
 	readonly earsFront: readonly EarGeom[];
+	/** 3/4 views: clip the mouth to the skull so the far lip line hides behind the snout. */
+	readonly clipMouth: boolean;
+	/** 3/4 views: the lower-jaw contour. */
+	readonly chin: string | null;
 };
 
 const COLORS: Record<ColorKey, string> = {
@@ -71,20 +79,26 @@ const lerpP = (a: P, b: P, t: number): P => ({x: lerp(a.x, b.x, t), y: lerp(a.y,
 const pp = (p: P) => `${f1(p.x)} ${f1(p.y)}`;
 
 /** Per-expression eye scaling: shocked widens the eye opening and shows more white. */
-const EYE_SCALE: Record<Expression, {w: number; up: number; low: number; iris: number; open: number}> = {
-	neutral: {w: 1, up: 1, low: 1, iris: 1, open: 1},
-	happy: {w: 1, up: 0.96, low: 0.78, iris: 1, open: 0.97},
-	worried: {w: 1, up: 1.08, low: 1.05, iris: 0.98, open: 1},
-	shocked: {w: 1.08, up: 1.45, low: 1.4, iris: 0.86, open: 1},
+/** innerLift raises the inner half of the upper lid (worried), as a fraction of `up`. */
+const EYE_SCALE: Record<
+	Expression,
+	{w: number; up: number; low: number; iris: number; open: number; irisUp: number; innerLift: number; drop: number}
+> = {
+	neutral: {w: 1, up: 1, low: 1, iris: 1, open: 1, irisUp: 0, innerLift: 0, drop: 1},
+	happy: {w: 1, up: 0.95, low: 0.74, iris: 1, open: 0.96, irisUp: 0, innerLift: 0, drop: 0.9},
+	worried: {w: 0.98, up: 1.12, low: 1.06, iris: 0.97, open: 1, irisUp: 0.22, innerLift: 0.35, drop: -0.25},
+	shocked: {w: 1.06, up: 1.75, low: 1.45, iris: 0.8, open: 1, irisUp: 0, innerLift: 0, drop: 0.4},
 };
 
 /** Brow offsets (head-local units, + = down) per expression: [outer, mid, inner]. */
 const BROW_DY: Record<Expression, [number, number, number]> = {
 	neutral: [0, 0, 0],
-	happy: [-1.2, -1.8, -1.2],
-	worried: [1.8, -1.6, -6.5],
-	shocked: [-5, -7, -5],
+	happy: [-0.4, -0.9, -0.4],
+	worried: [2.4, -4.2, -8.5],
+	shocked: [-5.5, -8, -5.5],
 };
+/** Brow-line darkness per expression (0 = only the soft grey brow). */
+const BROW_INK: Record<Expression, number> = {neutral: 0, happy: 0.55, worried: 1, shocked: 1};
 const JUDGE_DY: [number, number, number] = [-0.6, 1.6, 3.4];
 
 const Eye: React.FC<{e: EyeGeom; st: HeadState; uid: string}> = ({e, st, uid}) => {
@@ -93,27 +107,28 @@ const Eye: React.FC<{e: EyeGeom; st: HeadState; uid: string}> = ({e, st, uid}) =
 	const up = e.up * k.up;
 	const low = e.low * k.low;
 	const s = e.inner;
-	const O = {x: e.c.x - s * w, y: e.c.y - e.drop / 2};
-	const I = {x: e.c.x + s * w, y: e.c.y + e.drop / 2};
+	const drop = e.drop * k.drop;
+	const O = {x: e.c.x - s * w, y: e.c.y - drop / 2};
+	const I = {x: e.c.x + s * w, y: e.c.y + drop / 2};
 	const X = (t: number) => O.x + s * 2 * w * t;
-	const u1 = {x: X(0.24), y: e.c.y - 1.333 * up - e.drop * 0.2};
-	const u2 = {x: X(0.74), y: e.c.y - 1.333 * up + e.drop * 0.05};
-	const l1 = {x: X(0.76), y: e.c.y + 1.333 * low + e.drop * 0.3};
-	const l2 = {x: X(0.28), y: e.c.y + 1.333 * low + e.drop * 0.05};
+	const u1 = {x: X(0.24), y: e.c.y - 1.333 * up - drop * 0.2};
+	const u2 = {x: X(0.74), y: e.c.y - 1.333 * up + drop * 0.05 - k.innerLift * up};
+	const l1 = {x: X(0.76), y: e.c.y + 1.333 * low + drop * 0.3};
+	const l2 = {x: X(0.28), y: e.c.y + 1.333 * low + drop * 0.05};
 	const almond = `M ${pp(O)} C ${pp(u1)} ${pp(u2)} ${pp(I)} C ${pp(l1)} ${pp(l2)} ${pp(O)} Z`;
 	// lid openness: expression base, lowered by `judge`, closed by `blink`
-	const open = Math.max(0, k.open * lerp(1, 0.56, st.judge) * (1 - st.blink));
+	const open = Math.max(0, k.open * lerp(1, 0.62, st.judge) * (1 - st.blink));
 	const k1 = lerpP(l2, u1, open);
 	const k2 = lerpP(l1, u2, open);
 	const lidCover = `M ${pp(O)} C ${pp(u1)} ${pp(u2)} ${pp(I)} C ${pp(k2)} ${pp(k1)} ${pp(O)} Z`;
 	const lidLine = `M ${pp(O)} C ${pp(k1)} ${pp(k2)} ${pp(I)}`;
 	const lowerLine = `M ${pp(I)} C ${pp(l1)} ${pp(l2)} ${pp(O)}`;
 	const r = e.irisR * k.iris;
-	const ic = {x: e.c.x + e.irisDX + st.lookX * w * 0.28, y: e.c.y + e.irisDY + st.lookY * up * 0.35};
+	const ic = {x: e.c.x + e.irisDX + st.lookX * w * 0.28, y: e.c.y + e.irisDY + st.lookY * up * 0.35 - k.irisUp * up};
 	const clip = `${uid}-eye${e.side}`;
 	const closed = open < 0.06;
 	return (
-		<g>
+		<g transform={e.rot ? `rotate(${e.rot} ${f1(e.c.x)} ${f1(e.c.y)})` : undefined}>
 			<clipPath id={clip}>
 				<path d={almond} />
 			</clipPath>
@@ -144,7 +159,7 @@ const Brow: React.FC<{b: BrowGeom; st: HeadState}> = ({b, st}) => {
 	const c2 = lerpP(i, m, 2 / 3);
 	const d = `M ${pp(o)} C ${pp(c1)} ${pp(c2)} ${pp(i)}`;
 	// soft grey brow always; a near-black brow line appears with expression intensity or judging
-	const intensity = Math.max(st.expression === 'neutral' ? 0 : 1, j);
+	const intensity = Math.max(BROW_INK[st.expression], j);
 	return (
 		<g>
 			<path d={d} fill="none" stroke={BADGER_COLORS.brow} strokeWidth={LINE.detailWidth * 1.1} strokeLinecap="round" />
@@ -198,6 +213,12 @@ export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, stat
 	const skullClip = `${uid}-skull`;
 	return (
 		<g data-head={view}>
+			{g.throat ? (
+				<g>
+					<path d={g.throat.fill} fill={BADGER_COLORS.coat} />
+					<path d={g.throat.stroke} {...STROKE} />
+				</g>
+			) : null}
 			{g.earsBehind.map((e) => (
 				<Ear key={e.side} ear={e} earsBack={state.earsBack} uid={`${uid}b`} />
 			))}
@@ -219,16 +240,19 @@ export const Head: React.FC<{view: BadgerHead; state: HeadState}> = ({view, stat
 			{g.skull.details.map((d, i) => (
 				<path key={`d${i}`} d={d} {...DETAIL} />
 			))}
-			{m.fills.map((x, i) => (
-				<path key={`mf${i}`} d={x.d} fill={col(x.color)} />
-			))}
-			{g.philtrum && state.expression !== 'shocked' ? <path d={g.philtrum} {...DETAIL} /> : null}
-			{m.strokes.map((d, i) => (
-				<path key={`ms${i}`} d={d} {...STROKE} />
-			))}
-			{m.details.map((d, i) => (
-				<path key={`md${i}`} d={d} {...DETAIL} />
-			))}
+			{g.chin ? <path d={g.chin} {...STROKE} /> : null}
+			<g clipPath={g.clipMouth ? `url(#${skullClip})` : undefined}>
+				{m.fills.map((x, i) => (
+					<path key={`mf${i}`} d={x.d} fill={col(x.color)} />
+				))}
+				{g.philtrum && state.expression !== 'shocked' ? <path d={g.philtrum} {...DETAIL} /> : null}
+				{m.strokes.map((d, i) => (
+					<path key={`ms${i}`} d={d} {...STROKE} />
+				))}
+				{m.details.map((d, i) => (
+					<path key={`md${i}`} d={d} {...DETAIL} />
+				))}
+			</g>
 			<path d={g.nose.d} fill={BADGER_COLORS.nose} {...{stroke: LINE.color, strokeWidth: LINE.width, strokeLinejoin: 'round' as const}} />
 			{g.eyes.map((e) => (
 				<Eye key={e.side} e={e} st={state} uid={uid} />

@@ -23,28 +23,36 @@ export const mouthDrops = (shape: MouthShape, mod: MouthMod) => {
 	return {hole: s.hole * (s.hole > 0 ? mod.openScale : 1), jaw: s.jaw * (s.jaw > 0 ? mod.openScale : 1)};
 };
 
-const makeMap = (spec: MouthSpec, mod: MouthMod) => {
+/** Maps a modified mouth-local point (origin = jaw anchor, front-view units) to head space. */
+export type MouthProjection = (x: number, y: number) => readonly [number, number];
+const FRONT_PROJECTION: MouthProjection = (x, y) => [PIVOTS.jaw.x + x, PIVOTS.jaw.y + y];
+
+const makeMap = (spec: MouthSpec, mod: MouthMod, project: MouthProjection) => {
 	const hw = halfWidth(spec);
-	const ax = PIVOTS.jaw.x;
-	const ay = PIVOTS.jaw.y;
 	return (p: Pt): Pt => {
 		const u = p[0] / hw; // -1..1
 		const tR = Math.pow(clamp01((u - 0.15) / 0.85), 1.6);
 		const tL = Math.pow(clamp01((-u - 0.15) / 0.85), 1.6);
-		const x = ax + p[0] * mod.widthScale + mod.cornerR * 0.35 * tR - mod.cornerL * 0.35 * tL;
-		const y = ay + p[1] * (spec.kind === 'open' ? mod.openScale : 1) - mod.cornerR * tR - mod.cornerL * tL + mod.wave * 0.8 * Math.sin(u * Math.PI);
+		const lx = p[0] * mod.widthScale + mod.cornerR * 0.35 * tR - mod.cornerL * 0.35 * tL;
+		const ly = p[1] * (spec.kind === 'open' ? mod.openScale : 1) - mod.cornerR * tR - mod.cornerL * tL + mod.wave * 0.8 * Math.sin(u * Math.PI);
+		const [x, y] = project(lx, ly);
 		return p.length === 3 ? [x, y, 'c'] : [x, y];
 	};
 };
 
-export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod}> = ({shape, mod = MOD0}) => {
+/**
+ * `project` lets other views reuse the same library: it receives the modified mouth-local point
+ * (front-view units, anatomical left = +x) and returns head-space coordinates. It never mirrors.
+ */
+export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: MouthProjection; lineScale?: number}> = ({shape, mod = MOD0, project = FRONT_PROJECTION, lineScale = 1}) => {
 	const spec = MOUTHS[shape];
-	const M = makeMap(spec, mod);
+	const M = makeMap(spec, mod, project);
 	if (spec.kind === 'line') {
 		return (
 			<g data-part="mouth" data-shape={shape}>
 				{spec.lowerLip ? <Stroke d={line(spec.lowerLip.map(M))} width={1.6} color={ZOO_COLORS.skinShadow} /> : null}
-				<Stroke d={line(spec.line.map(M))} width={spec.width} />
+				{mod.cornerR > 2 ? <Stroke name="smirkLip" d={line(([[-8, 3.4], [1, 4.4], [7, 3.8], [11.5, 2.2]] as Pt[]).map(M))} width={1.6} color={ZOO_COLORS.skinShadow} /> : null}
+				<Stroke d={line(spec.line.map(M))} width={spec.width * lineScale} />
 			</g>
 		);
 	}

@@ -5,9 +5,15 @@
 import React from 'react';
 import {BRAND, LINE, ZOO_COLORS} from '../../palette';
 
-export const PIN_CENTER = {x: 58, y: -662} as const;
+export const PIN_CENTER = {x: 58, y: -659} as const;
 
-export const JellyfishPin: React.FC<{x?: number; y?: number}> = ({x = PIN_CENTER.x, y = PIN_CENTER.y}) => {
+export const JellyfishPin: React.FC<{x?: number; y?: number; size?: number}> = ({x = PIN_CENTER.x, y = PIN_CENTER.y, size = 1.1}) => (
+	<g transform={`translate(${x} ${y}) scale(${size}) translate(${-x} ${-y})`}>
+		<PinShape x={x} y={y} />
+	</g>
+);
+
+const PinShape: React.FC<{x: number; y: number}> = ({x, y}) => {
 	const dome = `M${x - 7.2} ${y - 1} C${x - 7.2} ${y - 7.4} ${x - 3.6} ${y - 10.4} ${x} ${y - 10.4} C${x + 3.6} ${y - 10.4} ${x + 7.2} ${y - 7.4} ${x + 7.2} ${y - 1} C${x + 4.4} ${y - 0.1} ${x - 4.4} ${y - 0.1} ${x - 7.2} ${y - 1} Z`;
 	const tentacles = [-3.6, 0, 3.6].map(
 		(dx) => `M${x + dx} ${y + 0.4} C${x + dx - 1.3} ${y + 3} ${x + dx + 1.3} ${y + 5.4} ${x + dx} ${y + 8.6}`,

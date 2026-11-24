@@ -4,6 +4,7 @@ import sys
 
 left = json.load(open(sys.argv[1]))
 heads = json.load(open(sys.argv[2])) if len(sys.argv) > 3 else {'head': [], 'frontNeck': []}
+extra = [json.load(open(p)) for p in sys.argv[3:-1]]
 out = sys.argv[-1]
 
 
@@ -44,6 +45,8 @@ export type BadgerSpot = {
 	readonly path: string;
 	readonly ref: {readonly crop: string; readonly x: number; readonly y: number};
 	readonly desc: string;
+	/** Id of the same physical marking in another map (e.g. a top-map T- spot that is also a side-map spot). */
+	readonly sameAs?: string;
 };
 
 /** Spots counted on badger_coat_left.png: 11 (1 large withers patch + 10 smaller spots). */
@@ -118,5 +121,21 @@ for s in heads['frontNeck']:
 \t\tdesc: %s,
 \t},''' % (q(s['id']), q(s['side']), q(s['path']), q(s['ref']['crop']), s['ref']['x'], s['ref']['y'], q(s['desc'])))
 L.append('];')
+for block in extra:
+    L.append('')
+    L.append('/** %s */' % block['doc'])
+    L.append('export const %s: readonly BadgerSpot[] = [' % block['const'])
+    for s in block['spots']:
+        seg = ("\n\t\tsegment: %s," % q(s['segment'])) if s.get('segment') else ''
+        same = ("\n\t\tsameAs: %s," % q(s['sameAs'])) if s.get('sameAs') else ''
+        L.append('''\t{
+\t\tid: %s,
+\t\tside: %s,
+\t\tpart: %s,%s%s
+\t\tpath: %s,
+\t\tref: {crop: %s, x: %d, y: %d},
+\t\tdesc: %s,
+\t},''' % (q(s['id']), q(s['side']), q(s['part']), seg, same, q(s['path']), q(s['ref']['crop']), round(s['ref']['x']), round(s['ref']['y']), q(s['desc'])))
+    L.append('];')
 open(out, 'w').write('\n'.join(L) + '\n')
 print('wrote', out)

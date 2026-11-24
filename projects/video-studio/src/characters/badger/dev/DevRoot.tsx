@@ -1,9 +1,10 @@
 import React from 'react';
-import {AbsoluteFill, Composition} from 'remotion';
+import {AbsoluteFill, Composition, interpolate, useCurrentFrame} from 'remotion';
 import {BRAND} from '../../palette';
 import type {BadgerHead, Expression} from '../../types';
 import {Badger, LEFT_HEAD_MOUNT} from '../Badger';
-import {Head} from '../parts/heads/Head';
+import {ViewCompositions} from './DevViews';
+import {Head, headGeom} from '../parts/heads/Head';
 import {NeckFront} from '../parts/Neck';
 import {LEFT_RIG} from '../parts/rigLeft';
 import {LEFT_SPOTS, BadgerSpot} from '../spots';
@@ -58,7 +59,7 @@ const SpotsLeft: React.FC<{head: BadgerHead; scale: number; ox: number; oy: numb
 				return (
 					<g key={s.id}>
 						<line x1={px} y1={py} x2={px + 26} y2={py - 22} stroke="#D0342C" strokeWidth={1.5} />
-						<text x={px + 28} y={py - 24} fontFamily="sans-serif" fontSize={15} fontWeight={700} fill="#D0342C">
+						<text x={px + 28} y={py - 24} fontFamily="sans-serif" fontSize={15} fontWeight={700} fill="#D0342C" stroke="#FFFFFF" strokeWidth={3} paintOrder="stroke">
 							{s.id}
 						</text>
 					</g>
@@ -81,16 +82,29 @@ export const HEAD_VIEWS: BadgerHead[] = [
 	'upRightScreen',
 ];
 
-const Heads: React.FC = () => (
+/** Bounding-box centre of a head view (skull + ears) so every view sits centred in its cell. */
+const headCentre = (v: BadgerHead) => {
+	const g = headGeom(v);
+	const ds = [g.skull.fill, ...g.earsFront.flatMap((e) => e.fills.map((f) => f.d)), ...g.earsBehind.flatMap((e) => e.fills.map((f) => f.d))];
+	const n = ds.flatMap(numbers);
+	const xs = n.filter((_, i) => i % 2 === 0);
+	const ys = n.filter((_, i) => i % 2 === 1);
+	return {x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2};
+};
+
+const Heads: React.FC<{expression: Expression; judge: number}> = ({expression, judge}) => (
 	<AbsoluteFill style={{background: BG}}>
-		<svg width="100%" height="100%" viewBox="0 0 2100 420">
+		<svg width="100%" height="100%" viewBox="0 0 2450 440">
+			{HEAD_VIEWS.map((v, i) => {
+				const c = headCentre(v);
+				return (
+					<g key={v} transform={`translate(${175 + i * 350} 200) scale(2) translate(${-c.x} ${-c.y})`}>
+						<Head view={v} state={{expression, blink: 0, judge, earsBack: 0, lookX: 0, lookY: 0}} />
+					</g>
+				);
+			})}
 			{HEAD_VIEWS.map((v, i) => (
-				<g key={v} transform={`translate(${150 + i * 300} 300) scale(2)`}>
-					<Head view={v} state={{expression: 'neutral', blink: 0, judge: 0, earsBack: 0, lookX: 0, lookY: 0}} />
-				</g>
-			))}
-			{HEAD_VIEWS.map((v, i) => (
-				<text key={v} x={150 + i * 300} y={400} textAnchor="middle" fontFamily="sans-serif" fontSize={20} fill={BRAND.nearBlack}>
+				<text key={v} x={175 + i * 350} y={420} textAnchor="middle" fontFamily="sans-serif" fontSize={22} fill={BRAND.nearBlack}>
 					{v}
 				</text>
 			))}
@@ -121,13 +135,13 @@ export const Bust: React.FC<{expression: Expression; judge: number; blink?: numb
 
 const Expressions: React.FC = () => (
 	<AbsoluteFill style={{background: BG}}>
-		<svg width="100%" height="100%" viewBox="0 0 2200 520">
+		<svg width="100%" height="100%" viewBox="0 0 2200 600">
 			{EXPRS.map((e, i) => (
 				<g key={e.label}>
-					<g transform={`translate(${220 + i * 440} 250) scale(1.9)`}>
+					<g transform={`translate(${220 + i * 440} 330) scale(1.9)`}>
 						<Bust expression={e.expression} judge={e.judge} />
 					</g>
-					<text x={220 + i * 440} y={505} textAnchor="middle" fontFamily="sans-serif" fontSize={24} fill={BRAND.nearBlack}>
+					<text x={220 + i * 440} y={585} textAnchor="middle" fontFamily="sans-serif" fontSize={24} fill={BRAND.nearBlack}>
 						{e.label}
 					</text>
 				</g>
@@ -141,6 +155,47 @@ const SingleBust: React.FC<{expression: Expression; judge: number}> = ({expressi
 		<svg width="100%" height="100%" viewBox="0 0 410 400">
 			<g transform="translate(208 250) scale(1.8)">
 				<Bust expression={expression} judge={judge} />
+			</g>
+		</svg>
+	</AbsoluteFill>
+);
+
+/** Animated QA: 0-29 happy + wag, 30-44 blink at 36-40, 45-74 judge ramps in, 75-104 worried (ears back), 105-134 look up. */
+const Anim: React.FC = () => {
+	const frame = useCurrentFrame();
+	const expression: Expression = frame < 30 ? 'happy' : frame >= 75 && frame < 105 ? 'worried' : 'neutral';
+	const blink = frame >= 36 && frame <= 40 ? [0.4, 0.9, 1, 0.9, 0.4][frame - 36] : 0;
+	const judge = frame >= 45 && frame < 75 ? interpolate(frame, [45, 55], [0, 1], {extrapolateRight: 'clamp'}) : 0;
+	const lookUp = frame >= 105;
+	return (
+		<AbsoluteFill style={{background: BG}}>
+			<svg width="100%" height="100%" viewBox="0 0 1100 860">
+				<Badger
+					x={600}
+					y={800}
+					scale={1.6}
+					view="left"
+					pose={lookUp ? 'lookUp' : 'stand'}
+					head={lookUp ? undefined : 'front'}
+					expression={expression}
+					blink={blink}
+					judge={judge}
+					tailWag={frame < 30 ? frame / 12 : 0}
+				/>
+				<text x={20} y={34} fontFamily="sans-serif" fontSize={18} fill={BRAND.nearBlack}>
+					{`frame ${frame}`}
+				</text>
+			</svg>
+		</AbsoluteFill>
+	);
+};
+
+/** One head view at a known origin/scale (for overlays against the sheet crops). */
+const HeadAt: React.FC<{view: BadgerHead; ox: number; oy: number; scale: number; expression: Expression}> = ({view, ox, oy, scale, expression}) => (
+	<AbsoluteFill style={{background: BG}}>
+		<svg width="100%" height="100%" viewBox="0 0 600 500">
+			<g transform={`translate(${ox} ${oy}) scale(${scale})`}>
+				<Head view={view} state={{expression, blink: 0, judge: 0, earsBack: 0, lookX: 0, lookY: 0}} />
 			</g>
 		</svg>
 	</AbsoluteFill>
@@ -178,8 +233,8 @@ export const DevRoot: React.FC = () => (
 			height={860}
 			defaultProps={{head: 'profileLeftScreen' as BadgerHead, scale: 1.6, ox: 600, oy: 800}}
 		/>
-		<Composition id="BadgerHeads" component={Heads} durationInFrames={1} fps={30} width={2100} height={420} />
-		<Composition id="BadgerExpressions" component={Expressions} durationInFrames={1} fps={30} width={2200} height={520} />
+		<Composition id="BadgerHeads" component={Heads} durationInFrames={1} fps={30} width={2450} height={440} defaultProps={{expression: 'neutral' as Expression, judge: 0}} />
+		<Composition id="BadgerExpressions" component={Expressions} durationInFrames={1} fps={30} width={2200} height={600} />
 		<Composition
 			id="BadgerBust"
 			component={SingleBust}
@@ -189,6 +244,17 @@ export const DevRoot: React.FC = () => (
 			height={400}
 			defaultProps={{expression: 'neutral' as Expression, judge: 0}}
 		/>
+		<Composition
+			id="BadgerHeadAt"
+			component={HeadAt}
+			durationInFrames={1}
+			fps={30}
+			width={600}
+			height={500}
+			defaultProps={{view: 'profileRightScreen' as BadgerHead, ox: 300, oy: 300, scale: 2, expression: 'neutral' as Expression}}
+		/>
+		<ViewCompositions />
+		<Composition id="BadgerAnim" component={Anim} durationInFrames={135} fps={30} width={1100} height={860} />
 		<Composition
 			id="BadgerWag"
 			component={Stand}

@@ -9,17 +9,17 @@ import {smooth, type Pt} from '../geometry';
 import type {BrowPose} from '../rig';
 
 /** Anatomical right brow (screen left): straight, lower. Inner end first, clockwise. */
-const BROW_R: Pt[] = [
-	[-8.5, -835.6, 'c'], [-18, -836.6], [-29, -835.8], [-36.5, -832.2], [-41, -824.8, 'c'], [-35.5, -827.6], [-29, -828.8],
+export const BROW_R: Pt[] = [
+	[-8.5, -836.4, 'c'], [-18, -837.8], [-29, -837], [-36.8, -833.2], [-41, -824.8, 'c'], [-35.5, -827.6], [-29, -828.8],
 	[-18, -828.6], [-8.5, -828.7, 'c'],
 ];
 /** Anatomical left brow (screen right): raised, gently arched. */
-const BROW_L: Pt[] = [
-	[9, -837.6, 'c'], [17, -839.4], [27, -839.6], [35.5, -836.2], [40.8, -827.8, 'c'], [35, -830.8], [27, -832.8],
+export const BROW_L: Pt[] = [
+	[9, -838.4, 'c'], [17, -840.6], [27, -840.8], [35.8, -837.2], [40.8, -827.8, 'c'], [35, -830.8], [27, -832.8],
 	[17, -832.4], [9, -831, 'c'],
 ];
 
-const posed = (pts: Pt[], pose: BrowPose, lift: number): Pt[] => {
+export const posed = (pts: Pt[], pose: BrowPose, lift: number): Pt[] => {
 	const xs = pts.map((p) => Math.abs(p[0]));
 	const inner = Math.min(...xs);
 	const outer = Math.max(...xs);

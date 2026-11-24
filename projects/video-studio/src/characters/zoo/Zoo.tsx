@@ -6,6 +6,7 @@
  */
 import React from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
+import {BRAND} from '../palette';
 import type {ZooProps} from '../types';
 import {clamp} from './geometry';
 import {ARM_POINT, ARM_REST, armAnglesFor, breathOffset, PIVOTS, POINT_HAND_SWITCH} from './rig';
@@ -14,6 +15,8 @@ import {Head} from './parts/Head';
 import {Legs} from './parts/Legs';
 import {Neck} from './parts/Neck';
 import {CollarBack, Torso} from './parts/Torso';
+import {ZooThreeQuarter} from './views/ThreeQuarter';
+import type {ViewHeadProps} from './views/types';
 
 export type ZooExtraProps = {
 	/** Dev aid: draw the rig pivots as small markers. */
@@ -36,6 +39,11 @@ const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | '
 	const leftHand = pointing && p.poseAmount >= POINT_HAND_SWITCH ? 'point' : 'relaxed';
 	return (
 		<>
+			{/* Sleeves emerge from under the overshirt's shoulder and side contour, so the arms sit behind the torso. */}
+			<g data-part="arms" transform={`translate(0 ${dy})`}>
+				<Arm side="R" angles={ARM_REST} hand="relaxed" />
+				<Arm side="L" angles={leftAngles} hand={leftHand} />
+			</g>
 			<g data-part="torsoGroup" transform={`translate(0 ${hem}) scale(1 ${sy}) translate(0 ${-hem})`}>
 				<CollarBack />
 			</g>
@@ -47,19 +55,26 @@ const BreathingBody: React.FC<Required<Pick<ZooProps, 'expression' | 'blink' | '
 			</g>
 			<g data-part="upperBody" transform={`translate(0 ${dy})`}>
 				<Head expression={p.expression} mouth={p.mouth} blink={p.blink} browLift={p.browLift} lookX={p.lookX} lookY={p.lookY} headTilt={p.headTilt} />
-				<Arm side="R" angles={ARM_REST} hand="relaxed" />
-				<Arm side="L" angles={leftAngles} hand={leftHand} />
 				{p.showPivots ? <PivotMarkers /> : null}
 			</g>
 		</>
 	);
 };
 
+/** Non-front views share the breathing clock and head controls; each view draws its own parts. */
+const OtherView: React.FC<{view: Exclude<ZooProps['view'], 'front' | undefined>; head: ViewHeadProps; breathe: boolean; breathFrame?: number}> = ({view, head, breathe, breathFrame}) => {
+	const frame = useCurrentFrame();
+	const {fps} = useVideoConfig();
+	const breath = breathe ? breathOffset(breathFrame ?? frame, fps) : 0;
+	if (view === 'threeQuarter') return <ZooThreeQuarter head={head} breath={breath} />;
+	return null;
+};
+
 const PivotMarkers: React.FC = () => (
 	<g data-part="pivots">
 		{Object.entries(PIVOTS).map(([k, v]) => (
 			<g key={k}>
-				<circle cx={v.x} cy={v.y} r={3} fill="#ff2d55" />
+				<circle cx={v.x} cy={v.y} r={3} fill={BRAND.teal} stroke={BRAND.nearBlack} strokeWidth={1} />
 			</g>
 		))}
 	</g>
@@ -83,8 +98,25 @@ export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
 	breathe = true,
 	breathFrame,
 	showPivots,
-}) => (
-	<g data-character="zoo" data-view={view === 'front' ? 'front' : `front(fallback-for-${view})`} transform={`translate(${x} ${y}) scale(${scale})`}>
+}) => {
+	const head: ViewHeadProps = {
+		expression,
+		mouth,
+		blink: clamp(blink, 0, 1),
+		browLift: clamp(browLift, 0, 1),
+		lookX: clamp(lookX, -1, 1),
+		lookY: clamp(lookY, -1, 1),
+		headTilt: clamp(headTilt, -12, 12),
+	};
+	if (view !== 'front') {
+		return (
+			<g data-character="zoo" data-view={view} transform={`translate(${x} ${y}) scale(${scale})`}>
+				<OtherView view={view} head={head} breathe={breathe} breathFrame={breathFrame} />
+			</g>
+		);
+	}
+	return (
+	<g data-character="zoo" data-view="front" transform={`translate(${x} ${y}) scale(${scale})`}>
 		<Legs />
 		<BreathingBody
 			expression={expression}
@@ -101,7 +133,8 @@ export const ZooRig: React.FC<ZooProps & ZooExtraProps> = ({
 			showPivots={showPivots}
 		/>
 	</g>
-);
+	);
+};
 
 /** Full-frame transparent SVG layer containing ZOO (drop it into any AbsoluteFill). */
 export const Zoo: React.FC<ZooProps & ZooExtraProps> = (props) => {

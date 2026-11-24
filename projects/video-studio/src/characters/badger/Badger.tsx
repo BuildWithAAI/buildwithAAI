@@ -1,102 +1,90 @@
 import React from 'react';
 import {useCurrentFrame, useVideoConfig} from 'remotion';
-import type {BadgerHead, BadgerProps, BadgerView, Expression} from '../types';
-import {Head, HeadState} from './parts/heads/Head';
-import {Leg, LegAngles} from './parts/Leg';
-import {CollarLeft, NeckLeft} from './parts/Neck';
+import type {BadgerHead, BadgerPose, BadgerProps, BadgerView, Expression} from '../types';
+import {HeadState} from './parts/heads/Head';
 import {LEFT_RIG} from './parts/rigLeft';
-import {PartShape, clamp01, tr, useUid} from './parts/shared';
-import {SpotShapes} from './parts/SpotShapes';
-import {Tail} from './parts/Tail';
-import {spotsFor} from './spots';
+import {RIGHT_RIG} from './parts/rigRight';
+import {plantLegs, walkPose} from './parts/gait';
+import {HeadMount, SideBody, SidePose, STAND_POSE, spotsByPart} from './parts/SideBody';
+import {clamp01} from './parts/shared';
+import {LEFT_SPOTS, RIGHT_SPOTS} from './spots';
 
 /** Optional extras on top of the shared BadgerProps contract (all optional, nothing renamed). */
 export type BadgerExtraProps = {
 	/** Iris direction, -1..1 (screen). */
 	lookX?: number;
 	lookY?: number;
-	/** Extra neck rotation in degrees (+ raises the head toward vertical in the left view). */
+	/** Extra neck raise in degrees (+ raises the head toward vertical in the side views). */
 	neckTurn?: number;
 };
 
 export type BadgerAllProps = BadgerProps & BadgerExtraProps;
 
-/** Views implemented in rig v1. Other views fall back to 'left' (never a mirrored body). */
-export const IMPLEMENTED_VIEWS: readonly BadgerView[] = ['left'];
+/** Body views implemented. */
+export const IMPLEMENTED_VIEWS: readonly BadgerView[] = ['left', 'right'];
 
-/** Default head for each body view (left: the size-comparison panel shows a slight turn toward camera-left). */
+/**
+ * Default head for each body view. Left: the size-comparison panel shows the face turned to camera with only a
+ * slight lean to screen left, which matches 'front' better than the true 3/4 of the turnaround (decision D-07).
+ * Right: badger_coat_right.png and the turnaround side view draw the right profile head (pale ear near).
+ */
 export const DEFAULT_HEAD: Record<BadgerView, BadgerHead> = {
-	left: 'threeQuarterLeftScreen',
-	right: 'threeQuarterRightScreen',
+	left: 'front',
+	right: 'profileRightScreen',
 	front: 'front',
 	back: 'front',
 	threeQuarter: 'threeQuarterRightScreen',
 };
 
 /**
- * Where each replaceable head sits on the LEFT-view neck: neck rotation (deg, about the neck base) and
+ * Where each replaceable head sits on the LEFT-view neck: neck rotation (SVG deg, about the neck base) and
  * the head pivot offset from the neck's head mount (neck-local units). Tuned against the sheet panels.
  */
-export const LEFT_HEAD_MOUNT: Record<BadgerHead, {neck: number; dx: number; dy: number; rot: number}> = {
-	front: {neck: 7, dx: -21, dy: 18, rot: 0},
-	threeQuarterLeftScreen: {neck: 7, dx: -21, dy: 18, rot: 0},
+export const LEFT_HEAD_MOUNT: Record<BadgerHead, HeadMount> = {
+	front: {neck: 7, dx: -13, dy: 25, rot: 0},
+	threeQuarterLeftScreen: {neck: 7, dx: -17, dy: 25, rot: 0},
 	threeQuarterRightScreen: {neck: 7, dx: -8, dy: 16, rot: 0},
 	profileLeftScreen: {neck: 0, dx: 0, dy: 0, rot: 0},
 	profileRightScreen: {neck: 9, dx: 12, dy: 4, rot: 0},
-	upLeftScreen: {neck: 12, dx: 0, dy: 0, rot: 0},
+	upLeftScreen: {neck: 20, dx: 0, dy: 0, rot: 0},
 	upRightScreen: {neck: 14, dx: 10, dy: 2, rot: 0},
 };
 
+/** Head placement on the RIGHT-view neck (SVG deg; negative neck = raised for a right-facing dog). */
+export const RIGHT_HEAD_MOUNT: Record<BadgerHead, HeadMount> = {
+	front: {neck: -7, dx: 13, dy: 25, rot: 0},
+	threeQuarterRightScreen: {neck: -7, dx: 17, dy: 25, rot: 0},
+	threeQuarterLeftScreen: {neck: -7, dx: 8, dy: 16, rot: 0},
+	profileRightScreen: {neck: 0, dx: 0, dy: 0, rot: 0},
+	profileLeftScreen: {neck: -9, dx: -12, dy: 4, rot: 0},
+	upRightScreen: {neck: -20, dx: 0, dy: 0, rot: 0},
+	upLeftScreen: {neck: -14, dx: -10, dy: 2, rot: 0},
+};
+
+const LEFT_PARTS = spotsByPart(LEFT_SPOTS);
+const RIGHT_PARTS = spotsByPart(RIGHT_SPOTS);
+
 const DEFAULT_EARS_BACK: Record<Expression, number> = {neutral: 0, happy: 0, worried: 0.7, shocked: 0.15};
 
-const REST: LegAngles = {upper: 0, lower: 0, paw: 0};
+/**
+ * Right stand: the far (anatomical LEFT) front paw stands 23.4 units ahead of the near one. The leg is rotated
+ * from its shoulder (IK) rather than shifted, so its top stays hidden behind the chest (decision R-STANCE).
+ */
+const RIGHT_STAND: SidePose = {...STAND_POSE, legs: plantLegs(RIGHT_RIG, 1, STAND_POSE.body, {frontFar: {x: 23.4, y: 0}})};
 
-/** BADGER, left-side standing view (anatomical LEFT side toward camera, facing screen left). */
-const BadgerLeft: React.FC<{
-	head: BadgerHead;
-	headState: HeadState;
-	headTilt: number;
-	tailWag: number;
-	breath: number;
-	neckTurn: number;
-}> = ({head, headState, headTilt, tailWag, breath, neckTurn}) => {
-	const uid = useUid('bl');
-	const R = LEFT_RIG;
-	const M = R.mounts;
-	const hm = LEFT_HEAD_MOUNT[head];
-	const neckAngle = hm.neck + neckTurn;
-	const neckT = `${tr(M.neck, neckAngle)} translate(0 ${(-breath * 0.6).toFixed(2)})`;
-	const headT = `${neckT} translate(${R.neck.headMount.x + hm.dx} ${R.neck.headMount.y + hm.dy}) rotate(${hm.rot + headTilt})`;
-	// breathing: the chest rises and falls about the back line; legs keep their ground contact
-	const breathT = `translate(0 -72) scale(1 ${(1 + breath * 0.006).toFixed(4)}) translate(0 72)`;
-	// restrained wag: a swing about the root plus follow-through curl toward the tip
-	const ph = tailWag * Math.PI * 2;
-	const wag = tailWag ? 9 * Math.sin(ph) : 0;
-	const bend = tailWag ? 10 * Math.sin(ph - 0.9) : 0;
-	return (
-		<g transform={tr(R.torso.pivot)}>
-			<Leg geom={R.legHind} mount={M.legHindFar} angles={REST} uid={`${uid}-hf`} far />
-			<Leg geom={R.legFront} mount={M.legFrontFar} angles={REST} uid={`${uid}-ff`} far />
-			<Tail geom={R.tail} mount={M.tail} wag={wag} bend={bend} uid={uid} />
-			<g transform={neckT}>
-				<NeckLeft uid={uid} />
-			</g>
-			<g transform={breathT}>
-				<PartShape geom={R.torso} clipId={`${uid}-torso`}>
-					<SpotShapes spots={spotsFor('torso')} />
-				</PartShape>
-			</g>
-			<Leg geom={R.legHind} mount={M.legHindNear} angles={REST} uid={`${uid}-hn`} spots={spotsFor('legHindNear')} />
-			<Leg geom={R.legFront} mount={M.legFrontNear} angles={REST} uid={`${uid}-fn`} spots={spotsFor('legFrontNear')} />
-			<g transform={neckT}>
-				<CollarLeft neckAngle={neckAngle} />
-			</g>
-			<g transform={headT}>
-				<Head view={head} state={headState} />
-			</g>
-		</g>
-	);
+/** Pose state for the side rigs (facing-normalised, see SidePose). */
+export const sidePoseFor = (pose: BadgerPose, view: 'left' | 'right', walkPhase = 0): SidePose => {
+	const dir = view === 'right' ? 1 : -1;
+	const rig = view === 'right' ? RIGHT_RIG : LEFT_RIG;
+	switch (pose) {
+		case 'walk':
+			return walkPose(rig, dir, walkPhase, view);
+		default:
+			return view === 'right' ? RIGHT_STAND : STAND_POSE;
+	}
 };
+
+const lookUpHead = (dir: 1 | -1): BadgerHead => (dir === 1 ? 'upRightScreen' : 'upLeftScreen');
 
 /**
  * <Badger/>: renders an SVG <g>; place it inside an <svg> whose user units are pixels.
@@ -110,6 +98,7 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 		y = 0,
 		scale = 1,
 		view = 'left',
+		pose = 'stand',
 		expression = 'neutral',
 		headTilt = 0,
 		tailWag = 0,
@@ -119,7 +108,8 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 		neckTurn = 0,
 	} = props;
 	const bodyView: BadgerView = IMPLEMENTED_VIEWS.includes(view) ? view : 'left';
-	const head = props.head ?? (props.pose === 'lookUp' ? 'upLeftScreen' : DEFAULT_HEAD[bodyView]);
+	const dir: 1 | -1 = bodyView === 'right' ? 1 : -1;
+	const head = props.head ?? (pose === 'lookUp' ? lookUpHead(dir) : DEFAULT_HEAD[bodyView]);
 	const headState: HeadState = {
 		expression,
 		blink: clamp01(props.blink),
@@ -129,9 +119,42 @@ export const Badger: React.FC<BadgerAllProps> = (props) => {
 		lookY: Math.max(-1, Math.min(1, lookY)),
 	};
 	const breath = breathe ? Math.sin(((frame / fps) * Math.PI * 2) / 3.4) : 0;
+	const sidePose = sidePoseFor(pose, dir === 1 ? 'right' : 'left', props.walkPhase ?? 0);
 	return (
-		<g transform={`translate(${x} ${y}) scale(${scale})`} data-character="badger" data-view={bodyView}>
-			<BadgerLeft head={head} headState={headState} headTilt={headTilt} tailWag={tailWag} breath={breath} neckTurn={neckTurn} />
+		<g transform={`translate(${x} ${y}) scale(${scale})`} data-character="badger" data-view={bodyView} data-pose={pose}>
+			{dir === -1 ? (
+				<SideBody
+					rig={LEFT_RIG}
+					dir={-1}
+					spots={LEFT_PARTS}
+					backLineY={-72}
+					head={head}
+					headMount={LEFT_HEAD_MOUNT[head]}
+					headState={headState}
+					headTilt={headTilt}
+					tailWag={tailWag}
+					breath={breath}
+					neckTurn={neckTurn}
+					pose={sidePose}
+					uidPrefix="bl"
+				/>
+			) : (
+				<SideBody
+					rig={RIGHT_RIG}
+					dir={1}
+					spots={RIGHT_PARTS}
+					backLineY={-78}
+					head={head}
+					headMount={RIGHT_HEAD_MOUNT[head]}
+					headState={headState}
+					headTilt={headTilt}
+					tailWag={tailWag}
+					breath={breath}
+					neckTurn={neckTurn}
+					pose={sidePose}
+					uidPrefix="br"
+				/>
+			)}
 		</g>
 	);
 };

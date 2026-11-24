@@ -10,12 +10,12 @@ import {clamp, clamp01, lerp, lerpPts, line, safeId, smooth, type Pt} from '../g
 import {PIVOTS, type EyePose} from '../rig';
 
 // Eye-local units: origin at the eye centre, +x toward the OUTER corner, y down.
-const OUTER: Pt = [10.8, 1.2, 'c'];
-const INNER: Pt = [-10.6, -0.2, 'c'];
-const UPPER: Pt[] = [[8, -3.1], [1, -4.9], [-6.5, -4.4]]; // outer -> inner
-const LOWER: Pt[] = [[-7.5, 3.4], [0, 4.6], [7, 3.7]]; // inner -> outer
-const CLOSED: Pt[] = [[8, 2.4], [1, 3.5], [-6.5, 2.7]]; // lid edge when fully closed
-const IRIS = {x: -1.2, y: 0.5, r: 5.5, pupil: 3};
+export const OUTER: Pt = [10.8, 1.2, 'c'];
+export const INNER: Pt = [-10.6, -0.2, 'c'];
+export const UPPER: Pt[] = [[8, -3.5], [1, -5.5], [-6.5, -4.9]]; // outer -> inner
+export const LOWER: Pt[] = [[-7.5, 3.7], [0, 4.9], [7, 3.9]]; // inner -> outer
+export const CLOSED: Pt[] = [[8, 2.4], [1, 3.5], [-6.5, 2.7]]; // lid edge when fully closed
+export const IRIS = {x: -1.2, y: 0.5, r: 5.5, pupil: 3};
 
 type EyeProps = {side: 1 | -1; pose: EyePose; blink: number; lookX: number; lookY: number};
 

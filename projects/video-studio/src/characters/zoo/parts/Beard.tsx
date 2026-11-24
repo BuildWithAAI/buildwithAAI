@@ -11,14 +11,14 @@ import {smooth, type Pt} from '../geometry';
 import {Clipped} from './Shape';
 import {facePath} from './Face';
 
-const BEARD_BASE: Pt[] = [
+export const BEARD_BASE: Pt[] = [
 	[-62, -793], [-40, -789.5], [-37, -783], [-32, -773.7], [-27.5, -767.8], [-24.4, -764.4], [-21.8, -761.8],
 	[-17.2, -757.4], [-12, -754.6], [-7.6, -755.2], [-5.3, -757.8, 'c'], [-4.3, -761.4, 'c'], [4.3, -761.4, 'c'],
 	[5.3, -757.8, 'c'], [7.6, -755.2], [12, -754.6], [17.2, -757.4], [21.8, -761.8], [24.4, -764.4], [27.5, -767.8],
 	[32, -773.7], [37, -783], [40, -789.5], [62, -793], [62, -720], [-62, -720],
 ];
 
-const beardPoints = (hole: number, jawDrop: number): Pt[] =>
+export const beardPoints = (hole: number, jawDrop: number): Pt[] =>
 	BEARD_BASE.map((p) => {
 		if (Math.abs(p[0]) > 60) return p.length === 3 ? p : [p[0], p[1] + (p[1] > -760 ? jawDrop : 0)];
 		const w = Math.max(0, Math.min(1, (p[1] + 769) / 7)); // 0 near the moustache tips -> 1 at the lip patch
@@ -33,15 +33,15 @@ const beardShadow = (jawDrop: number) =>
 	]);
 
 /** Moustache, clockwise from the top centre. */
-const MOUSTACHE: Pt[] = [
+export const MOUSTACHE: Pt[] = [
 	[0, -782.6], [8, -782.6], [16, -780.6], [22, -776.6], [25.6, -771.4], [27.2, -765.6, 'c'], [24.4, -766.9],
 	[19.6, -769.7], [12, -771.6], [4.6, -772.3], [0, -773.8, 'c'], [-4.6, -772.3], [-12, -771.6], [-19.6, -769.7],
 	[-24.4, -766.9], [-27.2, -765.6, 'c'], [-25.6, -771.4], [-22, -776.6], [-16, -780.6], [-8, -782.6],
 ];
-const MOUSTACHE_SHADOW: Pt[] = [[-27, -769], [-18, -772.4], [-6, -774.2], [0, -775.4], [6, -774.2], [18, -772.4], [27, -769], [26, -763], [-26, -763]];
+export const MOUSTACHE_SHADOW: Pt[] = [[-27, -769], [-18, -772.4], [-6, -774.2], [0, -775.4], [6, -774.2], [18, -772.4], [27, -769], [26, -763], [-26, -763]];
 
 /** liftR > 0 raises the screen-right half (smirk); the left half barely moves. */
-const moustachePts = (pts: Pt[], liftR: number): Pt[] =>
+export const moustachePts = (pts: Pt[], liftR: number): Pt[] =>
 	pts.map((p) => {
 		const t = Math.max(0, p[0]) / 27;
 		const dy = -liftR * Math.pow(t, 1.2);

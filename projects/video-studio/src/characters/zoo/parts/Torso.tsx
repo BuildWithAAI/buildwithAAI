@@ -31,13 +31,13 @@ const PANEL_SR: Pt[] = [
 const PANEL_SHADOW_SL = smooth([[-123, -686], [-96, -695], [-92, -640], [-91, -470], [-93, -416], [-125, -416]]);
 const PANEL_SHADOW_SR = smooth([[123, -686], [96, -695], [92, -640], [91, -470], [93, -416], [125, -416]]);
 
-const COLLAR_BACK = smooth([[-33, -724], [-31, -741], [-16, -746.5], [0, -747.5], [16, -746.5], [31, -741], [33, -724]]);
+const COLLAR_BACK = smooth([[-31, -724], [-29, -738], [-15, -742.5], [0, -743.5], [15, -742.5], [29, -738], [31, -724]]);
 /** Screen-left collar leaf; the screen-right leaf is its garment mirror. */
-const COLLAR_SL: Pt[] = [[-26.5, -740], [-38, -738.6], [-50, -734.4], [-59.5, -724.5, 'c'], [-57.8, -713], [-50.5, -693.5, 'c'], [-42, -700.5], [-32.5, -711.5], [-25.6, -726]];
-const COLLAR_SHADOW_SL = smooth([[-60, -712], [-51, -690], [-41, -697], [-31, -709], [-23, -700], [-40, -684], [-54, -681], [-62, -696]]);
+const COLLAR_SL: Pt[] = [[-26, -738.4], [-37, -737], [-50, -731.6], [-62, -723.4, 'c'], [-59.4, -707.6], [-49.4, -688.6, 'c'], [-40.4, -696.6], [-31.2, -709], [-25, -724]];
+const COLLAR_SHADOW: Pt[] = [[-61, -706], [-50.4, -686], [-40.6, -693.4], [-31, -705.6], [-23, -697], [-38, -680], [-54, -676.6], [-63.6, -692]];
 
-const POCKET = smooth([[40, -641, 'c'], [80, -641, 'c'], [80, -606, 'c'], [60, -597.6, 'c'], [40, -606, 'c']]);
-const POCKET_HEM = line([[40.5, -634.4], [79.5, -634.4]]);
+const POCKET = smooth([[39, -637, 'c'], [81, -637, 'c'], [81, -601, 'c'], [60, -592.4, 'c'], [39, -601, 'c']]);
+const POCKET_HEM = line([[39.5, -630.4], [80.5, -630.4]]);
 const BUTTON_X = -28.4;
 const BUTTON_Y = [-686, -625, -567, -509, -452];
 
@@ -48,7 +48,8 @@ export const Torso: React.FC = () => (
 		<Shape name="overshirtRightPanel" d={smooth(PANEL_SL)} fill={ZOO_COLORS.overshirt} shadow={{d: PANEL_SHADOW_SL, fill: ZOO_COLORS.overshirtShadow}} />
 		<Shape name="overshirtLeftPanel" d={smooth(PANEL_SR)} fill={ZOO_COLORS.overshirt} shadow={{d: PANEL_SHADOW_SR, fill: ZOO_COLORS.overshirtShadow}} />
 		<g data-part="collarShadow">
-			<path d={COLLAR_SHADOW_SL} fill={ZOO_COLORS.overshirtShadow} />
+			<path d={smooth(COLLAR_SHADOW)} fill={ZOO_COLORS.overshirtShadow} />
+			<path d={smooth(mirrorX(COLLAR_SHADOW))} fill={ZOO_COLORS.overshirtShadow} />
 		</g>
 		<Shape name="collarR" d={smooth(COLLAR_SL)} fill={ZOO_COLORS.overshirt} />
 		<Shape name="collarL" d={smooth(mirrorX(COLLAR_SL))} fill={ZOO_COLORS.overshirt} />
@@ -58,7 +59,7 @@ export const Torso: React.FC = () => (
 		</g>
 		<g data-part="buttons">
 			{BUTTON_Y.map((y) => (
-				<circle key={y} cx={BUTTON_X} cy={y} r={3.4} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1.1} />
+				<circle key={y} cx={BUTTON_X} cy={y} r={3.7} fill={ZOO_COLORS.buttons} stroke={LINE.color} strokeWidth={1.1} />
 			))}
 		</g>
 		<JellyfishPin />

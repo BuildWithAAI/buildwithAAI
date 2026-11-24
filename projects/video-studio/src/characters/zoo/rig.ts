@@ -16,20 +16,20 @@ export const FRONT = {
 	chin: -740, // bottom of the beard at the chin
 	headHeight: 160, // hair top to chin
 	headsTall: 900 / 160, // 5.63
-	faceWidth: 86, // outline to outline at cheekbone level
-	headWidthWithHair: 157, // left tuft tip to right tuft tip
+	faceWidth: 87, // outer edge to outer edge of the outline at cheekbone level
+	headWidthWithHair: 157, // lower-left wing tip to right tuft tip
 	neckWidth: 56,
 	shoulderWidth: 246, // outer edge of left deltoid to outer edge of right deltoid
 	waistHem: -420, // overshirt hem
 	hipWidth: 160, // trouser outer edges at the hip
-	crotch: -390,
-	legLength: 390, // crotch to sole
-	inseamToAnkle: 335,
+	crotch: -392,
+	legLength: 392, // crotch to sole
+	trouserHem: -54,
 	upperArm: 140, // shoulder pivot to elbow pivot
 	forearm: 114, // elbow pivot to wrist pivot
 	handLength: 96, // wrist pivot to fingertips (relaxed)
-	handWidth: 38,
-	shoeLength: 95, // front-view width of one sneaker
+	handWidth: 48, // thumb to little-finger edge (relaxed, front view)
+	shoeWidth: 90, // front-view width of one sneaker, outline included
 	eyeSpacing: 46, // eye centre to eye centre
 	eyeLine: -816.5,
 	mouthLine: -768.3,
@@ -55,7 +55,7 @@ export type PivotName =
 
 export const PIVOTS: Record<PivotName, {x: number; y: number; parent: PivotName | null; note: string}> = {
 	root: {x: 0, y: 0, parent: null, note: 'ground contact point; placement x/y/scale apply here'},
-	legs: {x: 0, y: -390, parent: 'root', note: 'static in the front view (crotch)'},
+	legs: {x: 0, y: -392, parent: 'root', note: 'static in the front view (crotch)'},
 	torso: {x: 0, y: -420, parent: 'root', note: 'breathing scale origin at the hem; upper body rides on it'},
 	neck: {x: 0, y: -716, parent: 'torso', note: 'base of the neck at the tee neckline'},
 	head: {x: 0, y: -748, parent: 'neck', note: 'headTilt rotates the whole head here'},
@@ -81,7 +81,7 @@ export const PIVOTS: Record<PivotName, {x: number; y: number; parent: PivotName 
  */
 export type ArmAngles = {shoulder: number; elbow: number; wrist: number};
 export const ARM_REST: ArmAngles = {shoulder: 0, elbow: 0, wrist: 0};
-export const ARM_POINT: ArmAngles = {shoulder: -20, elbow: -116, wrist: 16};
+export const ARM_POINT: ArmAngles = {shoulder: -36, elbow: -107, wrist: 21};
 /** poseAmount at which the hand swaps from relaxed to pointing. */
 export const POINT_HAND_SWITCH = 0.35;
 /** Rotation (deg) that maps the pointing-hand drawing (index along +x) into the hand's local frame. */
@@ -129,11 +129,11 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	neutral: {browL: B0, browR: B0, eyes: E0, mouth: 'closed', mod: MOD0, crease: 0},
 	// Small asymmetric smirk: screen-right mouth corner and moustache lift; slight lower-lid squint.
 	happy: {
-		browL: {lift: 1.4, inner: 0, outer: 0.4, arch: 0.4},
-		browR: {lift: 1.2, inner: 0.4, outer: 0, arch: 0},
-		eyes: {lidTop: -0.4, lidBottom: 1.5, scale: 1, iris: 1},
+		browL: {lift: 2.6, inner: 0, outer: 0.4, arch: 0.6},
+		browR: {lift: 2.2, inner: 0.4, outer: 0, arch: 0.4},
+		eyes: {lidTop: 0.2, lidBottom: 1.1, scale: 1, iris: 1},
 		mouth: 'closed',
-		mod: {...MOD0, cornerL: 0.6, cornerR: 4.2, moustacheLiftR: 2.2},
+		mod: {...MOD0, cornerL: 1.4, cornerR: 6.4, moustacheLiftR: 3.4},
 		crease: 0,
 	},
 	// Worried: inner brow ends up, outer ends down, eyes a touch wider, mouth slightly downturned.
@@ -147,11 +147,11 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	},
 	// Shocked: brows high, eyes wide with smaller irises, medium open mouth.
 	shocked: {
-		browL: {lift: 4.4, inner: 0.6, outer: 0, arch: 1.4},
-		browR: {lift: 6.0, inner: 0.6, outer: 0, arch: 1.6},
-		eyes: {lidTop: 2.4, lidBottom: -0.9, scale: 1.12, iris: 0.8},
+		browL: {lift: 6.0, inner: 0.6, outer: 0, arch: 2.4},
+		browR: {lift: 7.4, inner: 0.6, outer: 0, arch: 2.6},
+		eyes: {lidTop: 4.2, lidBottom: -1.8, scale: 1.1, iris: 0.72},
 		mouth: 'ah',
-		mod: {...MOD0, openScale: 0.6},
+		mod: {...MOD0, openScale: 0.7, widthScale: 0.82},
 		crease: 0,
 	},
 };
