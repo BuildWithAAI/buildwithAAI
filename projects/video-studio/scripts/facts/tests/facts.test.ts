@@ -12,13 +12,15 @@ import {join} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {EMPTY_NAMES, findNames, findWallets, loadNames, namePatterns, parseNames, quietTypelessWarning} from '../lib/detectors.ts';
 import {factFromInput, promptFact} from '../lib/add.ts';
+import {makeFetcher} from '../lib/fetch.ts';
+import {checkedAddresses, hostProblem, isPrivateAddress, pinnedLookup, proxiedFor, type Address, type PinnedGet} from '../lib/netguard.ts';
 import {addDays} from '../lib/dates.ts';
 import {main} from '../lib/main.ts';
 import {extractAtoms, suggestNumbers, textHasNumber, unlistedFigures} from '../lib/numbers.ts';
 import {errorsOf, validateBank, validateFact} from '../lib/schema.ts';
 import {searchFacts} from '../lib/search.ts';
 import {dueFacts, freshness, isUsable, recheckDate} from '../lib/stale.ts';
-import {loadBank, serializeBank, hostAllowed} from '../lib/store.ts';
+import {InputError, loadBank, loadHosts, serializeBank, hostAllowed} from '../lib/store.ts';
 import {primarySource, resolveStoryboard, rewriteText, scanFactTags, topLevelValueSpan} from '../lib/storyboard.ts';
 import {containsExcerpt, embeddedText, fold, visibleText} from '../lib/text.ts';
 import type {Fact, FactSource} from '../lib/types.ts';
@@ -300,6 +302,105 @@ describe('verify and confirm', () => {
 	});
 });
 
+describe('verify --any-host: every hop is a public name with public addresses', () => {
+	const PUBLIC: Address[] = [{address: '104.18.12.33', family: 4}];
+	const dns =
+		(map: Record<string, string[]>) =>
+		async (host: string): Promise<Address[]> => {
+			const a = map[host];
+			if (!a) throw Object.assign(new Error('not found'), {code: 'ENOTFOUND'});
+			return a.map((address) => ({address, family: address.includes(':') ? 6 : 4}));
+		};
+	type Call = {url: string; addresses: Address[]};
+	const pinned = (responses: Record<string, {status: number; location?: string; body?: string}>, calls: Call[]): PinnedGet => async (url, addresses) => {
+		calls.push({url, addresses});
+		const r = responses[url] ?? {status: 404};
+		return {status: r.status, header: (n: string) => (n.toLowerCase() === 'location' ? (r.location ?? null) : n.toLowerCase() === 'content-type' ? 'text/html' : null), body: r.body ?? ''};
+	};
+	const anyHost = (map: Record<string, string[]>, responses: Record<string, {status: number; location?: string; body?: string}>, calls: Call[], proxied = false) =>
+		makeFetcher({allow: 'any', delayMs: 0, resolve: dns(map), get: pinned(responses, calls), proxied});
+
+	test('host names: IP literals, single labels and local-only names are refused before any lookup', () => {
+		for (const h of ['127.0.0.1', '[::1]', '169.254.169.254', '10.0.0.1', '0.0.0.0', 'localhost', 'intranet', 'router.local', 'db.internal', 'nas.home.arpa', 'box.lan', 'x.123'])
+			assert.ok(hostProblem(h), `${h} must be refused`);
+		for (const h of ['decrypt.co', 'www.coindesk.com', 'crypto.news', 'cointelegraph.com']) assert.equal(hostProblem(h), null, h);
+	});
+	test('addresses: loopback, private, shared, link-local, unique-local, mapped and reserved ranges are not public', () => {
+		for (const a of ['127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '100.64.0.1', '100.127.255.254', '0.0.0.0', '224.0.0.1', '255.255.255.255', '192.0.2.10', '198.51.100.7', '203.0.113.9', '::1', '::', 'fc00::1', 'fd12:3456::1', 'fe80::1', 'ff02::1', '::ffff:127.0.0.1', '::ffff:10.0.0.1', '64:ff9b::a00:1', '2001:db8::1', '2002:a00:1::1', 'not-an-ip'])
+			assert.equal(isPrivateAddress(a), true, a);
+		for (const a of ['8.8.8.8', '104.18.12.33', '172.32.0.1', '100.128.0.1', '2606:4700::6810:1', '2a00:1450:4001::200e', '::ffff:8.8.8.8'])
+			assert.equal(isPrivateAddress(a), false, a);
+	});
+	test('a name that resolves to any private address is refused; a public one is pinned to exactly what was checked', async () => {
+		assert.deepEqual(await checkedAddresses('decrypt.co', dns({'decrypt.co': ['104.18.12.33']})), {ok: true, addresses: PUBLIC});
+		const mixed = await checkedAddresses('evil.example.com', dns({'evil.example.com': ['104.18.12.33', '10.0.0.7']}));
+		assert.equal(mixed.ok, false);
+		const lookup = pinnedLookup([{address: '104.18.12.33', family: 4}, {address: '2606:4700::6810:1', family: 6}]) as unknown as (h: string, o: unknown, cb: (e: Error | null, a: unknown, f?: number) => void) => void;
+		lookup('decrypt.co', {all: true}, (_e, a) => assert.deepEqual(a, [{address: '104.18.12.33', family: 4}, {address: '2606:4700::6810:1', family: 6}]));
+		lookup('decrypt.co', {}, (_e, a, f) => assert.deepEqual([a, f], ['104.18.12.33', 4]));
+	});
+	test('the review\'s SSRF probes are refused: loopback, metadata, localhost, [::1], a redirect to 10.0.0.1, a rebinding name', async () => {
+		const calls: Call[] = [];
+		const f = anyHost(
+			{'decrypt.co': ['104.18.12.33'], 'rebind.example.com': ['10.0.0.5'], 'hop.example.com': ['104.18.12.34'], 'inner.example.com': ['192.168.0.10']},
+			{
+				'https://decrypt.co/349433/x': {status: 302, location: 'https://10.0.0.1/router'},
+				'https://hop.example.com/a': {status: 301, location: '//inner.example.com/admin'},
+			},
+			calls,
+		);
+		for (const url of ['https://127.0.0.1:8443/admin', 'https://169.254.169.254/latest/meta-data/', 'https://localhost/', 'https://[::1]/', 'https://rebind.example.com/'])
+			assert.deepEqual([url, (await f(url)).ok], [url, false]);
+		assert.equal(calls.length, 0, 'nothing was fetched');
+		const redirected = await f('https://decrypt.co/349433/x');
+		assert.equal(redirected.ok, false);
+		assert.match((redirected as {reason: string}).reason, /redirected to 10\.0\.0\.1/);
+		const viaName = await f('https://hop.example.com/a');
+		assert.match((viaName as {reason: string}).reason, /redirected to inner\.example\.com: .*private or reserved/);
+		assert.deepEqual(calls.map((c) => c.url), ['https://decrypt.co/349433/x', 'https://hop.example.com/a'], 'only the public first hops were requested');
+		assert.ok((await f('http://decrypt.co/plain')).ok === false, 'http is never fetched');
+	});
+	test('a public page is read through the pinned connection, with the checked addresses', async () => {
+		const calls: Call[] = [];
+		const f = anyHost({'decrypt.co': ['104.18.12.33'], 'www.decrypt.co': ['104.18.12.33']}, {'https://decrypt.co/a': {status: 301, location: 'https://www.decrypt.co/a'}, 'https://www.decrypt.co/a': {status: 200, body: '<p>hello</p>'}}, calls);
+		const r = await f('https://decrypt.co/a');
+		assert.ok(r.ok);
+		assert.equal(r.ok && r.page.finalUrl, 'https://www.decrypt.co/a');
+		assert.deepEqual(calls.map((c) => c.addresses), [PUBLIC, PUBLIC]);
+	});
+	test('behind a proxy: a name this machine cannot resolve goes to the proxy; one that resolves privately is still refused', async (t) => {
+		const seen: string[] = [];
+		const original = globalThis.fetch;
+		globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+			seen.push(`${String(url)} ${init?.redirect}`);
+			return new Response('<p>via proxy</p>', {status: 200, headers: {'content-type': 'text/html'}});
+		}) as typeof fetch;
+		t.after(() => void (globalThis.fetch = original));
+		const calls: Call[] = [];
+		const f = anyHost({'private.example.com': ['127.0.0.1']}, {}, calls, true);
+		const ok = await f('https://unresolvable.example.com/a');
+		assert.ok(ok.ok);
+		assert.deepEqual(seen, ['https://unresolvable.example.com/a manual']);
+		assert.equal((await f('https://private.example.com/a')).ok, false);
+		assert.equal(calls.length, 0);
+		assert.equal(proxiedFor('decrypt.co', {HTTPS_PROXY: 'http://proxy:3128'}), true);
+		assert.equal(proxiedFor('decrypt.co', {HTTPS_PROXY: 'http://proxy:3128', NO_PROXY: '.decrypt.co'}), false);
+		assert.equal(proxiedFor('decrypt.co', {}), false);
+	});
+	test('hosts.json: every allowlist entry is a public name of two or more labels', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'facts-hosts-'));
+		const write = (allow: unknown) => {
+			const p = join(dir, `${Math.random().toString(36).slice(2)}.json`);
+			writeFileSync(p, JSON.stringify({allow}));
+			return p;
+		};
+		assert.deepEqual(loadHosts(write(['crypto.news', 'www.theblock.co'])).allow, ['crypto.news', 'www.theblock.co']);
+		for (const bad of [['localhost'], ['com'], ['127.0.0.1'], ['10.0.0.1'], ['host.123'], ['Crypto.News'], ['-bad.example'], [''], [7]])
+			assert.throws(() => loadHosts(write(bad)), InputError, JSON.stringify(bad));
+		assert.ok(loadHosts().allow.length > 0, 'the committed hosts.json loads');
+	});
+});
+
 describe('stale logic', () => {
 	test('fresh through recheckAfter, stale the day after', () => {
 		const f = fact({volatility: 'volatile', recheckAfter: addDays(TODAY, 30)});
@@ -420,6 +521,23 @@ describe('to-storyboard', () => {
 		const r = resolveStoryboard(sb('Claim [fact:pumpfun-launch-day-deaths].'), [safe], CTX);
 		assert.equal((r.storyboard.sources as Array<{title: string}>)[0].title, 'crypto.news report on the CoinGecko study');
 		assert.ok(rules({...direct, sources: [{...direct.sources[0], cardTitle: 'A calmer headline'}]}).includes('source-card-title'));
+	});
+	test('what the sources card shows passes the shared income-claim lint: a headline with a claim needs a clean cardTitle', () => {
+		const headline = (title: string, cardTitle?: string) => ({...direct, sources: [{...direct.sources[0], title, ...(cardTitle === undefined ? {} : {cardTitle})}]});
+		// the Alpha Arena headline: the studio's lint reads "20x" as a 100x-style multiplier claim
+		assert.ok(rules(headline('ChatGPT Last In Crypto Trading Race, Qwen3 Wins With 20x Bitcoin Long')).includes('source-card-claim'));
+		assert.ok(rules(headline('Get rich with memecoins, guaranteed')).includes('source-card-claim'));
+		assert.ok(rules(headline('Ganancias garantizadas con memecoins')).includes('source-card-claim'));
+		// a cardTitle that names the publisher replaces it on the card, so the fact is usable again
+		const fixed = headline('ChatGPT Last In Crypto Trading Race, Qwen3 Wins With 20x Bitcoin Long', 'crypto.news on the trading contest');
+		assert.ok(!rules(fixed).includes('source-card-claim'));
+		const r = resolveStoryboard(sb('Claim [fact:pumpfun-launch-day-deaths].'), [fixed], CTX);
+		assert.equal((r.storyboard.sources as Array<{title: string}>)[0].title, 'crypto.news on the trading contest');
+		// the cardTitle itself is linted too; a plain headline with a year or a percentage is fine
+		assert.ok(rules(headline('A calm headline', 'crypto.news: risk-free 100x picks')).includes('source-card-claim'));
+		assert.ok(!rules(headline("Pump.fun's token factory has a 69% launch-day death rate: CoinGecko")).includes('source-card-claim'));
+		const unusable = resolveStoryboard(sb('Claim [fact:pumpfun-launch-day-deaths].'), [headline('Qwen3 Wins With 20x Bitcoin Long')], CTX);
+		assert.ok(errorsOf(unusable.findings).length > 0, 'to-storyboard refuses a fact whose card would show the claim');
 	});
 	test('a translation without the fact in its language warns', () => {
 		const r = resolveStoryboard(sb('Afirmación [fact:pumpfun-launch-day-deaths].', {lang: 'es'}), [direct], CTX);

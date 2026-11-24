@@ -9,12 +9,12 @@ The tools and rules are in `docs/FACT_BANK.md`.
 
 ## Rules applied
 
-1. **Only claims the checker marked "holds".** Claims marked unsupported, overstated or wrong were not imported, even when a page now supports them.
+1. **Only claims the checker marked "holds".** Claims marked unsupported, overstated or wrong were not imported, even when a page now supports them. One clause is the exception, and its fact records both origins: `goat-150-million-oct-2024` says the Truth Terminal bot endorsed GOAT but did not launch it. That clause comes from row 30 of `ai-agent-hedge-fund/research.md`, which the checker marked "overstated" as a whole while its note confirms this part (someone else launched GOAT and tagged the bot, which endorsed it); the research's "confirmed · safe" summary says the same, and the fact's excerpt, read directly, states it.
 2. **The safe wording.** Each statement follows the checker's note: attribution ("Bubblemaps alleged", "Sparsity Research estimated"), "about" or "over" where the checker said so, and no figure the research's "Must not say" list bans. The checker's caveats are in each fact's `notes`.
 3. **No private individuals.** Statements, notes and excerpts name no caller, defendant, plaintiff, founder, developer, attacker or contest winner. When a source sentence contains a name, the excerpt leaves the name out with `…`. No source URL in the bank contains a person's name or handle. A scan of the bank against a list of every name and handle seen in the source pages found none. That list stayed in scratch and was not committed.
 4. **Verbatim excerpts.** Every excerpt is copied from the live page, at most 280 characters, and contains the claim's figures or names. `…` joins passages of the same page in page order. No excerpt is a paraphrase.
 5. **Honest verification labels.**
-   - **Imported as `search-extract` (24 facts).** The checker cited this outlet and page for this claim, and the checker's evidence was search-engine extracts. The source carries a `search` check that says so.
+   - **Imported as `search-extract` (24 facts).** The checker cited this outlet and page for this claim, and the checker's evidence was search-engine extracts. The source carries a `search` check that says so. For three sources the research names only the outlet, not the page, so the page was chosen at import: `bubblemaps-side-wallets-business-model` (crypto.news), `elizaos-token-declared-dead` (its Cointelegraph source) and `pumpfun-livestream-back-5pct` (Cointelegraph). Their `search` checks say "outlet cited by the checker, page chosen at import".
    - **Imported as `unverified` (15 facts).** The checker's own pages are unreadable here, mostly The Block, CryptoSlate, Kraken, sec.gov and court sites, so the bank cites a different article on an allowed host. The checker never saw that article, so the import records no search check for it.
 6. **Re-verified by direct fetch.** On 2026-11-24, `node scripts/facts/cli.ts verify --all` fetched every source from the allowed hosts (crypto.news, decrypt.co, cointelegraph.com, coinedition.com) and found every excerpt on its page. All 39 facts are now `direct-read`, and every source carries the `verify` check that proves it. Nobody marked a fact verified by hand.
 
@@ -43,7 +43,7 @@ The tools and rules are in `docs/FACT_BANK.md`.
 | `ai16z-elizaos-token-swap` | 1:6 migration to ELIZAOS | unverified | crypto.news |
 | `ai16z-lawsuit-alleged-human-control` | The complaint alleges human or insider control | unverified | crypto.news |
 | `elizaos-token-declared-dead` | Founder: "the token is dead"; foundation winding down; -19% | search-extract | cointelegraph.com, crypto.news, decrypt.co |
-| `goat-150-million-oct-2024` | GOAT just under $150M on Oct 14 (Birdeye) | search-extract | cointelegraph.com |
+| `goat-150-million-oct-2024` | GOAT just under $150M on Oct 14 (Birdeye), row 31; the "endorsed, did not launch" clause from row 30 (see rule 1) | search-extract | cointelegraph.com |
 | `freysa-prize-pool-47k` | Freysa Act I: about $47K, attempt 482, 195 players | search-extract | cointelegraph.com |
 | `freysa-fee-mechanics` | Freysa fees: +0.78% per message, 70% to the pool | search-extract | cointelegraph.com |
 | `aixbt-dashboard-breach` | aixbt: dashboard access, 55.5 ETH (about $100K), Mar 18, 2025 | search-extract | cointelegraph.com |
@@ -58,7 +58,7 @@ The tools and rules are in `docs/FACT_BANK.md`.
 | `numerai-series-c-500m-valuation` | Series C $30M at a $500M valuation (Nov 20, 2025) | search-extract | decrypt.co (press release) |
 | `numerai-jpmorgan-capacity` | JPMorgan AM up to $500M of capacity (Aug 2025) | search-extract | decrypt.co, crypto.news |
 | `numerai-aum-growth` | AUM about $60M to $550M | search-extract | decrypt.co |
-| `alpha-arena-season-1-setup` | Season 1: $10K per model on Hyperliquid, from Oct 18, 2025 | unverified | cointelegraph.com |
+| `alpha-arena-season-1-setup` | Season 1 from Oct 18, 2025 on Hyperliquid: $200 per bot at the start, later $10K per model | unverified | cointelegraph.com |
 | `alpha-arena-season-1-result` | Qwen first, GPT-5 last (direction only, see below) | unverified | cointelegraph.com |
 | `sec-ai-washing-first-cases` | SEC 2024-36: Delphia and Global Predictions, $400K total | unverified | decrypt.co |
 
@@ -87,7 +87,7 @@ Every fact also carries Spanish and Brazilian Portuguese statements, marked `tra
 
 ## Found during re-verification
 
-- **Headlines that cannot go on screen.** The episode's sources card shows "title · domain". Five sources have a headline that conflicts with the research's Must-not-say list: "Gaslit Into Losing Millions", "Real-World ... Exploits", "$100K a month" (an unverified allegation), "to Beggar", and "threats" (self-harm). Their facts carry a `cardTitle` that names the publisher, and `to-storyboard` puts that on the card instead. The real headline stays in `title`. Decrypt's aixbt article ("Token Falls 20%", also must-not-say) was not used.
+- **Headlines that cannot go on screen.** The episode's sources card shows "title · domain". Five sources have a headline that conflicts with the research's Must-not-say list: "Gaslit Into Losing Millions", "Real-World ... Exploits", "$100K a month" (an unverified allegation), "to Beggar", and "threats" (self-harm). Their facts carry a `cardTitle` that names the publisher, and `to-storyboard` puts that on the card instead. The real headline stays in `title`. Decrypt's aixbt article ("Token Falls 20%", also must-not-say) was not used. A later review found a sixth: Cointelegraph's Alpha Arena headline ("…Qwen3 Wins With 20x Bitcoin Long") is a multiplier claim under the studio's income lint, so both Alpha Arena facts carry the card title "Cointelegraph on Alpha Arena Season 1", and `validate` now runs that lint on every card title.
 - **Dates differ by outlet.** Sparsity's report is dated Nov. 10 (crypto.news) or Nov. 15 (Coinotag), so the statement leaves the date out. Pump.fun's 5% livestream reopening is April 4 (Cointelegraph) or April 5 (crypto.news).
 - **Now readable but not imported.** Decrypt (decrypt.co/295717) says ai16z's agent "has not yet bought anything with the DAO's treasury because it's still in the testing phase". The checker marked that claim *unsupported* because it could not see the page. It needs the owner's review before it becomes a fact.
 

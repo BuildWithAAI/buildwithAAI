@@ -44,7 +44,7 @@ export const farmRequest = (config: BatchConfig, week: string, long: PlanItem, s
 		entry: format?.entry ?? 'src/episode/index.ts',
 		encrypt: true,
 		retentionDays: 7,
-		voice: [{...base, lang: 'en', voice: ZOO_VOICE}, ...dubs.map((lang) => ({...base, lang, voice: ZOO_VOICE, fitTo: 'en' as const}))],
+		voice: [{...base, lang: 'en', voice: ZOO_VOICE}, ...dubs.map((lang): FarmVoice => ({...base, lang, voice: ZOO_VOICE, fitTo: 'en'}))],
 		jobs: [
 			{composition: longComp, kind: 'video', output: long.paths.render, props: {...base, lang: 'en'}},
 			...shorts.map((s) => ({composition: shortComp, kind: 'video' as const, output: s.paths.render, props: {...base, lang: 'en', shortId: s.renderId}})),

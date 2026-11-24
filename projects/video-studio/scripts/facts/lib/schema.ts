@@ -3,8 +3,10 @@
  * warnings are listed for the owner. The core rule: every figure in the statement is listed in numbers[], every listed
  * figure is in at least one source excerpt, and every excerpt contains a figure or an entity of the claim.
  * Private names and wallet addresses use the claim gate's own detectors (copied in lib/detectors.ts, checked against
- * scripts/claims/lib by a parity test), so both gates agree.
+ * scripts/claims/lib by a parity test), so both gates agree. What a sources card would show (cardTitle, else the
+ * headline) must pass the studio's shared income-claim lint (scripts/assets/lib/lint.ts), like every other asset.
  */
+import {INCOME_CLAIMS} from '../../assets/lib/lint.ts';
 import {findNames, findWallets, KIND_LABEL, type NameList} from './detectors.ts';
 import {daysBetween, isIsoDate} from './dates.ts';
 import {digitRuns, entityAliases, hasEntity, statementHasNumber, textHasNumber, unlistedFigures} from './numbers.ts';
@@ -134,6 +136,18 @@ export const validateFact = (raw: unknown, ctx: ValidateContext, where = ''): Fi
 			else if (typeof s.publisher !== 'string' || !s.cardTitle.toLowerCase().includes(s.publisher.toLowerCase()))
 				err('source-card-title', w('cardTitle'), 'cardTitle must name the publisher (set "publisher" and use it in the card title), so it is never mistaken for the headline');
 		}
+		// the sources card shows cardTitle, else the headline: either way it is on screen, so it passes the income lint
+		const shownKey = typeof s.cardTitle === 'string' && s.cardTitle.trim() ? 'cardTitle' : 'title';
+		const shown = typeof s[shownKey] === 'string' ? (s[shownKey] as string) : '';
+		const claim = INCOME_CLAIMS.find((r) => r.pattern.test(shown));
+		if (claim)
+			err(
+				'source-card-claim',
+				w(shownKey),
+				shownKey === 'cardTitle'
+					? `the cardTitle makes an income or return claim (${claim.label}); the sources card shows it on screen: reword it`
+					: `the headline makes an income or return claim (${claim.label}) and the sources card would show it on screen: add a cardTitle that names the publisher (for example "${typeof s.publisher === 'string' && s.publisher.trim() ? s.publisher : 'Publisher'} on <the topic>")`,
+			);
 		if (s.published !== undefined && !isIsoDate(s.published)) err('source-published', w('published'), 'published must be a YYYY-MM-DD date');
 		if (!TIERS.includes(s.tier as never)) err('source-tier', w('tier'), `tier must be one of ${TIERS.join(', ')}`);
 		if (!isIsoDate(s.accessed)) err('source-accessed', w('accessed'), 'accessed must be a YYYY-MM-DD date');

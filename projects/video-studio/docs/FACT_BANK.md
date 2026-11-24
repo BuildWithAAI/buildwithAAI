@@ -7,10 +7,10 @@ Built 2026-11-24 (owner request 5, "Reusable fact bank"). TypeScript runs direct
 | Path | What it is |
 | --- | --- |
 | `content/facts/facts.jsonl` | The bank: one fact per line, sorted by id, keys in a fixed order (a change to a fact is a one-line diff). |
-| `content/facts/hosts.json` | The hosts `verify` may fetch: the news hosts the owner allowed in this environment, with what each returned on 2026-11-24. |
+| `content/facts/hosts.json` | The hosts `verify` may fetch: the news hosts the owner allowed in this environment, with what each returned on 2026-11-24. Every entry is a public host name of at least two labels (`crypto.news`): no IP address, no single label such as `localhost`. |
 | `content/facts/SEED.md` | Where the first 39 facts came from, what was left out, and why. |
 | `scripts/facts/cli.ts` | The CLI (entry point). The code is in `scripts/facts/lib/`. |
-| `scripts/facts/tests/facts.test.ts` | Tests: 52 cases, no network. |
+| `scripts/facts/tests/facts.test.ts` | Tests: 62 cases, no network. |
 
 ## A fact
 
@@ -41,7 +41,7 @@ Built 2026-11-24 (owner request 5, "Reusable fact bank"). TypeScript runs direct
 | `sources[]` | At least one. `url` (https only, at most once per fact), `title` (the page's headline), `tier` (`primary`: the original document or the company's own release; `secondary`: a news outlet with editors; `tertiary`: aggregators, flash news, vendor blogs, social posts), `accessed`, `excerpt`, `checks`. Optional: `publisher`, `published`, and `cardTitle` (below). |
 | `excerpt` | **At most 280 characters, copied from the page, never paraphrased.** `…` (or `...`) joins passages of the same page in page order, and can leave out a private person's name. Each passage is at least 8 characters. Every excerpt must contain at least one of the claim's figures or entities, and every listed figure must be in at least one excerpt. |
 | `checks[]` | The source's history, oldest first, last 10 kept: `{at, by: verify \| person \| search, result: found \| missing \| unreachable \| not-allowed, detail}`. `direct-read` is valid only with a `found` check by `verify` or `person` dated `verifiedAt`. `search-extract` needs a `found` check by `search`. Only the tools write `verify` and `person` checks. |
-| `cardTitle` | Optional. Replaces the headline on the episode's sources card (which shows "title · domain") when the headline overstates the claim or repeats a must-not-say line, for example "…Gaslit Into Losing Millions". It must name the publisher. |
+| `cardTitle` | Optional. Replaces the headline on the episode's sources card (which shows "title · domain") when the headline overstates the claim or repeats a must-not-say line, for example "…Gaslit Into Losing Millions". It must name the publisher. Whatever the card would show (`cardTitle`, else `title`) must pass the studio's shared income-claim lint (`scripts/assets/lib/lint.ts`, the list every asset and the weekly page use): a headline such as "…Qwen3 Wins With 20x Bitcoin Long" is an error (`source-card-claim`) until the source has a clean `cardTitle`, such as "Cointelegraph on Alpha Arena Season 1". |
 | `languages` | `{es?, pt-br?, hi?, it?, zh?, ja?}`, each `{statement, translation: machine \| human, reviewed?}`. A translation whose digits differ from the English is a warning. Only the owner sets `reviewed: true`. |
 | `usage` | `"<channel>/<slug>"` of every episode that cites the fact. `to-storyboard --write` maintains it, so a correction can find every video that used the fact. |
 | `notes` | How to say it safely: the research checker's caveats and must-not-say lines. |
@@ -56,7 +56,7 @@ Built 2026-11-24 (owner request 5, "Reusable fact bank"). TypeScript runs direct
 | `fewer than 5`, `under 10%` | anything at or below |
 | `nearly 50%`, `just under $150 million` | at or below, and at least 80% of the figure |
 
-**Privacy.** Statements, notes, entities, titles, URLs, excerpts and translations are checked against the claim gate's own detectors (`scripts/claims/lib/names.ts`, `wallets.ts`). That means the private names list `data/private/names.txt` (gitignored) when it exists, wallet-like strings, and the redaction placeholder "[named person]". A matched name is never printed: the message says "private name #N".
+**Privacy.** Statements, notes, entities, titles, URLs, excerpts and translations are checked against the claim gate's own detectors. `scripts/facts/lib/detectors.ts` holds a copy of them (`scripts/claims/lib/names.ts`, `wallets.ts`, `quiet.ts`), so the fact bank runs on any checkout, and a parity test compares the copy with the claim gate whenever `scripts/claims` is present. That means the private names list `data/private/names.txt` (gitignored) when it exists, wallet-like strings, and the redaction placeholder "[named person]". A matched name is never printed: the message says "private name #N".
 
 ## Commands (run from `projects/video-studio/`)
 
@@ -104,11 +104,19 @@ A source whose last read was `missing` is never cited. `confirm` is for pages th
 
 **Network.** This cloud session reaches the web through an HTTPS proxy that Node's `fetch` ignores, so `cli.ts verify` re-runs itself with `NODE_USE_ENV_PROXY=1`. Adding hosts to `hosts.json` does not open them: the owner approves hosts in the environment settings first. On a machine with open network, such as GitHub Actions or a laptop, `verify --all-due --any-host` reads any https source. A monthly `verify --all-due` keeps volatile facts fresh. It exits 1 when a fact stays unusable, so a person looks.
 
+**`--any-host` reads only the public web** (`scripts/facts/lib/netguard.ts`). A fact's source URL is text someone wrote into the bank, and a page can redirect anywhere, so every hop is checked before it is requested:
+
+- the host must be a public DNS name: an IP literal (`127.0.0.1`, `[::1]`, `169.254.169.254`), a single label (`localhost`) or a local-only name (`*.local`, `*.internal`, `*.home.arpa` and similar) is refused;
+- every address the name resolves to must be public: loopback, private (RFC 1918), shared (`100.64.0.0/10`), link-local (`169.254.0.0/16`, `fe80::/10`), unique-local (`fc00::/7`), unspecified, multicast, documentation and IPv4-mapped forms of those are refused;
+- without a proxy, the connection goes only to the addresses that were checked (a pinned lookup for `https.request`; TLS still checks the certificate against the name), so a DNS answer that changes between the check and the connection cannot reach an internal address.
+
+Behind an HTTPS proxy (this session, many CI runners) the proxy resolves and connects, and its own rules apply; a name this machine can still resolve is checked first. A refused hop is recorded as `not-allowed` and nothing is fetched.
+
 ## The seed
 
 The 39 facts imported on 2026-11-24 are the research fact-checker's "holds" verdicts for the two Zoora AI episodes:
 
-- 24 facts were imported as `search-extract`, where the checker cited that page.
+- 24 facts were imported as `search-extract`, where the checker cited that page. For three of them the research names only the outlet, not the page; their `search` checks say "outlet cited by the checker, page chosen at import".
 - 15 were imported as `unverified`, where the bank cites a different article on an allowed host because the checker's page is unreadable here.
 
 All 39 were then re-verified by direct fetch: every excerpt was on its page, so every fact is `direct-read`. `content/facts/SEED.md` lists each fact and every "holds" claim left out, with the reason. The reasons include private individuals, must-not-say figures, and sources this session cannot read. It also lists the conflicts found along the way.
