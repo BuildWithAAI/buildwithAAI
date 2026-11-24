@@ -1,0 +1,1 @@
+{"key": "https://www.okx.com/api/v5/market/index-tickers?{\"instId\": \"BTC-USDT\"}", "recorded_at": 1793756936.8881602, "as": "json", "body": {"code": "0", "data": [{"instId": "BTC-USDT", "idxPx": "76922.4", "high24h": "78067.2", "low24h": "76381.5", "open24h": "77203.1", "sodUtc0": "77451.5", "sodUtc8": "77691.1", "ts": "1793756936019"}], "msg": ""}}

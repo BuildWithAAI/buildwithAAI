@@ -1,0 +1,1 @@
+{"key": "https://openapi.blofin.com/api/v1/market/mark-price?{\"instId\": \"BTC-USDT\"}", "recorded_at": 1793756933.6237035, "as": "json", "body": {"code": "0", "msg": "success", "data": [{"instId": "BTC-USDT", "indexPrice": "76932.1", "markPrice": "76910.7", "ts": "1793756933491"}]}}
