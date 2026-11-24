@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "offers": [
+    {
+      "id": "hardware-wallet",
+      "name": "Example hardware wallet (replace)",
+      "url": "https://example.com/?ref=REPLACE",
+      "category": "security",
+      "relationship": "affiliate",
+      "disclosure": "Affiliate link: I may earn a commission if you buy. It costs you nothing extra.",
+      "blockedCountries": [],
+      "unknownCountry": "allow",
+      "active": false,
+      "termsUrl": "https://example.com/affiliate-terms",
+      "notes": "Placeholder. Security products fit the channel; check programme terms before activating."
+    },
+    {
+      "id": "bybit",
+      "name": "Bybit",
+      "url": "https://www.bybit.com/invite?ref=REPLACE",
+      "category": "exchange",
+      "relationship": "referral",
+      "disclosure": "Referral link: I earn a share of fees if you sign up and trade. Crypto trading is high risk. Not financial advice.",
+      "blockedCountries": ["US", "GB"],
+      "unknownCountry": "block",
+      "active": false,
+      "termsUrl": "https://bybit.com/en/help-center/article/Service-Restricted-Countries",
+      "restrictedReason": "This exchange does not offer its services in your country, so this link is not available here.",
+      "alternatives": ["hardware-wallet"],
+      "notes": "Copy the FULL restricted list from Bybit's Service Restricted Countries page and its affiliate terms before activating. US is excluded per Bybit (checked 2026-11-24). UK is blocked until UK affiliate terms are confirmed."
+    }
+  ]
+}

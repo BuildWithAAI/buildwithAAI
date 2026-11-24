@@ -1,0 +1,20 @@
+{
+  "name": "creator-hub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Zoora AI creator business tools: tracked link hub, video-service order page, email signup, comment scam guard, revenue dashboard, newsletter drafts.",
+  "type": "module",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "start": "node src/server/main.ts",
+    "test": "node --test \"src/**/*.test.ts\" \"tools/**/*.test.ts\" \"test/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "guard": "node tools/comment-guard/cli.ts",
+    "dashboard": "node tools/dashboard/cli.ts",
+    "newsletter": "node tools/newsletter/cli.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.12",
+    "typescript": "5.9.3"
+  }
+}

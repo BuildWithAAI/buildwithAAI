@@ -1,0 +1,8 @@
+node_modules/
+data/
+config/offers.json
+config/studio.json
+config/youtube-oauth.json
+*.sqlite
+*.sqlite-*
+out/
