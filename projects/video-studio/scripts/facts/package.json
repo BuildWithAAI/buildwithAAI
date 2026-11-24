@@ -1,0 +1,6 @@
+{
+  "name": "zoora-fact-bank",
+  "private": true,
+  "type": "module",
+  "description": "Reusable fact bank (scripts/facts): verified facts with sources, resolved into storyboards for the claim gate. Run with node directly; see docs/FACT_BANK.md. No dependencies."
+}

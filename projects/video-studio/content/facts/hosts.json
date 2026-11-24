@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "about": "Hosts `node scripts/facts/cli.ts verify` may fetch. They are the news hosts the owner allowed in this cloud environment (2026-11-24). Any other host is reported 'not-allowed' and nothing is fetched; widening this list needs the owner's approval in the environment settings first. On a machine with open network (GitHub Actions, a laptop) use --any-host instead.",
+  "allow": [
+    "crypto.news",
+    "theblock.co",
+    "decrypt.co",
+    "coindesk.com",
+    "cointelegraph.com",
+    "thedefiant.io",
+    "coinedition.com",
+    "blockworks.co"
+  ],
+  "notes": {
+    "crypto.news": "2026-11-24: HTTP 200, article text in the HTML. Verifiable here.",
+    "decrypt.co": "2026-11-24: HTTP 200, article text in the HTML. Verifiable here.",
+    "cointelegraph.com": "2026-11-24: HTTP 200, article text in the HTML. Verifiable here.",
+    "coinedition.com": "2026-11-24: HTTP 200, article text in the HTML. Verifiable here.",
+    "theblock.co": "2026-11-24: www.theblock.co answers HTTP 403 with a Cloudflare bot challenge; verify reports it as unreachable. Read it in a browser and use confirm.",
+    "coindesk.com": "2026-11-24: www.coindesk.com answers HTTP 429 with a Vercel security checkpoint; verify reports it as unreachable. Read it in a browser and use confirm.",
+    "thedefiant.io": "2026-11-24: HTTP 403 Cloudflare block page; verify reports it as unreachable. Read it in a browser and use confirm.",
+    "blockworks.co": "2026-11-24: answers verify with HTTP 403 (Cloudflare bot challenge), and other clients with a 308 redirect to blockworks.com, which this environment does not allow (verify reports such a redirect as not-allowed). Unreadable here either way: read it in a browser and use confirm."
+  }
+}
