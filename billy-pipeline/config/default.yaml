@@ -1,0 +1,82 @@
+# billy-pipeline default configuration. All paths relative to the project root.
+assets: [BTC, ETH, XRP, LTC, LINK]
+handle: cryptoWZRD_
+user_id: "1100373132135804928"
+
+paths:
+  root: .
+  seed_posts: [/workspace/billy/raw_posts.jsonl]
+  inbox_dir: data/inbox
+  posts_store: data/posts.jsonl
+  signals_store: data/signals.jsonl
+  state_file: data/state.json
+  cache_db: data/cache/market.sqlite
+  events_file: config/events.yaml
+  reports_dir: reports
+  paper_ledger: data/paper/ledger.jsonl
+
+market:
+  base_url: https://data-api.binance.vision   # public market data only, no keys
+  quote: USDT
+  intervals: [1h, 4h, 1d]
+  history_start: "2023-06-01"
+
+strategy:
+  rules: [breakout, retest]
+  scenario_strength: directional   # explicit = only scenarios that say "long"/"short"
+  n_hold: 2                        # consecutive 1h closes beyond level ("holding above")
+  retest_tol_pct: 0.3
+  stop_mode: structural            # structural | close_back
+  stop_atr_mult: 0.5
+  atr_period: 14
+  min_rr: 1.0
+  fallback_target_r: 2.0
+  max_chase_pct: 1.0
+  max_level_distance_pct: 15.0
+  signal_ttl_hours: 24
+  time_stop_hours: 72
+  skip_indecisive: false
+  require_bias_alignment: true
+  btc_filter: true
+  skip_on_position_mismatch: false
+  position_mismatch_tol_pct: 1.0
+  event_blackout_before_h: 2
+  event_blackout_after_h: 2
+  partial_at_r: 1.0
+  partial_fraction: 0.5
+  breakeven_after_partial: true
+
+risk:
+  base_risk_pct: 1.0       # default per trade
+  confirmed_risk_pct: 2.0  # bias + BTC aligned + explicit trade
+  max_trade_risk_pct: 3.0  # hard cap (validator refuses > 3)
+  max_total_risk_pct: 3.0  # hard cap on summed open risk (crypto treated as one correlated book)
+  daily_loss_limit_pct: 3.0
+  max_positions_per_asset: 1
+  max_notional_per_trade_pct: 100
+  max_gross_notional_pct: 200
+  corr_lookback_days: 30
+  corr_threshold: 0.7
+  correlated_size_mult: 0.5
+  weekend_size_mult: 1.0
+
+costs:
+  fee_bps: 10
+  slippage_bps: 5
+
+backtest:
+  start_equity: 10000
+  start: "2026-05-01"   # dense post history starts 2026-05-02 (one isolated 2023 post is excluded)
+  oos_fraction: 0.3
+  wf_train_days: 60
+  wf_test_days: 30
+  min_trades_for_selection: 10
+
+execution:
+  mode: paper
+  live_enabled: false
+  live_confirmation: ""
+
+signals:
+  notional_equity: 10000   # EXAMPLE equity for sizing only
+  lookback_hours: 36
