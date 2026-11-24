@@ -10,6 +10,7 @@ Scale: each panel is scaled so its head matches the shared replaceable 3/4 head 
 the sit's front leg (elbow to ground) comes out at 179 units against 180 in the standing three-quarter view.
 """
 import json
+import math
 import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
@@ -214,20 +215,21 @@ class MirroredPose:
         self.pivots = {k: {'x': round(-v['x'], 1), 'y': v['y']} for k, v in src.pivots.items()}
         self.spots = []
 
-    def spot(self, sid, side, part, shape, desc, size_k=KL):
+    def spot(self, sid, side, part, shape, desc, size_k=KL, ref=None):
         """shape: (cx, cy, rx, ry, rot) in the right-facing pose's crop px (rx/ry in coat-map px scaled by size_k), or a
-        point list in crop px. Placed on the left-facing body."""
+        point list in crop px. Placed on the left-facing body. ref: optional (crop, x, y) of the source drawing."""
         f = lambda x, y: (-(x - self.src.cx) * self.src.s, (y - self.src.ground) * self.src.s)
         if isinstance(shape, tuple):
             cx, cy, rx, ry, rot = shape
             pts = blob(cx, cy, rx * size_k, ry * size_k, rot)
-            ref = (cx, cy)
+            at = (self.crop, cx, cy)
         else:
             pts = shape
-            ref = shape[0][:2]
+            at = (self.crop,) + tuple(shape[0][:2])
+        crop, rx_, ry_ = ref or at
         d = map_path(spline(pts, closed=True), f)
         self.spots.append({'id': sid, 'side': side, 'part': part, 'path': d,
-                           'ref': {'crop': self.crop, 'x': ref[0], 'y': ref[1]}, 'desc': desc})
+                           'ref': {'crop': crop, 'x': rx_, 'y': ry_}, 'desc': desc})
 
 
 sl = MirroredPose(sp, 'sitLeft')
@@ -245,7 +247,49 @@ sl.spot('L-06', 'left', 'haunch', (171, 298, 7.5, 11.5, -60), 'front of the left
 sl.spot('L-07', 'left', 'haunch', (125, 300, 5, 9.2, -40), 'back of the left thigh (rear of the folded haunch)')
 sl.spot('L-08', 'left', 'haunch', (124, 331, 4.6, 6, -70), 'left gaskin, low on the folded haunch above the hock')
 sl.spot('L-09', 'left', 'legFrontNear', (226.1, 270.6, 7.6, 12.2, -3), 'forearm of the near (left) front leg')
-sl.spot('R-08', 'right', 'legFrontFar', (263.0, 272.1, 8.4, 4.4, -85.4), 'right forearm R-08 on the far front leg (edge)', size_k=1.0)
+# Round-3 repair (R2 final review, major): R-08 on the far (anatomical RIGHT) forearm is authored from badger_coat_right.png's
+# OWN R-08. v1/round 2 placed it with the right-facing sit's L-09 record, which made it an exact x-mirror of L-09 (a flipped
+# marking). Every number below comes from coat_right or from this sit's own far-leg geometry, never from an L- record:
+#  * height: on coat_right R-08's centre (y 313.8) sits 35.2% of the way down the right forearm, from the elbow tip (y 268,
+#    top of the leg's rear contour, row scan) to the wrist cut (FRONT_WRIST y 398). On the sit panel the far forearm runs
+#    from its elbow crease (y 238, the diagonal crease between the legs) to the wrist above the paw (y 338);
+#  * size: coat_right's own semi-axes (12.2 along the forearm, 8.0 across, CR px) scaled to the sit panel (K_SIT); the
+#    across-leg axis is foreshortened to 0.70 because only the far leg's outer edge shows (the sit panel draws its far
+#    forearm mark about 4.5 px wide against a 6.2-6.5 px half-width);
+#  * tilt: coat_right's own tilt against the forearm axis (-1.5 deg; that forearm is vertical), on this far leg's own axis;
+#  * place: centred on the far leg's front edge (the outline of the mirrored, unmarked silhouette), so the leg clip shows
+#    the half of the spot that wraps round that edge.
+# The test src/characters/badger/tests/spotsNoMirror.test.ts fails if any record is an x-mirror of another.
+K_SIT = 0.97 / 1.196
+CR_R08 = (408.0, 313.8, 12.2, 8.0, 88.5)          # gen_right.py R-08 (CR px)
+CR_ELBOW_Y, CR_WRIST_Y = 268.0, 398.0
+SIT_FAR_ELBOW_Y, SIT_FAR_WRIST_Y = 238.0, 338.0
+EDGE_K = 0.70
+SIT_FAR_EDGE = [tuple(p) for p in load('sit.json')['chest']]   # far leg's front edge (right-facing panel px)
+
+
+def _edge_at(line, y):
+    """x and the line's direction (deg, y down) where the traced edge crosses height y."""
+    for a, b in zip(line, line[1:]):
+        if (a[1] - y) * (b[1] - y) <= 0 and a[1] != b[1]:
+            t = (y - a[1]) / (b[1] - a[1])
+            return a[0] + (b[0] - a[0]) * t
+    raise ValueError('edge does not reach y=%s' % y)
+
+
+_u08 = (CR_R08[1] - CR_ELBOW_Y) / (CR_WRIST_Y - CR_ELBOW_Y)
+_y08 = SIT_FAR_ELBOW_Y + _u08 * (SIT_FAR_WRIST_Y - SIT_FAR_ELBOW_Y)
+_x08 = _edge_at(SIT_FAR_EDGE, _y08)
+_ya, _yb = _y08 - 12.0, _y08 + 12.0
+_leg_axis = math.degrees(math.atan2(_yb - _ya, _edge_at(SIT_FAR_EDGE, _yb) - _edge_at(SIT_FAR_EDGE, _ya)))
+_tilt08 = CR_R08[4] - 90.0
+# the shape is given in the right-facing panel's px and placed on the left-facing body (x -> -x maps an angle a to 180 - a):
+# the long axis lies on the left-facing far leg's axis (180 - _leg_axis) turned by coat_right's tilt
+_rot08 = 180.0 - ((180.0 - _leg_axis) + _tilt08)
+sl.spot('R-08', 'right', 'legFrontFar', (round(_x08, 2), round(_y08, 2), round(CR_R08[2] * K_SIT, 2), round(CR_R08[3] * K_SIT * EDGE_K, 2),
+                                         round(_rot08, 1)),
+        'right forearm R-08 on the far front leg (its outer edge), authored from badger_coat_right.png R-08', size_k=1.0,
+        ref=('badger_coat_right.png', 408, 314))
 sl.spot('L-NECK', 'left', 'neck', (208, 110, 4.6, 7.4, -20), 'side of the neck below the dark left ear, above the collar')
 
 ll = MirroredPose(lp, 'lieLeft')

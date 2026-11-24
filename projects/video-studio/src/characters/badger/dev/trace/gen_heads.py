@@ -522,6 +522,12 @@ def rebuild_three_quarter(view, theta):
     near_id, far_id = ('H-CHEEK-R', 'H-CHEEK-L') if right else ('H-CHEEK-L', 'H-CHEEK-R')
     cx, cy = TQ_CHEEK_NEAR
     src = FRONT['cheekR'] if right else FRONT['cheekL']
+    # round-3 repair: the screen-left turn's near cheek is the anatomical LEFT spot, placed by its OWN front-view position
+    # relative to the right one (badger_expr_neutral.png: both 74 px from the face centre, the left one 2 px higher), so it
+    # is not the right cheek's 3/4 position mirrored (tests/spotsNoMirror.test.ts measured that pair 0.32 units apart)
+    if not right:
+        cx = cx - ((FRONT['cheekL'][0] - 208) - (208 - FRONT['cheekR'][0])) * S_NF
+        cy = cy + (FRONT['cheekL'][1] - FRONT['cheekR'][1]) * S_NF
     spot = me(0, 0, src[2] * S_NF * 0.92, src[3] * S_NF, src[4], lambda x, y: (x + (cx if right else -cx), y + cy))
     g['markings'] = [{'id': near_id, 'd': spot}]
     markings[near_id][view] = spot

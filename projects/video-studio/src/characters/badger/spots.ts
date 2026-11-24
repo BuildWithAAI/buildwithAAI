@@ -191,7 +191,7 @@ export const HEAD_MARKINGS: readonly HeadMarking[] = [
 		desc: "spot on the left cheek beside the muzzle (screen right in the front head); hidden in profiles as on the sheet",
 		paths: {
 			front: "M 43.4 -31 C 42.7 -28.6 41.1 -26.9 39.9 -27.3 C 38.6 -27.7 38.1 -29.9 38.8 -32.3 C 39.5 -34.7 41.1 -36.4 42.4 -36 C 43.6 -35.7 44.1 -33.4 43.4 -31 Z",
-			threeQuarterLeftScreen: "M 32.7 -29 C 32 -26.6 30.5 -24.9 29.3 -25.2 C 28.2 -25.6 27.8 -27.8 28.5 -30.2 C 29.2 -32.6 30.7 -34.3 31.9 -34 C 33 -33.6 33.4 -31.4 32.7 -29 Z",
+			threeQuarterLeftScreen: "M 32.7 -30.1 C 32 -27.7 30.5 -26 29.3 -26.3 C 28.2 -26.7 27.8 -28.9 28.5 -31.3 C 29.2 -33.7 30.7 -35.4 31.9 -35.1 C 33 -34.8 33.4 -32.5 32.7 -30.1 Z",
 		},
 	},
 ];
@@ -811,9 +811,9 @@ export const SIT_LEFT_SPOTS: readonly BadgerSpot[] = [
 		id: "R-08",
 		side: "right",
 		part: "legFrontFar",
-		path: "M -65.4 -127.1 C -66.6 -127 -68.1 -125.1 -68.9 -123.9 C -70.1 -121.9 -70 -119 -69.8 -116.6 C -69.6 -114.3 -69.2 -111.5 -67.7 -109.7 C -66.7 -108.6 -65.1 -106.9 -63.7 -107 C -62.6 -107.2 -61.1 -109.1 -60.3 -110.3 C -59.1 -112.3 -59.2 -115.2 -59.3 -117.6 C -59.6 -119.8 -59.9 -122.7 -61.5 -124.5 C -62.4 -125.6 -64.1 -127.3 -65.4 -127.1 Z",
-		ref: {crop: "badger_pose_sitting.png", x: 263, y: 272},
-		desc: "right forearm R-08 on the far front leg (edge)",
+		path: "M -63.9 -103.9 C -62.6 -104.1 -61.1 -106.3 -60.4 -107.8 C -59.1 -110.2 -59.3 -113.5 -59.6 -116.3 C -59.9 -119 -60.3 -122.4 -62 -124.4 C -63 -125.7 -64.8 -127.6 -66.1 -127.5 C -67.5 -127.4 -68.9 -125.1 -69.6 -123.7 C -70.9 -121.3 -70.7 -118 -70.4 -115.2 C -70.1 -112.4 -69.7 -109.1 -68.1 -107 C -67 -105.7 -65.2 -103.8 -63.9 -103.9 Z",
+		ref: {crop: "badger_coat_right.png", x: 408, y: 314},
+		desc: "right forearm R-08 on the far front leg (its outer edge), authored from badger_coat_right.png R-08",
 	},
 	{
 		id: "L-NECK",
