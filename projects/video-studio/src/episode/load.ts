@@ -116,7 +116,7 @@ export const resolveEpisode = async (props: EpisodeInput & {timelineOverride?: T
 		}
 	}
 	const speechFrames = timeline.scenes.reduce((a, s) => a + msToFrame(s.speechMs, FPS), 0);
-	if (!timeline.mock && speechFrames === 0) warnings.push('the timeline has no speech');
+	if (!timeline.mock && speechFrames === 0) warnings.push({level: 'warning', where: 'timeline', msg: 'the timeline has no speech'});
 	for (const w of warnings) console.warn(`[episode] ${label}: ${w.where}: ${w.msg}`);
 	return {
 		format,

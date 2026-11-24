@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "notes": "Copy to config/payouts.json (gitignored) and replace the examples with your programmes. Put each programme's CSV exports in data/payouts/<programme id>/ (also gitignored). Amounts stay in their currency unless you add a rate here, e.g. \"rates\": {\"EUR\": {\"usdPerUnit\": <USD for 1 EUR>, \"asOf\": \"YYYY-MM-DD\", \"source\": \"where the rate came from\"}}.",
+  "rates": {},
+  "programmes": [
+    {
+      "id": "example-network",
+      "name": "Example affiliate network (replace)",
+      "delimiter": ",",
+      "decimal": ".",
+      "dateFormat": "YYYY-MM-DD",
+      "columns": {
+        "date": "Date",
+        "offerId": "Program",
+        "subId": "Sub ID",
+        "conversions": "Conversions",
+        "revenue": "Commission",
+        "currency": "Currency",
+        "status": "Status"
+      },
+      "offerIds": {
+        "Example Wallet Store (replace)": "hardware-wallet"
+      },
+      "includeStatuses": ["approved", "paid"],
+      "notes": "Placeholder. Map each column to the header text in the network's CSV export. The hub sends the sub-id as <videoId>.<source>; set the offer's subIdParam in config/offers.json to the network's sub-id parameter."
+    },
+    {
+      "id": "example-eu-programme",
+      "name": "Example programme with European number format (replace)",
+      "delimiter": ";",
+      "decimal": ",",
+      "dateFormat": "DD.MM.YYYY",
+      "columns": {
+        "date": "Date",
+        "subId": "SubID",
+        "revenue": "Commission"
+      },
+      "defaultOfferId": "hardware-wallet",
+      "currency": "EUR",
+      "notes": "Placeholder. A file with one row per sale needs no conversions column: each row counts as one, and a negative amount counts as a reversal."
+    }
+  ]
+}

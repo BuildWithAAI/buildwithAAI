@@ -133,8 +133,9 @@ export const Card: React.FC<{box: Box; fill?: string; radius?: number; style?: R
 export const entry = (frame: number, at: number, len = 10): number => (frame < at ? 0 : frame >= at + len ? 1 : EASE.decel((frame - at) / len));
 
 /** A clip-reveal wrapper: the content slides up from below its own box edge (no opacity, no blur). */
-export const RiseClip: React.FC<{box: Box; p: number; dist?: number; children: React.ReactNode}> = ({box, p, dist, children}) => (
-	<div style={{position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h, overflow: 'hidden'}}>
-		<div style={{position: 'absolute', left: -box.x, top: -box.y, width: 0, height: 0, transform: `translateY(${(1 - p) * (dist ?? box.h)}px)`}}>{children}</div>
-	</div>
-);
+export const RiseClip: React.FC<{box: Box; p: number; children: React.ReactNode}> = ({box, p, children}) =>
+	p <= 0 ? null : (
+		<div style={{position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h, overflow: 'hidden'}}>
+			<div style={{position: 'absolute', left: -box.x, top: -box.y, width: 0, height: 0, transform: `translateY(${(1 - p) * box.h}px)`}}>{children}</div>
+		</div>
+	);

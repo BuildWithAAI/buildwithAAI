@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "engine-demo",
+  "lang": "zh",
+  "sourceLang": "en",
+  "title": "POV：你成了顶级喊单人（演示数据）",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "你只发了一张图。不到一个小时，一万个陌生人买了你的币。",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "你成了顶级喊单人",
+        "subtitle": "一个关于真实套路的虚构故事。"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "游戏是这样玩的。首先，你悄悄地提前买入。然后，你把喊单发给你的粉丝。他们买入，价格上涨，你趁他们买的时候卖出。[src:demo-pattern]",
+      "onScreen": {
+        "title": "喊单是怎么运作的",
+        "bullets": [
+          "悄悄提前买入",
+          "发出喊单",
+          "粉丝追涨买入",
+          "你卖给他们"
+        ],
+        "cues": [
+          "首先",
+          "然后",
+          "他们",
+          "卖出"
+        ],
+        "lowerThird": [
+          "ZOO",
+          "主持人 · Zoora AI"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "在图上是这样的。缓慢的启动，你一发帖就突然拉升，然后底部消失了。",
+      "onScreen": {
+        "pair": "$DEMO / SOL",
+        "cues": [
+          "拉升",
+          "底部"
+        ]
+      },
+      "chart": {
+        "seed": 51,
+        "illustrative": true
+      },
+      "zoo": {
+        "expression": "worried"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "worried"
+      },
+      "transitionIn": "fade"
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "所以，在跟随任何喊单人之前，做三件事。查看谁在发帖前买入。查看他们卖得有多快。永远不要买大家都在尖叫的那根K线。",
+      "onScreen": {
+        "title": "跟单之前先做三件事",
+        "steps": [
+          "查看谁在发帖前买入",
+          "查看他们卖得有多快",
+          "不买大家尖叫的K线"
+        ],
+        "cues": [
+          "谁在",
+          "多快",
+          "永远"
+        ]
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "就像一个喊单人说的：没人看钱包，人人都看图。",
+      "onScreen": {
+        "quote": "没人看钱包，人人都看图。",
+        "attribution": "一位顶级喊单人（虚构合成人物）",
+        "source": "虚构对白 · 合成人物"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      },
+      "transitionIn": "slide"
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "如果这帮你躲过了一次糟糕的交易，请订阅。Badger 替你盯着图表。",
+      "onScreen": {
+        "title": "躲过一次糟糕的交易就值了",
+        "cues": [
+          "订阅"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "下一集：你打造了一个AI交易代理。会出什么问题呢？",
+      "onScreen": {
+        "title": "下一集：你的AI交易代理"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "minDurationSec": 20,
+      "transitionIn": "fade"
+    }
+  ],
+  "sources": [
+    {
+      "id": "demo-pattern",
+      "title": "Example source (dev fixture)",
+      "url": "https://example.com/caller-pattern",
+      "accessed": "2026-11-24",
+      "status": "unverified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s06"
+      ],
+      "title": "喊单人的图"
+    }
+  ],
+  "ui": {
+    "fictionDisclaimer": "虚构故事 · 合成人物 · 不构成投资建议",
+    "sources": "来源",
+    "illustrative": "示意 · 虚构代币",
+    "subscribe": "订阅",
+    "watchNext": "接着看",
+    "subscribeSlot": "订阅"
+  },
+  "translation": {
+    "status": "machine"
+  }
+}

@@ -1,0 +1,14 @@
+video_id,aliases,title,channel,format,tags,published_at,notes
+fixture0001,top-caller,,zoora-ai,long,memecoins,2026-10-06,synthetic fixture row
+fixture0002,,,zoora-ai,long,scams; wallet security,2026-10-09,"alias comes from the publish kit (fake-support-dm)"
+FixtureCase,drainer-links,,zoora-ai,long,scams,2026-10-13,
+fixture0004,ai-hedge-fund,,zoora-ai,long,ai agents,2026-10-16,
+fixture0005,seed-myths,,zoora-ai,long,wallet security,2026-10-20,
+fixture0006,,,zoora-ai,long,memecoins; scams,2026-10-23,
+fixture0007,,,zoora-ai,long,scams; ai agents,2026-10-27,
+fixture0008,,,zoora-ai,long,memecoins,2026-10-30,
+fixture0009,,,zoora-ai,short,scams,2026-10-10,
+fixture0010,,,zoora-ai,short,wallet security,2026-10-21,
+-fixture011,,,zoora-ai,short,memecoins,2026-10-24,
+fixture0012,,,zoora-ai,short,ai agents,2026-10-31,
+security0001,,Channel 2 episode (fixture),zoora-security,long,news,2026-11-01,belongs to the second channel

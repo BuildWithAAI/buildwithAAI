@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "notes": "Test fixture: synthetic programmes and amounts.",
+  "rates": {},
+  "programmes": [
+    {
+      "id": "wallet-network",
+      "name": "Example wallet affiliate network (fixture)",
+      "delimiter": ",",
+      "decimal": ".",
+      "dateFormat": "MM/DD/YYYY",
+      "columns": {
+        "date": "Date",
+        "offerId": "Program",
+        "subId": "Sub ID",
+        "conversions": "Sales",
+        "revenue": "Commission",
+        "currency": "Currency",
+        "status": "Status"
+      },
+      "offerIds": {"Example Wallet Store": "hardware-wallet", "Example Password Manager": "password-manager"},
+      "includeStatuses": ["approved", "paid"]
+    },
+    {
+      "id": "eu-tools",
+      "name": "Example EU tools programme (fixture)",
+      "delimiter": ";",
+      "decimal": ",",
+      "dateFormat": "DD.MM.YYYY",
+      "columns": {"date": "Date", "subId": "SubID", "revenue": "Commission", "currency": "Currency"},
+      "defaultOfferId": "password-manager"
+    }
+  ]
+}

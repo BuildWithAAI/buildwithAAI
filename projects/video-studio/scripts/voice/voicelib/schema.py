@@ -11,7 +11,7 @@ import re
 LANGS = ("en", "es", "pt-br", "hi", "it", "zh", "ja")
 MOUTHS = frozenset(("closed", "slightlyOpen", "ah", "ee", "oh", "mbp"))
 TOP_REQUIRED = ("version", "slug", "lang", "mode", "voice", "speed", "model", "sampleRate", "fps", "totalMs", "scenes", "warnings")
-TOP_OPTIONAL = ("masterLang", "loudness")
+TOP_OPTIONAL = ("masterLang", "loudness", "mock")  # mock: added by the episode builder (dev previews)
 SCENE_REQUIRED = ("id", "audio", "startMs", "durationMs", "speechMs", "words", "mouth")
 # Optional fields the voice step adds (recorded in scripts/voice/timeline-additions.ts and README.md).
 ADDITIONS = {
@@ -70,6 +70,8 @@ def validate(t) -> list[str]:
         ld = t["loudness"]
         if not isinstance(ld, dict) or set(ld) != {"integratedLufs", "truePeakDb"} or not all(_num(ld.get(k)) for k in ("integratedLufs", "truePeakDb")):
             err("loudness must be {integratedLufs, truePeakDb} numbers")
+    if "mock" in t and not isinstance(t["mock"], bool):
+        err("mock must be a boolean")
     if "narration" in t and (not isinstance(t["narration"], str) or t["narration"].startswith("/")):
         err("narration must be a path relative to public/")
     if not isinstance(t["scenes"], list):
@@ -122,8 +124,8 @@ def validate(t) -> list[str]:
         prev_end = 0.0
         for j, w in enumerate(s["words"]):
             ww = f"{where} words[{j}]"
-            if not isinstance(w, dict) or set(w) != {"text", "startMs", "endMs"}:
-                err(f"{ww} must be exactly {{text, startMs, endMs}}")
+            if not isinstance(w, dict) or not {"text", "startMs", "endMs"} <= set(w) <= {"text", "startMs", "endMs", "stressMs"}:
+                err(f"{ww} must be {{text, startMs, endMs, stressMs?}}")
                 continue
             if not isinstance(w["text"], str) or not w["text"]:
                 err(f"{ww} text must be a non-empty string")
@@ -134,6 +136,8 @@ def validate(t) -> list[str]:
                 err(f"{ww} times out of order or outside the scene: {w['startMs']}..{w['endMs']}")
             if w["startMs"] + 1e-6 < prev_end:
                 err(f"{ww} overlaps the previous word")
+            if "stressMs" in w and (not _num(w["stressMs"]) or not w["startMs"] - 1 <= w["stressMs"] <= w["endMs"] + 1):
+                err(f"{ww} stressMs must lie inside the word")
             prev_end = w["endMs"]
         if "speed" in s and (not _num(s["speed"]) or not 0.5 <= s["speed"] <= 2.0):
             err(f"{where} speed invalid")

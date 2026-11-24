@@ -51,10 +51,18 @@ class Schema(unittest.TestCase):
             "nan": lambda t: t["scenes"][0].update(speechMs=float("nan")),
             "bool fps": lambda t: t.update(fps=True),
             "duplicate id": lambda t: t["scenes"][1].update(id="s01"),
+            "stress outside word": lambda t: t["scenes"][0]["words"][0].update(stressMs=600),
+            "mock not bool": lambda t: t.update(mock="yes"),
         }
         for name, fn in cases.items():
             with self.subTest(name=name):
                 self.assertNotEqual(mutate(fn), [], name)
+
+    def test_contract_optionals(self):
+        t = good()
+        t["scenes"][0]["words"][0]["stressMs"] = 200
+        t["mock"] = False
+        self.assertEqual(schema.validate(t), [])
 
     def test_additions_are_optional(self):
         t = good()

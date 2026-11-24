@@ -102,9 +102,44 @@ def load_storyboard(path: str, lang: str) -> dict:
     return sb
 
 
-def timeline_words(words: list[Word], spans: list[tuple[int, int] | None], ct: list[tuple[float, float] | None], spaced: bool, duration_ms: int) -> list[dict]:
-    """Display words with scene-relative ms. Display-only tokens (punctuation, {text|}) join the previous
-    word; a multi-word display shares its spoken span in proportion to character length."""
+def stress_onset(phonemes: str, span: tuple[int, int], ct: list[tuple[float, float] | None]) -> float | None:
+    """Scene-relative ms of the LAST primary-stressed vowel in a span (espeak writes ˈ right before the
+    vowel). A display word spoken as several words ("$40,000" -> forty thousand DOLLARS) takes the last,
+    which is where the phrase accent falls (ART_GUIDE MO11). None when there is no ˈ (zh, ja, clitics)."""
+    a, b = span
+    for i in range(min(b, len(phonemes)) - 1, a - 1, -1):
+        if phonemes[i] != "ˈ":
+            continue
+        for j in range(i + 1, min(b, len(ct))):
+            if ct[j] is not None and phonemes[j] not in "ˈˌ ":
+                return ct[j][0] * 1000.0
+        return None
+    return None
+
+
+def translation_warning(sb: dict, lang: str) -> str | None:
+    """types.ts: a storyboard whose lang differs from sourceLang counts as machine translation unless
+    translation.status is 'native-reviewed'."""
+    reviewed = isinstance(sb.get("translation"), dict) and sb["translation"].get("status") == "native-reviewed"
+    if not sb.get("sourceLang") or sb["sourceLang"] == lang or reviewed:
+        return None
+    return (
+        f"machine translation: needs native review ({lang}, translated from {sb['sourceLang']}; "
+        "set translation.status to 'native-reviewed' in the storyboard once a native speaker has checked it)"
+    )
+
+
+def timeline_words(
+    words: list[Word],
+    spans: list[tuple[int, int] | None],
+    ct: list[tuple[float, float] | None],
+    spaced: bool,
+    duration_ms: int,
+    phonemes: str = "",
+) -> list[dict]:
+    """Display words with scene-relative ms (and stressMs where the phonemes mark a primary stress).
+    Display-only tokens (punctuation, {text|}) join the previous word; a multi-word display shares its
+    spoken span in proportion to character length."""
     sep = " " if spaced else ""
     out: list[dict] = []
     prefix: list[str] = []
@@ -112,10 +147,12 @@ def timeline_words(words: list[Word], spans: list[tuple[int, int] | None], ct: l
         if not w.display:
             continue
         times = None
+        stress = None
         if sp is not None:
             ts = [ct[i] for i in range(sp[0], min(sp[1], len(ct))) if ct[i] is not None]
             if ts:
                 times = (min(a for a, _ in ts) * 1000.0, max(b for _, b in ts) * 1000.0)
+                stress = stress_onset(phonemes, sp, ct) if phonemes else None
         if times is None:
             if out:
                 out[-1]["text"] += sep + sep.join(w.display) if spaced else "".join(w.display)
@@ -134,12 +171,17 @@ def timeline_words(words: list[Word], spans: list[tuple[int, int] | None], ct: l
             a = start + (end - start) * acc / total
             acc += wgt
             b = start + (end - start) * acc / total
-            out.append({"text": t, "startMs": a, "endMs": b})
+            item = {"text": t, "startMs": a, "endMs": b}
+            if stress is not None and a <= stress <= b:
+                item["stressMs"] = stress
+            out.append(item)
     prev_end = 0
     for item in out:
         a = min(max(round(item["startMs"]), prev_end), duration_ms)
         b = min(max(round(item["endMs"]), a), duration_ms)
         item["startMs"], item["endMs"] = a, b
+        if "stressMs" in item:
+            item["stressMs"] = min(max(round(item["stressMs"]), a), b)
         prev_end = b
     return out
 
@@ -220,11 +262,9 @@ def build(opts: Options) -> Result:
         ids, mids = [sc["id"] for sc in sb["scenes"]], [sc["id"] for sc in master["scenes"]]
         if ids != mids:
             raise BuildError(f"scene ids differ from the {opts.fit_to} master: {ids} vs {mids}")
-    if sb.get("sourceLang") and sb["sourceLang"] != opts.lang:
-        warnings.append(
-            f"machine translation: needs native review ({opts.lang}, translated from {sb['sourceLang']}); "
-            "the voice step cannot tell whether the owner has confirmed it"
-        )
+    note = translation_warning(sb, opts.lang)
+    if note:
+        warnings.append(note)
     if s.g2p == "misaki":
         warnings.append(f"{opts.lang}: pronunciation comes from misaki 0.7.4 G2P and has not been checked by a native speaker")
 
@@ -296,7 +336,7 @@ def build(opts: Options) -> Result:
             "startMs": 0,
             "durationMs": dur,
             "speechMs": round(speech_ms),
-            "words": timeline_words(words, ph.word_spans, ct, s.spaced, dur),
+            "words": timeline_words(words, ph.word_spans, ct, s.spaced, dur, ph.phonemes),
             "mouth": mouth,
         }
         if master is not None:

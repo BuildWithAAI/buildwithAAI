@@ -68,7 +68,7 @@ export const HookScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 			})}
 			<div style={{position: 'absolute', left: rule.x, top: rule.y, width: rule.w * ruleP, height: rule.h, backgroundColor: C.teal}} />
 			{sBox && subtitle ? (
-				<RiseClip box={{...sBox, h: sBox.h + 8}} p={entry(frame, 10 + 4 * tFit.lines.length, 10)} dist={40}>
+				<RiseClip box={{...sBox, h: sBox.h + 8}} p={entry(frame, 10 + 4 * tFit.lines.length, 10)}>
 					<Lines fit={sFit} spec={L.subtitle!} lang={ctx.lang} color={C.inkMuted} box={sBox} />
 				</RiseClip>
 			) : null}

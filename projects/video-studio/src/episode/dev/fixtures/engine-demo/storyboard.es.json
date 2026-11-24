@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "engine-demo",
+  "lang": "es",
+  "sourceLang": "en",
+  "title": "POV: Te vuelves un caller famoso (fixture de demostración)",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Publicas un solo gráfico. Diez mil desconocidos compran tu moneda en menos de una hora.",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "Te vuelves un caller famoso",
+        "subtitle": "Una historia ficticia sobre un patrón muy real."
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "Así funciona el juego. Primero, compras temprano y en silencio. Luego publicas la señal para tus seguidores. Ellos compran, el precio salta y tú vendes mientras ellos compran. [src:demo-pattern]",
+      "onScreen": {
+        "title": "Cómo funciona la señal",
+        "bullets": [
+          "Compra temprano, en silencio",
+          "Publica la señal",
+          "Tus seguidores compran el salto",
+          "Tú les vendes a ellos"
+        ],
+        "cues": [
+          "compras",
+          "publicas",
+          "ellos",
+          "vendes"
+        ],
+        "lowerThird": [
+          "ZOO",
+          "Presentador · Zoora AI"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "En el gráfico se ve así. Un lanzamiento lento, un bombeo repentino cuando publicas, y luego el suelo desaparece.",
+      "onScreen": {
+        "pair": "$DEMO / SOL",
+        "cues": [
+          "bombeo",
+          "suelo"
+        ]
+      },
+      "chart": {
+        "seed": 51,
+        "illustrative": true
+      },
+      "zoo": {
+        "expression": "worried"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "worried"
+      },
+      "transitionIn": "fade"
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "Así que antes de seguir a cualquier caller, haz tres cosas. Revisa quién compró antes de la publicación. Revisa qué tan rápido vendieron. Y nunca compres la vela de la que todos están gritando.",
+      "onScreen": {
+        "title": "Antes de seguir a un caller",
+        "steps": [
+          "Revisa quién compró antes de la publicación",
+          "Revisa qué tan rápido vendieron",
+          "Nunca compres la vela que todos gritan"
+        ],
+        "cues": [
+          "quién",
+          "rápido",
+          "nunca"
+        ]
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "Como dijo un caller: Nadie revisa la billetera. Todos revisan el gráfico.",
+      "onScreen": {
+        "quote": "Nadie revisa la billetera. Todos revisan el gráfico.",
+        "attribution": "un caller famoso (personaje ficticio compuesto)",
+        "source": "Diálogo ficticio · personaje compuesto"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      },
+      "transitionIn": "slide"
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "Si esto te salvó de una mala operación, suscríbete. Badger vigila los gráficos para que tú no tengas que hacerlo.",
+      "onScreen": {
+        "title": "Evitar una sola mala operación ya vale la pena",
+        "cues": [
+          "suscríbete"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "La próxima vez: construyes un agente de trading con IA. ¿Qué podría salir mal?",
+      "onScreen": {
+        "title": "Próximo: construyes un agente de trading con IA"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "minDurationSec": 20,
+      "transitionIn": "fade"
+    }
+  ],
+  "sources": [
+    {
+      "id": "demo-pattern",
+      "title": "Example source (dev fixture)",
+      "url": "https://example.com/caller-pattern",
+      "accessed": "2026-11-24",
+      "status": "unverified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s06"
+      ],
+      "title": "El gráfico del caller"
+    }
+  ],
+  "ui": {
+    "fictionDisclaimer": "Historia ficticia · personajes compuestos · no es asesoría financiera",
+    "sources": "Fuente",
+    "illustrative": "Ilustrativo · token ficticio",
+    "subscribe": "Suscríbete",
+    "watchNext": "Mira a continuación",
+    "subscribeSlot": "Suscríbete"
+  },
+  "translation": {
+    "status": "machine"
+  }
+}

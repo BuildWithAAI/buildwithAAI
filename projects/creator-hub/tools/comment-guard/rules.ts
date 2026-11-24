@@ -115,7 +115,9 @@ const APP_MENTION = rx([
 const OTHER_APPS = String.raw`(?<![\p{L}\p{N}])(?:ватсап+|вотсап+|вацап|телеграм+|телеге|телега|вайбер|واتساب|واتس اب|واتسب|تلغرام|تليجرام|تيليجرام|تلجرام|व्हाट्सएप|व्हाट्सऐप|वॉट्सऐप|टेलीग्राम|टेलिग्राम)(?![\p{L}\p{N}])`;
 const APP_MENTION_OTHER = new RegExp(OTHER_APPS, 'u');
 /** App names plus the short forms bots use right before a handle or number ("TG: @x", "WA +1..."). */
-const APP_BEFORE_CONTACT = new RegExp(String.raw`\b(?:${APPS}|signal|tg|wa|line\s?id)\b`, 'gu');
+const APP_BEFORE_CONTACT = new RegExp(String.raw`\b(?:${APPS}|signal|tg|wa|line\s?id|instagram|insta|ig)\b`, 'gu');
+/** "@someone on tg", "@someone via WhatsApp": the handle comes first. */
+const HANDLE_THEN_APP = new RegExp(String.raw`@[a-z_][a-z0-9_.]{3,}\s*(?:on|via|at|in|@)\s+(?:${APPS}|signal|tg|wa|instagram|insta|ig)\b`, 'u');
 const APP_BEFORE_CONTACT_OTHER = new RegExp(OTHER_APPS, 'gu');
 const HANDLE = /@[a-z_][a-z0-9_.]{3,}/u;
 const HANDLE_ANY = /(?<![\p{L}\p{N}_.])@[\p{L}_][\p{L}\p{N}_.]{3,}/u;
@@ -162,13 +164,14 @@ const CHAT_DOMAINS = [
 	't.me', 'telegram.me', 'telegram.dog', 'wa.me', 'wa.link', 'chat.whatsapp.com', 'api.whatsapp.com', 'signal.me',
 	'signal.group', 'discord.gg', 'm.me', 'ig.me', 'line.me',
 ];
-const MESSAGING_LINK = new RegExp(String.raw`\b${alt(CHAT_DOMAINS.map(domain))}\s*/\s*[\w+]`, 'u');
+const LINK_PATH = String.raw`\s*/\s*[\w+][\w+\-./?=&%]*`;
+const MESSAGING_LINK = new RegExp(String.raw`\b${alt(CHAT_DOMAINS.map(domain))}${LINK_PATH}`, 'u');
 const SHORTENERS = [
 	'bit.ly', 'tinyurl.com', 'tiny.cc', 'cutt.ly', 'rb.gy', 'is.gd', 'v.gd', 'goo.gl', 'ow.ly', 't.co', 'shorturl.at',
 	'rebrand.ly', 'bl.ink', 's.id', 't.ly', 'lnkd.in', 'buff.ly', 'shorte.st', 'adf.ly', 'linktr.ee', 'lnk.bio',
 	'tr.ee', 'beacons.ai', 'bio.link', 'qr.ae', 'x.gd', 'surl.li', 'clck.ru', 'u.to', 'shrtco.de', 'tny.im',
 ];
-const SHORT_LINK = new RegExp(String.raw`\b${alt(SHORTENERS.map(domain))}\s*/\s*\w`, 'u');
+const SHORT_LINK = new RegExp(String.raw`\b${alt(SHORTENERS.map(domain))}${LINK_PATH}`, 'u');
 /** "site[.]xyz", "site(.)com": a bracketed dot is only ever used to dodge link filters. */
 const OBFUSCATED_LINK =
 	/\b[a-z0-9][a-z0-9-]{1,40}(?:\s*\[\s*\.\s*\]\s*|\s*\(\s*\.\s*\)\s*|\s*\{\s*\.\s*\}\s*)[a-z]{2,10}\b/u;
@@ -180,6 +183,11 @@ const CONTACT_VERBS = String.raw`(?:text|txt|dm|pm|message|msg|inbox|contact|pin
 const CONTACT_ME = rx(
 	[
 		String.raw`\b${CONTACT_VERBS}\s+me\b`,
+		String.raw`\b${CONTACT_VERBS}\s+us\s+(?:on|via|at|through|in)\b`,
+		String.raw`\b(?:reply|respond|comment)\s+(?:to this(?: comment)?|below|here|under this)\b${GAP}{0,40}\b(?:how (?:i|we) (?:earn|make|made|got|grew|trade)|my (?:method|strategy|secret|system|signals))`,
+		// "I sent you a message on Telegram", "check your DMs"
+		String.raw`\b(?:i|we)(?:'ve| have| just)? (?:sent|messaged|texted|dmed|dm'd|pinged) you\b|\bcheck (?:your )?(?:dms?|inbox|messages?|message requests?)\b`,
+		String.raw`\bask me how\b`,
 		String.raw`\bhit me up\b|\bhmu\b`,
 		String.raw`\bcall me\s+(?:on|at|via|now|\+|\d)`,
 		String.raw`\badd me (?:on|via|at)\s+(?:${APPS}|signal|ig|instagram|snap(?:chat)?|discord)\b`,
@@ -205,7 +213,10 @@ const CONTACT_THEM = rx(
 	[
 		String.raw`\b${CONTACT_VERBS}\s+${HANDLER_TARGET}\b`,
 		String.raw`\b(?:consult|hire|connect with|link up with)\s+${HANDLER_TARGET}\b`,
-		String.raw`\b(?:she|he|they)(?:'s| is| are)\s+(?:on|available on|reachable on|active on)\s+(?:${APPS}|signal|instagram|ig)\b`,
+		String.raw`\b(?:${CONTACT_VERBS}|follow|join|subscribe to|look up|search(?: for)?)\s+@[a-z_]`,
+		String.raw`\b(?:search|look up|find|google)\s+(?:for\s+)?(?:her|him|them|his|their)(?:\s+(?:name|profile|page))?\s+on\s+(?:${APPS}|signal|instagram|insta|ig|facebook|google|youtube|tiktok)\b`,
+		String.raw`\b${CONTACT_VERBS}\s+(?!my\b|our\b|your\b|the bank\b)(?:[\w.'&-]+\s+){1,4}(?:on|via|through|thru)\s+(?:${APPS}|signal|tg|wa|instagram|insta|ig)\b`,
+		String.raw`\b(?:she|he|they)(?:'s| is| are)\s+(?:on|available on|reachable on|active on)\s+(?:${APPS}|signal|instagram|insta|ig)\b`,
 		String.raw`\b(?:her|his|their)\s+(?:${APPS}|signal|contact|number|handle|info|details|email|username|tg|wa)\s*(?:is\s*[:👉=\-→➡]*\s*(?:@|\+|\d|t\.me)|number|id|handle|info|:|👉|-|→|➡|@|\+|link)`,
 		String.raw`\byou can (?:reach|contact|message|text|find|write to|get) (?:him|her|them|the expert|the team)\b`,
 		String.raw`\b(?:escribele|escribanle|contactalo|contactala|contactenlo|contactenla|hablale)\b|\bcontacta(?:r|te)? (?:a|al|con)\b`,
@@ -219,7 +230,10 @@ const CONTACT_THEM = rx(
 
 /* ------------------------------------------------------------------ handlers, profits, recovery */
 
-const HONORIFICS = /\b(mr|mrs|ms|miss|madam|madame|mme|sra|sr|sir|dr|prof|expert|coach|mentor|hacker|agent|broker|captain)\.?\s+([\p{L}][\p{L}'-]{2,})/giu;
+const HONORIFIC_WORDS = 'mr|mrs|ms|miss|madam|madame|mme|sra|sr|sir|dr|prof|expert|coach|mentor|hacker|agent|broker|captain';
+/** A title, then (looked ahead, not consumed) a name of 3+ letters: "Mrs Sarah", "Expert Daniel", "Dr. Philip". */
+const HONORIFICS = new RegExp(String.raw`\b(${HONORIFIC_WORDS})\.?\s+(?=(\p{L}(?:\p{L}|['-](?=\p{L})){2,}))`, 'giu');
+const IS_HONORIFIC = new RegExp(`^(?:${HONORIFIC_WORDS})$`, 'i');
 /** Titles that are never followed by an ordinary word, so a lower-case name still counts ("mrs linda"). */
 const NAME_ANY_CASE = /^(?:mrs|madam|madame|mme)$/i;
 const NOT_A_NAME = new Set(
@@ -232,8 +246,8 @@ const HANDLER_HANDLE = /@(?:mrs?|ms|miss|madam|dr|expert|coach|mentor|hacker|age
 const handlerTitle = (plain: string): string | null => {
 	for (const m of plain.matchAll(HONORIFICS)) {
 		const name = m[2];
-		if (NOT_A_NAME.has(name.toLowerCase())) continue;
-		if (/^\p{Lu}/u.test(name) || NAME_ANY_CASE.test(m[1])) return clip(m[0]);
+		if (NOT_A_NAME.has(name.toLowerCase()) || IS_HONORIFIC.test(name)) continue;
+		if (/^\p{Lu}/u.test(name) || NAME_ANY_CASE.test(m[1])) return clip(`${m[0]}${name}`);
 	}
 	return first(HANDLER_HANDLE, plain);
 };
@@ -242,7 +256,8 @@ const HANDLER_ROLE = rx([
 	String.raw`\b(?:account|investment|portfolio|fund|asset|wealth|trading|trade) managers?\b`,
 	String.raw`\b(?:trading|crypto|forex|bitcoin|investment|financial|binary) (?:mentor|coach|expert|advisor|adviser|consultant|guru|specialist|analyst|strategist)s?\b`,
 	String.raw`\brecovery (?:expert|specialist|agent|agency|hacker|company|firm|team|service|desk|professional|consultant)s?\b`,
-	String.raw`\b(?:fund|funds|asset|crypto|bitcoin|wallet) recovery\b`,
+	String.raw`\b(?:fund|funds|asset|crypto|bitcoin|wallet) (?:recovery|retrieval|tracing)\b`,
+	String.raw`\b(?:recovery|retrieval|tracing) (?:expert|specialist|agent|agency|hacker|company|firm|team|service|desk|professional|consultant)s?\b`,
 	String.raw`\b(?:ethical|certified|genuine|legit|professional|licensed|trusted|reliable|verified|registered) (?:hacker|broker|trader|account manager|investment manager|advisor|adviser)s?\b`,
 	String.raw`\b(?:expert|professional|pro) (?:trader|broker|hacker)s?\b`,
 	String.raw`\bbinary options?\b`,
@@ -261,7 +276,10 @@ const PROFIT_CLAIM = rx([
 	String.raw`${MONEY}\s+(?:profits?|returns?|gains?|roi|payouts?|withdrawal)\b`,
 	String.raw`\bprofits? of\s+[$€£]?\d`,
 	String.raw`\bmy (?:profits?|returns?|earnings) (?:have been|are|were|is|was) (?:amazing|incredible|huge|great|insane|massive|unbelievable|consistent)\b`,
-	String.raw`\bturned my ${GAP}{1,30} into\b`,
+	String.raw`\b(?:turn(?:ed)?|flip(?:ped)?|grew|grow|grown|took|multipl(?:y|ied)) (?:my |our )?${GAP}{0,30}? into\b`,
+	String.raw`\bfrom\s+${MONEY}\s+to\s+${MONEY}`,
+	String.raw`\bmy (?:profits?|returns?|earnings|gains?)\b${GAP}{0,25}?${MONEY}`,
+	String.raw`\b(?:\d{1,4}x|x\d{1,4})\s+(?:last|this|in|within|in just|in only)\s+(?:a |one |\d+ )?(?:week|month|day|hour)s?\b`,
 ]);
 
 const INCOME_CLAIM = rx([
@@ -282,14 +300,15 @@ const RECOVERY_CLAIM = rx([
 ]);
 
 const LIFE_CHANGE =
-	/\b(?:changed my life|life[- ]changing|financial(?:ly)? free(?:dom)?|quit my (?:job|9 ?to ?5)|paid off (?:my|our)|retired(?: early)?|bought (?:a|my|our) (?:new )?(?:house|home|car)|best decision|no more debt|debt[- ]free)\b/u;
+	/\b(?:earning (?:steadily|consistently|daily|weekly|every (?:day|week))|(?:steady|consistent) (?:income|profits?|returns|earnings)|chang(?:ed|ing) my life|take care of my family|life[- ]changing|financial(?:ly)? free(?:dom)?|quit my (?:job|9 ?to ?5)|paid off (?:my|our)|retired(?: early)?|bought (?:a|my|our) (?:new )?(?:house|home|car)|best decision|no more debt|debt[- ]free)\b/u;
 
 const CREDIT =
-	/\b(?:thanks to|thank you|thanks|thanking|all thanks|grateful (?:to|for)|credit (?:goes )?to|shout ?out to|kudos to|god bless|recommend(?:ed|ing)?|introduced (?:me )?to|helped me|help of|with the help|under the guidance|guidance of|until i (?:met|found|came across|contacted)|(?:working|trading|investing|invested|invest) with|with (?:her|his|their) (?:help|strategy|guidance|signals|system|method|assistance)|(?:she|he|they) (?:recovered|helped|got|made|turned|changed)|gracias a|grace a|gracas a|dank)\b/u;
+	/\b(?:thanks to|thank you|thanks|thanking|all thanks|grateful (?:to|for)|credit (?:goes )?to|shout ?out to|kudos to|god bless|recommend(?:ed|ing)?|introduced (?:me )?to|helped me|help of|with the help|under the guidance|guidance of|until i (?:met|found|came across|contacted)|(?:working|trading|investing|invested|invest) with|with (?:her|his|their) (?:help|strategy|guidance|signals|system|method|assistance)|(?:she|he|they) (?:recovered|helped|got|made|turned|changed)|(?:is|'s) (?:a |an |my )?(?:genius|blessing|legend|godsend|lifesaver|angel)|gracias a|grace a|gracas a|dank)\b/u;
 
 const GUARANTEED = rx([
 	String.raw`\bguarantee(?:d|s)?\s+(?:\w+\s+){0,2}(?:profits?|returns?|income|gains?|payouts?|results|signals|wins?|roi|money|\d+x|x\d+|\d+(?:\.\d+)?\s?%)`,
 	String.raw`\b100\s?%\s+(?:guaranteed|sure|safe|risk[- ]free)\b`,
+	String.raw`\b(?:100|99(?:\.\d+)?)\s?%\s+(?:success|recovery|win(?:ning)?)(?: rate)?\b`,
 	String.raw`\brisk[- ]free (?:profits?|returns?|investment|trading|income)\b`,
 	String.raw`\b\d+(?:\.\d+)?\s?% (?:daily|weekly|monthly|per day|per week|a day|a week|every day|every week|roi)\b`,
 	String.raw`\b(?:\d+x|x\d+)\s+(?:in|within)\s+(?:a|one|\d+)\s+(?:day|week|month|hour)s?\b`,
@@ -308,17 +327,20 @@ const LEGIT_CLAIM = rx([
 /* ------------------------------------------------------------------ giveaways, seed phrases, drainers */
 
 const COIN = String.raw`(?:btc|bitcoin|eth|ether|ethereum|sol|solana|usdt|usdc|bnb|xrp|doge|ada|trx|ton|crypto|coins?|tokens?)`;
+const PAY = String.raw`(?:send|transfer|deposit|pay|contribute|envia|envie|enviar|manda|transfiere|deposita|transfira|deposite)`;
+const RECEIVE = String.raw`(?:get|receive|recieve|recibe|recibiras|recibir|recebe|receba|receber|recevez)`;
 const DOUBLING = rx(
 	[
-		String.raw`\bsend\b${GAP}{0,40}?\b(?:get|receive|recieve|returns?|back)\b${GAP}{0,30}?\b(?:double|2x|x2|twice|2 times|two times|doubled)\b`,
-		String.raw`\bsend\s+(?:\d+(?:\.\d+)?|any amount(?: of)?|some|your)\s*${COIN}?\b${GAP}{0,50}?\b(?:get|receive|recieve)\s+(?:\d+(?:\.\d+)?|double|2x|twice)`,
+		String.raw`\b${PAY}\b${GAP}{0,60}?\b(?:get|receive|recieve|returns?|back)\b${GAP}{0,30}?\b(?:double|2x|x2|twice|2 times|two times|doubled)\b`,
+		String.raw`\b${PAY}\s+(?:\d+(?:\.\d+)?|any amount(?: of)?|some|your)\s*${COIN}?\b${GAP}{0,50}?\b${RECEIVE}\s+(?:\d+(?:\.\d+)?|double|2x|twice)`,
+		String.raw`\b${RECEIVE}\s+(?:[2-9]x|x[2-9]|double|triple|twice)\s+(?:your\s+|of your\s+)?${COIN}?\s*back\b`,
 		String.raw`\bdouble (?:your|ur) (?:money|investment|capital|crypto|btc|bitcoin|eth|sol|coins|tokens|holdings|deposit)\b`,
-		String.raw`\b(?:2x|x2|double) (?:back|return|your deposit)\b`,
+		String.raw`\b(?:2x|x2|double) (?:back|return|your deposit|bonus)\b`,
 	],
 	'gu',
 );
 
-const PRIZE_THING = String.raw`(?:\d|[$€£]|free\b|an? (?:prize|reward|gift|giveaway|airdrop|bonus)|our (?:giveaway|airdrop|reward|prize)|${COIN}\b)`;
+const PRIZE_THING = String.raw`(?:[$€£]?\d[\d.,]*(?:\s?${COIN}\b)?|free\b|an? (?:prize|reward|gift|giveaway|airdrop|bonus)|our (?:giveaway|airdrop|reward|prize)|${COIN}\b)`;
 const PRIZE = rx([
 	String.raw`\b(?:you(?:'ve| have| are|'re)?|u)\s+(?:just\s+)?been\s+(?:selected|chosen|shortlisted|picked)\b`,
 	String.raw`\b(?:you(?:'ve| have)?|u)\s+(?:just\s+)?(?:won|win)\s+${PRIZE_THING}`,
@@ -326,6 +348,7 @@ const PRIZE = rx([
 	String.raw`\b(?:i|we) (?:picked|selected|chose) you (?:for|as)\b`,
 	String.raw`\bgiveaway\b(?!\s*scams?)${GAP}{0,40}\b(?:is live|winners?|participate|send|claim|address|wallet|eligible)\b`,
 	String.raw`\bgiv(?:ing|e) ?away\s+\d`,
+	String.raw`\bfree\s+[$€£]?\d[\d.,]*\s*${COIN}\s+(?:for|to)\s+(?:every|all|each|the first|anyone)\b`,
 	String.raw`\bhas sido (?:seleccionad[oa]|elegid[oa])\b|\b(?:eres|es) (?:el|la|uno de los) ganador`,
 	String.raw`\bvoce foi (?:selecionad[oa]|escolhid[oa])\b|\bvous avez (?:ete selectionne|gagne)\b`,
 ]);
@@ -333,10 +356,12 @@ const PRIZE = rx([
 const CLAIM = rx(
 	[
 		String.raw`\bclaim\s+(?:your|ur|yours|it|the|my|free|now|this|these|before|reward|prize|gift|airdrop|bonus|tokens?|btc|eth|sol|usdt)\b`,
-		String.raw`\bfree\s+(?:btc|bitcoin|eth|ethereum|sol|solana|usdt|crypto|tokens?|coins?|airdrops?|nfts?|money)\b`,
+		String.raw`\bfree\s+(?:[$€£]?\d[\d.,]*\s*)?(?:btc|bitcoin|eth|ethereum|sol|solana|usdt|crypto|tokens?|coins?|airdrops?|nfts?|money)\b`,
+		String.raw`\b(?:drop|drops|leave|post|comment)\s+(?:your|ur|their)\s+(?:wallet|sol|eth|btc|usdt)?\s*address(?:es)?\b`,
 		String.raw`\b(?:receive|get|grab|collect)\s+(?:the|your|free|an?)\s+(?:airdrop|reward|bonus|gift|prize)\b`,
 		String.raw`\bfirst\s+\d+\s+(?:people|persons|users|members|subscribers|viewers)\b`,
-		String.raw`\bbefore it (?:expires|ends|runs out)\b|\blimited (?:spots|slots)\b`,
+		String.raw`\bbefore it (?:expires|ends|runs out)\b|\blimited (?:spots|slots)\b|\b(?:offer|promo|event|giveaway|airdrop) (?:ends|expires) (?:tonight|today|soon|in)\b`,
+		String.raw`\b(?:received|got|claimed)\s+[$€£]?\d[\d.,]*\s*${COIN}\s+(?:from|in|through)\s+(?:the|this|an?)\s+(?:\w+\s+){0,2}(?:airdrop|giveaway|promo|event)\b`,
 		String.raw`\b(?:para reclamar|reclama tu|resgate (?:o seu|seu))\b`,
 	],
 	'gu',
@@ -365,36 +390,57 @@ const WALLET_CONNECT = rx(
 		String.raw`\b(?:validate|sync|synchroni[sz]e|rectify|whitelist|migrate|reactivate|authenticate|verify)\s+(?:your|ur)\s+(?:\w+\s+)?${WALLET_NOUN}\b${NOT_ADVICE}`,
 		String.raw`\bconnect\s+(?:your|ur)\s+(?:\w+\s+)?(?:wallets?|metamask|phantom)\b${GAP}{0,40}?(?:\bclaim|\breceive|\bget (?:the|your)|\bairdrop|\breward|\beligib|\bwhitelist|\bpresale|\bmint|\bbonus|\bportal|\bdapp|\bhere\b|\bbelow\b|\.(?:com|net|org|io|xyz|app|live|site|online|top|info|pro|finance|example)\b|\[\s*\.\s*\])`,
 		String.raw`\bwallet\s?connect\b`,
+		String.raw`\b(?:go to|visit|head to|open)\s+\S*(?:\.[a-z]{2,}|\[\s*\.\s*\])\S*\s+(?:and|to)\s+(?:connect|claim|sync|validate|verify)\b`,
 	],
 	'gu',
 );
-/** "import your wallet" or "enter your recovery phrase" is a how-to, unless a portal, dapp or link is involved. */
-const SEED_ENTRY = rx(
-	[String.raw`\b(?:import|enter|type|input|paste)\s+(?:your|ur)\s+(?:\w+\s+)?(?:wallets?|seed|recovery phrase|private keys?|keys|secret phrase|12|24)\b`],
-	'gu',
-);
-const SEED_ENTRY_PLACE = /\b(?:portal|dapp|site|website|link|bot|form|page|url)\b|\[\s*\.\s*\]/u;
+/**
+ * "Import your wallet" or "enter your recovery phrase" is a how-to, unless the comment sends you to a
+ * portal, dapp, site or link to do it: then it is a drainer. Entering a secret there counts as a seed request.
+ */
+const ENTRY_VERB = String.raw`(?:import|enter|type|input|paste|submit)`;
+const SECRET_ENTRY = new RegExp(String.raw`\b${ENTRY_VERB}\s+(?:your|ur)\s+${SECRET}`, 'gu');
+const WALLET_ENTRY = new RegExp(String.raw`\b${ENTRY_VERB}\s+(?:your|ur)\s+(?:\w+\s+)?wallets?\b`, 'gu');
+const ENTRY_PLACE = /\b(?:portal|dapp|site|website|link|bot|form|page|url)\b|\[\s*\.\s*\]/u;
 
 const DRAINER_JARGON = rx([
-	String.raw`\b(?:rectification|validation|synchroni[sz]ation|sync|syncing|migration|whitelist(?:ing)?|claim|presale|mint(?:ing)?|airdrop)\s+(?:dapp|portal|site|page|node|tool|link|form|bot)\b`,
+	String.raw`\b(?:rectification|validation|synchroni[sz]ation|sync|syncing|resync|migration|whitelist(?:ing)?|claim|presale|mint(?:ing)?|airdrop|reward|bonus|restore|recovery|verification|unlock)\s+(?:dapp|portal)\b`,
+	String.raw`\bre-?sync(?:ing|ed)?\s+(?:\w+\s+)?wallets?\b`,
+	String.raw`\b(?:wallet|phantom|metamask|account|tokens?) (?:needs|has|have|need) to be (?:re-?synced|re-?synchroni[sz]ed|re-?validated|validated|rectified|migrated|re-?activated)\b`,
+	String.raw`\b(?:rectification|validation|synchroni[sz]ation|migration)\s+(?:site|page|node|tool|link|form|bot)\b`,
 	String.raw`\bwallet (?:validation|synchroni[sz]ation|rectification|migration)\b`,
 	String.raw`\bdapp\b${GAP}{0,30}\b(?:fix|rectif\w*|validat\w*|sync\w*|resolve)\b|\b(?:fix|rectify|validate|sync|resolve)\b${GAP}{0,30}\bdapp\b`,
 	String.raw`\b(?:node|wallet|validation|sync) error\b${GAP}{0,60}\b(?:portal|dapp|import|validate|sync|connect)\b`,
 ]);
 
+const FRIEND_OPENER = rx([
+	String.raw`\b(?:i'd|i would|i want to|i wanna) (?:like to )?(?:be friends|be your friend|know you better|get to know you)\b`,
+	String.raw`\b(?:can we|let's|lets) be friends\b|\bhello dear\b|\bhi dear\b|\bdear friend\b`,
+]);
+
+const INVESTMENT_PITCH = rx([
+	String.raw`\b(?:serious|genuine|interested|real) (?:investors?|people|traders?) only\b`,
+	String.raw`\binvestment (?:opportunit(?:y|ies)|plans?|platform|packages?|scheme|program(?:me)?)\b`,
+	String.raw`\b(?:bitcoin|crypto|btc|cloud) mining (?:investment|platform|plans?|contracts?)\b`,
+	String.raw`\bpassive income\b`,
+	String.raw`\bsignals? (?:that|which) (?:actually |really )?work\b|\b(?:vip|premium|paid|private) (?:signals?|calls?|pump) (?:group|channel)s?\b`,
+]);
+
 const PROFILE_BAIT = rx([
 	String.raw`\b(?:check|click|visit|tap|see|view|open)\s+(?:on\s+)?(?:my|the)\s+(?:profile|bio|name|pfp|avatar)\b`,
-	String.raw`\b(?:link|info|details|contact|number|wallet|address|telegram|whatsapp|strategy)\s+(?:is\s+)?(?:in|on)\s+my\s+(?:bio|profile|channel|about|name|page)\b`,
+	String.raw`\b(?:link|info|details|contact|number|wallet|address|telegram|whatsapp|strategy)\s+(?:is\s+)?(?:in|on)\s+(?:my|her|his|their)\s+(?:bio|profile|channel|about|name|page)\b`,
 ]);
 
 /* ------------------------------------------------------------------ dampeners */
 
+/** Words allowed between "is" and "a scam": "is just a scam", "are full of bots", "is the oldest scam". */
+const WARNING_FILLER = String.raw`(?:a|an|the|just|all|obviously|clearly|definitely|probably|always|likely|totally|also|simply|literally|another|typical|classic|common|known|oldest|old|new|same|most|such|full of|run by|100%)`;
 const WARNING = rx([
 	String.raw`\b(?:beware|watch out|be careful|heads up|psa|stay safe|warning|red flag)\b`,
-	String.raw`\b(?:don't|do not|never)\s+(?:ever\s+)?(?:fall for|trust|send|reply|respond|contact|click|text|message|dm|call|share|engage|answer|believe|give (?:out |away )?(?:your|my|anyone|them|him|her|it|any))\b`,
+	String.raw`\b(?:don't|dont|do not|never)\s+(?:ever\s+)?(?:fall for|trust|send|reply|respond|contact|click|text|message|dm|call|share|engage|answer|believe|give (?:out |away )?(?:your|my|anyone|them|him|her|it|any))\b`,
 	String.raw`\bignore (?:the|these|those|this|them|all|every|any)\b`,
 	String.raw`\b(?:report(?:ed|ing)?|block(?:ed|ing)?) (?:them|it|these|those|this|the|him|her|that|every|all)\b|\breported\b`,
-	String.raw`\b(?:it's|its|is|are|that's|this is|these are|those are|they're|all|was|were)(?:\s+(?!not\b|no\b|never\b)\w+){0,3}\s+(?:scam|scams|scammers?|bots?|fake|fraud|frauds|phishing|impersonators?|drainers?)\b`,
+	String.raw`\b(?:it's|its|is|are|that's|this is|these are|those are|they're|all|was|were)(?:\s+${WARNING_FILLER}){0,3}\s+(?:scam|scams|scammers?|bots?|fake|fraud|frauds|phishing|impersonators?|drainers?)\b`,
 	String.raw`\bscam (?:alert|bots?|replies|comments|accounts?|sites?|links?|calls?|messages?)\b`,
 	String.raw`\b(?:giveaway|airdrop|recovery|romance|pig butchering|phishing|impersonation|support|investment|crypto|telegram|whatsapp) scams?\b`,
 	String.raw`\bfake (?:accounts?|replies|support|profiles?|channels?|sites?|giveaways?|airdrops?|experts?|hackers?|apps?)\b`,
@@ -404,6 +450,7 @@ const WARNING = rx([
 
 const VICTIM = rx([
 	String.raw`\b(?:i|we|me|my (?:dad|mom|mum|father|mother|uncle|aunt|friend|brother|sister|wife|husband|grandma|grandpa|grandmother|grandfather|son|daughter|cousin|parents|partner|colleague|boss|wallet))\b${GAP}{0,40}\b(?:lost|got scammed|was scammed|been scammed|got hacked|was hacked|been hacked|got drained|was drained|been drained|fell for|almost (?:lost|sent|fell|clicked|gave|shared|answered)|nearly (?:lost|sent|fell|clicked|gave|shared))\b`,
+	String.raw`\b(?:blocked|ghosted|scammed|robbed|tricked|drained)\s+(?:me|us)\b`,
 	String.raw`\b(?:perdi|fui roubad[oa]|me estafaron)\b`,
 ]);
 
@@ -413,7 +460,7 @@ const messagingHandle = (view: View): string | null => {
 	const check = (re: RegExp, s: string): string | null => {
 		for (const m of s.matchAll(re)) {
 			const end = m.index + m[0].length;
-			const after = s.slice(end, end + 40);
+			const after = s.slice(end, end + 48);
 			const handle = HANDLE.exec(after) ?? HANDLE_ANY.exec(after) ?? /\b(?:t|wa)\s*\.\s*me\b/u.exec(after);
 			if (handle) return clip(`${m[0]}${after.slice(0, handle.index + handle[0].length)}`);
 			const phone = findPhoneNumber(after);
@@ -421,14 +468,16 @@ const messagingHandle = (view: View): string | null => {
 		}
 		return null;
 	};
-	return check(APP_BEFORE_CONTACT, view.latin) ?? check(APP_BEFORE_CONTACT_OTHER, view.lower);
+	return check(APP_BEFORE_CONTACT, view.latin) ?? check(APP_BEFORE_CONTACT_OTHER, view.lower) ?? first(HANDLE_THEN_APP, view.latin);
 };
 
-const walletConnect = (latin: string): string | null => {
-	const direct = request(WALLET_CONNECT, latin, {hypothetical: true});
-	if (direct) return direct;
-	return SEED_ENTRY_PLACE.test(latin) ? request(SEED_ENTRY, latin, {hypothetical: true}) : null;
-};
+const seedRequest = (latin: string): string | null =>
+	request(SEED_REQUEST, latin, {hypothetical: true, noOneAfter: true}) ??
+	(ENTRY_PLACE.test(latin) ? request(SECRET_ENTRY, latin, {hypothetical: true}) : null);
+
+const walletConnect = (latin: string): string | null =>
+	request(WALLET_CONNECT, latin, {hypothetical: true}) ??
+	(ENTRY_PLACE.test(latin) ? request(WALLET_ENTRY, latin, {hypothetical: true}) : null);
 
 const impersonation = (ctx: RuleContext): {distance: number; name: string} | null => {
 	const author = ctx.authorSkeleton;
@@ -451,7 +500,7 @@ export const RULES: Rule[] = [
 		weight: 7,
 		kind: 'text',
 		explanation: 'Asks for a seed phrase, recovery phrase or private key. Whoever has these can empty the wallet.',
-		test: (ctx) => request(SEED_REQUEST, ctx.text.latin, {hypothetical: true, noOneAfter: true}),
+		test: (ctx) => seedRequest(ctx.text.latin),
 	},
 	{
 		id: 'doubling-scheme',
@@ -606,6 +655,20 @@ export const RULES: Rule[] = [
 		kind: 'text',
 		explanation: 'Uses wallet-drainer jargon ("rectification dapp", "validation portal").',
 		test: (ctx) => first(DRAINER_JARGON, ctx.text.latin),
+	},
+	{
+		id: 'investment-pitch',
+		weight: 3,
+		kind: 'text',
+		explanation: 'Pitches an "investment opportunity", "mining investment" or "passive income", the openers of investment scams.',
+		test: (ctx) => first(INVESTMENT_PITCH, ctx.text.latin),
+	},
+	{
+		id: 'friend-opener',
+		weight: 3,
+		kind: 'text',
+		explanation: 'Opens like a romance or "pig-butchering" scam ("I\'d like to be friends", "hello dear").',
+		test: (ctx) => first(FRIEND_OPENER, ctx.text.latin),
 	},
 	{
 		id: 'profile-bait',

@@ -86,7 +86,9 @@ measured to say "a" as `ˈeɪ`, "to" as `tuː` and drop flaps. Kokoro reports on
 - zh/ja: exact, because phonemes are built word by word.
 
 Words are scene-relative integer ms. Punctuation-only tokens join the previous caption word. zh/ja
-captions join words without spaces.
+captions join words without spaces. `stressMs` (an optional contract field, read by the episode engine
+for head accents, ART_GUIDE MO11) is the onset of a word's last primary-stressed vowel, taken from the
+timing of Kokoro's `ˈ` mark. It is absent for unstressed clitics and for zh/ja, which have no stress marks.
 
 ## Mouth shapes (`voicelib/visemes.py`)
 
@@ -146,8 +148,8 @@ count and alignment (verified with clicks), so scene cuts stay sample-exact.
 
 ## Warnings the step writes
 
-- Translated storyboards (`lang != sourceLang`): `machine translation: needs native review ...`. The step
-  cannot see whether the owner confirmed a translation, so it always says so.
+- Translated storyboards (`lang != sourceLang`): `machine translation: needs native review ...`, until the
+  storyboard says `translation: {status: 'native-reviewed'}` (the rule in `src/episode/types.ts`).
 - zh/ja: the pronunciation comes from misaki and has not been checked by a native speaker.
 - A proportional word-timing fallback, dropped letters, loudness off target, and fit overflows.
 

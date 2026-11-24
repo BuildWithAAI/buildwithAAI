@@ -135,7 +135,8 @@ export const parseCount = (raw: string): number | null => {
 /** "4.8", "4.8%" or "4,8 %" (with decimal ",") -> 0.048. Values from 0 to 1000 percent are accepted. */
 export const parsePercent = (raw: string, decimal: '.' | ',' = '.'): number | null => {
 	const value = parseNumber(raw.trim().replace(/\s*%$/, ''), decimal);
-	return value !== null && value >= 0 && value <= 1000 ? value / 100 : null;
+	// Rounded to 10 decimal places so 7.4% is exactly 0.074, not 0.07400000000000001.
+	return value !== null && value >= 0 && value <= 1000 ? Math.round(value * 1e8) / 1e10 : null;
 };
 
 /** "45", "45.5", "0:45", "3:12", "0:03:12" or "1:02:03" -> seconds. Minutes and seconds after a colon must be below 60. */

@@ -140,6 +140,21 @@ class EndToEnd(unittest.TestCase):
                 self.assertGreater(s01["words"][-1]["endMs"], s01["speechMs"] * 0.6)
         self.assertNotIn("proportional", json.dumps([r.debug for r in self.results.values()]))
 
+    def test_stress(self):
+        for lang, res in self.results.items():
+            with self.subTest(lang=lang):
+                words = [w for sc in res.timeline["scenes"] for w in sc["words"]]
+                stressed = [w for w in words if "stressMs" in w]
+                for w in stressed:
+                    self.assertTrue(w["startMs"] <= w["stressMs"] <= w["endMs"], w)
+                if lang in ("zh", "ja"):
+                    # misaki's zh/ja phonemes carry no ˈ; only Latin words read by espeak en-us ("SOL") do
+                    self.assertTrue(all(w["text"].strip("。、，.,").isascii() for w in stressed), stressed)
+                else:
+                    self.assertGreaterEqual(len(stressed), len(words) // 3, (lang, words))
+        price = next(w for w in self.results["en"].timeline["scenes"][0]["words"] if w["text"] == "price")
+        self.assertGreater(price["stressMs"], price["startMs"])  # after the /pɹ/ onset
+
     def test_mouth(self):
         for lang, res in self.results.items():
             with self.subTest(lang=lang):

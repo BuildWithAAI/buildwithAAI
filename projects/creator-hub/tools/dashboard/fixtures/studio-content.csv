@@ -1,0 +1,14 @@
+Content,Video title,Video publish time,Duration,Engaged views,Average view duration,Average percentage viewed (%),Subscribers gained,Subscribers lost,Views,Watch time (hours),Subscribers,Estimated revenue (USD),Thumbnail impressions,Thumbnail impressions click-through rate (%)
+Total,,,,144350,0:03:02,48.2,1533,125,183600,7280.1,1408,211.600,1131800,4.9
+fixture0001,POV: You become a top caller (fixture),"Oct 6, 2026",754,10850,0:05:12,41.3,140,12,12400,1074.7,128,31.200,150200,6.1
+fixture0002,"POV: ""Support"" DMs you first, then your wallet is gone (fixture)","Oct 9, 2026",688,16900,0:04:58,43.4,233,15,"18,900",1564.5,218,52.400,201100,7.4
+FixtureCase,How drainer links empty wallets (fixture),"Oct 13, 2026",712,8700,0:04:20,36.5,98,9,9800,708.4,89,25.100,148700,5.2
+fixture0004,The AI trading agent hedge fund (fixture),"Oct 16, 2026",830,6100,0:03:41,26.6,51,8,7200,442.2,43,12.300,129400,3.9
+fixture0005,Seed phrase myths that cost people everything (fixture),"Oct 20, 2026",640,13900,0:05:05,47.7,201,10,15300,1297.9,191,44.800,176900,6.8
+fixture0006,Rug pull anatomy (fixture),"Oct 23, 2026",705,5200,0:03:30,29.8,44,7,6100,355.8,37,11.000,98300,4.4
+fixture0007,AI voice clone scams (fixture),"Oct 27, 2026",661,9800,0:04:44,43.0,120,6,11000,868.6,114,27.500,135800,5.9
+fixture0008,Airdrop farming traps (fixture),"Oct 30, 2026",598,3100,0:02:59,29.9,21,5,3900,194.0,16,,88100,3.1
+fixture0009,Short: the fake support DM in 30 seconds (fixture),"Oct 10, 2026",34,30300,0:00:27,79.4,310,22,41000,307.5,288,3.100,1200,1.8
+fixture0010,Short: never type your seed phrase (fixture),"Oct 21, 2026",41,20100,0:00:31,75.6,190,14,28500,245.4,176,2.200,900,2.0
+-fixture011,Short: what a rug pull looks like (fixture),"Oct 24, 2026",38,13400,0:00:26,68.4,95,11,19800,143.0,84,1.400,700,1.6
+fixture0012,Short: AI agent red flags (fixture),"Oct 31, 2026",45,6000,0:00:29,64.4,30,6,9700,78.1,24,0.600,500,1.4

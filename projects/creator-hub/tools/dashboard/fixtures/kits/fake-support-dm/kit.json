@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "fake-support-dm",
+  "youtubeVideoId": "fixture0002",
+  "title": "POV: \"Support\" DMs you first (fixture kit)",
+  "titleOptions": [],
+  "summary": "Synthetic publish kit for the dashboard tests.",
+  "chapters": [],
+  "sources": [],
+  "offers": [],
+  "disclosures": [],
+  "posts": {},
+  "captions": {"srt": null, "vtt": null},
+  "renders": [{"id": "main", "kind": "long", "command": "fixture", "output": "fixture.mp4"}],
+  "settings": {"madeForKids": false, "containsSyntheticMedia": false, "paidPromotion": false, "reasons": []},
+  "checks": [],
+  "generatedAt": "2026-11-24T00:00:00.000Z"
+}

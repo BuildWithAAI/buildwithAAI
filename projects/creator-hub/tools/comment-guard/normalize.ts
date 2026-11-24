@@ -11,12 +11,15 @@
 const INVISIBLE =
 	/[­͏؜ᅟᅠ឴឵᠋-᠏​-‏‪-‮⁠-⁯⃣ㅤ︀-️﻿ﾠ\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 
-/** Latin-script look-alikes (small capitals, dotless i...) that are never part of normal writing. */
-const LATIN_LOOKALIKES: Record<string, string> = {
-	ı: 'i', ȷ: 'j', ɑ: 'a', ɡ: 'g', ɩ: 'i', ɪ: 'i', ʟ: 'l', ɴ: 'n', ʀ: 'r', ꜱ: 's', ᴀ: 'a', ʙ: 'b', ᴄ: 'c', ᴅ: 'd',
-	ᴇ: 'e', ꜰ: 'f', ɢ: 'g', ʜ: 'h', ᴊ: 'j', ᴋ: 'k', ᴍ: 'm', ᴏ: 'o', ᴘ: 'p', ǫ: 'q', ᴛ: 't', ᴜ: 'u', ᴠ: 'v',
-	ᴡ: 'w', ʏ: 'y', ᴢ: 'z', ℓ: 'l', ł: 'l', ƚ: 'l', ø: 'o', đ: 'd', ħ: 'h',
+/** Small capitals and IPA letters that "fancy text" generators use; they are never part of normal writing. */
+const FANCY_LETTERS: Record<string, string> = {
+	ȷ: 'j', ɑ: 'a', ɡ: 'g', ɩ: 'i', ɪ: 'i', ʟ: 'l', ɴ: 'n', ʀ: 'r', ꜱ: 's', ᴀ: 'a', ʙ: 'b', ᴄ: 'c', ᴅ: 'd', ᴇ: 'e',
+	ꜰ: 'f', ɢ: 'g', ʜ: 'h', ᴊ: 'j', ᴋ: 'k', ᴍ: 'm', ᴏ: 'o', ᴘ: 'p', ǫ: 'q', ᴛ: 't', ᴜ: 'u', ᴠ: 'v', ᴡ: 'w', ʏ: 'y',
+	ᴢ: 'z', ℓ: 'l', ƚ: 'l',
 };
+/** Real letters of Turkish, Polish, Nordic and other languages: read as plain Latin, but not suspicious. */
+const LATIN_LETTERS: Record<string, string> = {ı: 'i', ł: 'l', ø: 'o', đ: 'd', ħ: 'h'};
+const LATIN_LOOKALIKES: Record<string, string> = {...FANCY_LETTERS, ...LATIN_LETTERS};
 
 /** Cyrillic, Greek and Armenian letters that look like Latin ones (lower case). */
 const FOREIGN_LOOKALIKES: Record<string, string> = {
@@ -83,7 +86,7 @@ const SPACED_LETTERS = /(?<![\p{L}\p{N}])\p{L}(?:[ .\-_*·•|,/\\]{1,2}\p{L}){3
 const STYLED = /[\u{1D400}-\u{1D7FF}\u{1F130}-\u{1F189}Ⓐ-ⓩ]/u;
 const FULLWIDTH_LATIN = /[Ａ-Ｚａ-ｚ０-９]/u;
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
-const LATIN_LOOKALIKE_CHARS = new RegExp(`[${Object.keys(LATIN_LOOKALIKES).join('')}]`, 'u');
+const FANCY_CHARS = new RegExp(`[${Object.keys(FANCY_LETTERS).join('')}]`, 'u');
 
 export type Obfuscation = 'styled letters' | 'mixed-script words' | 'spaced-out letters' | 'unusual digits';
 
@@ -102,7 +105,7 @@ export const makeView = (text: string): View => {
 	const plain = baseText(text);
 	const lower = plain.toLowerCase();
 	const obfuscation = new Set<Obfuscation>();
-	if (STYLED.test(text) || LATIN_LOOKALIKE_CHARS.test(lower) || (FULLWIDTH_LATIN.test(text) && !CJK.test(text))) {
+	if (STYLED.test(text) || FANCY_CHARS.test(lower) || (FULLWIDTH_LATIN.test(text) && !CJK.test(text))) {
 		obfuscation.add('styled letters');
 	}
 	if (/⃣/u.test(text) || (/[^\d\P{Nd}]/u.test(text) && /\p{Script=Latin}/u.test(text))) obfuscation.add('unusual digits');
@@ -148,6 +151,7 @@ export const nameSkeleton = (name: string): string => {
 		.replace(/^@+/, '')
 		.replace(/(?<=\p{Ll})(?=\p{Lu})|(?<=\p{Lu})(?=\p{Lu}\p{Ll})/gu, ' ')
 		.split(/[^\p{L}\p{N}@$!|€¡]+/u)
+		.filter((word) => /[\p{L}\p{N}]/u.test(word)) // a lone "|" or "!" is a separator, not a letter
 		.map(skeletonWord)
 		.filter((word) => word && !DECORATION_SET.has(word));
 	let skeleton = words.join('');

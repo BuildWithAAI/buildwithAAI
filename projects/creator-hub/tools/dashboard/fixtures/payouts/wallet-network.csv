@@ -1,0 +1,10 @@
+Date,Program,Sub ID,Sales,Commission,Currency,Status
+11/02/2026,Example Wallet Store,fixture0002.yt,1,18.00,USD,Approved
+11/03/2026,Example Wallet Store,fake-support-dm.email,1,18.00,USD,approved
+11/04/2026,Example Wallet Store,fixture0005.yt,2,36.00,USD,approved
+11/05/2026,Example Wallet Store,fixture0001.yt,1,18.00,USD,pending
+11/06/2026,Example Password Manager,fixturecase.yt,1,"1,005.50",USD,paid
+11/07/2026,Example Wallet Store,none.bio,1,18.00,USD,approved
+11/08/2026,Example Wallet Store,fixture0005.yt,-1,-18.00,USD,approved
+11/09/2026,Unknown Programme Name,fixture0009.shorts,1,9.00,USD,approved
+11/10/2026,Example Wallet Store,not-a-sub-id!,1,18.00,USD,approved

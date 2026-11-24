@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "channel": "_dev",
+  "slug": "engine-demo",
+  "lang": "hi",
+  "sourceLang": "en",
+  "title": "POV: आप एक टॉप कॉलर बन जाते हैं (डेमो फ़िक्स्चर)",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "आप एक चार्ट पोस्ट करते हैं। एक घंटे के अंदर दस हज़ार अजनबी आपका कॉइन खरीद लेते हैं।",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "आप एक टॉप कॉलर बन जाते हैं",
+        "subtitle": "एक बहुत असली पैटर्न की काल्पनिक कहानी।"
+      },
+      "zoo": {
+        "expression": "neutral"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      }
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "खेल ऐसे चलता है। पहले, आप चुपचाप जल्दी खरीदते हैं। फिर आप अपने फॉलोअर्स को कॉल पोस्ट करते हैं। वे खरीदते हैं, कीमत उछलती है, और आप उनकी खरीद में बेच देते हैं। [src:demo-pattern]",
+      "onScreen": {
+        "title": "कॉल कैसे काम करती है",
+        "bullets": [
+          "चुपचाप जल्दी खरीदें",
+          "कॉल पोस्ट करें",
+          "फॉलोअर्स उछाल खरीदते हैं",
+          "आप उन्हें बेचते हैं"
+        ],
+        "cues": [
+          "पहले",
+          "फिर",
+          "वे",
+          "बेच"
+        ],
+        "lowerThird": [
+          "ZOO",
+          "होस्ट · Zoora AI"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "judge"
+      }
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "चार्ट पर यह ऐसा दिखता है। धीमा लॉन्च, आपकी पोस्ट पर अचानक पंप, और फिर ज़मीन गायब।",
+      "onScreen": {
+        "pair": "$DEMO / SOL",
+        "cues": [
+          "पंप",
+          "ज़मीन"
+        ]
+      },
+      "chart": {
+        "seed": 51,
+        "illustrative": true
+      },
+      "zoo": {
+        "expression": "worried"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "worried"
+      },
+      "transitionIn": "fade"
+    },
+    {
+      "id": "s04",
+      "type": "steps",
+      "narration": "तो किसी भी कॉलर को फॉलो करने से पहले, तीन काम करें। देखें कि पोस्ट से पहले किसने खरीदा। देखें कि उन्होंने कितनी जल्दी बेचा। और उस कैंडल को कभी न खरीदें जिस पर सब चिल्ला रहे हैं।",
+      "onScreen": {
+        "title": "कॉलर को फॉलो करने से पहले",
+        "steps": [
+          "देखें पोस्ट से पहले किसने खरीदा",
+          "देखें उन्होंने कितनी जल्दी बेचा",
+          "चिल्लाने वाली कैंडल कभी न खरीदें"
+        ],
+        "cues": [
+          "किसने",
+          "जल्दी",
+          "कभी"
+        ]
+      },
+      "badger": {
+        "present": false
+      }
+    },
+    {
+      "id": "s05",
+      "type": "quote",
+      "narration": "जैसा एक कॉलर ने कहा: कोई वॉलेट नहीं देखता। सब चार्ट देखते हैं।",
+      "onScreen": {
+        "quote": "कोई वॉलेट नहीं देखता। सब चार्ट देखते हैं।",
+        "attribution": "एक टॉप कॉलर (काल्पनिक मिश्रित पात्र)",
+        "source": "काल्पनिक संवाद · मिश्रित पात्र"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "shocked"
+      },
+      "transitionIn": "slide"
+    },
+    {
+      "id": "s06",
+      "type": "cta",
+      "narration": "अगर इसने आपको एक बुरे ट्रेड से बचाया, तो सब्सक्राइब करें। Badger चार्ट देखता है ताकि आपको न देखना पड़े।",
+      "onScreen": {
+        "title": "एक बुरा ट्रेड टालना भी काफ़ी है",
+        "cues": [
+          "सब्सक्राइब"
+        ]
+      },
+      "badger": {
+        "present": true,
+        "reaction": "happy"
+      }
+    },
+    {
+      "id": "s07",
+      "type": "endscreen",
+      "narration": "अगली बार: आप एक AI ट्रेडिंग एजेंट बनाते हैं। क्या गलत हो सकता है?",
+      "onScreen": {
+        "title": "अगली बार: आपका AI ट्रेडिंग एजेंट"
+      },
+      "badger": {
+        "present": true,
+        "reaction": "lookUp"
+      },
+      "minDurationSec": 20,
+      "transitionIn": "fade"
+    }
+  ],
+  "sources": [
+    {
+      "id": "demo-pattern",
+      "title": "Example source (dev fixture)",
+      "url": "https://example.com/caller-pattern",
+      "accessed": "2026-11-24",
+      "status": "unverified"
+    }
+  ],
+  "shorts": [
+    {
+      "id": "short1",
+      "sceneIds": [
+        "s01",
+        "s03",
+        "s06"
+      ],
+      "title": "कॉलर का चार्ट"
+    }
+  ],
+  "ui": {
+    "fictionDisclaimer": "काल्पनिक कहानी · मिश्रित पात्र · वित्तीय सलाह नहीं",
+    "sources": "स्रोत",
+    "illustrative": "उदाहरण · काल्पनिक टोकन",
+    "subscribe": "सब्सक्राइब करें",
+    "watchNext": "आगे देखें",
+    "subscribeSlot": "सब्सक्राइब करें"
+  },
+  "translation": {
+    "status": "machine"
+  }
+}

@@ -48,6 +48,7 @@ export const EASE = {
 	sinInOut: (t: number) => 0.5 - 0.5 * Math.cos(Math.PI * clamp01(t)),
 	gesture: bezier(0.35, 0, 0.15, 1), // quick start, long soft settle (point gesture)
 	decel: bezier(0.16, 1, 0.3, 1), // text/UI entering after a cut (MO2)
+	out: bezier(0.2, 0.65, 0.3, 1), // settle after a head swap (character proof EASE.out)
 	quadIn: (t: number) => clamp01(t) ** 2,
 	quadOut: (t: number) => 1 - (1 - clamp01(t)) ** 2,
 	linear: (t: number) => clamp01(t),

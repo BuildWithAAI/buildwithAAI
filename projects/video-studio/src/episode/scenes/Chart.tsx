@@ -20,7 +20,6 @@ import {uiLabel} from '../i18n/ui';
 export const ChartScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const frame = useCurrentFrame();
 	const L = LAYOUTS.chart[ctx.format];
-	const vertical = ctx.format === 'vertical';
 	const plan = ctx.chart;
 	const badgerOn = !!ctx.sc.badger?.present;
 	const pair = badgerOn && L.pair ? L.pair : null;

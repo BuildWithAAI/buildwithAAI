@@ -1,7 +1,7 @@
 import unittest
 
 from voicelib import align
-from voicelib.pipeline import timeline_words
+from voicelib.pipeline import timeline_words, translation_warning
 from voicelib.words import Word, build_words
 
 
@@ -48,6 +48,15 @@ class Align(unittest.TestCase):
             prev = e - 1
 
 
+class TranslationWarning(unittest.TestCase):
+    def test_rule_from_types_ts(self):
+        sb = {"sourceLang": "en"}
+        self.assertIsNone(translation_warning(sb, "en"))
+        self.assertTrue(translation_warning(sb, "es").startswith("machine translation: needs native review"))
+        self.assertTrue(translation_warning({**sb, "translation": {"status": "machine"}}, "es"))
+        self.assertIsNone(translation_warning({**sb, "translation": {"status": "native-reviewed", "reviewer": "x"}}, "es"))
+
+
 class TimelineWords(unittest.TestCase):
     def test_display_words_map_to_spoken_spans(self):
         words = build_words("It hit $40,000 — up {68.67%|sixty eight percent} [src:x].", "en")
@@ -82,6 +91,26 @@ class TimelineWords(unittest.TestCase):
         words = build_words("well {|uh} no", "en")
         out = timeline_words(words, [(0, 1), (2, 3), (4, 5)], [(i * 0.1, (i + 1) * 0.1) for i in range(5)], True, 5000)
         self.assertEqual([w["text"] for w in out], ["well", "no"])
+
+    def test_stress_onset_from_kokoro_marks(self):
+        phon = "ðə pɹˈaɪs fˈɔːɹɾi θˈaʊzənd dˈɑːlɚz"
+        ct = [(i * 0.1, (i + 1) * 0.1) for i in range(len(phon))]
+        words = [Word(["The"], "the"), Word(["price"], "price"), Word(["$40,000"], "forty thousand dollars")]
+        spans = [(0, 2), (3, 9), (10, len(phon))]
+        out = timeline_words(words, spans, ct, True, 10_000, phon)
+        self.assertNotIn("stressMs", out[0])  # unstressed clitic
+        self.assertEqual(out[1]["stressMs"], phon.index("ˈaɪ") * 100 + 100)  # the vowel after ˈ
+        self.assertEqual(out[2]["stressMs"], phon.index("ˈɑː") * 100 + 100)  # last stress: "dollars"
+        for w in out:
+            if "stressMs" in w:
+                self.assertTrue(w["startMs"] <= w["stressMs"] <= w["endMs"])
+
+    def test_stress_goes_to_the_display_token_that_contains_it(self):
+        phon = "pˈʌmp fˈʌn"
+        ct = [(i * 0.1, (i + 1) * 0.1) for i in range(len(phon))]
+        out = timeline_words([Word(["Pump.fun", "team"], "pump fun")], [(0, len(phon))], ct, True, 5000, phon)
+        self.assertNotIn("stressMs", out[0])
+        self.assertIn("stressMs", out[1])
 
     def test_times_clamped_to_scene(self):
         out = timeline_words([Word(["x"], "x")], [(0, 1)], [(0.0, 9.0)], True, 3000)

@@ -6,3 +6,4 @@ config/youtube-oauth.json
 *.sqlite
 *.sqlite-*
 out/
+config/payouts.json
