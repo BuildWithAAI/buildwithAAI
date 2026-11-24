@@ -10,10 +10,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@remotion/cli": "4.0.541",
-    "@remotion/transitions": "4.0.541",
-    "@remotion/media-utils": "4.0.541",
+    "@fontsource/anton": "5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/montserrat": "5.3.0",
     "@remotion/captions": "4.0.541",
+    "@remotion/cli": "4.0.541",
+    "@remotion/fonts": "4.0.541",
+    "@remotion/media-utils": "4.0.541",
+    "@remotion/transitions": "4.0.541",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "remotion": "4.0.541"

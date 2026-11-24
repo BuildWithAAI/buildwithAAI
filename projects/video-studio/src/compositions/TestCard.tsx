@@ -1,3 +1,4 @@
+import {FONTS} from '../brand/fonts';
 import {AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig} from 'remotion';
 
 type Props = {title: string; subtitle: string};
@@ -16,7 +17,7 @@ export const TestCard: React.FC<Props> = ({title, subtitle}) => {
 	const progress = frame / (durationInFrames - 1);
 
 	return (
-		<AbsoluteFill style={{background: 'linear-gradient(135deg, #0b1020 0%, #1b2a6b 100%)', fontFamily: 'sans-serif'}}>
+		<AbsoluteFill style={{background: 'linear-gradient(135deg, #0b1020 0%, #1b2a6b 100%)', fontFamily: FONTS.body}}>
 			<svg width="100%" height="100%" viewBox="0 0 1920 1080" style={{position: 'absolute'}}>
 				{[...Array(12)].map((_, i) => (
 					<circle
