@@ -141,42 +141,64 @@ class containing `caption`/`subtitle`, or a component whose name contains `Capti
 
 ## Verification
 
-Clean compositions (the false-positive control), final run on 2026-11-24. Other workflows were editing the episode
-engine and the characters the same day, so the compositions changed between runs; every finding below was checked
-by eye on its thumbnail.
+Final runs on 2026-11-24, on the final checker code and that afternoon's compositions. The work resumed after a
+worker reset, and the characters (R2 rigs), the episode engine and the Show changed during the day, so every
+composition was re-run; every finding was checked by eye on its thumbnail.
+
+### Clean compositions (the false-positive control)
 
 | Composition | Frames (scouted / full-size) | Result | Margins |
 | --- | --- | --- | --- |
-| Preview10s (camera push-in) | 300 / 17 | PASS, 0 issues | canonical SSIM >= 0.9995, <= 0.09% changed pixels |
-| ChartShort | 30 / 5 | 1 warning: `Illustrative · fictional token · seed 51` 10% under the Shorts action buttons | contrast >= 5.21:1 |
-| EpisodeShort (dev fixture) | 540 / 57 | PASS, 0 issues | contrast >= 5.21:1; SSIM >= 0.99999, 0 changed pixels |
-| Episode (dev fixture) | 1878 / 115 | FAIL, 3 errors + 1 warning, all real (below) | lowest contrast 2.27:1 is the decorative teal quote mark (information); SSIM >= 0.9993 |
+| Preview10s (camera push-in) | 300 / 17 | PASS, 0 issues | canonical SSIM >= 0.9996, <= 0.09% changed pixels |
+| ChartShort | 30 / 5 | 1 warning, real: `Illustrative · fictional token · seed 51` 10% under the Shorts action buttons | contrast >= 5.21:1 |
+| EpisodeShort, en (dev fixture) | 540 / 55 | PASS, 0 issues | contrast >= 5.21:1; SSIM >= 0.99999 |
+| EpisodeShort, es (dev fixture) | 786 / 71 | PASS, 0 issues | contrast >= 6.83:1; SSIM 1.0000 |
+| ShowShort (dev fixture) | 1538 / 123 | 1 error, real: the diagram's "Simplified concept" note sits 22% under the Shorts action buttons (0:18-0:30) | contrast >= 7.11:1; SSIM >= 0.9997 |
+| Episode, en (dev fixture) | 1878 / 117 | 4 errors + 1 warning, all real (below) | lowest contrast 2.27:1 is the decorative quote mark (information); SSIM >= 0.9990 |
+| Episode, es (dev fixture) | 2484 / 134 | 4 errors + 1 warning, the same real defects in the Spanish cut | SSIM >= 0.9993 |
+| ShowEpisode (dev fixture) | 2790 / 184 | 1 error, real: the logo's "Show" line ends 11 px inside the bottom title-safe margin (0:02-0:06) | contrast >= 7.11:1; SSIM >= 0.9998 |
 
-The Episode findings are real defects of the current engine output, not checker noise: the lower third
-(`ZOO` / `Host · Zoora AI`) sits on Badger's face from 0:05.16 to 0:09.26 (two "text over a face" errors and the
-"face covered" warning), and it spells the host `ZOO` (`lowerThird` in the engine-demo storyboards, en, pt-br, hi
-and zh), which the owner rule forbids. Earlier the same day EpisodeShort failed on its chart chip
-(`Illustrative · fictional token`, 13% under the Shorts action buttons, since fixed by the engine work) and the
-Episode passed; the Badger insert moved under the lower third after that. Two runs met a composition that could
-not load at all (EpisodeShort's own metadata check, "price pane 298px < 55% of the inner height", and a
-half-edited character module); both wrote an ERROR report with the reason.
+Totals: 10,346 frames scouted, 706 rendered at full size, about 82,000 text boxes, 4,071 contrast measurements and
+897 canonical comparisons; 13 issues reported, all real, no false positive.
 
-One false positive was found and fixed in these runs: on the last frame of an eased cross-fade the incoming layer
-is at 0.985 opacity and the outgoing Badger shows through at 1.5%, which read as "face covered". A character below
-full opacity now marks the frame as a cross-fade (only the flicker test runs there).
+The Episode findings are defects of the engine output, not checker noise: the lower third (`ZOO` /
+`Host · Zoora AI`, in Spanish `Presentador · Zoora AI`) sits on Badger's face (two "text over a face" errors and the
+"face covered" warning) and spells the host `ZOO` (`lowerThird` in the engine-demo storyboards), which the owner
+rule forbids; and in the hook Badger's head sits low in the corner, 14 px (es: 15 px) past the bottom title-safe
+margin (ART_GUIDE MO18), since the engine moved his insert that afternoon.
 
-Planted defects (`src/qa/fixtures`, `node scripts/qa/selftest.ts`): 14 fixtures, 28 of 28 planted checks caught,
-0 unexpected warnings or errors, clean control passes. The filter fixture also surfaced a real side effect:
-Chrome re-rasterised the hue-filtered Zoo differently on one frame (a genuine one-frame flicker), one more reason
-ART_GUIDE bans filters.
+### False positives found on the Show and fixed
 
-Planted copies of the real compositions (scratch, not committed), 15 planted defects, 15 caught:
+The Show was new to the checker. Its first run reported 5 errors and 6 warnings on ShowShort and 5 errors and
+14 warnings on ShowEpisode; all but the two real findings above were false, in three classes:
+
+| Class | Cause | Fix |
+| --- | --- | --- |
+| One-frame flicker (8 errors) | cards dropping in up to 200 px per frame over a wall of the same colour: the text passes over pixels that are plain wall in both neighbours | motion-compensated matching (see "Flicker versus motion"); a guard fixture (`QaFxMotion`) |
+| Text spills out of its box (9 warnings) | descenders below a tight line box, well inside their dark plates | overflow judged against the plate |
+| Hand outside the safe area (11 warnings) | Zoo's hands hidden behind the desk; the same two hands split into an issue per position | hands hit-tested; one issue per character and side |
+
+On the episode, the stricter flicker grouping briefly flagged Zoo's hand passing Badger's ear mid-swing (frame 1129,
+a fast, turning hand is somewhere else on every frame); a pop on a moving head or hand now counts as animation.
+
+### Planted defects
+
+Fixtures (`src/qa/fixtures`, `node scripts/qa/selftest.ts`): 16 fixtures, 31 of 31 planted checks caught, 0
+unexpected warnings or errors, the clean control and the motion control pass. New today: a label running off its
+card and a title colliding with its source line (`QaFxText`), a label that jumps 14 px for one frame (`QaFxJump`,
+reported as "displaced about 14 px for one frame"), and the motion control (`QaFxMotion`: a fast card drop over a
+wall of its own colour, Zoo's hands behind a desk and 33 px past the safe margin; it must stay clean).
+
+Planted copies of today's compositions (scratch, never committed; Preview10s and ChartShort regenerated from their
+current source with exact-string plants that fail loudly if the source moves, Episode and ShowShort as wrappers of
+the real views): 26 planted defects, 26 caught.
 
 | Copy | Planted | Reported |
 | --- | --- | --- |
-| Preview10s | Badger mirrored (frames 30-59), brightness filter on Zoo (120-149), caption over Zoo's face (200-229), one-frame white flash (260), pale label (270+) | 10 errors + 2 warnings, every one traceable to a planted defect: transform, SSIM, ear cap and spots for the mirror; effect, SSIM, pin and banned filter for the filter; caption-face and face covered; flash; contrast 1.29:1 |
-| ChartShort | price panel pushed 140 px off the edge, radial-gradient background, pale "Not financial advice", one-frame "PUMP INCOMING" header (frame 15) | 16 errors: 12 for the cut and unsafe panel labels, contrast 1.18:1, banned gradient and pixel gradient, one-frame state and flicker |
-| Episode | whole shot flipped (200-259), caption over Zoo's face (300-359), pale label (470-539), greyscale grade (700-759), vignette (1100-1199), one-frame black flash (1500) | all six caught (mirror on both characters, SSIM, pin on the wrong side, ear cap, spots; caption-face; contrast 1.19:1; effect, SSIM, pin missing, banned filter; banned gradient and pixel gradient; flash), plus the four real Episode findings above |
+| Preview10s | Badger mirrored (30-59), brightness filter on Zoo (120-149), caption over Zoo's face (200-229), one-frame white flash (260), pale label (270+) | 10 errors + 2 warnings, each traceable to a plant: transform, SSIM, ear cap and spots; effect, SSIM, pin and the filter; caption-face and face covered; flash; contrast 1.29:1 |
+| ChartShort | price panel pushed 140 px off the edge, radial-gradient background, pale "Not financial advice", one-frame "PUMP INCOMING" header (frame 15) | 16 errors: frame cut and 10 unsafe labels; banned gradient and pixel gradient; contrast 1.18:1; one-frame state and flicker |
+| ShowShort | one coat marking hidden (60-119), label off its plate (130-179), whole shot flipped (300-359), caption over Zoo's face (400-459), title over its source line (470-529), pale note (600-699), hue grade on Badger's close-up (1000-1059), vignette (1200-1259), black flash (1300), label under the action buttons (1400-1459), "Hosted by Zoo" in CSS capitals (1460-1519) | all 11: spots 4 vs 5 and SSIM 0.992; "hangs 333 px off the edge of its plate"; both mirrored, SSIM, pin, ear cap; caption-face and face covered; collision 67% shared ink; contrast 1.29:1; effect, SSIM, palette 2.7% off, filter; banned gradient and pixel gradient; flash; Shorts UI and safe area; host name. Knock-on effects reported too, as a reviewer would want: the vignette drops the "as of" line to 3.89:1, the label under the buttons also lands on Badger's face |
+| Episode | whole shot flipped (200-259), caption over Zoo's face (300-359), pale label (470-539), greyscale grade (700-759), vignette (1100-1199), one-frame black flash (1500) | all six (mirror on both characters, SSIM, pin on the wrong side, ear cap, spots; caption-face; contrast 1.19:1; effect, SSIM, pin missing, filter; banned gradient and pixel gradient; flash), plus the real Episode findings above |
 
 ## Limits (honest)
 
@@ -200,5 +222,6 @@ Planted copies of the real compositions (scratch, not committed), 15 planted def
 - The naming check knows one rule, the host's name in capitals. Other house spellings (the show name, tickers
   other than "$ZOO") are left to the claim and copy gates.
 - Contrast is measured on settled, opaque text only (fades and moving text are skipped and listed).
-- Run time on this machine (4 cores, concurrency 3): 10 s composition 30-40 s, 18 s Short 60-90 s, 63 s episode
-  about 3 min; two to three times that while other renders share the machine.
+- Run time on this machine (4 cores, concurrency 3, shared with other renders, load average 12-17): 10 s
+  composition about 1 min, 18-26 s Short 1.5 min, 51 s Show Short 2.5 min, 63-83 s episode 3 min, 93 s Show episode
+  4 min. The probe itself spends a median 3-9 ms per frame, 63 ms at worst (`probeMs` in report.json).
