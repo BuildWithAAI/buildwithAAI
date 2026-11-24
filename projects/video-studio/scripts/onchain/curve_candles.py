@@ -52,6 +52,7 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
     per_slot = collections.Counter(r["slot"] for r in ok)
     dense = {s for s, c in per_slot.items() if c >= dense_min}
     out = []
+    creations = []
     blocks = {}
     for r in ok:
         s = r["slot"]
@@ -70,6 +71,20 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
         pt = trades.pool_trades(tx, venue, mint, signature=r["signature"], tx_index=i)
         if not pt:
             continue
+        # The token-creation transaction fills the curve's token account from
+        # nothing: its "price" is not a trade price. Keep it as an event only.
+        pre = [tb for tb in (tx["meta"].get("preTokenBalances") or [])
+               if tb.get("owner") == venue and tb.get("mint") == mint]
+        if not pre:
+            creations.append({"blockTime": tx.get("blockTime"), "slot": tx.get("slot"), "tx_index": i,
+                              "signature": r["signature"]})
+            continue
+        # trades.pool_trades has used two field layouts; keep SOL-named fields.
+        if "price_sol_per_token" not in pt:
+            if pt.get("quote", "SOL") != "SOL":
+                continue  # stablecoin-quoted pool: not comparable, skip
+            pt["price_sol_per_token"] = pt.get("price_quote_per_token")
+            pt["sol_amount"] = pt.get("quote_amount")
         pt["indexed"] = i is not None
         pt["signers"] = [k["pubkey"] if isinstance(k, dict) else k
                          for k in tx["transaction"]["message"]["accountKeys"]
@@ -77,7 +92,9 @@ def collect(rpc, mint, venue, t_ref, before, after, dense_min=3):
         pt.pop("traders", None)
         out.append(pt)
     out.sort(key=lambda t: (t["slot"], 0 if t["indexed"] else 1, t["tx_index"] if t["tx_index"] is not None else 0))
-    return out, {"sigs": len(rows), "ok": len(ok), "dense_slots": len(dense), "paging": meta}
+    return out, {"sigs": len(rows), "ok": len(ok), "dense_slots": len(dense), "paging": meta,
+                 "creation_events": creations,
+                 "ok_without_curve_flow": len(ok) - len(out) - len(creations)}
 
 
 def to_candles(trs, t_ref, before, after, bucket):

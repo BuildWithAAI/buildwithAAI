@@ -80,11 +80,24 @@ def cursor_at_time(rpc, t_target):
     getSignaturesForAddress accepts any signature as its `before` cursor and
     pages backwards from that signature's slot, so this lets a scan start at a
     chosen time instead of paging down from the newest activity.
-    Returns (signature, slot, blockTime)."""
+    Returns (signature, slot, blockTime). Memoised per target time in
+    <cache_dir>/cursors.json so reruns hit the same cached pages."""
+    memo_path = os.path.join(rpc.cache_dir, "cursors.json")
+    try:
+        memo = json.load(open(memo_path))
+    except (OSError, ValueError):
+        memo = {}
+    if str(int(t_target)) in memo:
+        return tuple(memo[str(int(t_target))])
     slot, bt = slot_at_time(rpc, t_target)
     blk = rpc.call("getBlock", [slot, {"transactionDetails": "signatures", "rewards": False,
                                        "maxSupportedTransactionVersion": 1, "commitment": "finalized"}])
-    return blk["signatures"][-1], slot, bt
+    res = (blk["signatures"][-1], slot, bt)
+    memo[str(int(t_target))] = list(res)
+    with open(memo_path + ".tmp", "w") as f:
+        json.dump(memo, f)
+    os.replace(memo_path + ".tmp", memo_path)
+    return res
 
 
 def block_accounts(rpc, slot):

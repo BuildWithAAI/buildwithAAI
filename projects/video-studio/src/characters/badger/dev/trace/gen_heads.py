@@ -231,6 +231,108 @@ def turn_ear(theta, side):
     return f
 
 
+def _split(p0, p1, p2, p3, t):
+    """de Casteljau: the two halves of a cubic at t."""
+    L = lambda a, b: (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+    a, b, c = L(p0, p1), L(p1, p2), L(p2, p3)
+    d, e = L(a, b), L(b, c)
+    m = L(d, e)
+    return (p0, a, d, m), (m, e, c, p3)
+
+
+def _pts(s):
+    v = [float(x) for x in s.replace(',', ' ').split()]
+    return [(v[i], v[i + 1]) for i in range(0, len(v), 2)]
+
+
+def _fmt(ps):
+    return ' '.join('%.2f %.2f' % p for p in ps)
+
+
+def trim_start(d, t):
+    """Drop the part of the FIRST cubic segment before parameter t (path: 'M p C a b c C ...')."""
+    head, rest = d.split(' C ', 1)
+    first, *more = rest.split(' C ')
+    p0 = _pts(head[2:])[0]
+    p1, p2, p3 = _pts(first)
+    _, (m, e, c, p3) = _split(p0, p1, p2, p3, t)
+    return 'M ' + _fmt([m]) + ' C ' + _fmt([e, c, p3]) + ''.join(' C ' + s for s in more)
+
+
+def trim_end(d, t):
+    """Keep the LAST cubic segment only up to parameter t."""
+    segs = d.split(' C ')
+    prev_end = _pts(segs[-2])[-1]
+    p1, p2, p3 = _pts(segs[-1])
+    (p0, a, dd, m), _ = _split(prev_end, p1, p2, p3, t)
+    return ' C '.join(segs[:-1]) + ' C ' + _fmt([a, dd, m])
+
+
+def fix_three_quarter(view, theta, fFace):
+    """Integration fix INT-B1 (2026-11-24), checked against badger_turn_34.png at 3x:
+    * the far outline hugs the OUTSIDE of the far eye and runs into the top of the nose, and the muzzle wraps
+      under the nose to the far lip corner, so the nose sits at the tip of the muzzle (it used to hang off the
+      edge of the skull fill, with the far contour crossing the far eye and the nose);
+    * a short far upper-lip line runs from the nose down to the mouth (replaces the snout line through the far eye);
+    * the lip line starts low on the near cheek, as on the sheet (the front W-line began at the cheek and read as a grin);
+    * the far eye and brow are narrowed (0.72 of the near eye) as on the sheet.
+    The far outline is authored in the TURNED space (depth-turned NF px, mapped to head-local units by F only)
+    for the screen-right turn; the screen-left turn reuses that far outline of the (unmarked, symmetric) skull with
+    x -> 416 - x, as the original fill34 pair did, while its near side is the front skull's own anatomical-left
+    outline. Ears, eyes, cheek spots and every marking keep their own per-side mapping: no marking is mirrored."""
+    right = theta > 0
+    ts = turn_skull(theta)
+    mx = (lambda x, y: (x, y)) if right else (lambda x, y: (416 - x, y))
+    # far outline + muzzle in turned space (screen-right turn), mirrored for the screen-left turn
+    far = ('C 284 99 285.5 108 284.5 117 C 283 129 278 141 272 151 C 270 155 269.5 158 269.5 162 '
+           'C 272.5 171 273.5 183 271.5 193 C 271.5 200 271 207 268 213 C 266 227 260 239 249 244 '
+           'C 236 247 221 246 209.5 244')
+    far_t = map_path('M 281.4 92 ' + far, mx)
+    if right:
+        near_top = map_path('M 141 31 C 165 23 245 22 262 29 L 289 92', ts)
+        near_rest = map_path('M 208 244 C 188 243 172 230 164 216 C 154 205 145 192 139 177 C 135 173 131 169 127 162 '
+                             'C 120 148 115 125 116 100 L 122 40 Z', ts)
+        fill_t = near_top + ' ' + far_t[far_t.index('C'):] + ' ' + near_rest[near_rest.index('C'):]
+    else:
+        # screen-left turn: the near side is the front skull's own anatomical-LEFT outline (x > 208), then the far
+        # outline from the chin back up to the far temple, then the far top corner
+        near = map_path('M 141 31 C 165 23 245 22 262 29 L 289 92 C 293 118 294 148 288 162 C 284 170 280 174 277 177 '
+                        'C 271 192 262 205 252 216 C 244 230 228 243 208 244', ts)
+        far_rev = map_path('M 209.5 244 C 221 246 236 247 249 244 C 260 239 266 227 268 213 C 271 207 271.5 200 271.5 193 '
+                           'C 273.5 183 272.5 171 269.5 162 C 269.5 158 270 155 272 151 C 278 141 283 129 284.5 117 '
+                           'C 285.5 108 284 99 281.4 92', mx)
+        corner = map_path('M 122 40', ts)
+        fill_t = near + ' ' + far_rev[far_rev.index('C'):] + ' L ' + corner[2:] + ' Z'
+    heads[view]['skull']['fill'] = mp(fill_t, F)
+    contour = map_path('M 281.4 92 C 284 99 285.5 108 284.5 117 C 283 129 278 141 272 151 C 270 155 269.5 158 269.5 162', mx)
+    lip_far = map_path('M 271.5 187 C 271.5 198 271 207 268 213', mx)
+    heads[view]['skull']['strokes'] = heads[view]['skull']['strokes'][:2] + [mp(contour, F)]
+    heads[view]['skull']['details'] = []
+    heads[view]['philtrum'] = mp(lip_far, F)
+    # mouth: start the near side low on the cheek (t=0.7 of the cheek segment), keep the rest of each library line
+    trim = trim_start if right else trim_end
+    tt = 0.7 if right else 0.3
+    src = FRONT['mouth']
+    m = heads[view]['mouth']
+    m['neutral']['strokes'] = [mp(trim(src['neutral']['strokes'][0], tt), fFace)]
+    m['worried']['strokes'] = [mp(trim(src['worried']['strokes'][0], tt), fFace)]
+    happy = src['happy']['strokes'][0].split(' C ')  # drop the cheek segment on the near side
+    happy = ('M ' + _fmt(_pts(happy[1])[-1:]) + ' C ' + ' C '.join(happy[2:])) if right else ' C '.join(happy[:-1])
+    m['happy']['strokes'] = [mp(happy, fFace)]
+    # shocked: only the open mouth; the front's cheek lines leave stray dashes beside it in a 3/4 turn
+    m['shocked']['strokes'] = [mp(src['shocked']['strokes'][2], fFace)]
+    # far eye and brow: 0.72 of the near eye width (was 0.86), brow compressed toward the eye centre
+    far_side = 'L' if right else 'R'
+    for e in heads[view]['eyes']:
+        if e['side'] == far_side:
+            e['w'] = round(e['w'] * 0.72 / 0.86, 2)
+            cx = e['c']['x']
+    for b in heads[view]['brows']:
+        if b['side'] == far_side:
+            for k in ('outer', 'mid', 'inner'):
+                b[k]['x'] = round(cx + (b[k]['x'] - cx) * 0.72 / 0.86, 2)
+
+
 for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen', -36.0)):
     fFace = compose(turn_face(theta), F)
     fSkull = compose(turn_skull(theta), F)
@@ -263,6 +365,7 @@ for view, theta in (('threeQuarterRightScreen', 36.0), ('threeQuarterLeftScreen'
     heads[view]['skull']['details'] = [mp(snout, fFace)]
     heads[view]['chin'] = None  # tried a lower-jaw contour; it floated below the jaw on the body, so the muzzle shadow carries the chin
     del chin
+    fix_three_quarter(view, theta, fFace)
 
 # =============================================================================== PROFILE LEFT (CL)
 KX_CL, KY_CL = 0.9398, 1.0455

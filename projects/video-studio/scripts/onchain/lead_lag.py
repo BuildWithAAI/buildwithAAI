@@ -21,7 +21,10 @@ wallet bought):
   side_sell_rel_public_buy_s: first / last / SOL-weighted mean side sell time
                   minus the public first buy.
   pnl_sol         SOL in minus SOL out across all of a wallet's transactions in
-                  that token (fees, tips and rent included).
+                  that token (fees, tips and rent included). Tokens moved between
+                  the wallets (transfers) carry no SOL, so a side wallet's PnL can
+                  include tokens it received from the public wallet; group_pnl_sol
+                  (public + sides) is not affected by such moves.
   open_position   the wallet still held more than 1% of what it bought at the
                   end of the data (PnL incomplete).
 Aggregates: count, median, 25th/75th percentiles, min, max, shares.
@@ -107,7 +110,10 @@ def per_token(rec):
     out["n_side_wallets_buying"] = len(side_buys)
     out["side_pnl_sol"] = sum(S[l]["pnl_sol"] for l in sides)
     out["public_pnl_sol"] = sum(S[l]["pnl_sol"] for l in pub)
+    out["group_pnl_sol"] = out["side_pnl_sol"] + out["public_pnl_sol"]
     out["any_open_position"] = any(S[l]["open_position"] for l in S)
+    out["public_sent_tokens_and_side_received"] = (
+        any(S[l]["transfer_out_tokens"] > 0 for l in pub) and any(S[l]["transfer_in_tokens"] > 0 for l in sides))
     if not side_buys:
         return out
     sfb = min(side_buys, key=key)
@@ -171,6 +177,9 @@ def aggregate(toks):
         "n_tokens_open_position": sum(1 for t in both if t["any_open_position"]),
         "side_pnl_sol_total_closed_only": sum(t["side_pnl_sol"] for t in both if not t["any_open_position"]),
         "public_pnl_sol_total_closed_only": sum(t["public_pnl_sol"] for t in both if not t["any_open_position"]),
+        "group_pnl_sol_total": sum(t["group_pnl_sol"] for t in both),
+        "group_pnl_sol_per_token": dist([t["group_pnl_sol"] for t in both]),
+        "n_tokens_public_sent_tokens_and_side_received": sum(1 for t in both if t["public_sent_tokens_and_side_received"]),
         "n_tokens_public_transferred_tokens_out": sum(
             1 for t in both for w in t["wallets"].values() if w["role"] == "public" and w["transfer_out_tokens"] > 0),
     }
