@@ -1,0 +1,1 @@
+{"key": "https://www.okx.com/api/v5/public/mark-price?{\"instId\": \"ETH-USDT-SWAP\", \"instType\": \"SWAP\"}", "recorded_at": 1793756937.6061454, "as": "json", "body": {"code": "0", "data": [{"instId": "ETH-USDT-SWAP", "instType": "SWAP", "markPx": "2263.08", "ts": "1793756937522"}], "msg": ""}}

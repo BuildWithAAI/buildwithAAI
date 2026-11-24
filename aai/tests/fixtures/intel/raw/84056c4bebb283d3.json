@@ -1,0 +1,1 @@
+{"key": "https://www.okx.com/api/v5/market/index-tickers?{\"instId\": \"ETH-USDT\"}", "recorded_at": 1793756937.8068202, "as": "json", "body": {"code": "0", "data": [{"instId": "ETH-USDT", "idxPx": "2263.99", "high24h": "2308.75", "low24h": "2241.16", "open24h": "2259.8", "sodUtc0": "2274.78", "sodUtc8": "2299.5", "ts": "1793756937080"}], "msg": ""}}
