@@ -37,8 +37,8 @@ const doc = {
 	durationSec: plan.durationInFrames / fps,
 	narrationDir,
 	bed: {...plan.bed, file: `audio/music/${plan.bed.id}.flac`, bands: bed.gain.bands, depthsDb: bed.depthsDb, crossovers: bed.crossovers ?? null, lifts: bed.lifts, gainSamples: n, startSample: Math.round((plan.bed.from / fps) * SR)},
-	lines: plan.lines.map((l) => ({id: l.id, audio: l.audio, from: l.from, durationInFrames: l.durationInFrames, text: l.text})),
-	stingers: [plan.sting, plan.bumper, plan.outro].map((s) => ({id: s.cue.id, file: s.cue.file, from: s.from, downbeat: s.downbeat, durationInFrames: s.durationInFrames, hits: s.hits, truePeakDbtp: s.cue.truePeakDbtp})),
+	lines: plan.lines.map((l) => ({id: l.id, audio: l.audio, from: l.from, durationInFrames: l.durationInFrames, text: l.text, firstWordMs: l.words[0]?.startMs ?? 0})),
+	stingers: [plan.sting, plan.bumper, plan.outro].map((s) => ({id: s.cue.id, file: s.cue.file, from: s.from, downbeat: s.downbeat, downbeatSec: s.cue.downbeatSec ?? 0, durationInFrames: s.durationInFrames, hits: s.hits, truePeakDbtp: s.cue.truePeakDbtp})),
 	sfx: planSfx(plan),
 	sections: plan.sections,
 };

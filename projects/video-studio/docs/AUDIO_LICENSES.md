@@ -76,3 +76,14 @@ Not used: the two weakly credited MuseScore_General presets (Trumpet 0:56, Synth
 **Removed in critic round 1 (2026-11-24): MuseScore_General bank 0 program 8 "Celesta"** (MIT; its upstream sample credit is not itemised in the CSV, and the project keeps weakly credited presets out of signature parts). It carried the motif in the curious bed and the Zoora sting; those now use the VCSL vibraphone (soft mallets in the bed; hard mallets doubled by the VCSL harp in the sting). No cue renders it any more (`tests/test_music.py` checks the sting).
 
 **The bed gate's voice reference** (`scripts/audio/music/voiceref/zoo-im_nicola.json`, critic round 1): band levels per 32 ms frame measured from the engine demo narration (`public/generated/_dev/engine-demo/en/narration.wav`: our own script, voiced by Kokoro `im_nicola`, Apache-2.0 weights), with no audio in it. It is a measurement of our own narration, not a third-party asset.
+
+## Audio integration (`src/audio/`) and the AudioDemo
+
+Added 2026-11-25 by the audio integration. **No new source.** The components (`MusicBed`, `Sfx`, `Stinger`) play only the music package and the SFX library above; nothing is sampled, resynthesized or redistributed beyond what those packages deliver, and the duck, band split and master step are our own code (`src/audio/core/`, `src/audio/tools/master_mix.py`; the master uses the engine's pedalboard limiter and Remotion's bundled ffmpeg as tools).
+
+| Asset in the AudioDemo | Source | Licence | Committed? |
+| --- | --- | --- | --- |
+| `intro-sting-show`, `bumper-rekt-meter`, `theme-5s`, `bed-show-neutral-underscore` | music package (this repo) | ours, built from the sources above | already in `public/audio/music/` |
+| `whoosh_*`, `pop_rise_*`, `key_*`, `key_space_*`, `key_enter_*` | SFX library (this repo) | ours / VCSL CC0, per the SFX section above | already in `public/audio/sfx/` |
+| Two narration lines (`src/audio/dev/fixtures/zoora-security/_audio-demo/storyboard.json`) | our own script, voiced by Kokoro `im_nicola` through the voice step | Kokoro weights Apache-2.0; kokoro-onnx MIT (CLAUDE.md, Voice) | no: `public/generated/` is gitignored and rebuilt by `src/audio/tools/demo.sh` |
+| The demo mix (`out/audio/integration/audio-demo.mp4`, `.wav`) | the above | ours | no: `out/` is gitignored |

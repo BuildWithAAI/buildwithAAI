@@ -13,11 +13,8 @@ import React, {useMemo} from 'react';
 import {AbsoluteFill, CalculateMetadataFunction, Html5Audio, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {BRAND} from '../../characters/palette';
 import {FONTS} from '../../brand/fonts';
-import {MusicBed} from '../components/MusicBed.tsx';
-import {Stinger} from '../components/Stinger.tsx';
-import {SfxCues} from '../components/Sfx.tsx';
-import {MUSIC, SFX} from '../components/library.ts';
-import {demoBedPlan, demoPlan, planSfx, type DemoPlan, type DemoTimeline} from './plan.ts';
+import {MUSIC, MusicBed, SFX, Sfx, SfxCues, SfxScene, Stinger} from '../api.ts';
+import {demoBedPlan, demoPlan, hitLabel, planSfx, type DemoPlan, type DemoTimeline} from './plan.ts';
 
 /** Stems for measurement renders: the narration, the bed, the stingers, the SFX. */
 export type Stem = 'voice' | 'bed' | 'stings' | 'sfx';
@@ -90,10 +87,15 @@ const MixPanel: React.FC<{plan: DemoPlan}> = ({plan}) => {
 				</g>
 			))}
 			{LANES.map((l) => (
-				<text key={l.id} x={PANEL.x + 40} y={l.y + l.h / 2 + 9} fill={C.paper} fontFamily={FONTS.body} fontWeight={700} fontSize={24} letterSpacing={1}>
+				<text key={l.id} x={PANEL.x + 40} y={l.id === 'bed' ? l.y + l.h / 2 - 6 : l.y + l.h / 2 + 9} fill={C.paper} fontFamily={FONTS.body} fontWeight={700} fontSize={24} letterSpacing={1}>
 					{l.label}
 				</text>
 			))}
+			{/* the bed lane draws two curves: the speech band (700 Hz-5 kHz) and the lows */}
+			<text x={PANEL.x + 40} y={LANES[1].y + LANES[1].h / 2 + 24} fontFamily={FONTS.body} fontWeight={600} fontSize={24}>
+				<tspan fill={C.paper}>mid</tspan>
+				<tspan fill={C.silver}> / low</tspan>
+			</text>
 			{plan.bed.speech.map((s, i) => (
 				<rect key={i} x={x(s.start * plan.fps)} y={LANES[0].y} width={Math.max(3, x(s.end * plan.fps) - x(s.start * plan.fps))} height={LANES[0].h} rx={4} fill={C.paper} />
 			))}
@@ -113,11 +115,12 @@ const MixPanel: React.FC<{plan: DemoPlan}> = ({plan}) => {
 };
 
 const Title: React.FC<{text: string; sub?: string}> = ({text, sub}) => (
-	<div style={{position: 'absolute', left: 96, right: 96, top: 170, textAlign: 'center'}}>
-		<div style={{fontFamily: FONTS.heading, fontWeight: 900, fontSize: 84, color: C.ink, letterSpacing: 2}}>{text}</div>
-		{sub ? <div style={{fontFamily: FONTS.body, fontWeight: 600, fontSize: 30, color: C.muted, marginTop: 12}}>{sub}</div> : null}
+	<div style={{position: 'absolute', left: 96, right: 96, top: 132, textAlign: 'center'}}>
+		<div style={{fontFamily: FONTS.heading, fontWeight: 800, fontSize: 72, lineHeight: 1.1, color: C.ink}}>{text}</div>
+		{sub ? <div style={{fontFamily: FONTS.body, fontWeight: 600, fontSize: 30, lineHeight: 1.3, color: C.muted, marginTop: 14}}>{sub}</div> : null}
 	</div>
 );
+
 
 /** Dots that pop when a stinger's hits land (shows the music is on the frame grid). */
 const Hits: React.FC<{hits: Array<{frame: number; what: string}>; y: number}> = ({hits, y}) => {
@@ -132,7 +135,7 @@ const Hits: React.FC<{hits: Array<{frame: number; what: string}>; y: number}> = 
 				return (
 					<div key={i} style={{display: 'flex', flexDirection: 'column', alignItems: 'center', width: 240}}>
 						<div style={{width: 64, height: 64, borderRadius: 32, border: `4px solid ${C.ink}`, backgroundColor: on ? C.ink : C.paper, transform: `scale(${on ? 0.7 + 0.3 * s : 0.7})`}} />
-						<div style={{fontFamily: FONTS.body, fontWeight: 600, fontSize: 24, color: on ? C.ink : C.muted, marginTop: 12, textAlign: 'center'}}>{h.what.split(/[:(]/)[0].trim()}</div>
+						<div style={{fontFamily: FONTS.body, fontWeight: 600, fontSize: 26, color: on ? C.ink : C.muted, marginTop: 12, textAlign: 'center'}}>{hitLabel(h.what)}</div>
 					</div>
 				);
 			})}
@@ -143,13 +146,19 @@ const Hits: React.FC<{hits: Array<{frame: number; what: string}>; y: number}> = 
 const Line: React.FC<{line: DemoPlan['lines'][number]; fps: number}> = ({line, fps}) => {
 	const f = useCurrentFrame();
 	const t = ((f - line.from) / fps) * 1000;
+	// one word underlined at a time: the latest that has started, while it (or its tail) still sounds
+	let current = -1;
+	line.words.forEach((w, i) => {
+		if (t >= w.startMs) current = i;
+	});
+	if (current >= 0 && t >= line.words[current].endMs + 200) current = -1;
 	return (
-		<div style={{position: 'absolute', left: 160, right: 160, top: 300, textAlign: 'center', fontFamily: FONTS.body, fontWeight: 700, fontSize: 60, lineHeight: 1.35}}>
+		<div style={{position: 'absolute', left: 200, right: 200, top: 372, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', columnGap: 22, rowGap: 6, fontFamily: FONTS.body, fontWeight: 700, fontSize: 56, lineHeight: 1.3}}>
 			{line.words.map((w, i) => {
 				const said = t >= w.startMs;
-				const now = t >= w.startMs && t < w.endMs + 80;
+				const now = i === current;
 				return (
-					<span key={i} style={{color: said ? C.ink : C.silver, borderBottom: `6px solid ${now ? C.accent : 'transparent'}`, marginRight: 18}}>
+					<span key={i} style={{color: said ? C.ink : C.silver, borderBottom: `6px solid ${now ? C.accent : 'transparent'}`}}>
 						{w.text}
 					</span>
 				);
@@ -162,12 +171,12 @@ const Bullets: React.FC<{plan: DemoPlan}> = ({plan}) => {
 	const f = useCurrentFrame();
 	const {fps} = useVideoConfig();
 	return (
-		<div style={{position: 'absolute', left: 260, right: 260, top: 300, display: 'flex', flexDirection: 'column', gap: 24}}>
+		<div style={{position: 'absolute', left: 360, right: 360, top: 330, display: 'flex', flexDirection: 'column', gap: 22}}>
 			{plan.bullets.map((b, i) => {
-				if (f < b.at) return <div key={i} style={{height: 84}} />;
+				if (f < b.at) return <div key={i} style={{height: 88}} />;
 				const s = spring({frame: f - b.at, fps, config: {stiffness: 200, damping: 14}});
 				return (
-					<div key={i} style={{height: 84, display: 'flex', alignItems: 'center', gap: 28, padding: '0 32px', backgroundColor: C.paper, border: `3px solid ${C.ink}`, borderRadius: 16, transform: `scale(${0.85 + 0.15 * s})`, transformOrigin: 'left center'}}>
+					<div key={i} style={{height: 88, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 28, padding: '0 32px', backgroundColor: C.paper, border: `3px solid ${C.ink}`, borderRadius: 16, transform: `scale(${0.85 + 0.15 * s})`, transformOrigin: 'left center'}}>
 						<div style={{width: 48, height: 48, borderRadius: 24, backgroundColor: C.ink, color: C.paper, fontFamily: FONTS.body, fontWeight: 800, fontSize: 28, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>{i + 1}</div>
 						<div style={{fontFamily: FONTS.body, fontWeight: 700, fontSize: 44, color: C.ink}}>{b.text}</div>
 					</div>
@@ -187,8 +196,8 @@ const Meter: React.FC<{plan: DemoPlan}> = ({plan}) => {
 	const v = Math.max(0, 0.88 * fill + fall);
 	const ang = Math.PI * (1 - v);
 	const cx = 960;
-	const cy = 560;
-	const r = 230;
+	const cy = 600;
+	const r = 220;
 	return (
 		<svg width={1920} height={1080} style={{position: 'absolute', left: 0, top: 0}}>
 			<path d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`} fill="none" stroke={C.silver} strokeWidth={28} strokeLinecap="round" />
@@ -207,7 +216,7 @@ const Typing: React.FC<{plan: DemoPlan}> = ({plan}) => {
 	const entered = text.endsWith('\n');
 	const caretOn = Math.floor(f / 15) % 2 === 0 || (typed.length > 0 && f - typed[typed.length - 1].at < 10);
 	return (
-		<div style={{position: 'absolute', left: 360, right: 360, top: 330, height: 200, backgroundColor: C.slate, borderRadius: 16, padding: '44px 56px', boxSizing: 'border-box'}}>
+		<div style={{position: 'absolute', left: 420, right: 420, top: 360, height: 200, backgroundColor: C.slate, borderRadius: 16, padding: '44px 56px', boxSizing: 'border-box'}}>
 			<div style={{fontFamily: FONTS.body, fontWeight: 600, fontSize: 56, color: C.paper, whiteSpace: 'pre'}}>
 				{'> '}
 				{text.replace('\n', '')}
@@ -233,45 +242,50 @@ const Stage: React.FC<{plan: DemoPlan}> = ({plan}) => {
 			case 'sting':
 				return (
 					<>
-						<Title text="THEME STING" sub="intro-sting-show: its hits land on frames" />
-						<Hits hits={plan.sting.hits.filter((h) => !/motif starts/.test(h.what))} y={470} />
+						<Title text="Theme sting" sub="intro-sting-show: every hit lands on a frame" />
+						<Hits hits={plan.sting.hits.filter((h) => !/motif starts/.test(h.what))} y={380} />
 					</>
 				);
 			case 'line1':
 				return (
 					<>
-						<Title text="ZOO + BED" sub="the bed ducks per sample under every phrase (2 / 12 / 4 dB band split)" />
+						<Title text="Zoo over the bed" sub="the bed ducks per sample under every phrase: 2 / 12 / 4 dB band split" />
 						<Line line={plan.lines[0]} fps={plan.fps} />
 					</>
 				);
 			case 'bullets':
-				return <Bullets plan={plan} />;
+				return (
+					<>
+						<Title text="Three bullets" sub="rising pops D5, G5, A5, each on its reveal frame" />
+						<Bullets plan={plan} />
+					</>
+				);
 			case 'bumper':
 				return (
 					<>
-						<Title text="REKT METER" sub="bumper: the bed rests while it plays" />
+						<Title text="Rekt Meter" sub="bumper: the bed rests while it plays" />
 						<Meter plan={plan} />
 					</>
 				);
 			case 'line2':
 				return (
 					<>
-						<Title text="ZOO + BED" sub="same duck; the bed fades back in from its rest" />
+						<Title text="Zoo over the bed" sub="the same duck, after the bed fades back in from its rest" />
 						<Line line={plan.lines[1]} fps={plan.fps} />
 					</>
 				);
 			case 'typing':
 				return (
 					<>
-						<Title text="TYPING BEAT" sub="one key per character, each on a frame" />
+						<Title text="Typing beat" sub="one key per character, each on a whole frame" />
 						<Typing plan={plan} />
 					</>
 				);
 			default:
 				return (
 					<>
-						<Title text="THEME BUTTON" sub="theme-5s: the bed fades out under it" />
-						<Hits hits={plan.outro.hits} y={470} />
+						<Title text="Theme button" sub="theme-5s: the bed fades out under it" />
+						<Hits hits={plan.outro.hits} y={380} />
 					</>
 				);
 		}
@@ -313,7 +327,14 @@ export const AudioDemo: React.FC<AudioDemoProps> = ({plan, stems}) => {
 						</Sequence>
 					))
 				: null}
-			{want('sfx') ? <SfxCues cues={planSfx(plan)} /> : null}
+			{want('sfx') ? (
+				<SfxScene id="audio-demo">
+					{plan.transitions.map((t) => (
+						<Sfx key={t.type} id={t.cue.id} at={t.cue.at} />
+					))}
+					<SfxCues cues={planSfx(plan).filter((c) => !c.label.startsWith('transition:'))} />
+				</SfxScene>
+			) : null}
 		</AbsoluteFill>
 	);
 };

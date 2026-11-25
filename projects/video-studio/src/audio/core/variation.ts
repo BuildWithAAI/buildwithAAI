@@ -1,7 +1,7 @@
 /**
  * Deterministic variation choice. Remotion renders frames in parallel tabs that share no state, so a
  * sound's variation must be a pure function of where it is used: here, of a scene id and an index
- * (the 1st, 2nd, 3rd pop of that scene). Never Math.random.
+ * (the 1st, 2nd, 3rd pop of that scene), never an unseeded random source.
  *
  * Each (group, scene) gets its own seeded permutation of the group's variations and walks it in order,
  * so consecutive indexes never repeat a file (also across the wrap from the last to the first), every

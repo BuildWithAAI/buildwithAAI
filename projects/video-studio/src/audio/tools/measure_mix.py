@@ -12,14 +12,15 @@ per sample, computed by the same TypeScript the composition runs).
 
 Checks (exit 1 when one fails):
   - MP4 (AAC as delivered): integrated loudness -14 +-1 LUFS, true peak <= -1 dBTP (our BS.1770-4 meter
-    and ffmpeg's ebur128 must both agree);
+    and ffmpeg's ebur128 must both agree), no DC offset (<= 0.001, the engine metrics' limit);
   - the stems sum to the mix (null test under -80 dBFS: nothing else is in the mix);
   - the rendered bed equals its plan per sample (ideal = the bed looped from its start offset, split at
     700 Hz / 5 kHz by the audio engine's own split_bands, times the plan's per-band gains): residual at
     the 16-bit floor, also across the loop seam;
   - the voice is on top under speech: band-audibility index (ANSI S3.5 weights, the music package's
     voice-gate method) >= 0.75 and the voice at least 10 LU over everything else;
-  - every SFX lands on its planned sample (cross-correlation of the file with the SFX stem): within 1 ms.
+  - every SFX, every stinger's downbeat and every narration line lands on its planned sample
+    (cross-correlation of the file with its stem): within 1 ms.
 """
 
 from __future__ import annotations
@@ -144,25 +145,68 @@ def ideal_bed(plan: dict) -> tuple[np.ndarray, int]:
     return out, L - off  # the loop seam, in samples from the bed's start
 
 
-def sfx_sync(plan: dict, stem: np.ndarray) -> dict:
+def load_mono48(rel: str) -> np.ndarray:
+    """A public/ audio file as mono float at 48 kHz (24 kHz narration is upsampled 2x, as Remotion plays it)."""
+    x, sr = sf.read(str(STUDIO / "public" / rel), always_2d=True, dtype="float64")
+    m = x.T.mean(axis=0)
+    if sr != SR:
+        from math import gcd
+
+        from scipy.signal import resample_poly
+
+        g = gcd(SR, sr)
+        m = resample_poly(m, SR // g, sr // g)
+    return m
+
+
+def align_offset(mono: np.ndarray, ref: np.ndarray, expected: int, search: int) -> int | None:
+    """Lag (samples) of `ref` in `mono` around sample `expected`, by cross-correlation (None when out of range)."""
+    lo = max(0, expected - search)
+    seg = mono[lo:expected + search + ref.size]
+    if seg.size < ref.size or not np.any(ref):
+        return None
+    corr = np.correlate(seg, ref, mode="valid")
+    return int(np.argmax(corr)) + lo - expected
+
+
+def placement(plan: dict, stem: np.ndarray, items: list, ref_sec: float = 0.08, search_ms: float = 10.0) -> dict:
+    """Where each planned item (file, start sample, offset into the file) really sits in its stem."""
     mono = stem.mean(axis=0)
     offsets = []
-    for c in plan["sfx"]:
-        x, sr = sf.read(str(STUDIO / "public" / c["file"]), always_2d=True, dtype="float64")
-        ref = x.T.mean(axis=0) * 10 ** (c["gainDb"] / 20)
-        k = min(ref.size, int(0.08 * SR))
-        ref = ref[:k]
-        start = int(round(c["from"] * SR / plan["fps"]))
-        w = int(0.01 * SR)
-        lo = max(0, start - w)
-        seg = mono[lo:start + w + k]
-        if seg.size < k:
+    for it in items:
+        src = load_mono48(it["file"])
+        skip = int(round(it.get("skipSec", 0.0) * SR))
+        ref = src[skip:skip + int(ref_sec * SR)]
+        lag = align_offset(mono, ref, it["startSample"] + skip, int(search_ms / 1000 * SR))
+        if lag is None:
             continue
-        corr = np.correlate(seg, ref, mode="valid")
-        lag = int(np.argmax(corr)) + lo - start
-        offsets.append({"id": c["id"], "label": c["label"], "frame": c["at"], "offsetMs": round(lag / SR * 1000, 3)})
+        offsets.append({"id": it["id"], "label": it.get("label", ""), "frame": it["frame"], "offsetMs": round(lag / SR * 1000, 3)})
     worst = max((abs(o["offsetMs"]) for o in offsets), default=0.0)
     return {"cues": len(offsets), "worstOffsetMs": worst, "offsets": offsets}
+
+
+def sfx_sync(plan: dict, stem: np.ndarray) -> dict:
+    fps = plan["fps"]
+    items = [{"id": c["id"], "label": c["label"], "file": c["file"], "frame": c["at"], "startSample": int(round(c["from"] * SR / fps))} for c in plan["sfx"]]
+    return placement(plan, stem, items)
+
+
+def stinger_sync(plan: dict, stem: np.ndarray) -> dict:
+    """Stingers: their first 100 ms after the downbeat (a pre-roll is digital silence)."""
+    fps = plan["fps"]
+    items = [{"id": s["id"], "label": "stinger", "file": s["file"], "frame": s["downbeat"], "startSample": int(round(s["from"] * SR / fps)),
+              "skipSec": float(s.get("downbeatSec", 0.0))} for s in plan["stingers"]]
+    return placement(plan, stem, items, ref_sec=0.1)
+
+
+def voice_sync(plan: dict, stem: np.ndarray) -> dict:
+    """Narration lines: their first word (200 ms from its start), from the 24 kHz scene file upsampled like Remotion does."""
+    fps = plan["fps"]
+    items = []
+    for line in plan["lines"]:
+        first = line.get("firstWordMs", 0) / 1000
+        items.append({"id": line["id"], "label": "voice", "file": line["audio"], "frame": line["from"], "startSample": int(round(line["from"] * SR / fps)), "skipSec": first})
+    return placement(plan, stem, items, ref_sec=0.2)
 
 
 def section_loudness(mix: np.ndarray, plan: dict) -> list:
@@ -199,6 +243,9 @@ def main(argv=None) -> int:
     check("mp4 true peak <= -1 dBTP", m["truePeakDbtp"] <= CEIL_TP and m["ffmpegEbur128"]["truePeakDbtp"] <= CEIL_TP,
           f"{m['truePeakDbtp']} dBTP (ffmpeg {m['ffmpegEbur128']['truePeakDbtp']})")
     check("mp4 length 30-45 s", 30 <= m["durationSec"] <= 45, f"{m['durationSec']} s")
+    dc = float(np.abs(mp4.mean(axis=1)).max())
+    m["dcOffsetMax"] = round(dc, 7)
+    check("mp4 DC offset <= 0.001 (the engine's metric)", dc <= 1e-3, f"{dc:.6f}")
 
     report["masteredWav"] = {**level_summary(read(d / "audio-demo.wav")), "ffmpegEbur128": ffmpeg_ebur128(d / "audio-demo.wav")}
     if (d / "audio-demo.raw.mp4").exists():
@@ -231,7 +278,14 @@ def main(argv=None) -> int:
     check("bed = its per-sample plan (16-bit floor)", report["bedVsPlan"]["residualPeakDbfs"] < -80, f"residual peak {report['bedVsPlan']['residualPeakDbfs']} dBFS, at the loop seam {report['bedVsPlan']['residualPeakAtSeamDbfs']}")
 
     report["sfxSync"] = sfx_sync(plan, stems["sfx"])
-    check("every SFX on its planned sample (+-1 ms)", report["sfxSync"]["worstOffsetMs"] <= 1.0, f"worst {report['sfxSync']['worstOffsetMs']} ms over {report['sfxSync']['cues']} cues")
+    check("every SFX on its planned sample (+-1 ms)", report["sfxSync"]["worstOffsetMs"] <= 1.0 and report["sfxSync"]["cues"] == len(plan["sfx"]),
+          f"worst {report['sfxSync']['worstOffsetMs']} ms over {report['sfxSync']['cues']} of {len(plan['sfx'])} cues")
+    report["stingerSync"] = stinger_sync(plan, stems["stings"])
+    check("every stinger's downbeat on its planned sample (+-1 ms)", report["stingerSync"]["worstOffsetMs"] <= 1.0 and report["stingerSync"]["cues"] == len(plan["stingers"]),
+          f"worst {report['stingerSync']['worstOffsetMs']} ms over {report['stingerSync']['cues']} stingers")
+    report["voiceSync"] = voice_sync(plan, stems["voice"])
+    check("every narration line on its planned sample (+-1 ms)", report["voiceSync"]["worstOffsetMs"] <= 1.0 and report["voiceSync"]["cues"] == len(plan["lines"]),
+          f"worst {report['voiceSync']['worstOffsetMs']} ms over {report['voiceSync']['cues']} lines")
 
     report["sections"] = section_loudness(mix, plan)
     report["checks"] = checks

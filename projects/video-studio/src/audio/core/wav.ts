@@ -90,10 +90,8 @@ export const encodeWav16 = (channels: readonly Float32Array[], sampleRate: numbe
 	v.setUint16(34, 16, true);
 	put(36, 'data');
 	v.setUint32(40, size, true);
+	// the same scale as the reader (x 32768), clamped: a round trip is exact to half an LSB
 	for (let i = 0; i < n; i++)
-		for (let c = 0; c < ch; c++) {
-			const s = Math.max(-1, Math.min(1, channels[c][i]));
-			v.setInt16(44 + (i * ch + c) * 2, Math.round(s < 0 ? s * 32768 : s * 32767), true);
-		}
+		for (let c = 0; c < ch; c++) v.setInt16(44 + (i * ch + c) * 2, Math.max(-32768, Math.min(32767, Math.round(channels[c][i] * 32768))), true);
 	return new Uint8Array(buf);
 };

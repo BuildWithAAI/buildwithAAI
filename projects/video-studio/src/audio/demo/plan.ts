@@ -140,3 +140,11 @@ export const demoBedPlan = (p: DemoPlan): BedPlan =>
 
 /** Every SFX cue of the plan, in time order (whooshes, pops, keys). */
 export const planSfx = (p: DemoPlan): SfxCue[] => [...p.transitions.map((t) => t.cue), ...p.bullets.map((b) => b.cue), ...p.typing.cues].sort((a, b) => a.from - b.from);
+
+/** A short label for a stinger hit from the music metadata ("Badger: E-flat" -> "Badger E-flat", "SHOW lands (crash)" -> "SHOW lands"). */
+export const hitLabel = (what: string): string => {
+	const [head, tail = ''] = what.split(':').map((x) => x.trim());
+	const base = head.replace(/\s*\(.*$/, '');
+	const note = /^([A-G](?:-flat|-sharp)?)(?=$|[\s(,])/.exec(tail)?.[1];
+	return note ? `${base} ${note}` : base;
+};

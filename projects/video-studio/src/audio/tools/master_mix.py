@@ -7,7 +7,11 @@ Remotion sums its tracks with no bus processing, so a mix lands wherever its par
 demo at -16 LUFS, a talk-heavy episode near -14) and nothing guarantees the delivery ceiling when peaks
 coincide. This is the bus stage a broadcast mix ends with:
 
-  1. the rendered mix (the same composition rendered losslessly: --codec=wav, or --separate-audio-to);
+  1. the rendered mix (the same composition rendered losslessly: --codec=wav, or --separate-audio-to),
+     through a subsonic high-pass (2nd-order Butterworth, 20 Hz: -0.4 dB at D1 36.7 Hz, the lowest bass
+     note in the music package). It removes DC: the voice step's Kokoro narration carries a DC component
+     that switches on with speech (a 50 ms mean of about +0.17 while Zoo talks, 0 in pauses), which
+     thumps at every phrase and wastes headroom;
   2. one static gain to -14 LUFS-I (BS.1770-4, the audio engine's meter, which agrees with ffmpeg's ebur128
      within 0.02 LU), into the engine's true-peak limiter (pedalboard BrickwallLimiter in true-peak mode,
      5 ms lookahead, verified by the engine's 4x-oversampled meter) at -1.5 dBTP; the gain is re-aimed
@@ -17,7 +21,7 @@ coincide. This is the bus stage a broadcast mix ends with:
   4. the delivered MP4 is decoded and measured again; if the codec pushed the true peak over -1 dBTP the
      ceiling drops by the overshoot and steps 2-4 repeat.
 
-Nothing else is touched: no EQ, no compression. On a speech-led mix the voice never reaches the limiter
+Nothing else is touched: no EQ, no compression (the high-pass works below the music and the voice). On a speech-led mix the voice never reaches the limiter
 (it peaks near -4 dBTP after the stereo upmix), so only stingers' and effects' transients are caught.
 Prints and writes a JSON report (--report). Exit codes: 0 delivered in spec, 1 not, 2 bad input.
 """
@@ -42,6 +46,16 @@ from audiolib import loudness  # noqa: E402
 from audiolib.dynamics import limit  # noqa: E402
 
 SR = 48000
+SUBSONIC_HZ = 20.0
+
+
+def subsonic(x: np.ndarray, fc: float = SUBSONIC_HZ) -> np.ndarray:
+    """2nd-order Butterworth high-pass (causal, as a mastering DC/subsonic filter): no DC, nothing audible lost."""
+    from scipy.signal import butter, sosfilt
+
+    if fc <= 0:
+        return x
+    return sosfilt(butter(2, fc, btype="highpass", fs=SR, output="sos"), x, axis=-1)
 
 
 def remotion_ffmpeg(args: list[str]) -> subprocess.CompletedProcess:
@@ -95,6 +109,7 @@ def main(argv=None) -> int:
     ap.add_argument("--ceiling", type=float, default=-1.5, help="limiter ceiling before the codec (dBTP)")
     ap.add_argument("--delivery-ceiling", type=float, default=-1.0, help="true peak the delivered MP4 must stay under (dBTP)")
     ap.add_argument("--bitrate", default="320k")
+    ap.add_argument("--subsonic-hz", type=float, default=SUBSONIC_HZ, help="high-pass corner before mastering (0 = off)")
     ap.add_argument("--report", help="write the JSON report here")
     a = ap.parse_args(argv)
     try:
@@ -108,6 +123,8 @@ def main(argv=None) -> int:
     x = x.T
     if x.shape[0] == 1:
         x = np.vstack([x, x]) * math.sqrt(0.5)
+    dc_in = float(np.abs(x.mean(axis=1)).max())
+    x = subsonic(x, a.subsonic_hz)
     ceiling = a.ceiling
     rounds = []
     with tempfile.TemporaryDirectory() as td:
@@ -128,7 +145,9 @@ def main(argv=None) -> int:
             sf.write(a.wav_out, y.T, SR, subtype="PCM_24")
     final = rounds[-1]["delivered"]
     ok = abs(final["integratedLufs"] - a.target) <= 0.5 and final["truePeakDbtp"] <= a.delivery_ceiling
-    report = {"target": {"integratedLufs": a.target, "deliveryCeilingDbtp": a.delivery_ceiling, "codec": f"libfdk_aac {a.bitrate}"}, "rounds": rounds, "ok": ok}
+    report = {"target": {"integratedLufs": a.target, "deliveryCeilingDbtp": a.delivery_ceiling, "codec": f"libfdk_aac {a.bitrate}"},
+              "subsonic": {"hz": a.subsonic_hz, "order": 2, "dcInMax": round(dc_in, 6), "dcOutMax": round(float(np.abs(y.mean(axis=1)).max()), 7)},
+              "rounds": rounds, "ok": ok}
     if a.report:
         Path(a.report).write_text(json.dumps(report, indent=1) + "\n")
     m = rounds[-1]["master"]
