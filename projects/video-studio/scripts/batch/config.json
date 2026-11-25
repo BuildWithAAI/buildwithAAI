@@ -85,7 +85,8 @@
           "notes": [
             "The talk-show set (src/show): cold open, the mechanism as a concept diagram (howItWorked), Badger's Red Flag, Zoo's One Fix, sources, and the end screen.",
             "Concept level only: no code, function names, addresses or step lists (no exploit how-tos). Every fact attributed; no suspect or private names.",
-            "Once published, its URL goes into content/zoora-security/channel.json evergreen.<topic>.url, so the daily Threat Brief links it."
+            "Once published, its URL goes into content/zoora-security/channel.json evergreen.<topic>.url, so the daily Threat Brief links it.",
+            "The show is The Zoo & Badger Show, on the Zoodger News channel: use the show name for the show (cold open, outro) and the channel name only for the channel (subscribe lines)."
           ]
         },
         "scam-of-the-week": {
@@ -97,7 +98,8 @@
           "fiction": false,
           "notes": [
             "One recurring scam pattern as a case file (the scamOfTheWeek segment: title, how, tell, fix), built from regulators' and investigators' published descriptions, not from one victim's story.",
-            "Never at a victim's expense; never reproduce the scam's script, links, QR codes or handles."
+            "Never at a victim's expense; never reproduce the scam's script, links, QR codes or handles.",
+            "The show is The Zoo & Badger Show, on the Zoodger News channel: use the show name for the show (cold open, outro) and the channel name only for the channel (subscribe lines)."
           ]
         }
       }
