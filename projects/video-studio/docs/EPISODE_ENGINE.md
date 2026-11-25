@@ -481,6 +481,12 @@ Sound (2026-11-25; section 12)
   adds 11-14 s and the master and the gate about 26 s (12.5 has the proof times and a 12.75-minute probe).
 - Kokoro's narration carries a DC offset; the master's 20 Hz high-pass removes it from the delivery. A plain
   `npx remotion render` keeps it (src/audio README, Limits).
+- The end screen's music is not the same in every language: the music-up plays wherever the episode's one clock
+  sits in the 64 s resolve loop when the end screen starts. On the demo, en plays the loop's hi-hat section and
+  wraps to its sparse first section at 0:51.1, 8 s before the end; es plays only the sparse section. The end-screen
+  music measures -18.2 LUFS (en) against -21.4 LUFS (es); listen to both (12.6).
+- Transitions are voice-free, not silent: the bed plays through them at about -29 to -36 LUFS (12.6). Literal
+  silence in a transition would be a design change (a rest in the plan), not a fix.
 
 ## 12. Sound: music, effects, the master and the gate
 
@@ -639,4 +645,57 @@ The master's gain was -0.16 to +0.96 dB and the limiter never acted (0 % of bloc
 held the voice at -85.7 dBFS or quieter; the first second of speech sat 40.9-43.5 LU over the music (the bed is
 still fading in); dialogue after the master measured -14.0 to -13.1 LUFS. Every delivered video stream is
 bit-identical to its picture render, and the audio runs exactly as long as the video.
+
+### 12.6 Second proof on the demo, measured independently (2026-11-25)
+
+Run on commit 13f1456 with a clean tree and the commands of section 4: the claim gate with the private names list
+(en PASS, 0 errors, 3 warnings; es PASS, 0 errors, 4 warnings; 57 names checked), one bundle, then `render.sh` for the
+en and es Episode and short1. All four gates passed with no warning, and every gate number equals 12.5 (the same
+plans, so the same mixes). Each delivery was then measured again outside the gate: ffmpeg `ebur128` and `loudnorm` on
+the MP4; the AudioDemo's `measure_mix.voice_on_top` on the decoded AAC (Zoo as delivered = the voice stem through the
+master's own 20 Hz high-pass and gain, the rest = the decoded file minus that); word times and transition windows
+recomputed from `timeline.json` with `timing.ts` instead of read from the plan.
+
+| Output | Integrated, ffmpeg / ours | True peak | LRA, whole / to 1 s after the last word | Zoo over the rest, delivered / worst phrase | Phone model | Index / P10 | Frames under 3 dB at 1-4 kHz |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| en `episode.mp4` | -14.0 / -14.02 LUFS | -2.1 dBTP | 6.5 / 2.3 LU | 16.7 / 15.9 LU | 15.8 / 15.0 LU | 0.844 / 0.627 | 10.4 % |
+| en `short1.mp4` | -14.0 / -14.01 | -4.3 | 2.2 / 2.2 | 17.3 / 16.5 | 16.5 / 15.7 | 0.894 / 0.756 | 5.6 % |
+| es `episode.mp4` | -14.0 / -14.01 | -2.6 | 9.1 / 2.7 | 16.7 / 14.2 | 15.5 / 13.0 | 0.850 / 0.661 | 7.4 % |
+| es `short1.mp4` | -14.0 / -14.01 | -3.2 | 2.7 / 2.7 | 17.0 / 16.4 | 16.0 / 15.4 | 0.873 / 0.719 | 6.6 % |
+
+- **LRA.** The episodes' wider whole-file range comes from the end screen's music alone (-18.2 LUFS en, -21.4 es);
+  the story itself holds 2.3-2.7 LU, every scene before the end screen between -12.6 and -13.7 LUFS-I.
+- **AAC.** Every file decodes under `ffmpeg -xerror` without an error: AAC-LC, 48 kHz, stereo, 320 kb/s, audio and
+  video both 59.000 / 14.500 / 73.700 / 20.600 s. The decode is sample-aligned with the 24-bit master WAV (lag 0) and
+  matches it at 39.9-43.5 dB SNR below 16 kHz; it runs 320-384 samples past the last frame at -92 dBFS or quieter
+  (encoder padding). Remotion's ffmpeg has no libfdk_aac decoder, so only ffmpeg's own decoder was used.
+- **The first 2 s.** No stinger and no effect in any plan. The bed fades in from silence under the hook: -50 / -52
+  LUFS momentary at 1 s and -37 / -39 LUFS at 2 s (en / es), still 6-8 LU under its later ducked level (about -31
+  LUFS) and at least 21.3 LU under Zoo in every 400 ms window. In es the voice starts 55 ms before the timeline's first
+  word, so the mid-band duck is 6.8-8.3 dB on two 10 ms frames, where the bed is still at -83 dBFS.
+- **Bed changes and effects against the words.** No effect is placed (9 left out per episode, 2 per Short, each with
+  its reason in the cue sheet). The bed change before the end screen, the music-up and the final fade overlap no
+  word, and the voice stem is at -85.7 dBFS or quieter inside them; only the opening fade-in runs under the first
+  sentence, by design (12.1). The staggered change dips the bed 11.1 dB (en) and 12.4 dB (es) for 30 ms: the breath
+  the cue sheet asks the owner to judge.
+- **Transitions** (fade, slide and fade in each episode, one fade in each Short): voice-free, not silent. Zoo stays
+  under -87.5 dBFS (10 ms RMS) and -78.3 dBFS peak in every window, and no effect plays; the bed plays through at -29
+  to -36 LUFS. In es the timeline's last word of s03 ("agonía.") ends 25 ms into the slide (Kokoro's phrase-final
+  overrun, section 11) while the voice stem is already under -98 dBFS there.
+- **The picture is unchanged.** The pre-audio engine (`src/episode` at a2cb0ca) with the same characters renders
+  bit-identical pictures: each of the four picture MP4s has the same MD5 as the pre-audio engine's, and each delivered
+  MP4 carries that video stream bit for bit. The frames around every scene boundary were also looked at, taken from the delivered MP4s.
+- **For the listening pass.** The end-screen music differs by language (section 11): en has a hi-hat layer (above
+  6 kHz, about -35 dBFS) that stops at 0:51.1 when the resolve loop wraps to its sparse first section; es never
+  has it. The engine's music-master profile (`metrics.py --profile standalone`, information only, as for the
+  AudioDemo) reads mud 8.0-9.2 dB (Zoo's voice), a -6.0 to -6.3 dB/oct tilt and, on two files, "hum": sustained bed
+  bass notes near 49 and 61 Hz showing in the mix's 10th-percentile floor (the voice and the music alone read 0-4.7
+  dB); nothing here is recorded.
+- **Visual QA** (`scripts/qa`): both Shorts PASS (0 errors, 0 warnings). Each episode FAILS on one error, 0
+  warnings: Badger's face and ears 14 px inside the bottom margin for the whole steps scene (en frames 669-875, es
+  918-1199), the placement call in section 11, now over the whole scene since the Badger head rescale. The picture is
+  the pre-audio engine's, bit for bit, so this is not a sound regression.
+
+Evidence (renders, plans, cue sheets, gate and measurement JSON, frames, QA reports) is in the session scratchpad
+`ep-audio/` and may be cleared.
 
