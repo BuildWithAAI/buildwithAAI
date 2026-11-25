@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "channel": "zoora-ai",
+  "slug": "pumpfun-top-caller",
+  "lang": "en",
+  "sourceLang": "en",
+  "title": "POV: You become a top caller on Pump.fun",
+  "fiction": true,
+  "scenes": [
+    {
+      "id": "s01",
+      "type": "hook",
+      "narration": "Congratulations. You're a top caller. For now. Fiction, not financial advice.",
+      "onScreen": {
+        "kicker": "POV",
+        "title": "You become a top caller",
+        "badgerCue": "caller"
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "happy"}
+    },
+    {
+      "id": "s02",
+      "type": "talk",
+      "narration": "True story. Pump.fun has paid callers since August 2026. [src:pumpfun-callout-rewards-program] By November, one research firm estimated the median reward recipient's total at {$13|thirteen dollars}... [src:pumpfun-callout-rewards-concentration] Thirteen.",
+      "onScreen": {
+        "title": "Paid to call",
+        "bullets": ["Rewards since Aug 2026", "Median reward recipient: $13 (Aug–Nov 2026)"],
+        "cues": ["paid", "median"],
+        "badgerCue": "Thirteen"
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "judge"},
+      "minDurationSec": 12.8
+    },
+    {
+      "id": "s03",
+      "type": "chart",
+      "narration": "A friend offers to help. Hypothetically. You call a made-up coin. Your followers pile in. The price spikes, then collapses as other wallets sell. Your followers are left holding it.",
+      "onScreen": {"pair": "$HYPOTHETICAL / SOL", "cues": ["spikes", "collapses"]},
+      "chart": {"seed": 137, "illustrative": true},
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "shocked"},
+      "transitionIn": "fade"
+    },
+    {
+      "id": "s04",
+      "type": "talk",
+      "narration": "An investigator maps your wallets. Your public wallet lost money. The side wallets bought seconds earlier, sold first, and didn't lose. A map cannot say whose they are... You can. Followers leave. Rewards stop. Congratulations.",
+      "onScreen": {
+        "title": "The map",
+        "bullets": ["Public wallet: lost money", "Side wallets: sold first and showed a gain", "Followers: gone"],
+        "cues": ["public", "side", "followers"],
+        "badgerCue": "Congratulations"
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "worried"},
+      "minDurationSec": 15.5
+    },
+    {
+      "id": "s05",
+      "type": "talk",
+      "narration": "Real life. {Bubblemaps|Bubble maps} alleged a similar side-wallet pattern, in what it calls analysis and estimates. [src:bubblemaps-side-wallet-pattern,bubblemaps-analysis-and-estimates]",
+      "onScreen": {
+        "title": "Outside the story",
+        "bullets": ["Alleged, not proven; ownership not established"],
+        "cues": ["alleged"],
+        "lowerThird": ["Zoo", "Host · Zoora AI"]
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": false},
+      "transitionIn": "wipe"
+    },
+    {
+      "id": "s06",
+      "type": "steps",
+      "narration": "Following callers? Treat every call as an ad. Check who bought seconds before it. Ask who profits from your click.",
+      "onScreen": {
+        "title": "Following callers?",
+        "steps": ["Treat every call as an ad", "Check who bought seconds before it", "Ask who profits from your click"],
+        "cues": ["treat", "check", "profits"]
+      },
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": false}
+    },
+    {
+      "id": "s07",
+      "type": "cta",
+      "narration": "We make one call on this channel. Subscribe.",
+      "onScreen": {"title": "Our one call", "cues": ["subscribe"], "badgerCue": "this"},
+      "zoo": {"expression": "happy"},
+      "badger": {"present": true, "reaction": "judge"},
+      "minDurationSec": 4.1
+    },
+    {
+      "id": "s08",
+      "type": "endscreen",
+      "narration": "Next: you build an AI hedge fund. Badger has concerns.",
+      "onScreen": {"title": "Next: you build an AI hedge fund", "badgerCue": "concerns"},
+      "zoo": {"expression": "neutral"},
+      "badger": {"present": true, "reaction": "worried"},
+      "minDurationSec": 20,
+      "transitionIn": "fade"
+    }
+  ],
+  "sources": [
+    {
+      "id": "pumpfun-callout-rewards-program",
+      "title": "crypto.news on Callout Rewards, Nov 2026",
+      "url": "https://crypto.news/pump-fun-alleged-100k-monthly-influencer-deal/",
+      "quote": "… in August, around the time Pump.fun introduced its Callout Rewards program … Under the platform's Callout Rewards terms, last updated on Aug. 13, eligible participants can receive USDC payments based on engagement and trading activity associated with their recommendations.",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "pumpfun-callout-rewards-concentration",
+      "title": "crypto.news on Sparsity Research, Nov 2026",
+      "url": "https://crypto.news/pump-fun-alleged-100k-monthly-influencer-deal/",
+      "quote": "According to a Nov. 10 report from Sparsity Research, approximately 51,115 wallets had received a combined $29.6 million in callout rewards since August. … Ten wallets collected roughly 16% of the total distributed, while the median recipient earned just $13.",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "bubblemaps-side-wallet-pattern",
+      "title": "crypto.news on Bubblemaps, Nov 7, 2026",
+      "url": "https://crypto.news/bubblemaps-hidden-wallets-crypto-influencers/",
+      "quote": "Bubblemaps has accused crypto influencers of using hidden wallets to profit from their followers … Its account described a public-wallet purchase accompanied by purchases from three alleged side wallets, followed by a recommendation and subsequent selling.",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    },
+    {
+      "id": "bubblemaps-analysis-and-estimates",
+      "title": "crypto.news on Bubblemaps, Nov 7, 2026",
+      "url": "https://crypto.news/bubblemaps-hidden-wallets-crypto-influencers/",
+      "quote": "Bubblemaps has accused crypto influencers of using hidden wallets to profit from their followers … Bubblemaps described its conclusions as analysis and estimates.",
+      "accessed": "2026-11-24",
+      "status": "verified"
+    }
+  ],
+  "shorts": [
+    {"id": "short1", "sceneIds": ["s01", "s02", "s03", "s04", "s05", "s06", "s07"], "title": "POV: An investigator maps your wallets"}
+  ],
+  "thumbnails": [
+    {"id": "a", "text": "WHOSE WALLETS?", "expression": "neutral", "badger": true, "badgerReaction": "judge"},
+    {"id": "b", "text": "TOP CALLER,\nNO\nFOLLOWERS", "expression": "worried", "badger": true, "badgerReaction": "worried"},
+    {"id": "c", "text": "WHO SOLD FIRST?", "expression": "shocked", "badger": false}
+  ]
+}
