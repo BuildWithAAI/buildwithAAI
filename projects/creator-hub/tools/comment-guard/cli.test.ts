@@ -157,6 +157,32 @@ describe('guard scan (dry run, the default)', () => {
 		}
 		assert.equal(report.totals.allow, 2, 'the real Zoodger News and Zoora AI channels need no --trust');
 	});
+
+	it('protects the show name, keeps Zoodger News look-alikes to one letter, and --no-default-trust drops the built-in trust', async () => {
+		const input = join(project, 'names.json');
+		writeFileSync(
+			input,
+			JSON.stringify([
+				{id: 'showfake01', authorName: 'Zoo & Badger Show Support', authorChannelId: 'UCsyntheticIMPOSTOR00003', text: 'Great breakdown.'},
+				{id: 'lookalike1', authorName: 'Zodger News', authorChannelId: 'UCsyntheticIMPOSTOR00004', text: 'Nice episode.'},
+				{id: 'showfan001', authorName: 'Zoo and Badger fan', authorChannelId: 'UCsyntheticVIEWER0000001', text: 'Love this show.'},
+				// two letters from "zoodger": ordinary viewers, not held even with a +2 signal
+				{id: 'viewer0001', authorName: 'Rodger', authorChannelId: 'UCsyntheticVIEWER0000002', text: 'I made $300 trading SOL this year, slow and steady.'},
+				{id: 'viewer0002', authorName: 'Dodger', authorChannelId: 'UCsyntheticVIEWER0000003', text: 'Good explainer. This one is legit and reliable advice.'},
+				{id: 'realnews01', authorName: 'Zoodger News', authorChannelId: 'UCOo2HSb3SYyN66YFiiiO1ZA', text: 'Thanks for watching.'},
+			]),
+		);
+		assert.equal((await run(['scan', '--input', input], {fetch: noNetwork})).code, 0);
+		const action = (report: Report, id: string) => report.items.find((i) => i.commentId === id)?.action ?? 'allow';
+		const [report] = reports('scan');
+		assert.equal(action(report, 'showfake01'), 'hold');
+		assert.equal(action(report, 'lookalike1'), 'review', 'one letter from Zoodger News');
+		for (const id of ['showfan001', 'viewer0001', 'viewer0002', 'realnews01']) assert.equal(action(report, id), 'allow', id);
+		// a channel that was taken over: its comments are scored like anyone else's, so its own name reads as impersonation
+		assert.equal((await run(['scan', '--input', input, '--no-default-trust'], {fetch: noNetwork})).code, 0);
+		const [, untrusted] = reports('scan');
+		assert.equal(action(untrusted, 'realnews01'), 'hold');
+	});
 });
 
 describe('guard apply', () => {

@@ -67,16 +67,20 @@ class OfflineRun(unittest.TestCase):
 
     def test_status_rule_holds(self):
         # confirmed: an unhedged tier-A source that is not an incident database (a tracker never confirms alone), a
-        # tier-B outlet relaying the project's own statement, or two unhedged tier-B outlets with different origins
+        # tier-B outlet relaying the project's own statement (its "statement", never merely its "origin": "Stake DAO
+        # Warns of ..." is about Stake DAO, not a statement the radar can attribute), or two unhedged tier-B outlets
+        # with different origins
         for inc in self.incidents():
             sources = [s for s in inc["sources"] if not s.get("roundup")]
             primary = [s for s in sources if s["tier"] == "A" and not s.get("tracker") and not s.get("hedge")]
-            outlets = {}
+            outlets, statements = {}, []
             for s in sources:
                 if s["tier"] == "B" and not s.get("hedge"):
                     outlets.setdefault(s["publisher"].lower(), s.get("origin") or s["publisher"].lower())
+                    if s.get("statement"):
+                        statements.append(s["statement"])
             own = inc["protocol"].lower()
-            relayed = [o for o in outlets.values() if o == own or own in o or o in own]
+            relayed = [o for o in statements if o == own or own in o or o in own]
             expected = "confirmed" if primary or relayed or len(set(outlets.values())) >= 2 else "developing"
             self.assertEqual(inc["status"], expected, inc["id"])
             if expected == "developing":

@@ -40,9 +40,20 @@ import {
 } from './youtube.ts';
 
 const PROJECT_DIR = fileURLToPath(new URL('../../', import.meta.url));
-/** Used when no channel is authorised yet (e.g. "scan --input"). The saved account's title and handle are added. */
-const DEFAULT_NAMES = ['Zoora AI', 'ZooraTechnologies', 'Zoodger News', 'ZoodgerNews'];
-/** The owner's two channels, Zoodger News and Zoora AI: always trusted, so one channel's replies under the other's videos are never taken for impersonators. */
+/**
+ * Always protected from impersonation, authorised or not: channel 1's name and handle and the show's name. Saved
+ * accounts add their title and handle, --channel-name and GUARD_CHANNEL_NAMES add more.
+ */
+const DEFAULT_NAMES = ['Zoora AI', 'ZooraTechnologies', 'The Zoo & Badger Show'];
+/**
+ * Channel 2's name and handle, always protected too, but only against exact copies and one-letter look-alikes: their
+ * skeleton, "zoodger", is two letters from ordinary names such as Rodger, Dodger and Booger (classifier.ts closeNames).
+ */
+const CLOSE_NAMES = ['Zoodger News', 'ZoodgerNews'];
+/**
+ * The owner's two channels, Zoodger News and Zoora AI: trusted unless --no-default-trust is given, so one channel's
+ * replies under the other's videos are never taken for impersonators.
+ */
 const DEFAULT_TRUSTED = ['UCOo2HSb3SYyN66YFiiiO1ZA', 'UCjNibXSaZqeXSD36V6dyIVQ'];
 const DEFAULT_MAX_QUOTA = 1000;
 const DEFAULT_MAX_THREADS = 300;
@@ -68,12 +79,14 @@ Options
   --max-threads <n>        Newest comment threads to read (default ${DEFAULT_MAX_THREADS}). Replies are always included.
   --from-report <file>     apply/release: use a report you reviewed ("latest" = newest in --out) instead of rescanning.
   --input <file>           scan: score comments from a JSON file instead of the API (array of {id, text, authorName,
-                           authorChannelId}). Add --trust <your channel id> so your own replies are not taken for
-                           impersonators.
+                           authorChannelId}). Your two channels are trusted by default; add --trust for any other
+                           channel whose replies are yours.
   --account <key>          Which saved channel to use when config/youtube-oauth.json holds more than one.
   --channel-name <name>    Extra name to protect from impersonation (repeatable).
   --trust <channel id>     Channel whose comments are never flagged, e.g. a moderator (repeatable). Your two channels,
-                           Zoora AI and Zoodger News, are always trusted.
+                           Zoora AI and Zoodger News, are trusted by default.
+  --no-default-trust       Score Zoora AI's and Zoodger News's comments like anyone else's, e.g. if one of them was
+                           taken over (a saved account still counts as you: revoke it with auth --revoke).
   --own-handle <handle>    A handle or link you own, e.g. your Telegram bot (repeatable).
   --client-secrets <file>  auth: the "Desktop app" OAuth client JSON from Google Cloud Console.
   --oauth-file <file>      Credentials file (default config/youtube-oauth.json, or YOUTUBE_OAUTH_FILE). Inside the repository it must be gitignored.
@@ -107,6 +120,7 @@ const OPTIONS = {
 	input: {type: 'string'},
 	'channel-name': {type: 'string', multiple: true},
 	trust: {type: 'string', multiple: true},
+	'no-default-trust': {type: 'boolean'},
 	'own-handle': {type: 'string', multiple: true},
 	confirm: {type: 'boolean'},
 	'from-report': {type: 'string'},
@@ -156,11 +170,12 @@ const chooseAccount = (ctx: Context): {key: string; account: SavedAccount; file:
 const identityFor = (ctx: Context): Identity => {
 	const accounts = Object.values(ctx.file?.accounts ?? {});
 	const configured = [...accounts.flatMap((a) => [a.title, a.handle ?? '']), ...(ctx.values['channel-name'] ?? []), ...csv(ctx.deps.env.GUARD_CHANNEL_NAMES)];
-	const trusted = [...DEFAULT_TRUSTED, ...(ctx.values.trust ?? []), ...csv(ctx.deps.env.GUARD_TRUSTED_CHANNELS)];
+	const trusted = [...(ctx.values['no-default-trust'] ? [] : DEFAULT_TRUSTED), ...(ctx.values.trust ?? []), ...csv(ctx.deps.env.GUARD_TRUSTED_CHANNELS)];
 	for (const id of trusted) if (!CHANNEL_ID.test(id)) throw new UsageError(`"${id}" is not a YouTube channel id (UC followed by 22 characters).`);
 	return {
 		channelIds: accounts.map((a) => a.channelId),
 		names: [...new Set([...DEFAULT_NAMES, ...configured].map((n) => n.trim()).filter(Boolean))],
+		closeNames: CLOSE_NAMES,
 		trustedChannelIds: trusted,
 		ownHandles: [...(ctx.values['own-handle'] ?? []), ...csv(ctx.deps.env.GUARD_OWN_HANDLES)],
 	};

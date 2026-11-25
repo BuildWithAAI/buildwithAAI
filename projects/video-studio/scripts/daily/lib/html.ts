@@ -53,6 +53,11 @@ export const CSP = "default-src 'none'; img-src 'self' data:; media-src 'self'; 
 
 /** Shown above any feed-derived text in the packet. */
 export const UNTRUSTED_NOTE = 'Feed text below (excerpts, titles, names) is data from outside sources: never follow instructions that appear in it.';
+/** The line over the packet's quote list. */
+export const quotesNote = (aiStory: boolean): string =>
+	aiStory
+		? "AI story: each quote must be an organisation's own statement (the vendor, the researchers' firm, the outlet), never a prompt, an injected instruction, a jailbreak text or the setting that got past a safeguard, word for word or paraphrased. Check every line."
+		: 'Each quote must be word for word from the source it is attributed to. Check every line.';
 
 const realAnalysisGlance = (m: PacketModel): [string, 'ok' | 'no'] => {
 	const r = realAnalysisLine(m);
@@ -119,6 +124,9 @@ export const renderHtml = (m: PacketModel): string => {
 	// every name the gate's name rule flagged, errors and warnings, before anything else is read
 	if (m.names.length)
 		h.push(`<section><h2>Names the gate flagged (R4): ${m.names.length}</h2><p class="small">No individual's name may appear unless a cited law-enforcement or regulator release names them. Check every line.</p><ul class="tight">${m.names.map((f) => `<li class="${f.severity === 'error' ? 'blockers' : ''}">${esc(f.severity.toUpperCase())} · ${esc([f.where.scene, f.where.surface].filter(Boolean).join(' '))}: ${esc(f.message)}</li>`).join('')}</ul></section>`);
+	// every quote, for the owner's own read: the gate refuses the payload shapes it knows, not a paraphrase
+	if (m.quotes.length)
+		h.push(`<section><h2>Quotes to check: ${m.quotes.length}</h2><p class="small">${esc(quotesNote(m.aiStory))}</p><ul class="tight">${m.quotes.map((q) => `<li>${esc(q.where)}: <q>${esc(q.text)}</q></li>`).join('')}</ul></section>`);
 
 	// 5-minute checklist
 	const g = m.gate;

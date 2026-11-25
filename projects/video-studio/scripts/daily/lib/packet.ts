@@ -9,7 +9,7 @@ import {beatsOf, type SbLite} from './kit-adapter.ts';
 import type {Sentence, Splitter} from './narration.ts';
 import type {PostInput} from './postapproval.ts';
 import {buildAnnouncements, buildThreatBrief} from './postapproval.ts';
-import type {BriefSource, DailyBrief, PacketSummary, StepResult} from './types.ts';
+import {isAiStory, type BriefSource, type DailyBrief, type PacketSummary, type StepResult} from './types.ts';
 import {isRecord} from './util.ts';
 
 // ---- the news gate's JSON report (scripts/news, out/claims/news-<slug>.json), read defensively ----
@@ -57,6 +57,36 @@ export type SceneView = {id: string; type: string; segment: string; title: strin
 
 export type Thumb = {label: string; rel: string | null; dataUri: string | null; sha256: string | null};
 
+/** A quoted span and where it is ("s05 narration", "s03 onScreen.quote", "title"). */
+export type QuoteView = {where: string; text: string};
+
+/**
+ * Every quoted span of two or more words in what viewers see or hear: the narration as displayed, each on-screen field
+ * (an onScreen.quote is a quote as a whole), the titles and the thumbnail texts. The gate refuses the known payload
+ * shapes; a paraphrased one can only be caught by reading, so the packet lists them all.
+ */
+export const quotesOf = (sb: SbLite, scenes: SceneView[]): QuoteView[] => {
+	const out: QuoteView[] = [];
+	const push = (where: string, text: string): void => {
+		const q = text.replace(/\s+/g, ' ').trim();
+		if (q.split(' ').length >= 2 && !out.some((x) => x.where === where && x.text === q)) out.push({where, text: q});
+	};
+	const scan = (where: string, text: string): void => {
+		for (const m of text.replace(/[“”„‟″]/g, '"').matchAll(/"([^"\n]{2,400}?)"/g)) push(where, m[1] ?? '');
+	};
+	scan('title', sb.title);
+	for (const sh of sb.shorts) scan(`shorts[${sh.id}].title`, sh.title);
+	for (const th of sb.thumbnails) scan(`thumbnails[${th.id}]`, th.text);
+	for (const sc of scenes) for (const s of sc.sentences) scan(`${sc.id} narration`, s.display);
+	for (const sc of sb.scenes)
+		for (const [key, value] of Object.entries(sc.onScreen ?? {})) {
+			if (key === 'quote' && typeof value === 'string') push(`${sc.id} onScreen.quote`, value.replace(/^["“\s]+|["”\s]+$/g, ''));
+			else if (typeof value === 'string') scan(`${sc.id} onScreen.${key}`, value);
+			else if (Array.isArray(value)) value.forEach((x, i) => typeof x === 'string' && scan(`${sc.id} onScreen.${key}[${i}]`, x));
+		}
+	return out;
+};
+
 export type PacketModel = {
 	slug: string;
 	date: string;
@@ -98,6 +128,13 @@ export type PacketModel = {
 	splitter: string;
 	/** Every finding of the news gate's name rule (R4), errors and warnings: shown at the top of the packet. */
 	names: GateFinding[];
+	/**
+	 * Every quoted span in the storyboard (narration, on-screen text, titles), shown at the top of the packet for the
+	 * owner's own check: in an AI story a quote must be an organisation's statement, never a prompt or payload.
+	 */
+	quotes: QuoteView[];
+	/** An AI-security story (the brief's incident: an AI type outside the crypto lane). */
+	aiStory: boolean;
 	/** Corrections to pin on episodes already approved (corrections.ts). */
 	corrections: CorrectionCandidate[];
 };
@@ -267,6 +304,8 @@ export const buildModel = (m: ModelInput): PacketModel => {
 		reply: `APPROVE ${m.slug}`,
 		splitter: m.splitter,
 		names: (gate?.findings ?? []).filter((f) => f.rule === 'R4'),
+		quotes: quotesOf(sb, scenes),
+		aiStory: brief ? isAiStory(brief.incident) : false,
 		corrections: m.corrections ?? [],
 	};
 };

@@ -60,7 +60,7 @@ class Mention:
         "reference_url", "key", "relevance_reason", "surfaces", "tracker", "origin", "new_incident",
         "user_side", "mech_status", "qualifier", "month_bound", "possible", "retraction", "roundup",
         "lane", "ref", "listed", "listed_at", "ai_subject", "subject_known", "url_public", "url_ref",
-        "reference_withheld", "hidden",
+        "reference_withheld", "hidden", "statement",
     )
 
     def __init__(self, **kw):
@@ -202,15 +202,31 @@ _MONTHS = {m: i for i, m in enumerate(("january", "february", "march", "april", 
                                        "september", "october", "november", "december"), 1)}
 
 
+def _org_name_ok(name, people):
+    """An organisation's name, never a person's (nor a name the run has seen used for one)."""
+    return bool(name and "named person" not in name and not safety.redact_people(name.title())[1]
+                and not people.mentioned(name) and not people.mentioned(name.title()))
+
+
 def _origin(title, excerpt, source, item, people=None):
     """Who an outlet's item relays (the parser reads it from the full text; else the stored excerpt, then the title,
     one at a time): an organisation, never a person (nor a name the run has seen used for one)."""
     people = people or safety.People()
     publisher = source.get("publisher") or source["name"]
-    for origin in (item.get("origin"), classify.origin_of(excerpt, publisher), classify.origin_of(title, publisher)):
-        if (origin and "named person" not in origin and not safety.redact_people(origin.title())[1]
-                and not people.mentioned(origin) and not people.mentioned(origin.title())):
+    for origin in (item.get("origin"), classify.origin_of(excerpt, publisher),
+                   classify.origin_of(title, publisher, headline=True)):
+        if _org_name_ok(origin, people):
             return origin
+    return None
+
+
+def statement_by(title, excerpt, publisher, people=None):
+    """The organisation whose own statement an item relays, read from the stored excerpt, then the headline (never a
+    Title Case one): what lets one unhedged tier-B outlet confirm a project's incident."""
+    people = people or safety.People()
+    for name in (classify.statement_of(excerpt, publisher), classify.statement_of(title, publisher, headline=True)):
+        if _org_name_ok(name, people):
+            return name
     return None
 
 
@@ -309,8 +325,34 @@ def _assess_all(source_results, sources_by_id):
     return found
 
 
-def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_history=False, max_age_days=120):
-    """Returns (mentions, counts) where counts[sid] = {'relevant': n, 'incident': n, 'excluded': n}."""
+def held_entry(item, source, hold):
+    """A row for an item the AI lane holds back for the owner (a sexual-abuse or intimate-image story): the outlet, its
+    date, the reason and a suggested type, never the item's words. Its link is withheld (urlRef; the full link goes to
+    the gitignored cache only, since a slug repeats the headline)."""
+    when = _item_when(item)
+    entry = {
+        "sourceId": source["id"],
+        "publisher": source.get("publisher") or source["name"],
+        "tier": source["tier"],
+        "lane": "ai",
+        "held": "sensitive",
+        "reason": hold["reason"],
+        "suggestedType": hold.get("suggestedType"),
+        "date": when.date().isoformat() if when else None,
+        "dateFrom": "listed" if item.get("listedReport") and not item.get("publishedUtc") else "published",
+    }
+    if item.get("url"):
+        entry["urlRef"] = safety.url_ref(item["url"])
+    tracker = item.get("trackerUrl") or ""
+    if re.fullmatch(r"https://incidentdatabase\.ai/cite/\d+(?:#\d+)?", tracker):
+        entry["trackerUrl"] = tracker  # a database record number, no words
+    return entry, when
+
+
+def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_history=False, max_age_days=120,
+                   held=None):
+    """Returns (mentions, counts) where counts[sid] = {'relevant': n, 'incident': n, 'excluded': n, 'held': n}. held: a
+    list that gets (entry, when, url) for each item the AI lane holds back for the owner (see held_entry)."""
     mentions, counts = [], {}
     # organisations seen in this run (incident-database record names, source names): a lone "<Org> said" is not a
     # surname to redact
@@ -356,6 +398,15 @@ def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_
         for index, item in enumerate(result.get("items", [])):
             found_lane = assessed[(sid, index)]
             if not found_lane["security"]:
+                if found_lane.get("hold"):
+                    # never dropped unseen: counted, with its reason, for the owner
+                    stats["held"] = stats.get("held", 0) + 1
+                    reasons = stats.setdefault("heldReasons", {})
+                    reasons[found_lane["hold"]["reason"]] = reasons.get(found_lane["hold"]["reason"], 0) + 1
+                    if held is not None:
+                        entry, when = held_entry(item, source, found_lane["hold"])
+                        held.append((entry, when, item.get("url")))
+                    continue
                 stats["excluded"] += 1
                 continue
             incident, why = found_lane["incident"], found_lane["reason"]
@@ -512,6 +563,8 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         record=record, reference_url=None if reference_withheld else reference_url, key=item.get("key"),
         relevance_reason=why, tracker=bool(source.get("tracker")),
         origin=_origin(title, excerpt, source, item, people) if tier in ("B", "C") else None,
+        statement=(statement_by(title, excerpt, source.get("publisher") or source["name"], people)
+                   if tier in ("B", "C") else None),
         new_incident=bool(NEW_INCIDENT_RE.search(f"{title} {lead}")),
         user_side=classify.user_side(full_text), mech_status=mech_status, qualifier=qualifier,
         month_bound=_month_bound(raw_text, (published or listed_at or end_of_run).date()) if kind != "structured" else None,
@@ -706,32 +759,73 @@ used uses using via new first today week reveals revealed found finds discloses 
 """.split())
 
 
+# what an exposure took or hit, and how: two of these in both headlines of the same day ("exposed ... secrets") point to
+# one finding when no rarer word is shared ("developer secrets" / "Secrets of Thousands of Developers")
+_ISSUE_IMPACT = frozenset("""secret key credential token password conversation history data information file repository
+email customer record exposed expose exposing exposure leak leaked leaking stole stolen steal exfiltrated""".split())
+
+
+def _stem(word):
+    """A simple plural, folded to its singular ("developers" -> "developer", "histories" -> "history")."""
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 4 and word.endswith(("ches", "shes", "sses", "xes", "zes")):
+        return word[:-2]
+    if len(word) > 4 and word.endswith("s") and not word.endswith(("ss", "us", "is")):
+        return word[:-1]
+    return word
+
+
+def _title_words(m):
+    return {_stem(w) for w in re.findall(r"[a-z0-9]+", safety.fold(m.title or ""))}
+
+
+_ISSUE_GENERIC_STEMS = _ISSUE_GENERIC | {_stem(w) for w in _ISSUE_GENERIC}
+
+
+def _alias_words(m):
+    return {_stem(w) for a in (m.aliases or ()) for w in a.split()}
+
+
 def _issue_words(m):
-    alias_words = {w for a in (m.aliases or ()) for w in a.split()}
-    words = re.findall(r"[a-z0-9]+", safety.fold(m.title or ""))
-    return {w for w in words if len(w) >= 4 and not w.isdigit() and w not in _ISSUE_GENERIC and w not in alias_words
-            and w not in classify._AI_GENERIC and w not in classify._STOPWORDS}
+    alias_words = _alias_words(m)
+    return {w for w in _title_words(m) if len(w) >= 4 and not w.isdigit() and w not in _ISSUE_GENERIC_STEMS
+            and w not in alias_words and w not in classify._AI_GENERIC and w not in classify._STOPWORDS}
+
+
+def _impact_words(m):
+    """What the headline says was exposed and how, never a word of the product's name ("Copilot Chat")."""
+    return (_title_words(m) & _ISSUE_IMPACT) - _alias_words(m)
 
 
 def _same_issue(a, b, names=True):
     """Two AI items report the same finding, not only the same product: the incident database files them under one
     incident, they share a CVE, or two different publishers give the same AI type and share a distinctive headline
-    word beyond the product's name and the mechanism's. Two posts of one publisher about one product are two
-    findings unless a reference or a CVE ties them."""
+    word beyond the product's name and the mechanism's (plurals folded), or, published within a day of each other, two
+    words of what was exposed and how ("exposed ... secrets"). Two posts of one publisher about one product are two
+    findings unless a reference or a CVE ties them, and two different CVEs are two findings."""
     if a.ref and a.ref == b.ref:
         return True
     cves_a = {c.upper() for c in _CVE.findall(f"{a.title} {a.excerpt}")}
-    if cves_a and cves_a & {c.upper() for c in _CVE.findall(f"{b.title} {b.excerpt}")}:
+    cves_b = {c.upper() for c in _CVE.findall(f"{b.title} {b.excerpt}")}
+    if cves_a and cves_a & cves_b:
         return True
     if names and not names_match(a.aliases, b.aliases):
         return False
     if (a.publisher or a.sid) == (b.publisher or b.sid):
         return False
+    if cves_a and cves_b:
+        return False  # each names its CVE and they differ
+    if a.ref and b.ref:
+        return False  # the incident database files them under different incidents
     vote_a = a.type_vote[0] if a.type_vote else None
     vote_b = b.type_vote[0] if b.type_vote else None
     if not vote_a or vote_a != vote_b:
         return False
-    return bool(_issue_words(a) & _issue_words(b))
+    if _issue_words(a) & _issue_words(b):
+        return True
+    same_day = abs(((a.published or a.fresh).date() - (b.published or b.fresh).date()).days) <= 1
+    return same_day and len(_impact_words(a) & _impact_words(b)) >= 2
 
 
 def _same_name(a, b):
@@ -861,7 +955,7 @@ class Carried:
     """A source a previous live radar run saw for this incident that has since dropped out of its feed. It still
     counts for the status: a feed rotating is not a retraction."""
     __slots__ = ("sid", "url", "tier", "publisher", "hedge", "tracker", "origin", "retraction", "roundup", "entry", "losses",
-                 "listed")
+                 "listed", "statement")
 
     def __init__(self, **kw):
         for slot in self.__slots__:
@@ -911,9 +1005,10 @@ def _solo_ok(m, no_solo=frozenset()):
 def _status(members, carried=(), aliases=(), no_solo=frozenset()):
     """Confirmed needs a primary statement (the project's own report, a post-mortem, a security firm's research or a
     law-enforcement release: an unhedged tier-A source that is not an incident database, nor a single researcher's
-    blog), or two unhedged outlets (tier B, or a researcher's blog) that do not relay the same origin. Incident
-    databases (DefiLlama, SlowMist) seed, date and size an incident but never confirm it alone. Tier C never
-    counts."""
+    blog), an unhedged tier-B outlet relaying the project's own statement (a speech verb in running text: "Chainflip
+    confirms ...", never a Title Case headline or a passive such as "Bybit Reported Hacked"), or two unhedged outlets
+    (tier B, or a researcher's blog) that do not relay the same origin. Incident databases (DefiLlama, SlowMist) seed,
+    date and size an incident but never confirm it alone. Tier C never counts."""
     pool = [m for m in list(members) + list(carried) if not getattr(m, "roundup", False)]
     walked_back = sorted({m.sid for m in pool if getattr(m, "retraction", False) and m.tier in ("A", "B")})
     if walked_back:
@@ -923,8 +1018,10 @@ def _status(members, carried=(), aliases=(), no_solo=frozenset()):
     if primary:
         return "confirmed", "confirmed: unhedged primary statement, post-mortem or security-firm research: " + ", ".join(primary)
     own = {a for a in aliases if a}
-    relayed = sorted({m.sid for m in pool if m.tier == "B" and not m.hedge and m.origin and (m.origin in own or any(
-        re.search(rf"(?<![a-z0-9]){re.escape(a)}(?![a-z0-9])", m.origin) for a in own))})
+    # the project's OWN statement: who the outlet relays is not enough ("Bybit Reported Hacked" is about Bybit, not by
+    # it); only a statement the outlet attributes to the project counts
+    relayed = sorted({m.sid for m in pool if m.tier == "B" and not m.hedge and getattr(m, "statement", None) and (
+        m.statement in own or any(re.search(rf"(?<![a-z0-9]){re.escape(a)}(?![a-z0-9])", m.statement) for a in own))})
     # one vote per outlet (two articles from one outlet are one source), keyed by what the outlet relays; a
     # researcher's blog that may not confirm alone votes like an outlet
     voting = [m for m in pool if not m.hedge and (m.tier == "B" or (m.tier == "A" and not m.tracker and not _solo_ok(m, no_solo)))]
@@ -1027,6 +1124,8 @@ def _source_entry(m):
             entry["qualifier"] = m.qualifier
     if m.origin:
         entry["origin"] = m.origin
+    if m.statement:
+        entry["statement"] = m.statement
     if m.roundup:
         entry["roundup"] = True
     entry["lane"] = m.lane or "crypto"

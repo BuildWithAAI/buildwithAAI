@@ -12,6 +12,11 @@ const MID_Y = SAFE.y + SAFE.h / 2; // 720
 // ---------- logo lockups (base sizes at scale 1) ----------
 export const ZOORA_LOCKUP = {markHeight: 230, gap: 44, word: 124, wordTracking: -0.01, tag: 40, tagGap: 14, tagLine: 1.18} as const;
 export const SHOW_LOGO = {the: 34, main: 92, show: 40, tracking: 0.2, padX: 40, padY: 26, radius: 16, gap: 6} as const;
+/**
+ * Measured layout width of the show logo's widest line, "Zoo & Badger" (Montserrat 900), in em of SHOW_LOGO.main
+ * (Chromium, bundled fonts). The plate is (SHOW_LOGO_MAIN_EM x main + 2 x padX) x scale wide: 758 px at scale 1.
+ */
+export const SHOW_LOGO_MAIN_EM = 7.37;
 
 /** Measured ink metrics of "Zoora AI" (Montserrat 900, tracking -0.01em), per em. Re-checked by qa/run.ts. */
 export const WORDMARK_INK = {left: 0.03, width: 4.41, capTop: 0.12, capHeight: 0.71} as const;

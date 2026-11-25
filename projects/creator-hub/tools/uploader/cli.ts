@@ -428,6 +428,12 @@ const auth = async (values: Values, deps: Deps, p: Paths): Promise<number> => {
 		deps.stderr(reasonsText('Not saved.', [{code: 'wrong-channel', message: `You signed in as ${channel.title} (${channel.id}), but channels.json pins "${slug}" to ${config.youtubeChannelId}. Run auth again and choose that channel.`}]));
 		return EXIT.refused;
 	}
+	// an unpinned slug must not take another slug's channel (both channels sit behind one Google sign-in)
+	const owner = Object.entries(channels.channels).find(([other, c]) => other !== slug && c.youtubeChannelId === channel.id)?.[0];
+	if (owner) {
+		deps.stderr(reasonsText('Not saved.', [{code: 'wrong-channel', message: `You signed in as ${channel.title} (${channel.id}), but channels.json pins that channel to "${owner}". Run auth again and choose the "${slug}" channel in Google's channel picker.`}]));
+		return EXIT.refused;
+	}
 	if (values['client-secrets']) file.client = client;
 	file.accounts[slug] = {channelId: channel.id, title: channel.title, handle: channel.handle, authorizedAt: toUtcIso(deps.now()), tokens};
 	writeOAuthFile(p.oauthPath, file);

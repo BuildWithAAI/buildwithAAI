@@ -1,6 +1,6 @@
 /** build: the step order, gate failures, missing tools, readiness, the approval packet and its escaping. All steps mocked. */
 import {strict as assert} from 'node:assert';
-import {existsSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, realpathSync, renameSync, symlinkSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {describe, it} from 'node:test';
 import {runBuild} from '../lib/build.ts';
@@ -254,6 +254,38 @@ describe('build: the publish kit', () => {
 			await runBuild({root: s.root, dateSlug: SLUG, exec: again.exec, now: () => NOW, env: {}});
 			assert.notEqual(packetOf(s.root).steps.find((x) => x.id === 'publish-kit')?.status, 'passed');
 			assert.equal(existsSync(join(s.ep.publishOut, 'kit.json')), false);
+		} finally {
+			s.cleanup();
+		}
+	});
+});
+
+describe('build: the publish kit runs by its real path (silent-noop-written, round 2)', () => {
+	it('launches the kit CLI by its real path through a symlinked scripts folder', async () => {
+		const s = setup();
+		try {
+			// scripts/publish-kit is a link to the real folder: the kit's entry check would skip main() on the link path
+			const real = join(s.root, 'vendor', 'publish-kit');
+			mkdirSync(join(s.root, 'vendor'), {recursive: true});
+			renameSync(join(s.root, 'scripts', 'publish-kit'), real);
+			symlinkSync(real, join(s.root, 'scripts', 'publish-kit'));
+			await runBuild({root: s.root, dateSlug: SLUG, exec: s.fx.exec, now: () => NOW, env: {}});
+			const call = s.fx.calls.find((c) => c.tool === 'publish-kit');
+			assert.equal(call?.args[0], realpathSync(join(s.root, 'scripts', 'publish-kit', 'cli.ts')));
+			assert.notEqual(call?.args[0], join(s.root, 'scripts', 'publish-kit', 'cli.ts'));
+			assert.equal(packetOf(s.root).steps.find((x) => x.id === 'publish-kit')?.status, 'passed');
+		} finally {
+			s.cleanup();
+		}
+	});
+	it('a kit CLI that exits 0 having written nothing is reported as a run that did nothing, not a refusal', async () => {
+		const s = setup();
+		try {
+			const silent = fakeExec({...s.handlers, 'publish-kit': () => ({status: 0})});
+			await runBuild({root: s.root, dateSlug: SLUG, exec: silent.exec, now: () => NOW, env: {}});
+			const st = packetOf(s.root).steps.find((x) => x.id === 'publish-kit');
+			assert.equal(st?.status, 'failed');
+			assert.match(st?.note ?? '', /exited 0 but wrote no kit\.json: it did not run/);
 		} finally {
 			s.cleanup();
 		}

@@ -98,7 +98,10 @@ chest_up = cut(chest, ymax=270)
 # Round 5 (R4 review minor, seal check 85 px at the collar's back end): the back line began 12 px below the collar's lower
 # back corner, so the torso fill's corner edge showed between them; it now starts under the collar band (which hides it).
 back_s = [(201.5, 124.5)] + back
-sp.part('torso', [(203, 124, 'c')] + back_s + [(128, 352), (152, 346), (172, 330), (184, 300), (186, 280), (191, 258), (204, 248), (226, 256), (241, 266)]
+# Round 5 (seal check, last 7 px of the sit): the torso fill's lower rear corner sat at (128, 352), 2.8 px below the
+# haunch's bottom line, so a sliver of unstroked torso showed in the background pocket between tail, haunch and hind paw
+# and hid the top of the tail's front line; the corner now lies on the haunch line, under its stroke.
+sp.part('torso', [(203, 124, 'c')] + back_s + [(130, 350.6), (152, 346), (172, 330), (184, 300), (186, 280), (191, 258), (204, 248), (226, 256), (241, 266)]
         + rev(chest_up) + [(240, 138, 'c')], [back_s, chest_up], group='torso')
 # Round 5 (R4 review minor, seal check 133 px): the haunch's line stopped at (151, 346) and its fill ran on to (132, 352),
 # so a triangle of unstroked haunch showed between the hind paw and the tail; the line now follows the fill past that

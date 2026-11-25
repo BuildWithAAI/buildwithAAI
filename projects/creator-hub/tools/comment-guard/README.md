@@ -53,8 +53,10 @@ Run from `projects/creator-hub`:
 the handle, `zoodgernews`. The file then holds both. Use `--account news` (or `--account zooratechnologies`) on
 every command. All saved channels count as "you": their comments are never flagged, and all their names
 are protected against impersonation. The owner's two channels are built in too: the Zoora AI and Zoodger News
-channel ids are always trusted, and both names and handles are always protected, so one channel's replies under
-the other's videos are never flagged, even before both are saved.
+channel ids are trusted by default, and both names and handles, and the show's name ("The Zoo & Badger Show"),
+are always protected, so one channel's replies under the other's videos are never flagged, even before both are
+saved. If either channel is ever taken over, add `--no-default-trust` (and `auth --revoke` its saved access:
+saved channels count as you) so its comments are scored like anyone else's.
 
 ## Options and environment
 
@@ -63,10 +65,11 @@ the other's videos are never flagged, even before both are saved.
 | `--max-quota <units>` | 1000 | API quota this run may spend. Reads cost 1 unit per page; each hold call costs 50. The guard stops before going over. |
 | `--max-threads <n>` | 300 | Newest comment threads to read (all their replies are read too). |
 | `--from-report <file\|latest>` | | `apply`: hold what a reviewed scan report says. `release`: undo what an apply report held. |
-| `--input <file>` | | `scan` only: score a JSON file of comments (`[{id, text, authorName, authorChannelId}]`) instead of the API. Add `--trust <your channel id>`. |
+| `--input <file>` | | `scan` only: score a JSON file of comments (`[{id, text, authorName, authorChannelId}]`) instead of the API. Your two channels are trusted by default; add `--trust` for any other channel whose replies are yours. |
 | `--account <key>` | the only one | Which saved channel to use. |
 | `--channel-name <name>` | | Extra name to protect from impersonation (repeatable). Your channel title and handle are always included. |
-| `--trust <channel id>` | | A channel whose comments are never flagged, e.g. a moderator (repeatable). |
+| `--trust <channel id>` | | A channel whose comments are never flagged, e.g. a moderator (repeatable). Zoora AI and Zoodger News are trusted by default. |
+| `--no-default-trust` | | Score Zoora AI's and Zoodger News's comments like anyone else's, e.g. if one of them was taken over. |
 | `--own-handle <handle>` | | A handle or link you own, e.g. your official Telegram bot, so viewers asking about it are not flagged (repeatable). |
 | `--oauth-file <file>` | `config/youtube-oauth.json` | Where the credentials live. |
 | `--out <dir>` | `out/comment-guard` | Where reports go. |
@@ -128,7 +131,9 @@ Context lowers the score:
 Impersonation: the author name is folded to a "skeleton". Look-alike letters, digits read as letters
 (0→o), I/l merged, and words such as Official, Support, Team, Help, Admin, Real, Live and Shorts are
 dropped. The skeleton is then compared with your channel names. An exact skeleton match from another
-channel scores 7. Within 2 edits scores 5, and only for names of 5 or more letters.
+channel scores 7. Within 2 edits scores 5, and only for names of 5 or more letters. Zoodger News counts
+within 1 edit only: its skeleton, "zoodger", is 2 edits from ordinary names such as Rodger, Dodger and Booger,
+which would otherwise score 5 and be held together with any +2 signal (a profit or "legit" claim).
 
 Copy-paste bursts: near-identical text (at least 6 distinct words, 80% word overlap) from 3 or more
 accounts in the same run adds 5 to each of those comments.

@@ -22,7 +22,7 @@ npm run newsletter -- lint out/newsletter/<slug>.md      # re-check a draft afte
 | `--out <dir>` | Output folder. Default `out/newsletter` (gitignored). |
 | `--hub <origin>` | Hub origin for relative offer links, e.g. `https://go.zoora.ai`. Default `PUBLIC_BASE_URL` if it is https. |
 | `--youtube-id <id>` | The video's YouTube id, when `kit.json` does not have one yet. |
-| `--brand <name>` | Brand name. Default `BRAND_NAME`; without it, the kit channel's own name: `Zoodger News` for `zoora-security`, `Zoora AI` for any other channel. |
+| `--brand <name>` | Brand name. Default `BRAND_NAME` or `Zoora AI`. |
 | `--kit-draft` | Also create a draft broadcast in Kit (needs `KIT_API_KEY`). It is never sent or scheduled. You must choose its recipients: `KIT_SUBSCRIBER_FILTER=tag:<id>` (or `segment:<id>`, or `tag:12,34` for subscribers with every listed tag), or `--all-subscribers`. |
 | `--all-subscribers` | With `--kit-draft`: no subscriber filter. Kit then addresses all subscribers, so use it only if every subscriber on the account agreed to episode emails with affiliate links. |
 

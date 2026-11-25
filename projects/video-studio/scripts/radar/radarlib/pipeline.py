@@ -114,8 +114,9 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
         warnings.append(f"{problem}: reporters, agencies and known organisations cannot be told apart from subjects, so "
                         "AI subjects are known AI products and companies only; restore the file")
         log(f"[radar] WARNING: {warnings[-1]}")
+    held = []
     mentions, counts = cluster.build_mentions(results, sources_by_id, run_date, hist["seenKeys"], has_history,
-                                              max_age_days=max_age_days)
+                                              max_age_days=max_age_days, held=held)
     clusters, unclustered = cluster.cluster_mentions(mentions)
     # sources that never confirm an incident alone (a single researcher's blog): one outlet's vote
     no_solo = frozenset(sid for sid, s in sources_by_id.items() if s.get("confirmsAlone") is False)
@@ -202,6 +203,19 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
              if fresh_from <= m.fresh < fresh_to and not safety.price_talk(m.title)]
     loose.sort(key=lambda e: (e["tier"], e["publishedUtc"] or e.get("listedUtc") or ""), reverse=False)
     listed_only.sort(key=lambda e: e["listedUtc"] or "", reverse=True)
+    # items the AI lane holds back for the owner (sexual-abuse or intimate-image stories): counted, with their reason
+    # and outlet, never their words; the fresh window applies as for unclustered items
+    owner_review = [entry for entry, when, _ in held if when is not None and fresh_from <= when < fresh_to]
+    owner_review.sort(key=lambda e: (e["date"] or "", e["sourceId"]), reverse=True)
+    held_urls = {entry["urlRef"]: url for entry, when, url in held if url and entry.get("urlRef")
+                 and when is not None and fresh_from <= when < fresh_to}
+    if owner_review:
+        by_reason = {}
+        for entry in owner_review:
+            by_reason[entry["reason"]] = by_reason.get(entry["reason"], 0) + 1
+        warnings.append(f"{len(owner_review)} AI-lane item(s) held back for the owner's review, words withheld: "
+                        + "; ".join(f"{reason} ({n})" for reason, n in sorted(by_reason.items()))
+                        + ". See ownerReview in the radar file; the links are in the gitignored withheld-links cache")
 
     seen_keys = sorted({m.key for m in mentions if m.kind == "structured" and m.event_date
                         and (run_date - m.event_date).days <= lookback_days})
@@ -225,8 +239,12 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
             "relevant": stats["relevant"],
             "relevantByLane": dict(sorted(stats.get("lanes", {}).items())),
             "incidentItems": stats["incident"],
+            "heldForOwner": stats.get("held", 0),
             "warnings": [safety.sanitize(w)[0] for w in result.get("warnings", [])],
         })
+        if stats.get("heldReasons"):
+            # every item of the feed the AI lane held back, by reason (the fresh ones are also listed in ownerReview)
+            source_rows[-1]["heldForOwnerReasons"] = dict(sorted(stats["heldReasons"].items()))
     doc = {
         "schema": SCHEMA,
         "radarVersion": VERSION,
@@ -259,6 +277,7 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
             "candidates": len(candidates),
             "unclustered": len(loose),
             "listedOnly": len(listed_only),
+            "ownerReview": len(owner_review),
             "candidatesByLane": {lane: sum(1 for inc in candidates if inc.get("lane", "crypto") == lane)
                                  for lane in ("crypto", "ai", "both")},
         },
@@ -268,6 +287,7 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
         "alsoSeen": also,
         "unclustered": loose,
         "listedOnly": listed_only,
+        "ownerReview": owner_review,
         "corrections": corrections,
         "seenRecordKeys": seen_keys,
     }
@@ -279,6 +299,7 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
         _atomic_write(json_path, json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
         _atomic_write(md_path, render_markdown(doc))
         withheld = {m.url_ref: m.url for m in mentions if m.url_ref}
+        withheld.update(held_urls)
         if withheld and cache_dir:
             # the full links the brief withholds (they spell a person's name): kept in the gitignored cache only, for
             # the owner

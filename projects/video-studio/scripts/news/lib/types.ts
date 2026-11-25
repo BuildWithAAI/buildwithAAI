@@ -133,6 +133,11 @@ export type Brief = {
 	/** The daily brief's analysis opportunities (scripts/daily), with their computed numbers. */
 	opportunities: BriefOpportunity[];
 	mustNotSay: BriefMustNotSay[];
+	/**
+	 * An AI-security story (the daily brief's incident lane "ai" or "both", or its "ai-how-to" rule): R5 then also
+	 * refuses quoted instructions to an AI and quotes that are not an organisation's own statement.
+	 */
+	aiStory?: boolean;
 };
 
 // ---------------------------------------------------------------------------------------------------------------

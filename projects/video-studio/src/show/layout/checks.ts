@@ -5,13 +5,15 @@
  *    Short, Badger's face also stays left of the action buttons.
  *  - Text (cards, source lines, the header row, captions) never covers an on-camera face, and keeps one head width
  *    clear of Zoo's face (CV4c: the face reads through its own features).
- *  - The logo plate and the channel-name line under it stay inside the safe area (push-in included), the name at
- *    least 24 px (SL10), clear of the cold-open kicker, the ON AIR sign, the name plates and the faces.
+ *  - The logo plate and the channel-name line under it stay inside the safe area (push-in included), the plate's
+ *    smallest line ("The") and the name at least 24 px (SL10), clear of the cold-open kicker, the ON AIR sign, the name
+ *    plates and the faces.
  */
 import type {Format, ShowSegment} from '../types.ts';
 import type {Box} from '../diagram/layout.ts';
 import {FRAME, outlinePx, pushRect, rectToScreen, SAFE, SHORTS_BUTTONS, shotFor, type Shot, type ShotName} from './shots.ts';
 import {LOGO_NAME, logoBlockRect, onAirRect, STAGE, stageHeads} from './stage.ts';
+import {SHOW_LOGO} from '../../branding/layout.ts';
 import {CAPTION_BAND, headerSlots, SEGMENT_BOXES} from './boxes.ts';
 import {SEGMENT_SPECS} from '../segments.ts';
 
@@ -65,7 +67,11 @@ export const checkShot = (format: Format, name: ShotName): string[] => {
 	if (shot.dressing.logo) {
 		// the logo plate and the channel-name line under it (set/LogoPlate.tsx), drawn whenever a name is given
 		const block = rectToScreen(shot, logoBlockRect(format));
-		const px = LOGO_NAME.size * STAGE[format].logo.scale * shot.S;
+		// text sizes at rest (the push-in only enlarges them): the plate's smallest line, "The", and the channel name
+		const scale = STAGE[format].logo.scale * shot.S;
+		const the = SHOW_LOGO.the * scale;
+		if (the < MIN_TEXT_PX) out.push(`${format}/${name}: the logo plate's "The" is ${the.toFixed(1)} px on screen (at least ${MIN_TEXT_PX})`);
+		const px = LOGO_NAME.size * scale;
 		if (px < MIN_TEXT_PX) out.push(`${format}/${name}: the channel name is ${px.toFixed(1)} px on screen (at least ${MIN_TEXT_PX})`);
 		const kicker = SEGMENT_BOXES[format].coldOpen.card;
 		for (const k of [1, shot.push]) {

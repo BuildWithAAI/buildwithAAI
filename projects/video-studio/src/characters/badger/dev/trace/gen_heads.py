@@ -755,7 +755,26 @@ EAR_PL = ('M 139 39 C 150 36 162 36 172 40 C 182 44 192 51 195 59 C 197 66 194 7
 NAPE_L_J = (187.0, 76.0)
 PL_CROWN_BACK = ((142, 37), (165, 37), (185, 43), (192, 57))
 PL_OCCIPUT = 'C 193.6 60.2 193.4 66 191.4 69.4 C 190.1 71.6 188.4 73.6 187 76'
-_pl_crown_tail = _split(*PL_CROWN_BACK, 0.7)[1]
+# Round 5 (seal check, left profile with mouthOpen: 18 px): the back stroke used to start at t 0.7 of the crown's back
+# cubic (x 180), leaving the crown edge between the crown stroke's start (x 152) and there unstroked under the ear; a
+# vocalisation lifts the flap (Ear `lift`, +8.4 deg about its pivot), its back half swings down and that bare edge showed
+# as a coat hairline outside the outline. The back stroke now starts at x 150, 2 px inside the crown stroke's start, so the
+# whole crown is outlined under the ear (hidden at rest).
+def _t_at_x(seg, x_to):
+    p0, p1, p2, p3 = seg
+    lo, hi = 0.0, 1.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        u = 1 - mid
+        x = u * u * u * p0[0] + 3 * u * u * mid * p1[0] + 3 * u * mid * mid * p2[0] + mid * mid * mid * p3[0]
+        if (x - x_to) * (p0[0] - x_to) > 0:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+_pl_crown_tail = _split(*PL_CROWN_BACK, _t_at_x(PL_CROWN_BACK, 150))[1]
 PL_BACK_STROKE = ('M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f ' % (_pl_crown_tail[0] + _pl_crown_tail[1] + _pl_crown_tail[2]
                                                                     + _pl_crown_tail[3])) + PL_OCCIPUT
 # round 4: the jaw line starts inside the nose (tangent into the chin curve), and the skull fill's chin follows the jaw stroke exactly (it bulged up to
@@ -1763,8 +1782,12 @@ for v in heads:
 # D55 (round 5): the bust neck scales with the front head about the head origin in bust coordinates (NF (208, 215) =
 # (0, -19.45); the busts draw the head at translate(0 -19.5)), so the bust stays a uniformly scaled copy of the panel
 FN = compose(lin(208, 250, S_NF, S_NF), lambda x, y: (x * HEAD_SCALE_FRONT, -19.45 + (y + 19.45) * HEAD_SCALE_FRONT))
+# Round 5 (seal check on the sheet's busts, 9-15 px a side): the fill's shoulder edges ran their own curves (124, 252) ->
+# (80, 330), up to 1 px outside the shoulder strokes just below the collar ends, a coat sliver outside the line. They now
+# follow the strokes exactly from under the collar's ends to the strokes' ends; below those the bust's cut stays as it was.
 front_neck_geom = {
-    'fill': mp('M 128 170 L 280 170 C 281 200 282 230 284 252 C 300 280 318 305 330 330 L 80 330 C 92 305 108 280 124 252 C 126 230 127 200 128 170 Z', FN),
+    'fill': mp('M 128 170 L 280 170 C 281 200 282 230 284 252 L 288 268 C 302 285 315 302 328 318 L 330 330 L 80 330 '
+               'L 82 318 C 95 302 108 285 122 268 L 124 252 C 126 230 127 200 128 170 Z', FN),
     'strokes': [mp('M 129 175 C 128 205 127 230 125 252', FN), mp('M 279 176 C 280 205 281 230 283 252', FN),
                 mp('M 122 268 C 108 285 95 302 82 318', FN), mp('M 288 268 C 302 285 315 302 328 318', FN)],
     'details': [],

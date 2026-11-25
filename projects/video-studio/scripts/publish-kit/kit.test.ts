@@ -118,11 +118,6 @@ describe('buildKit on the example with active offers', () => {
 		assert.match(files['checklist.md'], /22 of 22 checks pass/);
 		assert.match(files['tiktok.txt'], /^=== Clip 1 of 2: media\/short-1\.mp4 \(0:30\)/);
 	});
-	it('names the destination channel right before the manual upload', () => {
-		assert.match(files['checklist.md'], /\n- \[ \] In YouTube Studio, switch to Zoora AI \(@ZooraTechnologies\) before uploading\.\n- \[ \] Upload `[^`]+` as \*\*Private\*\* first\./);
-		const noHandle = buildKit({...exampleEpisode(), channelInfo: {displayName: 'Zoodger News', handle: null}}, opts()).files['checklist.md'];
-		assert.match(noHandle, /\n- \[ \] In YouTube Studio, switch to Zoodger News before uploading\.\n/);
-	});
 });
 
 describe('failing checks', () => {

@@ -200,6 +200,13 @@ describe('validate', () => {
 		const legacy = check({...goodEs, translation: {status: 'native-reviewed', reviewer: 'ES-1', date: '2026-11-25'}});
 		assert.deepEqual(errorRules(legacy), [], '`reviewed` is optional: older files carry only the status');
 	});
+	test('a string that is only a name stays as is without an "untranslated" warning, even when the sheet also has "Zoo"', () => {
+		const src = {...master, title: 'Zoodger News'};
+		const r = validateDub({src, tgt: {...goodEs, title: 'Zoodger News'}, lang: 'es', names: EMPTY_NAMES, sourceFile: 'storyboard.json', targetFile: 'storyboard.es.json', engine, now: '2026-11-24T12:00:00Z'});
+		const terms = buildGlossary(allTexts(src)).map((t) => t.term);
+		assert.ok(terms.includes('Zoo') && terms.includes('Zoodger News'), `both terms are in the sheet: ${terms.join(', ')}`);
+		assert.deepEqual(r.findings.filter((f) => f.rule === 'untranslated' && f.where === 'title'), [], '"Zoo" must not strip the start of "Zoodger News"');
+	});
 });
 
 describe('VCD review (2026-11-24): spoken numbers, disclosures, fiction card, numbers in words', () => {

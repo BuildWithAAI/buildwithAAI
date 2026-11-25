@@ -202,17 +202,78 @@ games gaming arena bot bots drainer drainers ai protocols platform app apps proj
 solutions industries`.split(/\s+/),
 );
 
-/** Verbs and words that follow a role in a headline without being a name ("Founder Says", "CEO Warns"). */
+/**
+ * Words that follow a role in a headline without being a name ("Founder Says", "CEO Warns", "Victim Loses", "Hacker
+ * Group", "Developer Tools"): the verbs and nouns headlines put there, after the news gate's AFTER_ROLE_OK list. Any
+ * other capitalised word after a role is read as a name, so an unlisted verb only costs a quote (the source is then
+ * shown by its label), never a leak.
+ */
 const NOT_A_NAME = new Set(
-	`says said warns warned denies denied claims claimed admits admitted confirms confirmed responds calls urges steps
-resigns arrested charged sentenced pleads faces blames vows plans sues sued quits leaves joins explains reveals
-apologizes apologises speaks breaks addresses insists the a an and of to in on at for with`.split(/\s+/),
+	`says said warns warned denies denied claims claimed admits admitted confirms confirmed responds responded calls called
+urges urged steps stepped resigns resigned arrested charged sentenced pleads pleaded faces faced blames blamed vows vowed
+plans planned sues sued quits quit leaves left joins joined explains explained reveals revealed apologizes apologized
+apologises apologised speaks spoke breaks broke addresses addressed insists insisted
+loses lost finds found steals stole stolen sells sold buys bought gets got wins won hacks hacked drains drained leaks
+leaked exposes exposed discovers discovered uncovers uncovered reports reported flags flagged spots spotted tricks tricked
+dupes duped scams scammed targets targeted hits uses used abuses abused exploits exploited breaches breached compromises
+compromised attacks attacked phishes phished impersonates impersonated clones cloned fakes faked returns returned
+recovers recovered gives gave pays paid demands demanded threatens threatened extorts extorted ransoms ransomed jailed
+convicted extradited detained indicted accused accuses fined banned barred freed released identified unmasked nabbed
+caught busted held seized raided questioned investigated probes probed tells told asks asked shares shared posts posted
+publishes published launches launched builds built creates created develops developed makes made shows showed shown
+demonstrates demonstrated proves proved tests tested bypasses bypassed jailbreaks jailbroke fools fooled convinces
+convinced manipulates manipulated injects injected agrees agreed settles settled seeks sought wanted files filed alleges
+alleged testifies testified tweets tweeted writes wrote falls fell turns turned helps helped receives received
+rules ruled orders ordered approves approved rejects rejected dismisses dismissed blocks blocked halts halted grants
+granted allows allowed signs signed backs backed opposes opposed tracks tracked traces traced links linked ties tied
+names discloses disclosed notifies notified fixes fixed patches patched pleads guilty
+team group community firm firms report reports account accounts laptop laptops machine computer device devices credentials
+role interview interviews job jobs offer offers position salary access wallet wallets key keys data tool tools platform
+side network interface experience error end base behavior behaviour education protection safety security support
+onboarding agreement consent identity address email phone password session flow journey portal forum crew gang collective
+campaign kit playbook tactic technique toolkit dashboard desk feed post thread channel blog note alert alerts profile
+handle page site mode program programme bounty bounties funds money savings life loans news threat threats general
+order environment environments server servers machines code repo repos repository repositories project projects app apps
+behind over after into against under amid via from by as who whose whom that which while when where how why what
+is are was were be been has had have will would could can may might must should did does do not no
+the a an and of to in on at for with or but`.split(/\s+/),
 );
 
-// Names may start with any capital letter ("José", "Łukasz", "Özgür", "Сергей"): \p{Lu}/\p{Ll} with the u flag, and a
-// letter lookbehind instead of \b (which only knows ASCII letters).
-const ROLE_BEFORE =
-	/(?<![\p{L}\p{N}_])(?:CEO|CTO|COO|CFO|CISO|founder|co-founder|cofounder|chairman|chairwoman|developer|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|sleuth|analyst|spokesperson|spokesman|spokeswoman|director|lawyer|attorney|prosecutor|judge|senator|minister|president|streamer|youtuber|whale|insider|defendant|plaintiff|victim|teenager|student|programmer|dev)\s+((?:\p{Lu}[\p{Ll}'’-]+)(?:\s+\p{Lu}[\p{Ll}'’-]+)?)/gu;
+/**
+ * Role, title and kinship words after which a capitalised word reads as a person's name, plus the words that introduce
+ * a nickname ("dubbed", "aka"). Matched in any case: a Title Case headline capitalises them ("Victim Kiro Loses ...").
+ */
+const ROLE_WORDS = `CEO CTO COO CFO CISO founder co-founder cofounder chairman chairwoman developer engineer employee hacker attacker
+suspect trader influencer researcher investigator sleuth analyst spokesperson spokesman spokeswoman director lawyer attorney
+prosecutor judge senator minister president streamer youtuber whale insider defendant plaintiff victim teenager student
+programmer dev investor teen man woman boy girl scammer fraudster whistleblower podcaster journalist reporter entrepreneur
+billionaire millionaire executive exec owner grandmother grandfather grandma grandpa mother father mom dad son daughter
+wife husband widow widower retiree pensioner named dubbed nicknamed alias aka`.split(/\s+/);
+const ROLE_SET = new Set(ROLE_WORDS.map((w) => w.toLowerCase()));
+/** Each ASCII letter as a class of both cases ("Victim", "VICTIM", "victim"), since Node 22 has no (?i:...) groups. */
+const anyCase = (word: string): string => word.replace(/[a-z]/gi, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`);
+// Names may start with any capital letter ("José", "Łukasz", "Özgür", "Сергей"): \p{Lu}/\p{L} with the u flag, and a
+// letter lookbehind instead of \b (which only knows ASCII letters). The name is read in a lookahead, so the next role
+// word can start its own match ("Student Hacker Kiro"); an opening quotation mark may sit between ("Hacker ‘Sora’").
+const NAME_TOKEN = `[‘“"']?\\p{Lu}[\\p{L}\\p{N}'’-]*`;
+const ROLE_BEFORE = new RegExp(
+	`(?<![\\p{L}\\p{N}_])(?:${[...ROLE_WORDS].sort((a, b) => b.length - a.length).map(anyCase).join('|')})\\s+(?=(${NAME_TOKEN})(?:\\s+(${NAME_TOKEN}))?)`,
+	'gu',
+);
+/** A token as a lower-case word: no surrounding quotation marks, no possessive. */
+const bareWord = (token: string): string => token.replace(/^[‘“"']+|[’”"']+$/g, '').replace(/['’]s$/, '').toLowerCase();
+
+/** "<Name> said ... he/she": whoever speaks of himself or herself is a person (as the news gate's SPEECH_AFTER). */
+const SPEECH_AFTER =
+	/^(?:['’]s)?\s+(?:also\s+|later\s+|then\s+|now\s+)?(?:said|says|told|tells|added|adds|wrote|writes|posted|tweeted|explained|explains|noted|notes|warned|warns|claimed|claims|argued|argues|insisted|insists|denied|denies|admitted|admits|stated|states|recalled|recalls|testified|testifies)\b/iu;
+const PRONOUN_LATER = /^[^.!?]*?(?<![\p{L}\p{N}_])(?:he|she|his|her|him|hers|himself|herself)(?![\p{L}\p{N}_])/iu;
+/** Speakers that are not one person ("Prosecutors said he ...", "Officials say she ..."). */
+const SPEAKER_NOUNS = new Set(
+	`officials official prosecutors authorities investigators researchers regulators analysts experts victims attackers hackers
+scammers users customers sources lawyers judges documents filings records witnesses neighbors neighbours relatives family
+friends staff employees executives agents officers detectives police court courts reports company firm government
+spokesperson representatives`.split(/\s+/),
+);
 const HONORIFIC = /(?<![\p{L}\p{N}_])(?:Mr|Mrs|Ms|Dr|Sir|Dame|Prof)\.?\s+\p{Lu}[\p{Ll}'’-]+/gu;
 const APPOSITION =
 	/(?<![\p{L}\p{N}_])(\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+)+),\s+(?:the\s+|a\s+|an\s+|its\s+|their\s+)?(?:former\s+|ex-|co-|chief\s+|lead\s+|alleged\s+|pseudonymous\s+|anonymous\s+)?(?:founder|co-founder|cofounder|ceo|cto|coo|cfo|developer|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|analyst|executive|spokesperson|director|owner|insider|whale|programmer|victim|defendant|lawyer|attorney|partner|manager|head)\b/giu;
@@ -270,6 +331,45 @@ const sentenceStartAt = (text: string, index: number): boolean => {
 type Pattern = {code: string; label: string; re: RegExp; contextual?: boolean};
 const p = (code: string, label: string, re: RegExp, contextual = false): Pattern => ({code, label, re: new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`), contextual});
 
+// What an attack told an AI to do, with the AI named generically or by product (the news gate's lexicon.ts, 2026-11-25)
+/** A phrase with every letter in both cases, spaces as \s+ and either apostrophe, for use inside a case-sensitive pattern. */
+const ci = (phrase: string): string =>
+	phrase
+		.split(/\s+/)
+		.map((w) => escapeRe(w).replace(/['’]/g, "['’]").replace(/[a-z]/gi, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`))
+		.join(String.raw`\s+`);
+const INSTRUCT_VERBS = 'told|instructed|asked|ordered|directed|made|commanded|prompted';
+/** What the instruction made the AI do; never the user's own trigger ("asked the assistant to summarise the page"). */
+const AI_ACTIONS = 'open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|e-mail|reveal|ignore|disable|download|install|write|post|leak|exfiltrate|share|transfer|grant|approve|push|publish|output|repeat|dump|encode';
+const RECIPIENT_DET = `(?:(?:${['the', 'an', 'a', 'its', 'their', "a user's", "the user's", "the victim's", "victims'", "users'"].map(ci).join('|')})\\s+)?`;
+const AI_GENERIC = String.raw`(?:(?:AI|coding|browser|e-?mail|LLM|autonomous|shopping|support|research|hidden|malicious|enterprise)[-\s]+){0,2}(?:agent|assistant|model|chat\s?bot|AI|bot|copilot|LLM)s?`;
+/** AI products, longest first, in their exact case ("Cursor", never "the cursor"; "Operator", never "an operator"). A bare "Copilot" is AI_GENERIC's. */
+const AI_PRODUCT_NAMES = [
+	'Microsoft 365 Copilot', 'Amazon Q Developer', 'Gemini Code Assist', 'Microsoft Copilot', 'Security Copilot', 'Perplexity Comet', 'ChatGPT Operator', 'GitHub Copilot',
+	'Copilot Studio', 'ChatGPT Atlas', 'Claude Desktop', 'Google Gemini', 'M365 Copilot', 'Copilot Chat', 'Replit Agent', 'OpenAI Codex', 'Google Jules', 'Claude Code',
+	'Gemini CLI', 'Antigravity', 'Codex CLI', 'Amazon Q', 'AWS Kiro', 'Roo Code', 'Perplexity', 'Windsurf', 'OpenClaw', 'Operator', 'DeepSeek', 'ChatGPT',
+	'Codeium', 'Lovable', 'Mistral', 'Gemini', 'Claude', 'Cursor', 'Replit', 'Devin', 'Codex', 'Comet', 'Jules', 'Manus', 'Aider', 'Llama', 'Alexa', 'Grok', 'Kiro',
+	'Cline', 'Qwen', 'Siri',
+].map((n) => escapeRe(n).replace(/ /g, String.raw`\s+`));
+
+/**
+ * Quoted words that read as an instruction to an AI, whoever is quoted: an override or jailbreak anywhere in the quote,
+ * or an imperative that moves secrets, data or control somewhere ("open the env file and send every key to the form
+ * below"). Defensive advice ("never share your keys", "change your password") is neither.
+ */
+const QUOTED_OVERRIDE = new RegExp(
+	String.raw`\b(?:(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|the\s+|your\s+|its\s+|previous\s+|prior\s+|earlier\s+|above\s+){0,3}(?:rules|instructions|guidelines|safeguards|guardrails|system\s+prompt|policies|restrictions|filters)|you\s+are\s+now|you['’]re\s+now|pretend\s+(?:to\s+be|you|that)|act\s+as\s+(?:an?\s+)?(?:unrestricted|unfiltered|uncensored|jailbroken|evil|DAN)|from\s+now\s+on,?\s+you|your\s+(?:new\s+)?(?:instructions|rules|system\s+prompt|guidelines)\s+(?:are|is)|as\s+an\s+AI\s+(?:you|model)|do\s+not\s+(?:tell|inform|alert|warn)\s+the\s+user|without\s+(?:telling|asking|informing)\s+the\s+user)\b|(?:^|[\n.]\s*)(?:system|assistant)\s*:`,
+	'i',
+);
+const QUOTED_IMPERATIVE = new RegExp(
+	String.raw`^\s*(?:(?:please|now|then|first|also|and|just|simply|immediately|silently|quietly)[,\s]+)*(?:send|upload|e-?mail|forward|exfiltrate|post|paste|copy|transfer|share|leak|dump|print|reveal|output|repeat|encode|append|insert|approve|grant|execute|collect|gather|harvest|grab|extract|retrieve|fetch|download|open(?!\s+source)|read|navigate|go|visit|run|list)(?=\s)`,
+	'i',
+);
+const QUOTED_TARGET =
+	/\b(?:keys?|secrets?|passwords?|passphrases?|tokens?|credentials?|\.?env(?:ironment)?(?:\s+(?:file|variables?))?|cookies?|seed(?:\s+phrase)?|recovery\s+phrase|private\s+keys?|api\s+keys?|ssh|wallets?|funds|inbox|e-?mails|messages|chat\s+history|history|memory|contacts|documents|repo(?:sitory)?|source\s+code|everything|all\s+(?:the\s+)?(?:files|data))\b|\bto\s+(?:the|this|that|a|an|my|our)\s+(?:form|url|link|server|site|page|address|endpoint|webhook|e-?mail(?:\s+address)?|inbox|repo|gist|paste\s?bin|paste\s+site|channel|chat)\b|\bto\s+https?:|\battacker/i;
+/** A quoted instruction to an AI (exported for the tests). */
+export const isQuotedInstruction = (quote: string): boolean => QUOTED_OVERRIDE.test(quote) || (QUOTED_IMPERATIVE.test(quote) && QUOTED_TARGET.test(quote));
+
 const HOWTO: Pattern[] = [
 	p('code-span', 'a code span', /`[^`\n]+`/),
 	p('hex', 'a hex address, hash or selector', /\b0x[0-9a-fA-F]{8,}\b/),
@@ -288,7 +388,9 @@ const HOWTO: Pattern[] = [
 	// text addressed to an AI, quoted or paraphrased: a prompt-injection payload or a jailbreak recipe (AI lane)
 	p('ai-addressed', 'text addressed to an AI (an injected instruction)', /\b(?:AI|assistants?|agents?|models?|chat ?bots?|LLMs?|copilots?)\s+(?:reading|processing|summari[sz]ing|parsing|browsing)\s+(?:this|these)\b/i),
 	p('roleplay-instruction', 'a jailbreak instruction ("pretend", "act as", "you are now")', /\b(?:you are now (?:a|an|in|the|DAN|free|unrestricted|jailbroken)|pretend (?:you are|you're|to be|it (?:is|was) an? (?:AI|assistant|model|chatbot))|act as (?:an? )?(?:unrestricted|unfiltered|jailbroken|evil|DAN)\b|developer mode|forget (?:everything|all) (?:above|before)|(?:ignore|disregard) (?:its|your|their|all) (?:rules|guidelines|instructions|safeguards))/i),
-	p('told-the-agent', 'an instruction the attack gave the AI, repeated', /\b(?:told|instructed|asked|ordered|directed) the (?:agent|assistant|model|chatbot|AI|bot|copilot)\s*(?::|to (?:open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|reveal|ignore|disable))/i),
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS})\s+${RECIPIENT_DET}${AI_GENERIC}\s*(?::|["“]|to\s+(?:${AI_ACTIONS})\b)`, 'i')),
+	// the AI named by product ("The README told Copilot to upload the env file"), in its exact case
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS.split('|').map(ci).join('|')})\s+${RECIPIENT_DET}(?:${AI_PRODUCT_NAMES.join('|')})(?:['’]s)?(?:\s+(?:${['agent', 'assistant', 'extension', 'CLI', 'IDE', 'chatbot', 'bot', 'model'].map(ci).join('|')}))?\s*(?::|["“]|${ci('to')}\s+(?:${AI_ACTIONS.split('|').map(ci).join('|')})\b)`, 'u')),
 	p('tutorial', 'tutorial or step-by-step framing', /\b(?:step[- ]by[- ]step|walkthrough|walk-through|tutorial|cheat ?sheet)\b/i, true),
 	p('here-is-how', '"here\'s how to"', /\bhere'?s (?:exactly )?how (?:to|you|anyone|they could)\b/i, true),
 	p('step-marker', 'a numbered step', /\bstep (?:one|two|three|four|five|six|\d+)\b/i, true),
@@ -412,10 +514,22 @@ export const scanNames = (original: string, ctx: ScanContext): Finding[] => {
 	}
 	for (const m of blank.matchAll(HONORIFIC)) add('title-or-role', 'error', 'a person named by title', m[0]);
 	for (const m of blank.matchAll(ROLE_BEFORE)) {
-		const words = (m[1] ?? '').split(/\s+/);
-		if (NOT_A_NAME.has((words[0] ?? '').toLowerCase())) continue;
-		if (words.some((w) => ORG_SUFFIXES.has(w.toLowerCase()) || knownWord(ctx.allow, w.toLowerCase()))) continue;
-		add('title-or-role', 'error', 'a person named after their role', m[0]);
+		// the role word's next capitalised word, in any case style ("Victim Kiro Loses ...", "researcher Jules finds ...")
+		const first = bareWord(m[1] ?? '');
+		// "Kiro’s Wallet" is a person's wallet, never an organisation called "Kiro Wallet"
+		const second = m[2] && !/['’]s$/.test(m[1] ?? '') ? bareWord(m[2]) : '';
+		if (!first || NOT_A_NAME.has(first) || ROLE_SET.has(first)) continue; // a verb or noun, or the next role's own match
+		if (ORG_SUFFIXES.has(first) || ORG_SUFFIXES.has(second) || knownWord(ctx.allow, first)) continue; // an organisation
+		add('title-or-role', 'error', 'a person named after their role', `${m[0]}${(m[1] ?? '').replace(/^[‘“"']+/, '')}`);
+	}
+	// "<Name> said he ...": a speaker who refers to himself or herself is a person, even at a sentence start or in a
+	// Title Case headline, where the unknown-word check below cannot run; a product name that is also a given name
+	// ("Claude said he lost $40,000") is no exception
+	for (const m of blank.matchAll(CAPITALISED)) {
+		const word = bareWord(m[0]);
+		if (COMMON_CAPS.has(word) || ORG_SUFFIXES.has(word) || SPEAKER_NOUNS.has(word) || ROLE_SET.has(word) || knownWord(ctx.allow, word)) continue;
+		const after = blank.slice(m.index + m[0].length);
+		if (SPEECH_AFTER.test(after) && PRONOUN_LATER.test(after.replace(SPEECH_AFTER, ''))) add('speaker-name', 'error', 'a person named as the speaker ("X said he ...")', m[0]);
 	}
 	for (const m of blank.matchAll(APPOSITION)) {
 		const words = (m[1] ?? '').split(/\s+/);
@@ -462,6 +576,11 @@ export const scanHowTo = (text: string, ctx: ScanContext): Finding[] => {
 	for (const s of sentences(text)) {
 		const markers = s.match(SEQUENCE_MARKERS) ?? [];
 		if (markers.length >= 2 && OFFENSIVE.test(s)) out.push(finding('howto', 'sequence', 'error', ctx.where, 'a sequence of attack steps reads as instructions: give one concept-level sentence', s));
+	}
+	// quoted words (third-party headlines, a source's statement) that are an instruction to an AI: a payload, whoever wrote it
+	for (const [a, b] of quotedSpans(text)) {
+		const quote = text.slice(a + 1, b - 1).trim();
+		if (quote.split(/\s+/).length >= 3 && isQuotedInstruction(quote)) out.push(finding('howto', 'ai-quoted-instruction', 'error', ctx.where, 'quotes an instruction to an AI (an injected prompt or a jailbreak): never repeat its words', quote));
 	}
 	return out;
 };

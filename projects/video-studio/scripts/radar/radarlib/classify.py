@@ -159,7 +159,11 @@ def assess(item, source):
     crypto_ok, ai_ok = crypto[0], ai[0]
     if not ((crypto_ok and "crypto" in lanes) or (ai_ok and "ai" in lanes)):
         reasons = ([crypto[2]] if "crypto" in lanes else []) + ([ai[2]] if "ai" in lanes else [])
-        return {"security": False, "incident": False, "reason": "; ".join(reasons), "lane": None, "aiVote": None}
+        found = {"security": False, "incident": False, "reason": "; ".join(reasons), "lane": None, "aiVote": None}
+        if "ai" in lanes and ai[2] == SENSITIVE_REASON:
+            # never dropped unseen: the owner gets a count, the reason and a type, never the item's words
+            found["hold"] = sensitive_hold(f"{item.get('title') or ''}. {item.get('excerpt') or ''}")
+        return found
     lane = "both" if crypto_ok and ai_ok else "crypto" if crypto_ok else "ai"
     incident = bool((crypto_ok and crypto[1]) or (ai_ok and ai[1]))
     reason = "; ".join(r for ok, r in ((crypto_ok, crypto[2]), (ai_ok, ai[2])) if ok)
@@ -424,6 +428,39 @@ _AI_SENSITIVE = re.compile(
     r"(?:explicit|intimate)\b[^.;]{0,24}?\b(?:images?|imagery|photos?|pictures?|videos?|content|deepfakes?))\b",
     re.IGNORECASE,
 )
+SENSITIVE_REASON = "AI lane: sexual-abuse or intimate-image story (owner decision)"
+# ...a completed breach of an AI app that took its users' private images is still a data exposure: held for the owner
+# with that type, never dropped unseen ("Hackers steal nude photos from AI companion app users")
+_SENSITIVE_BREACH = re.compile(
+    r"\b(?:steal\w*|stole|stolen|expos(?:e|ed|es|ing)|leak\w*|breach\w*|hack(?:ed|ers?)|dump(?:ed|s)?|exfiltrat\w+|"
+    r"scraped)\b[^.;]{0,80}?\b(?:users?|customers?|subscribers?|members?|accounts?|database)\b|"
+    r"\b(?:users?|customers?|subscribers?|members?|accounts?)['’]?\s+(?:[\w-]+\s+){0,3}?(?:photos?|images?|pictures?|"
+    r"videos?|chats?|data)\b[^.;]{0,40}?\b(?:stolen|exposed|leaked|dumped)\b",
+    re.IGNORECASE,
+)
+# ...unless it involves children, or someone made the images (a creation case is the owner's call, with no type)
+_SENSITIVE_NOT_BREACH = re.compile(
+    r"\b(?:CSAM|child\w*|minors?|kids?|underage|classmates?|students?|pupils?|teen\w*|schools?|creat\w+|generat\w+|"
+    r"made|making|produc\w+)\b",
+    re.IGNORECASE,
+)
+
+
+def sensitive_hold(text):
+    """For a story the AI lane holds back for the owner (sexual-abuse or intimate imagery): {reason, suggestedType}, or
+    None. Only the reason and a type leave the radar, never the story's words."""
+    if not _AI_SENSITIVE.search(text or ""):
+        return None
+    breach = bool(_SENSITIVE_BREACH.search(text)) and not _SENSITIVE_NOT_BREACH.search(text)
+    if breach:
+        return {"reason": "a completed breach of an AI app that took or exposed users' private images: an AI data "
+                          "exposure, held back for the owner because of its subject (never a Short or a Threat Brief "
+                          "item without the owner)",
+                "suggestedType": "ai-data-exposure"}
+    return {"reason": "a sexual-abuse or intimate-image story made with AI: the owner decides whether the channel covers "
+                      "it", "suggestedType": None}
+
+
 # a deepfake or AI-generated image is fraud only when the sentence says someone was defrauded or deceived for gain
 _FRAUD_CUE = re.compile(
     r"\b(?:scam\w*|fraud\w*|defraud\w*|impersonat\w+|swindl\w*|extort\w*|stole|steal\w*|stolen|theft|transfer\w*|"
@@ -564,7 +601,7 @@ def ai_relevance(item):
     if not context:
         return False, False, "no AI context", None
     if _AI_SENSITIVE.search(text):
-        return False, False, "AI lane: sexual-abuse or intimate-image story (owner decision)", None
+        return False, False, SENSITIVE_REASON, None
     if _ai_only_as_lure(text):
         return False, False, "phishing that only impersonates or targets an AI brand: not AI security", None
     vote = ai_type_from_text(text)
@@ -971,22 +1008,60 @@ def mechanism_qualifier(text):
 
 # ---------------------------------------------------------------- who says it (origin) and user-side incidents
 
-_ORIGIN_VERBS = (r"says|said|found|finds|reports|reported|traced|traces|tracked|tracks|flagged|flags|identified|"
-                 r"identifies|discovered|discovers|confirmed|confirms|disclosed|discloses|estimates|estimated|warns|"
-                 r"warned|alleges|alleged|attributed|attributes|linked|links|tied")
+# Cue verbs: who an outlet relays says, warns, finds or traces something. A present-tense cue is always active ("Osmosis
+# links ... to the attacker"); a past form can be a passive. Only the speech verbs can name a project's OWN statement.
+_SPEECH_PRESENT = r"says|warns|confirms|discloses|reports"
+_SPEECH_PAST = r"said|warned|confirmed|disclosed"
+_CUE_PRESENT = _SPEECH_PRESENT + r"|finds|traces|tracks|flags|identifies|discovers|estimates|alleges|attributes|links"
+_CUE_PAST = (_SPEECH_PAST + r"|found|reported|traced|tracked|flagged|identified|discovered|estimated|alleged|attributed|"
+             r"linked|tied")
+# A past cue read as a passive or a result: the name before it is what the line is about, not who speaks or researched
+# ("Bybit Reported Hacked", "Cursor Found Vulnerable to ...", "USDC Tied to Binance Hack", "Balancer Flagged as Victim",
+# "X said to be ...", "X confirmed by ...")
+_PASSIVE_NEXT = r"hacked|exploited|breached|drained|compromised|attacked|hit|vulnerable|to|as|by"
+# ...and in a headline, where verbs drop their auxiliaries, a place, reason or time after the verb reads as a passive
+# too ("Exchange Warned Over ...", "Moonwell Flagged for ...", "Upbit Found in ...", "Bybit Reported After ...")
+_PASSIVE_NEXT_HEADLINE = _PASSIVE_NEXT + r"|in|for|after|over|with|amid"
+
+
+def _cue(present, past, passive, case_insensitive):
+    """A cue verb right after a name: any present form, or a past form not followed by a passive or result word."""
+    verbs = r"(?:" + present + r")\b|(?:" + past + r")\b(?!\s+(?i:" + passive + r")\b)"
+    return r"\s+" + (r"(?i:" + verbs + r")" if case_insensitive else r"(?:" + verbs + r")")
 # One word of an organisation's name: "." only between word characters ("Crypto.com") or in an initialism ("U.S."), so a
 # name never runs across a sentence end ("findings by GitGuardian. The firm ..." is "GitGuardian"); a company suffix
 # ("Acme Inc.") may close the name.
 _ORG_WORD = r"(?:(?:[A-Z]\.){2,}|[A-Z](?:[\w&'’-]|\.(?=\w))*)"
 _ORG_SUFFIX = r"(?:\s+(?:Inc|Corp|Ltd|Co|LLC|PLC|GmbH|AG|SA)\.?)?"
 _ORG = r"(" + _ORG_WORD + r"(?:\s+(?:of\s+)?" + _ORG_WORD + r"){0,2}" + _ORG_SUFFIX + r")"
-_ORIGIN_PATTERNS = (
-    re.compile(r"\b(?i:according to)\s+(?:(?i:a|an|the)\s+)?(?:(?i:new)\s+)?(?:(?i:report|analysis|research|post|"
-               r"statement|blog post|alert|data)\s*)?(?:(?i:from|by)\s+)?" + _ORG),
-    re.compile(_ORG + r"['’]s (?i:research|report|analysis|findings|data|investigation|team)\b"),
-    re.compile(r"\b(?i:research|report|analysis|findings|data) (?i:from|by) " + _ORG),
-    re.compile(_ORG + r"\s+(?i:" + _ORIGIN_VERBS + r")\b"),
-    re.compile(r"^" + _ORG + r":\s"),
+_ACCORDING_TO = re.compile(
+    r"\b(?i:according to)\s+(?:(?i:a|an|the)\s+)?(?:(?i:new)\s+)?(?:(?i:report|analysis|research|post|statement|blog "
+    r"post|alert|data)\s*)?(?:(?i:from|by)\s+)?" + _ORG)
+
+
+def _origin_patterns(passive):
+    return (
+        _ACCORDING_TO,
+        re.compile(_ORG + r"['’]s (?i:research|report|analysis|findings|data|investigation|team)\b"),
+        re.compile(r"\b(?i:research|report|analysis|findings|data) (?i:from|by) " + _ORG),
+        re.compile(_ORG + _cue(_CUE_PRESENT, _CUE_PAST, passive, True)),
+        re.compile(r"^" + _ORG + r":\s"),
+    )
+
+
+_ORIGIN_PATTERNS = _origin_patterns(_PASSIVE_NEXT)
+_ORIGIN_PATTERNS_HEADLINE = _origin_patterns(_PASSIVE_NEXT_HEADLINE)
+# Who makes a statement: "according to X", or "X says / said / warns / confirms / discloses / reports" written in lower
+# case as in running text, never followed by a passive or result word. Finding verbs (found, traced, linked, tied...)
+# and "X:" never make a statement, and a Title Case headline gives none: there "Bybit Reported Hacked" and "Stake DAO
+# Warns of ..." cannot be told from a project's own word by their shape.
+_STATEMENT_PATTERNS = (
+    _ACCORDING_TO,
+    re.compile(_ORG + _cue(_SPEECH_PRESENT, _SPEECH_PAST, _PASSIVE_NEXT, False)),
+)
+_STATEMENT_PATTERNS_HEADLINE = (
+    _ACCORDING_TO,
+    re.compile(_ORG + _cue(_SPEECH_PRESENT, _SPEECH_PAST, _PASSIVE_NEXT_HEADLINE, False)),
 )
 _NOT_ORIGIN = {
     "the", "a", "an", "it", "this", "that", "they", "he", "she", "we", "i", "you", "his", "her", "their", "our", "its",
@@ -996,11 +1071,9 @@ _NOT_ORIGIN = {
 }
 
 
-def origin_of(text, publisher=""):
-    """The organisation a news item relays (Confiant's research, Elliptic's findings, the project's statement),
-    lower-cased, or None when the item reports on its own."""
+def _first_org(patterns, text, publisher):
     own = (publisher or "").lower()
-    for pattern in _ORIGIN_PATTERNS:
+    for pattern in patterns:
         for match in pattern.finditer(text or ""):
             name = clean_ws(match.group(1)).strip(".,:;'’").lower()
             name = re.sub(r"['’]s$", "", name)
@@ -1008,6 +1081,23 @@ def origin_of(text, publisher=""):
                 continue
             return name
     return None
+
+
+def origin_of(text, publisher="", headline=False):
+    """The organisation a news item relays (Confiant's research, Elliptic's findings, the project's statement),
+    lower-cased, or None when the item reports on its own. headline: the text is a headline, where a cue verb followed
+    by a place, reason or time reads as a passive ("Exchange Warned Over ...")."""
+    return _first_org(_ORIGIN_PATTERNS_HEADLINE if headline else _ORIGIN_PATTERNS, text, publisher)
+
+
+def statement_of(text, publisher="", headline=False):
+    """The organisation whose own statement the text relays ("Chainflip confirms $12M hack", "the protocol said ...",
+    "according to Bybit"), lower-cased, or None. Stricter than origin_of, because a project's own statement relayed by
+    one outlet confirms its incident: speech verbs only, in lower case, never a passive ("Bybit reported hacked",
+    "X said to be ..."), and never from a Title Case headline."""
+    if headline and safety._title_case(text or ""):
+        return None
+    return _first_org(_STATEMENT_PATTERNS_HEADLINE if headline else _STATEMENT_PATTERNS, text, publisher)
 
 
 _USER_SIDE = re.compile(
@@ -1408,6 +1498,26 @@ _TOOL_AFTER = re.compile(
     r"ransomware|trojan|rat|worm|campaign|exploit kit|platform|extension|package|server|agent)\b",
     re.IGNORECASE)
 _TOOL_SUFFIX = re.compile(r"(?:RAT|Stealer|Loader|Bot|Kit|Worm|Locker|Drainer|Miner|Ware)$")
+# "ShinyHunters Breach AI Startup", "ScarletEel Hacks AI Startup's Cloud": an attack word used as a verb with an object
+# makes the word before it the attacker, not the party hit. A noun ("DeepSeek Breach Exposes ...", "X Hack Drains ..."),
+# a passive ("Servers Hacked in ...", "Hacked by ...") or a clause end ("X Hacked, ...") keeps its subject.
+_FOLLOWING_VERBS = frozenset("""drains steals exposes leaks hits affects impacts spills puts lets sends forces prompts sparks
+raises shows reveals costs wipes takes leaves triggers disrupts halts knocks nets sees hands gives makes""".split())
+_ATTACK_VERB_AFTER = re.compile(
+    r"^\s+(?:breach(?:es|ed)?|hack(?:s|ed)?|hijack(?:s|ed)?|target(?:s|ed)?|hits?|attack(?:s|ed)?|drain(?:s|ed)?|"
+    r"rob(?:s|bed)?|exploit(?:s|ed)?|compromis(?:e|es|ed)|steal(?:s)?|stole|leak(?:s|ed)?|dump(?:s|ed)?|"
+    r"extort(?:s|ed)?|infiltrat(?:e|es|ed)|penetrat(?:e|es|ed)|pwn(?:s|ed)?)\s+([\w$'’“\"‘-]+)", re.IGNORECASE)
+_NOT_AN_OBJECT = frozenset("""in by after for via with over amid on at as to from during through again and or but while
+into within across since""".split())
+
+
+def _attacker_before_verb(after):
+    """The text after a subject starts with an attack verb that has an object: the subject is the attacker."""
+    match = _ATTACK_VERB_AFTER.match(after or "")
+    if not match:
+        return False
+    nxt = match.group(1).strip("'’“\"‘").lower()
+    return bool(nxt) and nxt not in _NOT_AN_OBJECT and nxt not in _AI_HEADLINE_VERBS and nxt not in _FOLLOWING_VERBS
 
 
 def _ai_subject_ok(subject, known=(), method=None, title=""):
@@ -1433,7 +1543,8 @@ def _ai_subject_ok(subject, known=(), method=None, title=""):
         if len(words) == 1 and title:
             after = title[title.find(subject) + len(subject):] if subject in title else ""
             tool = bool(_TOOL_AFTER.match(after) or _TOOL_SUFFIX.search(subject))
-            if not tool and (title.isupper() or method in ("headline subject", "sentence-case subject")):
+            if not tool and (title.isupper() or method in ("headline subject", "sentence-case subject")
+                             or (method == "headline pattern" and _attacker_before_verb(after))):
                 return False  # a handle leading the headline as its actor, or an all-caps headline
         return True
     return len(words) >= 2 and words[-1].lower() in safety.ORG_WORDS
@@ -1472,9 +1583,18 @@ _APPOSITION_AFTER = re.compile(
     r"^\s*,\s*(?:aged\s+)?\d{1,3}\s*,|^\s*,\s*(?:a|an|the)\s+(?:[\w-]+\s+){0,2}?(?:developer|engineer|researcher|"
     r"trader|investor|student|teacher|employee|executive|retiree|grandmother|grandfather|mother|father|man|woman|"
     r"teen|resident|victim|influencer)\b", re.IGNORECASE)
+# a person word right before the name, or a person word then a naming verb ("Hacker Dubbed Claude", "a scammer going by
+# Sora", "who goes by Cline"), with or without quotes around the name ("Hacker 'Sora'", "Hacker “Kiro”"); a naming verb
+# after a tool word ("a tool called Cursor") is not a person cue
+_PERSON_WORDS = (safety._ROLE_CUES + r"|teen|teenage|ex-employee|former employee|victim|retiree|grandmother|grandfather|"
+                 r"mother|father|man|woman|student|person|individual")
+# ...but "an AI agent called Cursor" names a product: "agent" never takes a naming verb here
+_NAMING_PERSON_WORDS = "|".join(w for w in _PERSON_WORDS.split("|") if w != "agent")
+_NAMING_VERB = r"dubbed|called|named|nicknamed|known as|going by|goes by|calling (?:himself|herself|themselves)"
 _PERSON_CUE_BEFORE = re.compile(
-    r"\b(?:" + safety._ROLE_CUES + r"|known as|nicknamed|alias|aka|teen|teenage|ex-employee|former employee|victim|"
-    r"retiree|grandmother|grandfather|mother|father|man|woman|student)\s+$", re.IGNORECASE)
+    r"\b(?:(?:" + _PERSON_WORDS + r")|(?:" + _NAMING_PERSON_WORDS + r")\s+(?:" + _NAMING_VERB + r")|who\s+(?:goes by|"
+    r"is called|is known as|calls (?:himself|herself|themselves))|known as|nicknamed|alias|aka)\s*[\"'“‘]?\s*$",
+    re.IGNORECASE)
 
 
 def _product_as_person(text, pos, name):

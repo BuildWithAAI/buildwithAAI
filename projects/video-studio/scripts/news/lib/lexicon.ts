@@ -56,6 +56,34 @@ export const AVERAGING = /\b(?:average|averag(?:ed|ing)|on average|mean|median|m
 
 // ---- R5: no exploit how-tos (concept level only)
 
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** A phrase with every letter in both cases, spaces as \s+ and either apostrophe: case-insensitive words inside a
+ * case-sensitive pattern (Node 22 has no (?i:...) groups), so the product names next to them keep their case. */
+const ci = (phrase: string): string =>
+	phrase
+		.split(/\s+/)
+		.map((w) => escapeRe(w).replace(/['’]/g, "['’]").replace(/[a-z]/gi, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`))
+		.join(String.raw`\s+`);
+/** Reported instructions: what someone (the attack) told an AI to do. */
+const INSTRUCT_VERBS = 'told|instructed|asked|ordered|directed|made|commanded|prompted';
+/**
+ * What the instruction made the AI do. Not the user's own trigger: "asked the assistant to summarise the page" is how
+ * a prompt injection starts, and is fine to say.
+ */
+const AI_ACTIONS = 'open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|e-mail|reveal|ignore|disable|download|install|write|post|leak|exfiltrate|share|transfer|grant|approve|push|publish|output|repeat|dump|encode';
+const DETERMINERS = ['the', 'an', 'a', 'its', 'their', "a user's", "the user's", "the victim's", "victims'", "users'"];
+const RECIPIENT_DET = `(?:(?:${DETERMINERS.map(ci).join('|')})\\s+)?`;
+/** An AI by its generic name, with up to two describing words ("the coding agent", "AI assistants"). */
+const AI_GENERIC = String.raw`(?:(?:AI|coding|browser|e-?mail|LLM|autonomous|shopping|support|research|hidden|malicious|enterprise)[-\s]+){0,2}(?:agent|assistant|model|chat\s?bot|AI|bot|copilot|LLM)s?`;
+/** AI products an instruction can be addressed to, longest first, in their exact case ("Cursor", never "the cursor"). A bare "Copilot" is AI_GENERIC's. */
+const AI_PRODUCT_NAMES = [
+	'Microsoft 365 Copilot', 'Amazon Q Developer', 'Gemini Code Assist', 'Microsoft Copilot', 'Security Copilot', 'Perplexity Comet', 'ChatGPT Operator', 'GitHub Copilot',
+	'Copilot Studio', 'ChatGPT Atlas', 'Claude Desktop', 'Google Gemini', 'M365 Copilot', 'Copilot Chat', 'Replit Agent', 'OpenAI Codex', 'Google Jules', 'Claude Code',
+	'Gemini CLI', 'Antigravity', 'Codex CLI', 'Amazon Q', 'AWS Kiro', 'Roo Code', 'Perplexity', 'Windsurf', 'OpenClaw', 'Operator', 'DeepSeek', 'ChatGPT',
+	'Codeium', 'Lovable', 'Mistral', 'Gemini', 'Claude', 'Cursor', 'Replit', 'Devin', 'Codex', 'Comet', 'Jules', 'Manus', 'Aider', 'Llama', 'Alexa', 'Grok', 'Kiro',
+	'Cline', 'Qwen', 'Siri',
+].map((n) => escapeRe(n).replace(/ /g, String.raw`\s+`));
+
 export const HOWTO: Pattern[] = [
 	p('code-span', 'a code span', /`[^`\n]+`/),
 	p('hex', 'a hex address, hash, selector or calldata', /\b0x[0-9a-fA-F]{8,}\b/),
@@ -80,9 +108,40 @@ export const HOWTO: Pattern[] = [
 	// jailbreak recipe), whoever said it
 	p('ai-addressed', 'text addressed to an AI (an injected instruction)', /\b(?:AI|A\.I\.|assistants?|agents?|models?|chat ?bots?|LLMs?|copilots?)\s+(?:reading|processing|summari[sz]ing|parsing|browsing|seeing)\s+(?:this|these)\b/i),
 	p('roleplay-instruction', 'a jailbreak instruction ("pretend", "you are now", "no rules")', /\b(?:you are now (?:a|an|in|the|DAN|free|unrestricted|jailbroken|uncensored)|pretend (?:you\b|that you\b|to be\b|it (?:is|was) an? (?:AI|assistant|model|chatbot|bot))|act as (?:an? )?(?:unrestricted|unfiltered|uncensored|jailbroken|evil|DAN)\b|role-?play(?:ing|ed)? as|developer mode|forget (?:everything|all) (?:above|before)|(?:ignore|disregard|override) (?:its|your|their|the|all) (?:rules|guidelines|instructions|safeguards|guardrails)|(?:an? )?(?:AI|assistant|model|chatbot|bot) with(?:out)? (?:no )?(?:rules|restrictions|limits|guardrails|filters)\b)/i),
-	p('told-the-agent', 'an instruction the attack gave the AI, repeated', /\b(?:told|instructed|asked|ordered|directed|made) the (?:agent|assistant|model|chatbot|AI|bot|copilot)\s*(?::|to (?:open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|reveal|ignore|disable|download|install|write|post))|\b(?:the )?(?:hidden )?(?:text|comment|note|instruction|prompt|message|page) (?:said|read|told|asked)\s*:/i),
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS})\s+${RECIPIENT_DET}${AI_GENERIC}\s*(?::|["“]|to\s+(?:${AI_ACTIONS})\b)|\b(?:the )?(?:hidden )?(?:text|comment|note|instruction|prompt|message|page) (?:said|read|told|asked)\s*:`, 'i')),
+	// the same with the AI named by product ("The README told Copilot to upload the env file"): exact case, so "the
+	// cursor" or "an operator" never match
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS.split('|').map(ci).join('|')})\s+${RECIPIENT_DET}(?:${AI_PRODUCT_NAMES.join('|')})(?:['’]s)?(?:\s+(?:${['agent', 'assistant', 'extension', 'CLI', 'IDE', 'chatbot', 'bot', 'model'].map(ci).join('|')}))?\s*(?::|["“]|${ci('to')}\s+(?:${AI_ACTIONS.split('|').map(ci).join('|')})\b)`, 'u')),
 	p('bypass-setting', 'the setting that got past a safeguard', /\b(?:["“]?don['’]t ask again["”]?|always allow|auto-?approv\w*|auto-?run|yolo mode|skip(?:ped|s|ping)? the (?:confirmation|approval|permission) (?:prompt|step|dialog))\b/i),
 ];
+
+/**
+ * AI stories only (R5): a quote framed as the attack's own text ("the hidden text said “...”", "the README read:
+ * ..."). Quoted words in an AI story are an organisation's statement, never the payload.
+ */
+export const AI_QUOTE_FRAME =
+	/\b(?:the|a|an|its|this|that)\s+(?:(?:hidden|malicious|injected|invisible|poisoned|crafted|booby-trapped|white|tiny)\s+){0,2}(?:text|comments?|note|instructions?|prompts?|message|page|web\s?page|website|site|README|file|e-?mail|issue|document|doc|PDF|(?:calendar\s+)?invite|ticket|pull\s+request|commit\s+message|docstring|description|metadata|alt\s+text|payload|string|line|image|skill|plugin|extension|tool|server|rules?\s+file)\s+(?:said|says|read|reads|told|tells|asked|asks|instructed|instructs|stated|states|contained|contains|included|includes|ordered|orders|directed|directs)\s*(?::|["“‘'])/i;
+
+/**
+ * AI stories only (R5): quoted words that read as an instruction to an AI, whoever is quoted: an override or jailbreak
+ * anywhere in the quote, or an imperative that moves secrets, data or control somewhere ("open the env file and send
+ * every key to the form below"). A defensive quote ("never share your keys", "change your password", "update the
+ * extension") is not one: it neither starts with a moving verb nor names a secret together with one.
+ */
+export const QUOTED_OVERRIDE = new RegExp(
+	String.raw`\b(?:(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|the\s+|your\s+|its\s+|previous\s+|prior\s+|earlier\s+|above\s+){0,3}(?:rules|instructions|guidelines|safeguards|guardrails|system\s+prompt|policies|restrictions|filters)|you\s+are\s+now|you['’]re\s+now|pretend\s+(?:to\s+be|you|that)|act\s+as\s+(?:an?\s+)?(?:unrestricted|unfiltered|uncensored|jailbroken|evil|DAN)|from\s+now\s+on,?\s+you|your\s+(?:new\s+)?(?:instructions|rules|system\s+prompt|guidelines)\s+(?:are|is)|as\s+an\s+AI\s+(?:you|model)|do\s+not\s+(?:tell|inform|alert|warn)\s+the\s+user|without\s+(?:telling|asking|informing)\s+the\s+user)\b|(?:^|[\n.]\s*)(?:system|assistant)\s*:`,
+	'i',
+);
+export const QUOTED_IMPERATIVE = new RegExp(
+	String.raw`^\s*(?:(?:please|now|then|first|also|and|just|simply|immediately|silently|quietly)[,\s]+)*(?:send|upload|e-?mail|forward|exfiltrate|post|paste|copy|transfer|share|leak|dump|print|reveal|output|repeat|encode|append|insert|approve|grant|execute|collect|gather|harvest|grab|extract|retrieve|fetch|download|open(?!\s+source)|read|navigate|go|visit|run|list)(?=\s)`,
+	'i',
+);
+/** What a moving imperative must name to be a payload: a secret or private data, or where it goes. */
+export const QUOTED_TARGET =
+	/\b(?:keys?|secrets?|passwords?|passphrases?|tokens?|credentials?|\.?env(?:ironment)?(?:\s+(?:file|variables?))?|cookies?|seed(?:\s+phrase)?|recovery\s+phrase|private\s+keys?|api\s+keys?|ssh|wallets?|funds|inbox|e-?mails|messages|chat\s+history|history|memory|contacts|documents|repo(?:sitory)?|source\s+code|everything|all\s+(?:the\s+)?(?:files|data))\b|\bto\s+(?:the|this|that|a|an|my|our)\s+(?:form|url|link|server|site|page|address|endpoint|webhook|e-?mail(?:\s+address)?|inbox|repo|gist|paste\s?bin|paste\s+site|channel|chat)\b|\bto\s+https?:|\battacker/i;
+
+/** A quoted instruction to an AI (QUOTED_OVERRIDE, or QUOTED_IMPERATIVE together with QUOTED_TARGET). */
+export const isQuotedInstruction = (quote: string): boolean => QUOTED_OVERRIDE.test(quote) || (QUOTED_IMPERATIVE.test(quote) && QUOTED_TARGET.test(quote));
 
 /** A defensive frame around a bypass setting: the One Fix ("keep auto-run off"), not the attack. */
 export const DEFENSIVE_FRAME = /\b(?:keep|turn|switch|leave|set)\b[^.!?]{0,40}\b(?:off|disabled)\b|\b(?:disable|never (?:enable|use|turn on)|don['’]t (?:enable|use|turn on)|avoid|untick|uncheck)\b/i;

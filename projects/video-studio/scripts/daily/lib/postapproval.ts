@@ -14,12 +14,12 @@
  * The record says "hub-live" only when the tool itself reports a post or a created draft; otherwise "hub-dry-run".
  * Only these hub calls get the posting credentials; every other step runs with them removed (util.ts scrubEnv).
  */
-import {existsSync, readdirSync, realpathSync, statSync} from 'node:fs';
+import {existsSync, readdirSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import {xWeightedLength} from '../../publish-kit/limits.ts';
 import {esc, link, plain, safeUrl} from './escape.ts';
 import type {Exec} from './exec.ts';
-import {minutes, outputTail} from './exec.ts';
+import {minutes, outputTail, realScript, realScripts} from './exec.ts';
 import type {PostApprovalResult} from './types.ts';
 import {clip, shortDate, writeAtomic, writeJson} from './util.ts';
 
@@ -140,15 +140,6 @@ export const buildThreatBrief = (p: PostInput): ThreatBrief => {
 
 export const hubToolCli = (hubRoot: string, tool: 'announcer' | 'threat-brief'): string => join(hubRoot, 'tools', tool, 'cli.ts');
 
-/** The real path of a CLI file: launched through a symlinked path, a hub CLI's entry check never ran main(). */
-const realCli = (path: string): string => {
-	try {
-		return realpathSync(path);
-	} catch {
-		return path;
-	}
-};
-
 /** name -> modification time of the files in dir. */
 const snapshot = (dir: string): Map<string, number> => {
 	const out = new Map<string, number>();
@@ -215,11 +206,12 @@ export const runPostApproval = (o: {
 		try {
 			const arr = JSON.parse(override) as unknown;
 			if (!Array.isArray(arr) || !arr.length || arr.some((x) => typeof x !== 'string')) throw new Error('not a JSON array of strings');
-			argv = (arr as string[]).flatMap((s) => (s === '{dryRun}' ? (live ? [] : ['--dry-run']) : [s.replace('{input}', inputPath).replace('{out}', dir)]));
+			// the owner's command launches its script by the real path too (a symlinked hub would skip main() silently)
+			argv = realScripts((arr as string[]).flatMap((s) => (s === '{dryRun}' ? (live ? [] : ['--dry-run']) : [s.replace('{input}', inputPath).replace('{out}', dir)])), o.root);
 		} catch (err) {
 			return {id: o.tool, mode: 'local-draft', status: 'failed', note: `${ENV_CMD[o.tool]} is not a JSON argv (${err instanceof Error ? err.message : String(err)}); local drafts only.`, files: written};
 		}
-	} else argv = [process.execPath, realCli(cli), '--input', inputPath, '--out', dir, ...(live ? [] : ['--dry-run'])];
+	} else argv = [process.execPath, realScript(cli), '--input', inputPath, '--out', dir, ...(live ? [] : ['--dry-run'])];
 	// the announcer posts only to platforms whose credentials are all set
 	if (o.tool === 'announcer' && live && !argv.includes('--targets') && ready.every((p) => p === 'x' || p === 'telegram')) argv.push('--targets', ready.join(','));
 	const before = snapshot(dir);

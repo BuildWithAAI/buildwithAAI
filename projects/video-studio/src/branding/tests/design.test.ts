@@ -18,6 +18,7 @@ import {
 	END_ZONES,
 	SHOW_BANNER,
 	SHOW_LOGO,
+	SHOW_LOGO_MAIN_EM,
 	SHOW_STING_BEATS,
 	showBannerHeads,
 	STING_HITS,
@@ -200,9 +201,10 @@ test('banners: show set keeps Badger in front of the monitor and both characters
 
 test('banners: show logo, channel name and tagline fit the safe area with a 12 px margin', () => {
 	// Layout widths in em of each line's font size, measured in Chromium with the bundled fonts: "Zoo & Badger"
-	// (Montserrat 900, the plate's widest line), "Zoodger News" (Montserrat 800, 0.08em tracking) and the tagline lines
-	// "Crypto and AI security, explained." (Inter 800) and "What happened. How it worked. One fix." (Inter 600).
-	const EM = {main: 7.37, name: 8.68, tagline: [16.82, 19.44]} as const;
+	// (Montserrat 900, the plate's widest line: SHOW_LOGO_MAIN_EM, shared with the show set's layout checks), "Zoodger
+	// News" (Montserrat 800, 0.08em tracking) and the tagline lines "Crypto and AI security, explained." (Inter 800) and
+	// "What happened. How it worked. One fix." (Inter 600).
+	const EM = {main: SHOW_LOGO_MAIN_EM, name: 8.68, tagline: [16.82, 19.44]} as const;
 	assert.equal(CHANNEL_IDENTITY['zoora-security'].name, 'Zoodger News', 'a new name needs a new EM.name measurement');
 	const L = SHOW_BANNER;
 	const s = L.logo.scale;

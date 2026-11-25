@@ -234,6 +234,15 @@ _LEGAL_NAME = re.compile(
     rf"\b(?i:charge[sd]?|charging|arrest(?:s|ed|ing)?|indict(?:s|ed|ing)?|sentence[sd]?|sentencing|extradite[sd]?|"
     rf"convict(?:s|ed)?|jail(?:s|ed)?|detain(?:s|ed)?|sanction(?:s|ed)?)\s+({_NAME_TOKEN}\s+{_NAME_TOKEN})\b"
 )
+# ...but a pair that ends in an entity or a role word is what the action is taken against, not a name: "Treasury
+# Sanctions Sinbad Mixer Over ...", "Police Arrest Hyperverse Promoter Over ..." (organisation words are excluded too)
+_LEGAL_ENTITY_NOUNS = frozenset("""mixer mixers tumbler tumblers promoter promoters scheme schemes operator operators
+platform platforms marketplace marketplaces ring rings gang gangs syndicate syndicates cartel cartels botnet botnets
+app apps bot bots scam scams fraud frauds ponzi pyramid founder founders cofounder cofounders ceo ceos boss bosses
+leader leaders kingpin kingpins member members admin admins administrator administrators developer developers
+executive executives employee employees insider insiders official officials suspect suspects affiliate affiliates
+associate associates hacker hackers scammer scammers launderer launderers exploiter exploiters crew crews cell cells
+firm firms entity entities empire""".split())
 _NUMBER_WORDS = frozenset("one two three four five six seven eight nine ten eleven twelve dozen dozens several".split())
 _DEMONYMS = frozenset("""korean chinese russian iranian american british french german indian israeli ukrainian
 vietnamese nigerian brazilian turkish canadian australian japanese singaporean spanish italian dutch polish""".split())
@@ -548,6 +557,8 @@ def _replace_names(pattern, text, group, need_first_name=False, single=False, fo
             if legal and any(_plain(t) in _DEMONYMS or _plain(t) in _COMMON_CAPITALISED or _plain(t) in known
                              or _plain(t) in GENERIC_PERSON_NOUNS or _plain(t) in _NUMBER_WORDS for t in tokens):
                 continue  # "Charge North Korean Hackers", "Arrest Two Men": not a name
+            if legal and tokens and _plain(tokens[-1]) in _LEGAL_ENTITY_NOUNS:
+                continue  # "Sanctions Sinbad Mixer", "Arrest Hyperverse Promoter": an entity or a role, not a name
             allow = products
             if allow == "role":
                 allow = text[match.start(0):start].strip().lower() in _PRODUCT_ROLE_CUES
@@ -845,7 +856,8 @@ def url_names_person(url, names):
     ("...-crypto-trader-x-says-wallet-hacked"), so the same name the radar redacted from the headline sits in the link
     next to it. Matched folded and as whole slug words: a multi-word name as its joined form, by its surname (its last
     word) or by a known given name, of 3 or more letters and not a common or organisation word; a one-word name of 3
-    or more characters."""
+    or more characters, except an AI product's name right before a product word or a version, as in People
+    ("claude-code-flaw", "claude-opus-4": the product, not the person who shares its name)."""
     if not url or not names:
         return False
     parts = urllib.parse.urlsplit(url)
@@ -860,8 +872,15 @@ def url_names_person(url, names):
         if not pieces:
             continue
         if len(pieces) == 1:
-            if len(pieces[0]) >= 3 and pieces[0] in present:
+            piece = pieces[0]
+            if len(piece) < 3 or piece not in present:
+                continue
+            if piece not in AI_NAMES and piece not in AI_PRODUCT_HEADS:
                 return True
+            for index, word in enumerate(words):
+                nxt = words[index + 1] if index + 1 < len(words) else ""
+                if word == piece and nxt not in AI_PRODUCT_TAILS and not nxt.isdigit():
+                    return True  # the name, not the product's ("claude-says-he-lost-...")
             continue
         if "-" + "-".join(pieces) + "-" in joined:
             return True

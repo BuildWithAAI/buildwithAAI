@@ -69,7 +69,6 @@ export const buildChecklist = (input: ChecklistInput): string => {
 	L.push('');
 
 	L.push('## 3. YouTube: the full episode', '');
-	box(`In YouTube Studio, switch to ${e.channelInfo.displayName}${e.channelInfo.handle ? ` (${e.channelInfo.handle})` : ''} before uploading.`);
 	box(`Upload ${code(kit.renders.find((r) => r.kind === 'long')?.output ?? 'media/long.mp4')} as **Private** first.`);
 	box(`Title: "${e.title}" (${e.title.length}/${LIMITS.youtubeTitleChars}). Other options: ${e.titleOptions.filter((t) => t !== e.title).map((t) => `"${t}"`).join(', ') || 'none'}.`);
 	box(`Description: paste ${code('youtube-description.txt')} (${input.descriptionBytes}/${LIMITS.youtubeDescriptionBytes} bytes)${offers.length ? '. Its first line is the disclosure: keep it there.' : '.'}`);

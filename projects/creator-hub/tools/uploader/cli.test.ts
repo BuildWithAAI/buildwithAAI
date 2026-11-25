@@ -237,6 +237,41 @@ describe('cli', () => {
 		}
 	});
 
+	it('auth refuses an unpinned slug signed in to a channel another slug pins; channels.json refuses one id pinned twice', async () => {
+		const fresh = makeWorkspace({withAccount: false, pinned: false});
+		try {
+			const secrets = join(fresh.root, 'client_secret.json');
+			writeFileSync(secrets, JSON.stringify({installed: {client_id: 'cid.apps.googleusercontent.com', client_secret: 'shh'}}));
+			const openUrl = async (consent: string) => {
+				const url = new URL(consent);
+				fake.pkceChallenge = url.searchParams.get('code_challenge');
+				const redirect = new URL(url.searchParams.get('redirect_uri') ?? '');
+				redirect.searchParams.set('code', 'test-code');
+				redirect.searchParams.set('state', url.searchParams.get('state') ?? '');
+				setTimeout(() => void fetch(redirect).catch(() => {}), 5);
+			};
+			// zoora-ai is unpinned; the Google sign-in picks the channel that zoora-security pins
+			const config = JSON.parse(readFileSync(fresh.channelsPath, 'utf8'));
+			config.channels['zoora-security'] = {youtubeChannelId: CHANNEL_ID, categoryId: null, defaultLanguage: 'en', playlists: {long: null, short: null}};
+			writeFileSync(fresh.channelsPath, JSON.stringify(config));
+			const args = ['auth', '--channel', 'zoora-ai', '--client-secrets', secrets, '--channels', fresh.channelsPath, '--state-dir', fresh.stateDir];
+			fake.issued.push('at-0001');
+			assert.equal(await main(args, deps({openUrl, cwd: fresh.root})), EXIT.refused);
+			assert.match(err, /Not saved\.[\s\S]*pins that channel to "zoora-security"/);
+			assert.doesNotMatch(out, /Tip: pin it/);
+			assert.ok(!existsSync(join(fresh.stateDir, 'oauth.json')), 'nothing saved');
+
+			// pinning zoora-ai to the same id is refused before any sign-in
+			config.channels['zoora-ai'].youtubeChannelId = CHANNEL_ID;
+			writeFileSync(fresh.channelsPath, JSON.stringify(config));
+			err = '';
+			assert.equal(await main(args, deps({openUrl, cwd: fresh.root})), EXIT.usage);
+			assert.match(err, /zoora-security\.youtubeChannelId \S+ is already pinned to "zoora-ai"/);
+		} finally {
+			fresh.cleanup();
+		}
+	});
+
 	it('auth warns when the client-secrets file sits where git would commit it', async () => {
 		const repo = mkdtempSync(join(tmpdir(), 'uploader-git-'));
 		try {

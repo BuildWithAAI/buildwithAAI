@@ -5,7 +5,7 @@ import json
 import os
 
 from . import classify
-from .cluster import Carried, aliases_for, lanes_compatible, names_match, url_key
+from .cluster import Carried, aliases_for, lanes_compatible, names_match, statement_by, url_key
 
 
 def load_history(directory, run_date, days=14):
@@ -103,11 +103,16 @@ def carried_sources(previous, incident, no_solo=frozenset()):
         entry.setdefault("carriedFrom", previous.get("radarDate"))
         # radar files from before the AI lane only held crypto sources
         entry.setdefault("lane", "crypto")
-        origin = s.get("origin") or classify.origin_of(s.get("excerpt") or "", publisher) or classify.origin_of(s.get("title") or "", publisher)
+        origin = (s.get("origin") or classify.origin_of(s.get("excerpt") or "", publisher)
+                  or classify.origin_of(s.get("title") or "", publisher, headline=True))
+        # the project's own statement is read again from the stored text under today's rules (an older file's origin
+        # may come from a Title Case or passive headline, which never confirms)
+        statement = statement_by(s.get("title") or "", s.get("excerpt") or "", publisher)
         losses = [e for e in previous.get("lossEntries", []) if url_key(e) == key]
         out.append(Carried(sid=s.get("id"), url=key, tier=s.get("tier"), publisher=publisher or s.get("id"),
                            hedge=s.get("hedge"), tracker=tracker, origin=origin, retraction=False,
-                           roundup=bool(s.get("roundup")), entry=entry, losses=losses, listed=bool(s.get("listedReport"))))
+                           roundup=bool(s.get("roundup")), entry=entry, losses=losses, listed=bool(s.get("listedReport")),
+                           statement=statement))
     return out
 
 

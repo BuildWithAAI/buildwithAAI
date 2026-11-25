@@ -55,7 +55,7 @@ Do this per channel, signed in to the right channel (studio.youtube.com, channel
 ### A. Profile (Customization > Profile)
 
 1. **Picture.** Click Change and upload `avatar-800.png`. Keep the crop at the full square: the artwork is already framed for the circle. Click Done, then Publish. It can take a few minutes to update everywhere.
-2. **Banner image.** Click Change and upload `banner-2560x1440.png`. In the preview, do not move the crop: all text and faces are already inside the 1546x423 safe area. Check the TV, desktop and mobile previews, click Done, then Publish.
+2. **Banner image.** Click Change and upload `banner-2560x1440.png`. In the preview, do not move the crop: all text and faces are already inside the 1546x423 safe area. Check the TV, desktop and mobile previews, click Done, then Publish. Zoodger News: wait for the re-render that adds the channel name (section 7, "Channel name"); the committed file predates it.
 3. **Video watermark.** Click Change and upload `watermark-150.png`.
    - For display time, choose **Entire video**.
    - Not "End of video": that shows it only in the last 15 s, and YouTube hides watermarks during end screens, which cover our last 20 s. It would never be seen.
@@ -233,7 +233,13 @@ The kit uses no other third-party asset. The kit contains no logos of exchanges,
 - **Security avatar.** Badger's head on silver is the default.
   - Teal is more striking, but it turns the "sparingly used" accent into a large mass, so it is kept only as an alternate (`out/brand/alt/zoora-security-avatar-teal-800.png`).
   - Slate was rejected: it hides Badger's dark ear, an identity marker.
-- **Channel name (owner, 2026-11-24).** Zoodger News, @ZoodgerNews. The banner carries it under the show logo: once `src/branding/stills/BannerShow.tsx` draws the name, re-render `banner-2560x1440.png` (`--only=zoora-security/banner`) and run the QA. The avatar, watermark, sting and badges keep the show's look and need no re-render.
+- **Channel name (owner, 2026-11-24).** Zoodger News, @ZoodgerNews. `src/branding/stills/BannerShow.tsx` draws it under the show logo, and the tagline's first line is now "Crypto and AI security, explained." (lead decision, 2026-11-24, so "news" does not repeat under the name). The committed `banner-2560x1440.png` predates both: it has no name and still carries the old tagline. After the character repair lands, re-render the banner and its key-only layer, then run the QA. The safe-area check measures the key layer (`out/brand/qa/zoora-security-banner-key.png`), which `--only=zoora-security/banner` does not re-render:
+  ```bash
+  node src/branding/render.ts --only=zoora-security/banner --no-qa
+  node src/branding/render.ts --only=security-banner-key --no-qa
+  node src/branding/qa/run.ts
+  ```
+  If the rigs changed since the last probe render, run `node src/branding/render.ts --only=qa/probe --no-qa` first. Never use a bare `--only=banner`: it also re-renders the Zoora AI banner. Upload the new banner only after that QA passes. The avatar, watermark, sting and badges keep the show's look and need no re-render.
 - **Jellyfish on the show.** The show banner carries the Zoora jellyfish as a small network bug, on the studio monitor and on the desk emblem. Remove the `JellyfishMark` uses in `src/branding/stills/BannerShow.tsx` if the security channel should stand apart from Zoora.
 
 ### Limits (stated plainly)

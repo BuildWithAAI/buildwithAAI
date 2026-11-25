@@ -33,7 +33,8 @@ from .textutil import (
 
 # 2026-11-25.1: invisible characters stripped (and counted), origins read from the summary and the title separately,
 # AI Incident Database listing dates kept apart from publication dates
-PARSER_VERSION = "2026-11-25.1"
+# 2026-11-25.2: a cue verb read as a passive or a result never names an origin ("Bybit Reported Hacked", "USDC Tied to")
+PARSER_VERSION = "2026-11-25.2"
 MAX_ITEMS = 200
 
 
@@ -48,16 +49,17 @@ def first_sentence(text, limit=200):
     return truncate(sentence, limit)
 
 
-def _qualify(item, full_text, publisher="", parts=None):
+def _qualify(item, full_text, publisher="", parts=None, title=None):
     """Adds the mechanism status and qualifying sentence read from the full text, and the organisation the item
-    relays (its origin), to a parsed item. parts: the texts to read the origin from, one at a time (the summary, then
-    the title), so a name never runs from a headline into the summary."""
+    relays (its origin), to a parsed item. parts: the texts to read the origin from, one at a time (the summary), then
+    the title (read as a headline), so a name never runs from a headline into the summary."""
     status, sentence = mechanism_qualifier(full_text)
     if status:
         item["mechanismStatus"] = status
         item["qualifier"] = truncate(sentence, EXCERPT_MAX)
-    for text in parts or (full_text,):
-        origin = origin_of(text, publisher)
+    texts = [(text, False) for text in parts or (full_text,)] + ([(title, True)] if title else [])
+    for text, headline in texts:
+        origin = origin_of(text, publisher, headline=headline)
         if origin:
             item["origin"] = origin
             break
@@ -342,7 +344,7 @@ def parse_feed(body, source, ctx, on_summary=None):
                 "excerpt": truncate(summary, EXCERPT_MAX),
                 "lead": first_sentence(summary) if summary else "",
                 "categories": categories[:12],
-            }, f"{title}. {summary}", source.get("publisher") or source.get("name") or "", parts=(summary, title))
+            }, f"{title}. {summary}", source.get("publisher") or source.get("name") or "", parts=(summary,), title=title)
             if hidden:
                 item["hiddenCharacters"] = hidden
                 hidden_items += 1

@@ -5,6 +5,8 @@
  *   node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/show/dev/contactSheet.ts --format landscape|vertical \
  *     [--channel _dev] [--slug zoo-badger-demo] [--lang en] [--short short1] [--out <dir>] [--bundle <dir>] [--cols 4] \
  *     [--frames 10,200] [--channel-name "Name"]
+ * --channel-name sets the line under the show logo; omitted, the sheet shows what a render without the prop shows
+ * (src/show/channel.ts: "Zoodger News" for zoora-security, none for _dev); --channel-name "" hides it.
  * Writes <out>/<format>/f<frame>.png and <out>/<format>-sheet-<n>.png. Needs ffmpeg and the preinstalled browser.
  */
 import {existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync} from 'node:fs';
@@ -44,7 +46,7 @@ const main = async () => {
 	const shortId = arg('short');
 	const out = resolve(arg('out', join(ROOT, 'out', 'show', 'contact', slug)) as string);
 	const cols = Number(arg('cols', format === 'landscape' ? '4' : '6'));
-	const channelName = arg('channel-name') ?? null;
+	const channelName = arg('channel-name'); // undefined: the render's own default (channel.ts); "" hides the line
 	const sbFile = channel === '_dev' ? join(ROOT, 'src', 'show', 'dev', 'fixtures', slug, lang === 'en' ? 'storyboard.json' : `storyboard.${lang}.json`) : join(ROOT, 'content', channel, slug, lang === 'en' ? 'storyboard.json' : `storyboard.${lang}.json`);
 	const sb = JSON.parse(readFileSync(sbFile, 'utf8')) as ShowStoryboard;
 	const tlFile = join(ROOT, 'public', 'generated', channel, slug, lang, 'timeline.json');
@@ -57,7 +59,7 @@ const main = async () => {
 	const bundleDir = arg('bundle');
 	const serveUrl = bundleDir && existsSync(join(bundleDir, 'index.html')) ? bundleDir : await bundle({entryPoint: join(ROOT, 'src', 'show', 'index.ts'), outDir: bundleDir});
 	const id = format === 'vertical' ? 'ShowShort' : 'ShowEpisode';
-	const inputProps = {channel, slug, lang, ...(shortId ? {shortId} : {}), channelName};
+	const inputProps = {channel, slug, lang, ...(shortId ? {shortId} : {}), ...(channelName !== undefined ? {channelName} : {})};
 	const browserExecutable = browserPath();
 	const browser = await openBrowser('chrome', {browserExecutable});
 	const composition = await selectComposition({serveUrl, id, inputProps, browserExecutable, puppeteerInstance: browser});

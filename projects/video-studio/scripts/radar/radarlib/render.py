@@ -261,6 +261,22 @@ def render_markdown(doc):
             note = f" {md(entry['dateNote'])}." if entry.get("dateNote") else ""
             out.append(f"- {md(entry['title'])} (listed {entry['listedUtc']}, lane {entry['lane']}):{note} {links}")
         out.append("")
+    if doc.get("ownerReview"):
+        out.append("## Held back for the owner (words withheld)")
+        out.append("")
+        out.append("The AI lane holds back sexual-abuse and intimate-image stories: no title, excerpt or link of theirs "
+                   "is in this brief, and none is a candidate, a Short or a Threat Brief item. The owner decides; the "
+                   "full links are in the gitignored withheld-links cache.")
+        out.append("")
+        for entry in doc["ownerReview"]:
+            kind = TYPE_LABEL.get(entry.get("suggestedType") or "", "")
+            typed = f"; suggested type: {md(kind)}" if kind else ""
+            record = f"; database record {link(entry['trackerUrl'], entry['trackerUrl'])}" if entry.get("trackerUrl") else ""
+            ref = f"; link ref {md(entry['urlRef'])}" if entry.get("urlRef") else ""
+            out.append(f"- {md(names.get(entry['sourceId'], entry.get('publisher') or entry['sourceId']))} (tier "
+                       f"{entry['tier']}, lane {entry['lane']}, {entry.get('dateFrom') or 'dated'} "
+                       f"{entry.get('date') or 'unknown'}): {md(entry['reason'])}{typed}{record}{ref}")
+        out.append("")
     out.append("## Unclustered security items")
     out.append("")
     if doc["unclustered"]:
@@ -276,7 +292,12 @@ def render_markdown(doc):
     out.append("| Source | Tier | Lane | Result | Items | Security-relevant | Note |")
     out.append("| --- | --- | --- | --- | --- | --- | --- |")
     for src in doc["sources"]:
-        note = "; ".join(src.get("warnings", [])[:3])
+        notes = list(src.get("warnings", [])[:3])
+        if src.get("heldForOwner"):
+            reasons = src.get("heldForOwnerReasons") or {}
+            why = "; ".join(f"{reason} ({n})" for reason, n in reasons.items()) or "sexual-abuse or intimate-image story"
+            notes.append(f"{src['heldForOwner']} item(s) held back for the owner, words withheld: {why}")
+        note = "; ".join(notes)
         out.append(f"| {md(src['name'])} | {src['tier']} | {src.get('lane', 'crypto')} | {src['status']} | {src['items']} | {src['relevant']} | {md(note)} |")
     out.append("")
     out.append("## Method")
@@ -285,8 +306,9 @@ def render_markdown(doc):
     out.append("Score = " + " + ".join(f"{k} x {v}" for k, v in weights.items())
                + " (each factor 0 to 1, reasons above). Confirmed = an unhedged tier-A primary statement "
                  "(the project, a post-mortem, a security firm or a law-enforcement release), a project statement "
-                 "relayed by an unhedged tier-B outlet, or two unhedged outlets that do not relay the same "
-                 "origin. Incident databases (DefiLlama, SlowMist, the AI Incident Database) never confirm alone; a "
+                 "relayed by an unhedged tier-B outlet (\"the protocol said\", \"X confirms\" in running text; never a "
+                 "Title Case or passive headline such as \"X Reported Hacked\"), or two unhedged outlets that do not "
+                 "relay the same origin. Incident databases (DefiLlama, SlowMist, the AI Incident Database) never confirm alone; a "
                  "single researcher's blog is one outlet's vote; tier C never confirms; newsletter round-ups do not "
                  "count. The mechanism has its own status (stated, suspected or unknown). Clustering: exact subject or "
                  "alias match plus a date window, never a chain of near-matches; a crypto story never merges with an AI "

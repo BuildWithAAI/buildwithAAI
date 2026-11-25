@@ -1,6 +1,6 @@
 /** approval.md: the same packet as Markdown, for reading in the Claude app. Feed text goes through md() (no links/HTML). */
 import {md, safeUrl} from './escape.ts';
-import {UNTRUSTED_NOTE} from './html.ts';
+import {quotesNote, UNTRUSTED_NOTE} from './html.ts';
 import {realAnalysisLine, type PacketModel} from './packet.ts';
 
 const fence = (s: string): string => {
@@ -28,6 +28,11 @@ export const renderMd = (m: PacketModel): string => {
 	if (m.names.length) {
 		o.push(`## Names the gate flagged (R4): ${m.names.length}`, '', 'No individual\'s name may appear unless a cited law-enforcement or regulator release names them. Check every line.', '');
 		for (const f of m.names) o.push(`- ${f.severity.toUpperCase()} · ${md([f.where.scene, f.where.surface].filter(Boolean).join(' '))}: ${md(f.message)}`);
+		o.push('');
+	}
+	if (m.quotes.length) {
+		o.push(`## Quotes to check: ${m.quotes.length}`, '', quotesNote(m.aiStory), '');
+		for (const q of m.quotes) o.push(`- ${md(q.where)}: “${md(q.text)}”`);
 		o.push('');
 	}
 	o.push('## At a glance', '');

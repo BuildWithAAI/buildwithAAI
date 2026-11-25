@@ -193,7 +193,10 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		binding: {
 			zooHeight: b(478),
 			heightAtWithers: b(166), // back line outer edge y=332
-			headTop: b(240), // skull top y=258 (head turned to camera, as in the panel)
+			// skull top y=258 (head turned to camera, as in the panel). Round 5 (D55): the rig draws the front head x0.90 to the
+			// turnaround's head:body proportion, so its skull and ear tips sit about 11 units below these two panel values
+			// (rigCheck.earTop); the body numbers stay binding.
+			headTop: b(240),
 			earTop: b(242), // ear tips y=256
 			bodyLength: b(185), // chest front x=288 .. rump rear x=473
 			chestBottom: b(91), // brisket underline y=407
@@ -209,16 +212,18 @@ export const BADGER_MANIFEST: BadgerManifest = {
 			headsTallAtHeadTop: Math.round((451.9 / 123) * 100) / 100, // front head skull top to chin = 123 units
 		},
 		rigCheck: {
-			// measured on the v1.0.0 render (dev BadgerLeft, head 'front', scale 1)
+			// measured on the v1.0.0 render (dev BadgerLeft, head 'front', scale 1). Round 5 re-measured the head after the D55
+			// rescale (front head x0.90 about its pivot): ear tips 455.6 -> 444.0 (outline included), skull 98 x 122 -> 90.6 x
+			// 110.5 units (fill bounding box, crown to lower jaw contour); the body values are unchanged.
 			heightAtWithersOuter: 314.4,
-			earTop: 455.6,
+			earTop: 444.0,
 			chestFrontX: -182.5,
 			rumpRearX: 165.6,
 			bodyLength: 348.1,
 			footprintMinX: -185.6,
 			footprintMaxX: 185.0,
-			frontHeadSkullWidth: 98,
-			frontHeadHeight: 123,
+			frontHeadSkullWidth: 90.6,
+			frontHeadHeight: 110.5,
 			lineWidth: LINE.width,
 			// RIGHT view (rigRight.ts, stand): withers outer edge, torso outline length, footprint (far front paw placed by IK)
 			// round-1 repair: the far front leg now stands behind the near one (D15), so the right footprint ends at the near
@@ -762,10 +767,42 @@ export const BADGER_MANIFEST: BadgerManifest = {
 		{
 			id: 'BADGER-D55-head-scale',
 			sheetShowed:
-				"At one body scale the turnaround side head measures 181 px ear-back to nose against 162 for the rig's profile head (coat_right itself draws its head 7% shorter than turn_side); the front head's eye spacing is 57.2 units against 49.4 on badger_turn_front.png but within about 5% of the size panel; crown-to-eye is 45.0 units on the front head and 30.4 on the profile (ratio 0.68, turnaround 0.83).",
+				"At one body scale the turnaround side head measures 181 px ear-back to nose against 162 for the rig's profile head (coat_right itself draws its head 7% shorter than turn_side); the front head's eye spacing is 57.2 units against 49.4 on badger_turn_front.png but within about 5% of the size panel; crown-to-eye is 45.0 units on the front head and 30.4 on the profile (ratio 0.68, turnaround 0.83). Round 5 re-measured every view against its own turnaround panel at the views' trace scale (S = 312.6 / 329 units per crop px), with a similarity fit of the head ink (uniform scale about the face centroid plus shift, symmetric chamfer cost, ears in, collar out) and landmarks: front vs badger_turn_front.png best scale 0.900-0.925 (cost 2.58 -> 1.14; eye spacing 57.2 vs 49.4-51.3 units, crown to lower lip 115.8 vs 101.7, cheek width 101 vs 92: big in height as much as in width); 3/4 vs badger_turn_34.png 0.970-0.975 (cost nearly flat to 1.0; eye to nose 63.3 vs 62.5); right profile vs badger_turn_side.png (eye-aligned) 1.030-1.035 with the cost flat within 0.5% of 1.0: its top and underside contours lie within 1-3 units of the panel's from 20 units behind the eye to the nose, eye to nose 66.0 vs 67.1, and the neck's back line within 1-2 units. The ear-back-to-nose gap is the EAR: turn_side hangs the flap 17-24 units further back from the eye than coat_right, which the profiles were traced on.",
 			chosen:
-				"RECORDED in round 4, rescale NOT done: per the reference priority the TURNAROUND controls head size relative to the body (identity and anatomy), and the size panel controls only the overall scale (Zoo against Badger, D01). By that rule the profile, walk and look-up heads are about 10% small against turn_side and the front and 3/4 heads about 16% wide against turn_front, so the target is the turnaround: profiles x1.10 (the up heads follow), front and 3/4 heads about x0.86 in width. Deferred because every head is joined to its rig at measured junctions (left nape NAPE_J, profile throats, the look-up necks, the turned-head napes of D37) and mounted with tuned offsets, and the proof's swap continuity has to be re-measured after any change, which the integrator owns.",
-			why: "The R3 review asked for this decision to be recorded first; recording it without the rescale keeps the delivered proof's swaps stable for this round.",
+				"APPLIED in round 5 (gen_heads.py HEAD SCALE): the turnaround controls head size relative to the body, the size panel only the overall scale (D01). The front head is scaled uniformly by 0.90 and the 3/4 heads by 0.95 about the head pivot (so on a side rig the jaw / neck junction stays and the crown comes down), not 0.86 in width only: the front head was as much too tall as too wide. The profiles keep x1.00 (the look-up heads follow them): a uniform x1.10 would make their face 10% too big against turn_side while closing only half of the ear gap. After the rescale the fits read front 0.995 and 3/4 1.005 (each within 0.5% of its panel). The bust neck (FRONT_NECK_GEOM) scales with the front head about the head's origin, so every expression bust is a uniformly scaled copy of the round-4 bust (ink XOR after scaling back: shapes identical, the lines relatively 11% heavier) and still matches badger_expr_*.png; the expressions' brow offsets scale with the head (HeadViewGeom.scale). The turned-mount napes and jaws (D56) and the front head's side-mount jaws (D57) are generated from the scaled heads.",
+			why: "The R4 review found the front head about 16% wide against the turnaround (eye spacing / figure height 0.1245 vs 0.1023) and the head changing size at every proof swap; a uniform x0.86 width scale alone would have left the face too long, and the profile x1.10 recorded in round 4 is contradicted by the panel-by-panel fit (its face already matches turn_side). Open: the profile's ear placement (17-24 units nearer the eye than on turn_side) and the proof's swap neck values (Preview10s SWAP), which were tuned for the round-4 head sizes and are the integrator's to re-measure.",
+		},
+		{
+			id: 'BADGER-D56-turned-mount-jaw-nape',
+			sheetShowed:
+				"badger_turn_34.png runs the near contour of a 3/4 head as one line from under the ear down the cheek into the neck; no panel shows the head turned back over the shoulder (the proof's 3-second beat on the left body).",
+			chosen:
+				"Round 5 (gen_heads.py TURNED 3/4 MOUNTS, Head.tsx mountJaws, SideBody turned.nape): the 3/4-right head on the left rig and the 3/4-left head on the right rig carry generated mount geometry for their own rig. Jaw (head-local, drawn only on that rig): one cubic from the near cheek stroke's end along its tangent onto the rig's throat line 4 units below where it leaves the skull, then 7 units down the throat (over the neck's own line, so a head tilt of a few degrees never opens the join), plus a coat fill from the line back inside the skull and neck fills. Nape (neck-local, replaces the hand-written LEFT_NAPE_34R / RIGHT_NAPE_34L of D37): the crest from 4 units inside the far ear's fill to the end of the neck's back line under the collar, and a fill bounded by it, the old back line (2.8 units past it) and, hidden under the head, the skull's far contour and the far ear (4 and 8 units inside them), so the neck reaches up into the far ear's root. Seal check at 3.2 px/u: 383 -> 0 px (left rig; also 0 with every expression, ears back, judge, mouthOpen, head tilt -3..3, neck 5..8) and 389 -> 0 (right rig); Badger-only Preview10s f97-f189 at 0.88 px/u: 31-33 -> 0 px in every frame.",
+			why: "The R4 review (major, filed under integration) found 28-32 px of open jaw on every frame of the proof's turn beat (322 px at 3.2 px/u) and a 61 px leak at the far ear's root.",
+		},
+		{
+			id: 'BADGER-D57-front-head-side-jaw',
+			sheetShowed:
+				"badger_expr_*.png draw the front face's lower contour running on into the neck; on a side rig the front head's chin edge meets the background on the throat side.",
+			chosen:
+				"Round 5 (gen_heads.py FRONT_SKULL_FILL, FRONT_MOUNTS, Head.tsx): the front skull fill now runs along the outline's centre line from jaw corner to jaw corner over the crown (it sat 2.8 units inside it, leaving a 1-unit background sliver inside the cheek contour on the side rigs, worst with the shocked jaw) and below the corners along the outer jaw contour (the shocked mouth's jaw line). Each side rig gets a generated jaw closure on the throat side, from the outline's end down that edge into the rig's throat line and 7 units down it, drawn for every mouth except the shocked gasp (MouthGeom.fullJaw), whose own jaw line is that contour; the expression's jaw line then reads as the lip line inside it. Seal check at 3.2 px/u: left 79 / right 82 px -> 0 (also happy, worried, shocked 242 -> 0, ears back, judge, mouthOpen, tilt -8..13, neck 10); the bust and the front view are unchanged (the neck lies behind the chin).",
+			why: "The R4 review found the jaw / neck junction open on the default left view (79 px; 3-7 px per proof frame) and a light sliver inside the cheek with the shocked expression (242 px).",
+		},
+		{
+			id: 'BADGER-D58-profile-right-back-contour',
+			sheetShowed:
+				"badger_coat_right.png and badger_turn_side.png outline the back of the skull and the nape down from under the pale ear.",
+			chosen:
+				"Round 5 (gen_heads.py _profile_r_back): as the left profile does since round 4, the right profile strokes its own back contour, from where its crown stroke starts under the pale ear, over the occiput and down the skull fill's edge to its crossing with the right rig's neck back line, then 4 units down that line (a plain corner, the nape notch). The right rig's neck fill now follows its own strokes exactly at their ends (gen_right.py: the closed fill spline used to bulge up to 1.9 units past the throat stroke near the jaw). Seal check at 3.2 px/u: right profile 67 -> 0 px (worried 98, judge 83, earsBack 98 -> 0), right walk 54-62 -> 0 in every phase, the right rig's 3/4 heads 10 -> 0. The left profile's own back stroke now starts at x 150, under the start of its crown stroke (it started at x 180, t 0.7 of the crown's back cubic): a vocalisation lifts the ear 8.4 deg, its back half swings down and bared that crown edge (left profile with mouthOpen 1: 18 -> 0 px; the rest pose renders pixel-identical).",
+			why: "The R4 review found 18 px at the pale ear's root and 49 px at the throat on the right profile, in every right walk phase as well.",
+		},
+		{
+			id: 'BADGER-D59-view-and-pose-seals',
+			sheetShowed:
+				"The turnaround and pose panels outline every edge where the coat meets the background.",
+			chosen:
+				"Round 5: (1) every view and pose part's fill now takes the stroke's own end tangent where a stroke ends on a fill point (dev/trace/sealends.py; the closed fill spline used to bulge past the line there); (2) front view: the torso's outer lines start inside the collar band's ends, the fill's top corners under it; (3) back view: the groin between the hind legs is outlined; (4) 3/4 view: the near hind leg's front line starts where the belly line starts; (5) sit (and its mirrored left sit, D23 unchanged): the back line starts under the collar, the haunch's line follows its fill past the corner to the tail, the tail's line runs on up under the haunch, the torso fill's lower rear corner lies on the haunch's line (it poked out below it into the background between tail, haunch and hind paw and hid the top of the tail's front line), and the far front leg's fill no longer crosses itself (it left a pocket of background between the paws); (6) bust (FRONT_NECK_GEOM): the fill's shoulder edges follow the shoulder strokes from under the collar's ends (they ran up to 1 px outside them, a coat sliver below each collar end). Seal check at 3.2 px/u: front view 204 -> 0, back 80 -> 0, 3/4 41 -> 0, right / left sit 300 / 301 -> 0 / 0 (every expression), right lie 2 -> 0; on the rendered BadgerSheet every full figure 0 (round 4: 52) and the busts 90 -> 0 above their flat bottom cut, which stays open by design.",
+			why: "The R4 review listed the collar ends of the front view, the back view between the hind legs, a 3/4 belly / leg corner and three spots on the sit.",
 		},
 	],
 };

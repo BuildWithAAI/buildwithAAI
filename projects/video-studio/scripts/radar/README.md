@@ -11,13 +11,13 @@ drafts research and never a script. Python 3 standard library only.
 cd projects/video-studio
 python3 scripts/radar/radar.py collect --date 2026-11-24                     # live
 python3 scripts/radar/radar.py collect --date 2026-11-24 --offline-fixtures  # recorded fixtures
-python3 -m unittest discover -s scripts/radar/tests -t scripts/radar         # 159 tests, about 5 s
+python3 -m unittest discover -s scripts/radar/tests -t scripts/radar         # 234 tests, about 7 s
 ```
 
 | Output | Where |
 | --- | --- |
-| Machine brief | `content/zoora-security/radar/<date>.json` (live runs): `top`, `alsoSeen`, `laneTop` (each lane's best 5 ids), `counts.candidatesByLane`, and a `lane` on every incident, source entry, unclustered item and source row |
-| Human brief | `content/zoora-security/radar/<date>.md`: top 5 with sources, status, lane and score reasons, the AI security lane's best 5, "also seen", unclustered items, source health |
+| Machine brief | `content/zoora-security/radar/<date>.json` (live runs): `top`, `alsoSeen`, `laneTop` (each lane's best 5 ids), `counts.candidatesByLane`, `ownerReview` (items held back for the owner, words withheld; `counts.ownerReview`, `heldForOwner` per source row), and a `lane` on every incident, source entry, unclustered item and source row |
+| Human brief | `content/zoora-security/radar/<date>.md`: top 5 with sources, status, lane and score reasons, the AI security lane's best 5, "also seen", items held back for the owner (outlet, date and reason only), unclustered items, source health |
 | Polite cache | `.cache/radar/` (gitignored): parsed items (titles, links, dates, excerpts of 280 characters or fewer), ETag/Last-Modified, robots.txt |
 | Offline runs | `.cache/radar/offline-out/` unless `--out-dir` is given, so fixture output never replaces a real brief |
 
@@ -61,7 +61,9 @@ least one source was read, 1 when none was, and 2 for bad input.
    redacted whatever the word, with its native-script form in ASCII or full-width parentheses; a given
    name before a redacted surname goes with it and is recorded for the whole run ("Teodoro [Sample]"),
    but never a title word ("Data Exfiltration", "Class Action"). A name pair after a legal action verb
-   ("Feds Charge X Y Over ...") is redacted in Title Case too. Names that start with any capital letter
+   ("Feds Charge X Y Over ...") is redacted in Title Case too, unless it ends in an organisation, entity or
+   role word ("Treasury Sanctions Sinbad Mixer", "Police Arrest Hyperverse Promoter" keep their words and teach
+   no person token). Names that start with any capital letter
    count ("José", "Łukasz", "Özgür", "Сергей"), runs of Chinese, Japanese or Korean script become
    `[non-English text]`, and every @handle is redacted except known firms, AI products and the
    channel's own (an e-mail address or an npm scope such as `@scope/pkg` is not a handle). Run-wide
@@ -70,7 +72,9 @@ least one source was read, 1 when none was, and 2 for bad input.
    group's other name ("Sapphire Sleet (aka BlueNoroff)"), and a crypto item is checked only against
    names from crypto items. A link whose path spells a redacted name is withheld: the brief keeps the
    outlet's address with `urlWithheld` and a stable `urlRef`, and the full link goes to the gitignored
-   cache (`.cache/radar/withheld-links/<date>.json`). The redaction is heuristic, so the claim gate
+   cache (`.cache/radar/withheld-links/<date>.json`). An AI product's name that is also a person token
+   (Claude, Cline, Kiro, Sora) withholds a link only where the slug does not use it as the product: before a
+   product word or a version ("claude-code-flaw", "claude-opus-4") it is the product. The redaction is heuristic, so the claim gate
    stays responsible.
 5. **No exploit how-tos.** `safety.redact_code` removes addresses, hashes, code spans, function
    calls and identifiers (`[code]`, `[address]`), and `safety.redact_instructions` removes text addressed to
@@ -214,7 +218,14 @@ with a warning.
      impersonates or targets an AI brand is not AI security); a deepfake is fraud only with a fraud cue in its
      sentence; an attempt to access data is not a data exposure; a chatbot's falsehood is not AI-washing; an
      official warning about a live campaign counts, general advice does not. Sexual-abuse and non-consensual
-     intimate imagery made with AI is left out of the AI lane for the owner to judge, never typed as fraud.
+     intimate imagery made with AI is left out of the AI lane for the owner to judge, never typed as fraud,
+     and never dropped unseen: each such item is held back in `ownerReview` (and the human brief's "Held back
+     for the owner") with its outlet, date, reason and a `urlRef`, never its title, excerpt or link (a slug
+     repeats the headline; the full link goes to the gitignored withheld-links cache), counted in
+     `counts.ownerReview` and the source row's `heldForOwner`, and named in a run warning, which the daily
+     relays. A completed breach of an AI app that took or exposed its users' private images is held with the
+     suggested type `ai-data-exposure`. A held item is never a candidate, so never a Short or a Threat Brief
+     item without the owner.
    - Negated mentions such as "no evidence of a security breach" or "no evidence AI was used" do not
      count. Per-source exclusions apply, and vendor blogs drop promotional posts.
 2. **Mentions.** Titles and excerpts are sanitised. Each mention gets dates, a subject, aliases,
@@ -247,19 +258,23 @@ with a warning.
      Cyber Bridge hack, and "Gemini" the exchange is not "Google Gemini". An item in both lanes may join
      either. AI incidents have no database seeds. Two AI items about one product merge only when they
      report the same issue: one incident-database reference, one CVE, or two different publishers with the
-     same AI type and a distinctive headline word beyond the product's name and the mechanism's (two posts
-     of one researcher about one product are two findings). A subject-less AI item joins only by a shared
+     same AI type and a distinctive headline word beyond the product's name and the mechanism's (plurals
+     folded: "developer" and "developers" are one word), or, published within a day of each other, two words
+     of what was exposed and how ("exposed ... secrets"). Two posts of one researcher about one product are
+     two findings, and so are reports with two different CVEs or two different database references. A subject-less AI item joins only by a shared
      reference, or with the product in its title and the same issue as every member.
    - An AI item's subject is the AI product or company it is about: a product over its own vendor
      ("Anthropic says ... Claude Code" is about Claude Code), the target over the tool used on it
      ("Breaking Opus 4.7 with ChatGPT (Hacking Claude's Memory)" is about Claude), never an impersonated
      brand ("Fake ChatGPT extension", "impersonates OpenAI"), a firm or agency that reports it ("Cursor
      traces ...", "NSA says ...") or a person who shares a product's name ("Sora Tanaka arrested", "Claude,
-     72, loses ..."). Else a headline subject that cannot be a person: a name the news gate's allowlist
+     72, loses ...", "Hacker 'Sora' ...", "Hacker Dubbed Claude ...", "a scammer going by Sora"). Else a
+     headline subject that cannot be a person: a name the news gate's allowlist
      knows as an organisation, a token mixing letters and digits, a distinctive token ("GoDaddy") or an
      organisation word at its end ("European Commission"). Never a bare count ("57 indicted ..."), a role
      or concept acronym ("CEO fraud", "CIA Security Triad"), a pun from mid-headline ("ProbLLMs") or a
-     handle that leads the headline as its actor ("IntelBroker leaks ..."). A foreign-dollar amount
+     handle that leads the headline as its actor ("IntelBroker leaks ...") or attacks something in it
+     ("ShinyHunters Breach AI Startup ...": the attacker, never the party hit). A foreign-dollar amount
      ("HK$1.6 Billion") is never a subject. `subjectKnown` says whether the subject is a known name rather
      than one read from a headline's shape: the daily and the Threat Brief never allowlist the latter.
      Without the news gate's allowlist the run carries a warning and AI subjects are known products only.
@@ -294,7 +309,15 @@ with a warning.
    law-enforcement release); the project's own statement relayed by an unhedged tier-B outlet; or two
    unhedged outlets (tier B, or a researcher's blog) that do not relay the same origin (one vote per
    outlet; an origin is read from the summary and the title separately, never across a sentence end, and
-   two origins that share a distinctive word are one). Newsletter round-ups never count. A source
+   two origins that share a distinctive word are one). The project's own statement is the source entry's
+   `statement`: only "according to X" or a speech verb in running text ("Chainflip confirms ...", "the
+   protocol said ...": says, said, warns, warned, confirms, confirmed, discloses, disclosed, reports, in
+   lower case), never a finding verb (found, traced, linked, tied...), never a passive or result ("Bybit
+   reported hacked", "said to be ...", "confirmed by ...") and never a Title Case headline, where "Bybit
+   Reported Hacked" and "Stake DAO Warns of ..." cannot be told from a project's own word: one tier-B
+   outlet's report of those stays developing. An `origin` (who the outlet relays, used only to tell outlets
+   apart) is also never read from a cue verb followed by a passive or result word ("USDC Tied to Binance
+   Hack", "Cursor Reported Vulnerable to ..."). Newsletter round-ups never count. A source
    that walks the report back (a denial, a retraction, a false alarm) makes it `developing`.
    Everything else is `developing`, and the title says so.
 6. **Fresh window.** By default this is the run date and the 2 days before it, judged by the
@@ -369,7 +392,13 @@ owner on the approval page.
   negatives), types, exclusions (sponsored, press releases, digests, strict crypto context), subjects
   (products, never a person), redaction next to AI product names ("Claude Code" is not a person,
   "Claude Dupont said" still is), the AI Incident Database parser, harm scoring, lanes on every output,
-  and the offline run with the crypto ranking unchanged.
+  and the offline run with the crypto lane unchanged: every crypto incident of the recorded fixtures keeps
+  the status, status reason and title the radar gave it before the AI lane.
+- `tests/test_review_fixes.py` and `tests/test_review_round2.py` hold one regression test per finding of the
+  two AI-lane review rounds of 2026-11-25 (the second: Title Case and passive headlines are never a project's
+  own statement, quoted handles and attacking handles are never subjects, same-issue AI reports merge again,
+  entity names after legal verbs and AI products in link slugs are not people, sensitive stories are held for
+  the owner as a count and a reason).
 
 ## Known limits
 
@@ -398,3 +427,11 @@ owner on the approval page.
   attempt to reach data ("Grok Bots Attempt to Access Corporate Data") now has no AI type and leaves the AI
   lane: whether attempts get a label of their own is the owner's call. The AI rules are still regexes tuned on
   a few days of feeds; a research post that confirms nothing alone may still be a real disclosure.
+- **Own statements in Title Case headlines.** A project's own word in a Title Case headline ("Abracadabra
+  Confirms $13 Million Exploit") does not confirm its incident: by its shape it cannot be told from a passive
+  ("Bybit Reported Hacked"), so one tier-B outlet's report stays developing until a second outlet, a
+  lower-case statement in the excerpt or a primary source arrives (a missed confirmation, never a false one).
+  Two outlets relaying the same Title Case statement count as one origin.
+- **Held stories.** Items held back for the owner are counted and listed without their words; the owner opens
+  them from the gitignored withheld-links cache (or the database record number). A crypto-lane story is never
+  held: the hold is an AI-lane rule.

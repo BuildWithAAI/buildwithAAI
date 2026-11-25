@@ -42,6 +42,12 @@ export type CommentInput = {
 export type Identity = {
 	channelIds: string[];
 	names: string[];
+	/**
+	 * Names protected like `names`, but against look-alikes only one letter away instead of two: their skeleton
+	 * sits two letters from ordinary names ("Zoodger News" folds to "zoodger": Rodger, Dodger, Booger). A name
+	 * in `names` with the same skeleton (a saved account's title, say) gets the same one-letter limit.
+	 */
+	closeNames?: string[];
 	trustedChannelIds?: string[];
 	/** Handles or links the channel itself uses (e.g. its own Telegram bot); they never count as scam contacts. */
 	ownHandles?: string[];
@@ -54,13 +60,17 @@ export type ClassifyOptions = {
 	burstSimilarity?: number;
 };
 
-export const prepareIdentity = (identity: Identity): PreparedIdentity => ({
-	ownChannelIds: new Set(identity.channelIds),
-	trustedChannelIds: new Set(identity.trustedChannelIds ?? []),
-	names: identity.names
-		.map((name) => ({name, skeleton: nameSkeleton(name)}))
-		.filter((entry) => entry.skeleton.length >= 3),
-});
+export const prepareIdentity = (identity: Identity): PreparedIdentity => {
+	const close = new Set((identity.closeNames ?? []).map(nameSkeleton));
+	return {
+		ownChannelIds: new Set(identity.channelIds),
+		trustedChannelIds: new Set(identity.trustedChannelIds ?? []),
+		names: [...identity.names, ...(identity.closeNames ?? [])]
+			.map((name) => ({name, skeleton: nameSkeleton(name)}))
+			.filter((entry) => entry.skeleton.length >= 3)
+			.map((entry) => ({...entry, maxEdits: close.has(entry.skeleton) ? 1 : 2})),
+	};
+};
 
 const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

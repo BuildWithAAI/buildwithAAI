@@ -10,6 +10,7 @@ import {COMMENT_MAX, COMMENT_SOFT_MAX, correctionsFor, pinnedCommentText, valida
 import {
 	ACCUSATIONS,
 	ACTOR_REF,
+	AI_QUOTE_FRAME,
 	AVERAGING,
 	CAUSES,
 	CLAIM_HEDGE,
@@ -31,6 +32,7 @@ import {
 	SEQUENCE_MARKERS,
 	SPECIFIC_REF,
 	SPECULATION,
+	isQuotedInstruction,
 	ruleTitle,
 	type FigureRole,
 	type Pattern,
@@ -741,6 +743,7 @@ const ruleR5 = (ctx: Ctx, add: Add) => {
 			}
 		}
 	}
+	if (ctx.brief.aiStory) aiQuotes(ctx, add);
 	// characters that render as nothing (Unicode tags, bidi controls, zero-width characters) hide text from the owner's
 	// review: in a storyboard they can only be an injected instruction or a copy of one
 	const hidden = new Set<string>();
@@ -784,6 +787,43 @@ const ruleR5 = (ctx: Ctx, add: Add) => {
 		const links = Array.isArray(sc.onScreen?.links) ? (sc.onScreen.links as unknown[]).filter((x): x is string => typeof x === 'string') : [];
 		const d = diagramSteps(nodes, links);
 		if (d.steps) add('R5', 'diagram-steps', 'error', {surface: 'onScreen.nodes', scene: sc.id, text: clip(nodes.join(' → '), 200)}, `The diagram is a step list: ${d.why}.`, 'Use at most 3 concept nodes (noun phrases, no actor verbs) with plain links ("led to"), not the attack sequence.');
+	}
+};
+
+/** Quoted spans of 3 or more words in a unit (the whole field for onScreen.quote), as written. */
+const quotesIn = (u: Unit, t: string): string[] => {
+	const n = normalizePunct(t);
+	const raw = u.surface === 'onScreen.quote' ? [n.replace(/^["\s]+|["\s]+$/g, '')] : findAll(QUOTE_RE, n).map((m) => m.text.slice(1, -1));
+	return raw.map((q) => q.trim()).filter((q) => q.split(/\s+/).length >= 3);
+};
+/** A setting's label or the One Fix's own wording in quotes ("turn on “ask before running commands”"): not a statement. */
+const DEFENSIVE_QUOTE_CONTEXT = /\b(?:one fix|turn(?:ed)? (?:on|off)|switch(?:ed)? (?:on|off)|enable|tick|untick|uncheck|select|choose|setting|settings|option|toggle|checkbox|box|button|menu|labelled|labeled|called)\b/i;
+/** Title Case words: a named technique or campaign ("the “Man in the Prompt” attack"), not a statement. */
+const titleCased = (q: string): boolean => {
+	const words = q.split(/\s+/).filter((w) => /^[\p{L}]/u.test(w) && !/^(?:a|an|the|of|in|on|at|to|for|and|or|by|with|from|via)$/i.test(w));
+	return words.length > 0 && words.every((w) => /^\p{Lu}/u.test(w));
+};
+
+/**
+ * AI stories: quoted words are an organisation's own statement, never the attack's text. A quote that reads as an
+ * instruction to an AI is refused whoever said it; a quote framed as the attack's text ("the hidden text said “...”")
+ * is refused; and a narration quote needs an organisation that says it in the same sentence (resolveAttribution).
+ * Setting labels in the One Fix and named techniques in Title Case are not statements and pass.
+ */
+const aiQuotes = (ctx: Ctx, add: Add): void => {
+	for (const u of ctx.units) {
+		for (const {t, spoken} of texts(u)) {
+			for (const q of quotesIn(u, t))
+				if (isQuotedInstruction(q))
+					add('R5', 'ai-quoted-instruction', 'error', at(u, spoken), `Quotes an instruction to an AI: "${clip(q, 80)}".`, 'Never quote or paraphrase the injected instruction, prompt or jailbreak. Say what kind of attack it was and what it reached, attributed ("hidden instructions on a web page made the coding agent read secrets, according to <vendor>").');
+			const frame = AI_QUOTE_FRAME.exec(normalizePunct(t));
+			if (frame) add('R5', 'ai-quote-frame', 'error', at(u, spoken), `Repeats the attack's own text ("${clip(frame[0], 60)}").`, "Quote only an organisation's statement (the vendor, the researchers' firm, the outlet). Describe the hidden text at concept level, without its words.");
+		}
+		if (u.kind !== 'sentence') continue;
+		const statements = quotesIn(u, u.display).filter((q) => !titleCased(q));
+		if (!statements.length || DEFENSIVE_QUOTE_CONTEXT.test(u.display)) continue;
+		if (!resolveAttribution(ctx, u).resolved)
+			add('R5', 'ai-quote-unattributed', 'error', at(u), `In an AI story a quote is an organisation's own statement, but "${clip(statements[0], 60)}" has no organisation that says it in this sentence.`, 'Name who says it in the same sentence ("<vendor> said “...”", "according to <outlet>, “...”"), or paraphrase without quotation marks.');
 	}
 };
 

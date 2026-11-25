@@ -10,13 +10,13 @@
  * date is a UTC day, so a run in the Chicago evening (already tomorrow in UTC) asks the radar for the UTC date and
  * never drops what was published since 00:00 UTC.
  */
-import {existsSync, readdirSync, realpathSync, rmSync, statSync} from 'node:fs';
+import {existsSync, readdirSync, rmSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import {buildBrief} from './brief.ts';
 import {ChannelError, loadChannel, type ChannelConfig} from './channel.ts';
 import {correctionCandidates, type CorrectionCandidate} from './corrections.ts';
 import type {Exec} from './exec.ts';
-import {minutes, outputTail} from './exec.ts';
+import {minutes, outputTail, realScript} from './exec.ts';
 import {loadRadarHistory, loadTrackerRows, previousEpisodes, windowFor} from './history.ts';
 import {figuresComparison, fundFlowOpportunity, PREVIOUS_DAYS, radarComparison, trackerComparison, type OppResult} from './opportunities.ts';
 import {channelPaths, dayPaths, episodePaths} from './paths.ts';
@@ -106,13 +106,8 @@ export const threatBriefDraft = (o: {root: string; hubRoot: string; radarPath: s
 	const linked = join(o.hubRoot, 'tools', 'threat-brief', 'cli.ts');
 	if (!existsSync(linked)) return {status: 'missing', note: 'creator-hub tools/threat-brief is not on this machine: no Threat Brief draft today.', dir: null};
 	// the CLI's real path: through a symlinked hub or root, its entry check used to skip main() and exit 0 having
-	// written nothing
-	let cli = linked;
-	try {
-		cli = realpathSync(linked);
-	} catch {
-		// keep the linked path; the file check below still catches a run that wrote nothing
-	}
+	// written nothing (a path that cannot be resolved is kept; the file check below still catches a run that wrote nothing)
+	const cli = realScript(linked);
 	// an earlier run's draft is never passed off as today's
 	rmSync(o.outDir, {recursive: true, force: true});
 	// the news allowlist explicitly: a missing or broken one fails the draft instead of a note nobody reads

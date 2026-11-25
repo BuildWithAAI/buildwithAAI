@@ -51,10 +51,16 @@ test('the logo plate and the channel name stay inside title-safe (2026-11-24: th
 		const found = checkShot('landscape', 'wide');
 		assert.ok(found.some((x) => /the channel name leaves the safe area:/.test(x)), found.join('\n'));
 		assert.ok(found.some((x) => /the channel name leaves the safe area \(pushed in\)/.test(x)), found.join('\n'));
-		// and a name under 24 px on screen
+		// and text under 24 px on screen: the plate's smallest line ("The") and the name
 		Object.assign(wide.at, at);
 		Object.assign(STAGE.landscape.logo, logo, {scale: 0.5});
-		assert.deepEqual(checkShot('landscape', 'wide'), ['landscape/wide: the channel name is 20.7 px on screen (at least 24)']);
+		assert.deepEqual(checkShot('landscape', 'wide'), [
+			'landscape/wide: the logo plate\'s "The" is 19.5 px on screen (at least 24)',
+			'landscape/wide: the channel name is 20.7 px on screen (at least 24)',
+		]);
+		// the step-2 candidate (scale 0.6) put "The" at 23.5 px: under SL10 and under the visual QA's text-small floor
+		Object.assign(STAGE.landscape.logo, logo, {y: -357, scale: 0.6});
+		assert.deepEqual(checkShot('landscape', 'wide'), ['landscape/wide: the logo plate\'s "The" is 23.5 px on screen (at least 24)']);
 	} finally {
 		Object.assign(wide.at, at);
 		Object.assign(STAGE.landscape.logo, logo);

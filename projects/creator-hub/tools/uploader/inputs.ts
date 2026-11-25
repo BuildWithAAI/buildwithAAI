@@ -102,6 +102,15 @@ export const parseChannels = (data: unknown, source: string): ChannelsConfig => 
 			playlists: {long: playlist('long'), short: playlist('short')},
 		};
 	}
+	// one YouTube channel per slug: two slugs pinned to one id would send both slugs' uploads to that channel
+	const pinnedBy = new Map<string, string>();
+	for (const [slug, config] of Object.entries(channels)) {
+		const id = config.youtubeChannelId;
+		if (id === null) continue;
+		const other = pinnedBy.get(id);
+		if (other) bad(`${slug}.youtubeChannelId ${id} is already pinned to "${other}": each channel id belongs to one slug`);
+		else pinnedBy.set(id, slug);
+	}
 	if (problems.length) throw new UsageError(problems);
 	return {
 		version: 1,

@@ -311,7 +311,10 @@ export const normalizeBrief = (raw: unknown, opts: {incidentId?: string} = {}): 
 		if (str(r.rule) && str(r.text)) mustNotSay.push({rule: str(r.rule) as string, text: str(r.text) as string});
 	}
 	const developing = statusOf(o, problems, 'brief') ?? false;
-	const brief: Brief = {slug: str(o.slug), generatedAt: str(o.generatedAt), developing, incidents, facts, sources, entities, opportunities, mustNotSay};
+	// the daily brief's own incident: its lane, or its AI how-to rule, makes this an AI-security story
+	const lane = o.incident && typeof o.incident === 'object' ? str((o.incident as Record<string, unknown>).lane) : undefined;
+	const aiStory = lane === 'ai' || lane === 'both' || mustNotSay.some((m) => m.rule === 'ai-how-to');
+	const brief: Brief = {slug: str(o.slug), generatedAt: str(o.generatedAt), developing, incidents, facts, sources, entities, opportunities, mustNotSay, ...(aiStory ? {aiStory: true} : {})};
 	return {brief: problems.some((p) => p.level === 'error') ? null : brief, problems};
 };
 

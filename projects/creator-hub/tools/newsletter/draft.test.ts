@@ -56,19 +56,6 @@ describe('buildDraft with the fixture kit.json', () => {
 		assert.equal(draft.generatedAt, NOW.toISOString());
 	});
 
-	it('names the kit channel when no brand is given: Zoodger News for zoora-security', () => {
-		const security = {...loadKit(), channel: 'zoora-security'};
-		const {draft, issues} = build(security);
-		assert.deepEqual(errorsOf(issues), []);
-		assert.equal(draft.brandName, 'Zoodger News');
-		assert.match(draft.safetyLine, /^Zoodger News will never DM you first/);
-		assert.match(draft.footer.join(' '), /You're getting this email because you subscribed to Zoodger News emails/);
-		assert.match(renderEmailHtml(draft), /Zoodger News · New episode/);
-		assert.deepEqual(errorsOf(lintDraft(draft)), []);
-		assert.equal(build().draft.brandName, 'Zoora AI', 'the zoora-ai fixture keeps Zoora AI');
-		assert.equal(build(security, {brandName: 'Zoora AI'}).draft.brandName, 'Zoora AI', 'a given brand wins over the channel');
-	});
-
 	it('includes unrestricted live offers through the hub with s=email&v=<slug> and their disclosure', () => {
 		const {draft} = build();
 		assert.deepEqual(draft.offers, [

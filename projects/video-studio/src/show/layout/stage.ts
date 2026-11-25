@@ -12,7 +12,7 @@
  * dark clothes keep a light shape behind them (CV4b).
  */
 import type {Format} from '../types.ts';
-import {SHOW_LOGO} from '../../branding/layout.ts';
+import {SHOW_LOGO, SHOW_LOGO_MAIN_EM} from '../../branding/layout.ts';
 
 export type Rect = {x: number; y: number; w: number; h: number};
 
@@ -52,8 +52,8 @@ export const STAGE: Record<Format, StageSpec> = {
 		// above Badger's chair, below the header row (pushed in too): one head width clear of Zoo's face (ART_GUIDE CV4c)
 		onAir: {x: 640, y: -990, h: 66},
 		// on the desk front, under the name plates: the plate and the channel-name line under it stay inside title-safe
-		// with the wide shot's push-in (shots.ts wide, checks.ts)
-		logo: {x: 240, y: -357, scale: 0.6},
+		// with the wide shot's push-in (shots.ts wide, checks.ts); scale 0.62 keeps the plate's "The" at 24 px on screen
+		logo: {x: 240, y: -358, scale: 0.62},
 		panels: [
 			{x: -330, y: -1400, w: 660, h: 900, tone: 'light'},
 			{x: -1110, y: -1400, w: 330, h: 900, tone: 'silver'},
@@ -101,11 +101,14 @@ export const ZOO_EYES = {x: 0, y: -816.5};
 export const BADGER_EYES = {x: 1.3, y: -382.1};
 
 /** The ON AIR sign's plate (stage units), as set/props.tsx draws it: lamp, gap and "ON AIR" at half the plate height. */
-/** The show logo plate's rect in stage units (its size follows the branding kit's SHOW_LOGO; the plate is about 600 wide). */
+/**
+ * The show logo plate's rect in stage units (its size follows the branding kit's SHOW_LOGO: the widest line, "Zoo &
+ * Badger", at its measured width plus the side padding, 758 units wide at scale 1).
+ */
 export const logoRect = (format: Format): Rect => {
 	const {x, y, scale} = STAGE[format].logo;
 	const h = (2 * SHOW_LOGO.padY + SHOW_LOGO.the + SHOW_LOGO.main * 1.02 + SHOW_LOGO.show + 2 * SHOW_LOGO.gap) * scale;
-	const w = 700 * scale;
+	const w = (SHOW_LOGO_MAIN_EM * SHOW_LOGO.main + 2 * SHOW_LOGO.padX) * scale;
 	return {x: x - w / 2, y: y - h / 2, w, h};
 };
 

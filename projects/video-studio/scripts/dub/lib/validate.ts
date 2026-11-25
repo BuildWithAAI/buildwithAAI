@@ -315,7 +315,9 @@ export const validateDub = (input: ValidateInput): DubReport => {
 				const ratio = screenLength(t) / Math.max(1, screenLength(it.source));
 				if (it.kind !== 'ui' && it.kind !== 'title' && screenLength(it.source) > 6 && ratio > MAX_RATIO)
 					push({level: 'warning', rule: 'length', where: it.key, source: it.source, target: t, message: `${ratio.toFixed(2)}x the source width`, fix: `Aim for ${MAX_RATIO}x or less: long on-screen text shrinks.`}, it.key);
-				const letters = clean(it.source).replace(new RegExp(glossary.map((g) => g.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') || '(?!)', 'g'), '');
+				// longest term first, so "Zoo" never eats the start of "Zoodger News" and leaves "dger News" behind
+				const terms = [...glossary].sort((a, b) => b.term.length - a.term.length);
+				const letters = clean(it.source).replace(new RegExp(terms.map((g) => g.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') || '(?!)', 'g'), '');
 				if (t.trim() === it.source.trim() && /\p{Ll}{3,}/u.test(letters)) push({level: 'warning', rule: 'untranslated', where: it.key, target: t, message: 'identical to the source', fix: `Translate it into ${LANG_NAMES[lang]} (names and tickers stay).`}, it.key);
 				if (it.kind === 'ui' && it.ref === 'fictionDisclaimer' && !saysUnnegated(FICTION[lang], t, lang))
 					push({level: 'error', rule: 'fiction-card', where: it.key, target: t, message: 'the fiction card does not say the story is fictional (or negates it: "no ficticia")', fix: `Use the ${LANG_NAMES[lang]} word for "fictional" (and "composite characters", "not financial advice").`}, it.key);

@@ -13,7 +13,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {parseArgs} from 'node:util';
 import {checkRegistry} from '../../src/server/offers.ts';
 import type {OfferRegistry} from '../../src/types.ts';
-import {brandFor, buildDraft, DEFAULT_BRAND} from './draft.ts';
+import {buildDraft, DEFAULT_BRAND} from './draft.ts';
 import {createBroadcastDraft, KitApiError, parseSubscriberFilter} from './kit-api.ts';
 import {lintDraft, lintFile, lintRendered, type Issue} from './lint.ts';
 import {isYoutubeId, readPublishKit} from './publish-kit.ts';
@@ -30,8 +30,7 @@ draft options:
   --out <dir>         where to write <slug>.md and <slug>.html (default: out/newsletter)
   --hub <origin>      hub origin for relative offer links, e.g. https://go.zoora.ai (default: PUBLIC_BASE_URL)
   --youtube-id <id>   the video's YouTube id, if kit.json does not have it yet
-  --brand <name>      brand name (default: BRAND_NAME, else the kit channel's name: "${brandFor('zoora-security')}" for
-                      zoora-security, "${DEFAULT_BRAND}" for any other channel)
+  --brand <name>      brand name (default: BRAND_NAME or "${DEFAULT_BRAND}")
   --kit-draft         also create a DRAFT broadcast in Kit (needs KIT_API_KEY). It is never sent. Choose its
                       recipients with KIT_SUBSCRIBER_FILTER=tag:<id> (or segment:<id>), e.g. the tag of the
                       hub's sign-up form, or pass --all-subscribers if every subscriber agreed to these emails.
@@ -106,9 +105,8 @@ const draftCommand = async (args: string[], deps: CliDeps): Promise<number> => {
 	if (values.hub !== undefined && !httpsOrigin(values.hub)) return usageError('--hub must be an https origin, e.g. https://go.zoora.ai');
 	// A non-https PUBLIC_BASE_URL (local development) is ignored: email links must use https.
 	const hubOrigin = httpsOrigin(values.hub ?? deps.env.PUBLIC_BASE_URL ?? '');
-	// Without --brand or BRAND_NAME the draft takes the kit channel's own name (brandFor).
-	const brandName = (values.brand ?? deps.env.BRAND_NAME)?.trim();
-	if (brandName !== undefined && (!brandName || brandName.length > 60)) return usageError('--brand must be 1-60 characters.');
+	const brandName = (values.brand ?? deps.env.BRAND_NAME ?? DEFAULT_BRAND).trim();
+	if (!brandName || brandName.length > 60) return usageError('--brand must be 1-60 characters.');
 	const filterText = (deps.env.KIT_SUBSCRIBER_FILTER ?? '').trim();
 	const subscriberFilter = filterText ? parseSubscriberFilter(filterText) : null;
 	if (filterText && !subscriberFilter) return usageError('KIT_SUBSCRIBER_FILTER must look like tag:123, segment:7 or tag:12,34.');

@@ -424,11 +424,44 @@ class OfflineAiLane(unittest.TestCase):
         self.assertIn("UK cyber agency seeing ‘marked rise’ in AI-driven attacks",
                       [u["title"] for u in self.doc["unclustered"]])
 
+    # every crypto incident of the recorded fixtures as the radar before the AI lane (d8dee9a) built it: status, the
+    # reason for it and the title (where "reported" and "(developing)" live)
+    CRYPTO_BEFORE_AI_LANE = {
+        "2026-10-29-binance": ("confirmed", "confirmed: unhedged primary statement, post-mortem or security-firm "
+                               "research: chainalysis-blog, rekt-news", "Binance: social engineering"),
+        "2026-11-21-chainflip": ("confirmed", "confirmed: the project's own statement, relayed unhedged by cointelegraph",
+                                 "Chainflip: key compromise (suspected, per SlowMist)"),
+        "2026-11-16-lighter": ("confirmed", "confirmed: unhedged primary statement, post-mortem or security-firm research: "
+                               "rekt-news", "Lighter users: key compromise"),
+        "2026-11-21-cyber-bridge": (
+            "developing", "developing: only 1 unhedged tier-B outlet (thedefiant); incident databases (defillama-hacks, "
+            "slowmist-hacked) seed and size an incident but never confirm it alone; hedged: cointelegraph ('suspected'), "
+            "slowmist-hacked ('anomaly'); tier-C sources do not count",
+            "Cyber Bridge: reported bridge exploit (mechanism unknown, per DefiLlama) (developing)"),
+        "2026-11-22-endurance-bridge": (
+            "developing", "developing: no unhedged primary statement or tier-B outlet; incident databases (defillama-hacks, "
+            "slowmist-hacked) seed and size an incident but never confirm it alone; tier-C sources do not count",
+            "Endurance Bridge: reported key compromise (developing)"),
+        "2026-11-23-moldyroost": ("confirmed", "confirmed: 2+ unhedged tier-B outlets with different origins: coindesk, "
+                                  "cointelegraph", "MoldyRoost: security incident (mechanism not classified)"),
+        "2026-11-23-trezor-and-exodus": (
+            "developing", "developing: no unhedged primary statement or tier-B outlet; tier-C sources do not count",
+            "Trezor and Exodus users: reported exploit (mechanism unknown) (developing)"),
+        "2026-11-23-stake-dao": ("developing", "developing: only 1 unhedged tier-B outlet (thedefiant)",
+                                 "Stake DAO: reported security incident (mechanism not classified) (developing)"),
+    }
+
     def test_crypto_ranking_is_unchanged(self):
         top = [i["protocol"] for i in self.doc["top"]]
         self.assertEqual(top[:4], ["Binance", "Chainflip", "Lighter", "Cyber Bridge"])
         self.assertEqual(self.incidents["2026-10-29-binance"]["score"]["total"], 89.5)
         self.assertEqual(self.incidents["2026-11-21-chainflip"]["score"]["total"], 70.9)
+        crypto = {i: inc for i, inc in self.incidents.items() if inc["lane"] == "crypto"}
+        self.assertEqual(set(crypto), set(self.CRYPTO_BEFORE_AI_LANE))
+        for incident_id, (status, reason, title) in self.CRYPTO_BEFORE_AI_LANE.items():
+            with self.subTest(incident=incident_id):
+                inc = crypto[incident_id]
+                self.assertEqual((inc["status"], inc["statusReason"], inc["title"]), (status, reason, title))
 
     def test_hard_negatives_never_reach_the_brief(self):
         text = json.dumps(self.doc, ensure_ascii=False)

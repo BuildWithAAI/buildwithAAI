@@ -9,7 +9,7 @@ import {copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSy
 import {join} from 'node:path';
 import {loadChannel, type ChannelConfig} from './channel.ts';
 import type {Exec} from './exec.ts';
-import {minutes, outputTail} from './exec.ts';
+import {minutes, outputTail, realScript} from './exec.ts';
 import {correctionCandidates, correctionLines, type CorrectionCandidate} from './corrections.ts';
 import {renderHtml} from './html.ts';
 import {beatsOf, episodeForKit, isDeveloping, KIT_NOT_APPLICABLE, readStoryboard, summaryOf, type SbLite} from './kit-adapter.ts';
@@ -463,7 +463,8 @@ const buildLocked = async (
 	else {
 		const episode = episodeForKit({sb, channel, split, developing, incidentType: brief?.incident.type ?? null, evergreenUrl: brief?.evergreen?.url ?? null});
 		writeJson(ep.episodeJson, episode);
-		const args = [kitCli, `${CHANNEL}/${o.dateSlug}`, '--out', ep.publishOut];
+		// by its real path: through a symlinked checkout the kit's entry check skips main() and exits 0 having done nothing
+		const args = [realScript(kitCli), `${CHANNEL}/${o.dateSlug}`, '--out', ep.publishOut];
 		// an earlier build's kit.json is never read as this build's (a CLI that exits 0 having written nothing)
 		rmSync(join(ep.publishOut, 'kit.json'), {force: true});
 		const r = o.exec({cmd: process.execPath, args, cwd: root, env, timeoutMs: minutes(2)});
@@ -476,7 +477,11 @@ const buildLocked = async (
 			const read = (n: string) => (existsSync(join(ep.publishOut, n)) ? readFileSync(join(ep.publishOut, n), 'utf8') : null);
 			kit = {pinned: read('pinned-comment.txt'), description: read('youtube-description.txt'), failing, notApplicable};
 			say(step({id: 'publish-kit', title: 'Publish kit', status: failing.length ? 'warning' : 'passed', blocking: false, note: failing.length ? `${failing.length} check(s) to look at: ${failing.map((x) => x.id).join(', ')}.` : `All applicable checks pass${notApplicable.length ? ` (${notApplicable.map((x) => x.id).join(', ')}: not applicable to a Short)` : ''}.`, command: [process.execPath, ...args], exitCode: r.status, durationMs: r.durationMs, artifacts: {kit: rel(root, kitJsonPath)}}));
-		} else say(step({id: 'publish-kit', title: 'Publish kit', status: 'failed', blocking: false, note: `It refused the episode file (exit ${r.status ?? 'none'}); the checklist below stands in.`, command: [process.execPath, ...args], exitCode: r.status, durationMs: r.durationMs, outputTail: outputTail(r, 1200)}));
+		} else {
+			// exit 0 with no kit.json is a run that did nothing, not a refusal: say so
+			const note = r.status === 0 && !r.error ? 'It exited 0 but wrote no kit.json: it did not run, so nothing was checked; the checklist below stands in.' : `It refused the episode file (exit ${r.status ?? 'none'}); the checklist below stands in.`;
+			say(step({id: 'publish-kit', title: 'Publish kit', status: 'failed', blocking: false, note, command: [process.execPath, ...args], exitCode: r.status, durationMs: r.durationMs, outputTail: outputTail(r, 1200)}));
+		}
 	}
 
 	// 7. corrections to pin on episodes already approved (from the brief's radar file), then the packet

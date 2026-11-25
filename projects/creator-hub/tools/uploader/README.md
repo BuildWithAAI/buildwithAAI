@@ -112,8 +112,10 @@ real upload" below).
      unit). Common ones are 28 Science & Technology, 27 Education, 24 Entertainment and 1 Film & Animation.
    - `youtubeChannelId`: **required before any upload**. `zoora-security` is already pinned to
      UCOo2HSb3SYyN66YFiiiO1ZA, the Zoodger News channel id the owner verified on 2026-11-24. For `zoora-ai`, copy the
-     channel id that `auth` printed. It pins the slug to that channel, so a wrong sign-in can never upload, and every
-     approval names it (approve again after pinning).
+     channel id that `auth` printed; it should be UCjNibXSaZqeXSD36V6dyIVQ (`content/zoora-ai/CHANNEL.md` in
+     video-studio). It pins the slug to that channel, so a wrong sign-in can never upload, and every approval names it
+     (approve again after pinning). Each channel id belongs to one slug: channels.json with one id under two slugs is
+     refused, and `auth` for an unpinned slug refuses a channel that another slug already pins.
    - `playlists.long` and `playlists.short`: playlist ids, or null for no playlist step.
 6. **Channel features.**
    - Custom thumbnails need a verified channel (phone verification; YouTube Help 72431). If it isn't verified,

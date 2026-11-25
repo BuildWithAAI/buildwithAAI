@@ -16,7 +16,8 @@ import {editDistance, type View} from './normalize.ts';
 export type PreparedIdentity = {
 	ownChannelIds: Set<string>;
 	trustedChannelIds: Set<string>;
-	names: {name: string; skeleton: string}[];
+	/** maxEdits: how many letters a look-alike may differ by (2; 1 for classifier.ts `closeNames`). */
+	names: {name: string; skeleton: string; maxEdits?: number}[];
 };
 
 export type RuleContext = {
@@ -533,9 +534,9 @@ const impersonation = (ctx: RuleContext): {distance: number; name: string} | nul
 	const author = ctx.authorSkeleton;
 	if (!author) return null;
 	let best: {distance: number; name: string} | null = null;
-	for (const {name, skeleton} of ctx.identity.names) {
+	for (const {name, skeleton, maxEdits = 2} of ctx.identity.names) {
 		const distance = editDistance(author, skeleton, 2);
-		if (distance > 2 || (distance > 0 && Math.min(author.length, skeleton.length) < 5)) continue;
+		if (distance > maxEdits || (distance > 0 && Math.min(author.length, skeleton.length) < 5)) continue;
 		if (!best || distance < best.distance) best = {distance, name};
 	}
 	return best;
