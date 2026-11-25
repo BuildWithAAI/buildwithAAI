@@ -44,7 +44,7 @@ captions, and the six assets of step 9.
 
 | | Daily news Short | Weekly batch |
 | --- | --- | --- |
-| Channels | Zoodger News (The Zoo & Badger Show) | Zoora AI (2 long POV episodes, a Short every day); Zoodger News, the show (explainer Tue, Scam of the Week Sat) |
+| Channels | Zoodger News (The Zoo & Badger Show) | Zoora AI (2 long POV episodes, a Short every day); Zoodger News: The Zoo & Badger Show (explainer Tue, Scam of the Week Sat) |
 | Driver | `node scripts/daily/run.ts` ([DAILY_BRIEF.md](DAILY_BRIEF.md)) | `node scripts/batch/cli.ts` ([WEEKLY_BATCH.md](WEEKLY_BATCH.md)) |
 | Render | `src/show/index.ts` `ShowShort` | Zoora AI: `src/episode/index.ts` `Episode`, `EpisodeShort`; the show: `src/show/index.ts` `ShowEpisode` |
 | Review | one packet a day, `APPROVE <date-slug>` (about 5 minutes) | one page a week, `APPROVE <week> all #<page code>` |

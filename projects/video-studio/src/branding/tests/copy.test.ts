@@ -42,10 +42,10 @@ test('copy: the lint catches the old promises, hype, wallet-secret requests and 
 
 test('copy: the channel name keeps the owner\'s exact spelling ("Zoodger News", handle "@ZoodgerNews")', () => {
 	const rules = (t: string) => lintText(t).map((i) => i.rule).join(' | ');
-	for (const bad of ['Subscribe to ZOODGER NEWS.', 'Zoodger news covers it.', 'Follow ZoodgerNews.', 'Zoodger  News, daily.', 'Zoodger\nNews', 'Follow @zoodgernews.', 'Follow @Zoodger News.']) {
+	for (const bad of ['Subscribe to ZOODGER NEWS.', 'Zoodger news covers it.', 'Follow ZoodgerNews.', 'Zoodger  News, daily.', 'Zoodger\nNews', 'Follow @zoodgernews.', 'Follow @Zoodger News.', 'New episodes weekly. #zoodgernews']) {
 		assert.match(rules(bad), /spelled "Zoodger News"/, JSON.stringify(bad));
 	}
-	for (const ok of ['Zoodger News explains it.', 'Follow @ZoodgerNews.', 'https://www.youtube.com/@ZoodgerNews', "Zoodger News's weekly roundup."]) {
+	for (const ok of ['Zoodger News explains it.', 'Follow @ZoodgerNews.', 'https://www.youtube.com/@ZoodgerNews', "Zoodger News's weekly roundup.", 'New episodes weekly. #ZoodgerNews #CryptoSecurity']) {
 		assert.deepEqual(lintText(ok), [], ok);
 	}
 });

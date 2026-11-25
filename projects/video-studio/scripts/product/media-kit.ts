@@ -27,7 +27,7 @@ const HUB = resolve(PROJECT_ROOT, '..', 'creator-hub');
 /** Words for each channel's kit (from content/<channel>/channel-copy.md); the display name comes from channel.json. */
 export const CHANNEL_TEXT: Record<string, {tagline: string; about: string}> = {
 	'zoora-security': {
-		tagline: 'Crypto and AI security news. What happened, how it worked, and one fix.',
+		tagline: 'Crypto and AI security, explained. What happened, how it worked, and one fix.',
 		about:
 			'Crypto and AI security news, explained calmly by Zoo and his dog Badger. When a protocol gets drained, a new wallet drainer spreads, or an AI agent gets talked into something it shouldn\'t do, the show covers what happened, how it worked, and one fix viewers can use today. Every fact is attributed, developing stories are labelled, and corrections are pinned.',
 	},
