@@ -15,16 +15,17 @@ export const GROUND_Y = Math.round(FRAME.height * 0.85); // 918
 /** One shared scale for both characters: Zoo = 900 * 0.88 = 792 px tall, top of hair at y=126. */
 export const PAIR_SCALE = 0.88;
 /**
- * Ground-point spacing for scenes where Zoo points to screen right over Badger (decision INT-P2). Re-measured in
- * integration round 1 on the repaired point path (ZOO-P2): at the panel's 482.9 units the swinging hand overlaps
- * Badger's pale ear at poseAmount ~0.2 (front and 3/4 heads alike), so the pair stood 560 units apart. Integration
- * round 3: the round-3 arm opens earlier (ZOO-P5, upper arm ~10 deg out when the forearm is level), so at 560 the fist
- * passed 20.5 px from the pale ear (f96); 570 units (87 wider than the panel) keeps every frame >= 24 px (measured on
- * Zoo-only and Badger-only renders of all 300 frames; see INT-P2). A neck dip, head tilt or ear fold does not help: his
- * head pivots toward the hand. Scale and ground line are the panel's; use SIZE_COMPARISON.spacingUnits for shots
- * without that gesture.
+ * Ground-point spacing for scenes where Zoo points to screen right over Badger (decision INT-P2). Integration round 1:
+ * at the panel's 482.9 units the swinging hand overlaps Badger's pale ear at poseAmount ~0.2, so the pair stood 560 apart.
+ * Round 3: 570. Round 4: the rig's upper-arm lead (ZOO-P6, the elbow is out at least 0.3 x the forearm's swing) opens the
+ * arm sooner, so at 570 the fist passed 1.0 px from the pale ear (f96) and 10.4 px on the way down (f187). Measured on
+ * Zoo-only and Badger-only renders of every frame and at 1/10-frame steps through both passes: 608 units (125 wider than
+ * the panel) keeps every rendered frame >= 31 px and the continuous path >= 27 px (the closest moments are the front
+ * head's pale ear at f96.3 and the 3/4 head's ear tip at f187.2). A neck rise or head tilt on Badger trades one pass
+ * for the other (+-3 px), an ear fold or an earlier head turn does not help. Scale and ground line are the panel's; use
+ * SIZE_COMPARISON.spacingUnits for shots without that gesture.
  */
-export const PAIR_SPACING = 570;
+export const PAIR_SPACING = 608;
 const pairMaxX = PAIR_SPACING + (SIZE_COMPARISON.pairExtent.maxX - SIZE_COMPARISON.spacingUnits);
 const pairCentre = (SIZE_COMPARISON.pairExtent.minX + pairMaxX) / 2;
 /** Zoo's ground point; the pair (Zoo hands .. Badger tail tip) is centred horizontally. */

@@ -6,7 +6,7 @@
 import {applyTextTransform, type CharacterFact, type FrameFacts, type Rect, type TextFact} from '../../../../src/qa/protocol.ts';
 import {inflate, intersectRect, rectArea, unionRect} from '../image.ts';
 import type {Finding, Severity} from '../issues.ts';
-import {expectedBadgerBody, type Manifest} from '../manifest.ts';
+import {allowedMarkingDraws, expectedBadgerBody, type Manifest} from '../manifest.ts';
 import {provisionalMatch} from '../provisional.ts';
 import {THRESHOLDS as T} from '../thresholds.ts';
 import {outside, type Zones} from '../zones.ts';
@@ -437,7 +437,11 @@ export const characterDomFindings = (f: FrameFacts, manifest: Manifest): Finding
 				const want = new Set(expected);
 				const missing = expected.filter((s) => !have.has(s));
 				const extra = body.filter((s) => !want.has(s));
-				const dupes = body.filter((s, k) => body.indexOf(s) !== k);
+				// one draw per marking, except the redraws the manifest records for this head on its own rig (INT-Q2)
+				const allowed = allowedMarkingDraws(manifest, c.head, c.view);
+				const counts = new Map<string, number>();
+				for (const s of body) counts.set(s, (counts.get(s) ?? 0) + 1);
+				const dupes = [...counts].filter(([s, n]) => n > (allowed.get(s) ?? 1)).map(([s]) => s);
 				if (missing.length || extra.length || dupes.length)
 					out.push({
 						...base,

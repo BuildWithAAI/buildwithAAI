@@ -202,6 +202,25 @@ describe('character transforms and identity', () => {
 		assert.match(bad[0].message, /missing L-WITHERS/);
 		assert.match(bad[0].message, /extra R-99/);
 	});
+	it("allows only the manifest's recorded redraws of a marking (look-up neck, INT-Q2)", () => {
+		const left = manifest.badgerBody.left;
+		const right = manifest.badgerBody.right;
+		// the derived record: each look-up head redraws its own rig's neck marking, twice
+		assert.deepEqual(manifest.badgerRedrawn?.upLeftScreen, {view: 'left', ids: ['L-NECK'], draws: 2});
+		assert.deepEqual(manifest.badgerRedrawn?.upRightScreen, {view: 'right', ids: ['R-NECK'], draws: 2});
+		const spots = (char_: {head: string; view: string; spots: string[]}) =>
+			characterDomFindings(frame({chars: [char({kind: 'badger', pose: 'lookUp', props: {view: char_.view, pose: 'lookUp'}, ...char_})]}), manifest).filter((x) => x.check === 'model-spots');
+		// the look-up neck redrawn in front of the torso: two draws of the neck marking, on the head's own rig
+		assert.equal(spots({head: 'upLeftScreen', view: 'left', spots: [...left, 'L-NECK']}).length, 0);
+		assert.equal(spots({head: 'upRightScreen', view: 'right', spots: [...right, 'R-NECK']}).length, 0);
+		// a third draw, another marking drawn twice, the same redraw on another head or on the other rig: still errors
+		assert.match(spots({head: 'upLeftScreen', view: 'left', spots: [...left, 'L-NECK', 'L-NECK']})[0]?.message ?? '', /duplicated L-NECK/);
+		assert.match(spots({head: 'upLeftScreen', view: 'left', spots: [...left, 'L-01']})[0]?.message ?? '', /duplicated L-01/);
+		assert.match(spots({head: 'front', view: 'left', spots: [...left, 'L-NECK']})[0]?.message ?? '', /duplicated L-NECK/);
+		assert.match(spots({head: 'upLeftScreen', view: 'right', spots: [...right, 'R-NECK']})[0]?.message ?? '', /duplicated R-NECK/);
+		// a missing marking is not excused by a redraw
+		assert.match(spots({head: 'upLeftScreen', view: 'left', spots: [...left.filter((x) => x !== 'L-04'), 'L-NECK']})[0]?.message ?? '', /missing L-04/);
+	});
 	it('knows the manifest conventions', () => {
 		assert.equal(expectedBadgerBody(manifest, 'right', 'sit'), manifest.badgerBody.sit);
 		// the left-facing sit and lie carry their own LEFT coat-map markings (BADGER-D23)

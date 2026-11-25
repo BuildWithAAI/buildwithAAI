@@ -17,6 +17,11 @@ export type Manifest = {
 	colours: {pin: RGB; spot: RGB; earCap: RGB; line: RGB; tag: RGB};
 	/** Drawings the assets render but the owner has not accepted yet (BADGER_PROVISIONAL_POSES, see provisional.ts). */
 	provisional: Provisional;
+	/**
+	 * Markings a head draws more than once on purpose, on its own side rig (manifest markings.badger.redrawn, decision
+	 * INT-Q2: a look-up head's neck part above the collar is drawn again in front of the torso). Keyed by head view.
+	 */
+	badgerRedrawn?: Record<string, {view: string; ids: string[]; draws: number}>;
 };
 
 type RawManifest = {
@@ -45,6 +50,13 @@ export const loadManifest = (projectRoot: string): Manifest => {
 		badgerBody[k] = (v as Array<{id: string}>).map((s) => s.id).filter((id) => !id.startsWith('H-'));
 	}
 	const headIds = ((raw.markings.badger.head as Array<{id: string}> | undefined) ?? []).map((s) => s.id);
+	const badgerRedrawn: NonNullable<Manifest['badgerRedrawn']> = {};
+	const redrawn = (raw.markings.badger.redrawn as {heads?: Record<string, {view?: unknown; ids?: unknown; draws?: unknown}>} | undefined)?.heads ?? {};
+	for (const [head, r] of Object.entries(redrawn)) {
+		if (!r || typeof r.view !== 'string' || !Array.isArray(r.ids)) continue;
+		const draws = typeof r.draws === 'number' && r.draws >= 1 ? Math.floor(r.draws) : 2;
+		badgerRedrawn[head] = {view: r.view, ids: r.ids.filter((x): x is string => typeof x === 'string'), draws};
+	}
 	const pal = raw.palette as {zoo: {pin: string}; badger: {spot: string; earCap: string; tag: string}; line: {color: string}};
 	return {
 		version: raw.version,
@@ -53,7 +65,19 @@ export const loadManifest = (projectRoot: string): Manifest => {
 		badgerHeadIds: headIds,
 		colours: {pin: hexToRgb(pal.zoo.pin), spot: hexToRgb(pal.badger.spot), earCap: hexToRgb(pal.badger.earCap), line: hexToRgb(pal.line.color), tag: hexToRgb(pal.badger.tag)},
 		provisional: loadProvisional(projectRoot),
+		badgerRedrawn,
 	};
+};
+
+/**
+ * How many times each body marking may be drawn on a Badger instance: once, except the ids the manifest lists for the
+ * instance's head on that head's own rig (decision INT-Q2), which may appear up to `draws` times.
+ */
+export const allowedMarkingDraws = (m: Manifest, head: string | null, view: string | null): Map<string, number> => {
+	const out = new Map<string, number>();
+	const r = head ? m.badgerRedrawn?.[head] : undefined;
+	if (r && view === r.view) for (const id of r.ids) out.set(id, r.draws);
+	return out;
 };
 
 /**
