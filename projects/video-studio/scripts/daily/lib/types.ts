@@ -70,7 +70,8 @@ export type RadarIncident = {
 	protocol: string;
 	/**
 	 * The radar knows the subject (an AI product or company, an allowlisted organisation, a database record), rather
-	 * than reading it from a headline's shape. Older radar files have none: crypto incidents count as known.
+	 * than reading it from a headline's shape. Only the AI and both lanes act on false (radar.ts subjectKnown): crypto
+	 * names always count as known, as they did before the radar exported this field.
 	 */
 	subjectKnown?: boolean;
 	/** crypto, ai or both (older radar files: crypto). */
@@ -160,7 +161,7 @@ export type BriefFact = {
 	kind: FactKind;
 };
 
-/** nameKnown false: the radar read the name from a headline's shape (subjectKnown false); the news gate never allowlists it. */
+/** nameKnown false: an AI or both-lane name the radar read from a headline's shape (subjectKnown false); the news gate never allowlists it. */
 export type BriefIncident = {id: string; name: string; status: 'confirmed' | 'developing'; date: string; role: 'primary' | 'comparison'; nameKnown?: boolean};
 
 export type OpportunityKind = 'comparison' | 'pattern' | 'fund-flow' | 'stat';

@@ -129,7 +129,13 @@ const normalizeClean = (x: RadarIncident): RadarIncident => ({
 	shortReady: {ready: x.shortReady.ready === true, missing: Array.isArray(x.shortReady.missing) ? x.shortReady.missing.filter((m) => typeof m === 'string') : []},
 });
 
-/** Is the incident's name one the radar knows (not read from a headline's shape)? Older files: crypto yes, AI no. */
-export const subjectKnown = (inc: RadarIncident): boolean => inc.subjectKnown === true || (inc.subjectKnown === undefined && (inc.lane ?? 'crypto') === 'crypto');
+/**
+ * May the incident's name be allowlisted for the run (the brief's nameKnown, the other candidates' names)? An AI or
+ * both-lane name the radar read only from a headline's shape (subjectKnown false, or missing in an older file) could be
+ * a person or a handle: no. A crypto name always: the radar names crypto incidents from a headline's shape too (and
+ * checks them for people there), and the crypto lane relies on that dynamic allowlisting, so without it R4 refuses
+ * every mention of a news-only crypto pick. The Threat Brief applies the same rule (its radar.ts and brief.ts).
+ */
+export const subjectKnown = (inc: RadarIncident): boolean => inc.subjectKnown === true || (inc.lane ?? 'crypto') === 'crypto';
 
 export const allCandidates = (f: RadarFile): RadarIncident[] => [...f.top, ...f.alsoSeen].sort((a, b) => b.score.total - a.score.total);

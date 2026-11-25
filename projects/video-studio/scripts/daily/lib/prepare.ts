@@ -246,7 +246,8 @@ export const runPrepare = (o: PrepareOptions): PrepareResult => {
 			previousEpisodes: previous.map((p) => ({slug: p.slug, incidentId: p.incidentId, approved: p.approved})),
 			notes: [...(tracker.ok ? tracker.notes : [`Tracker comparison unavailable: ${tracker.reason}`])],
 		},
-		// only names the radar knows: a subject read from a headline's shape could be a person, so R4 checks it
+		// only names the radar knows: an AI or both-lane subject read from a headline's shape could be a person, so R4
+		// checks it; crypto names keep their allowlisting (radar.ts subjectKnown)
 		otherProtocols: candidates.filter(subjectKnown).map((c) => c.protocol),
 		groupWords: groupWordsFrom(cp.newsAllowlist),
 		format: o.format,
