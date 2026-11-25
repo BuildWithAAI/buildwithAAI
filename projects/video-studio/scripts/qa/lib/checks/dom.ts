@@ -7,7 +7,7 @@ import {applyTextTransform, type CharacterFact, type FrameFacts, type Rect, type
 import {inflate, intersectRect, rectArea, unionRect} from '../image.ts';
 import type {Finding, Severity} from '../issues.ts';
 import {allowedMarkingDraws, expectedBadgerBody, type Manifest} from '../manifest.ts';
-import {provisionalMatch} from '../provisional.ts';
+import {isProductionComposition, provisionalMatch, provisionalSeverity} from '../provisional.ts';
 import {THRESHOLDS as T} from '../thresholds.ts';
 import {outside, type Zones} from '../zones.ts';
 
@@ -414,22 +414,28 @@ export const characterDomFindings = (f: FrameFacts, manifest: Manifest): Finding
 			out.push({...base, check: 'model-view', severity: 'warn', key: `${c.key}|view|${reqView}`, message: `${who} was asked for view "${reqView}" but renders "${c.view}" (the asset fell back)`, measured: {requested: reqView, rendered: c.view}, score: 1});
 		// Badger's markings against the frozen manifest
 		if (c.kind === 'badger') {
-			// a drawing the owner has not accepted yet (BADGER_PROVISIONAL_POSES): always a warning, never an error
+			// a drawing the owner has not accepted yet (BADGER_PROVISIONAL_POSES): an error in a composition that publishes
+			// (Episode, EpisodeShort, ShowEpisode, ShowShort, Thumbnail), a warning in sheets, the proof and dev compositions
 			const props = c.props ?? {};
 			const drawnView = c.view ?? (typeof props.view === 'string' ? props.view : 'left');
 			const drawnPose = c.pose ?? (typeof props.pose === 'string' ? props.pose : 'stand');
 			const prov = provisionalMatch(manifest.provisional, drawnView, drawnPose);
-			if (prov)
+			if (prov) {
+				const production = isProductionComposition(f.comp);
+				const what = `${who} uses view '${prov.view}' with pose '${prov.pose}', a PROVISIONAL drawing awaiting the owner's OK (${manifest.provisional.decision ? `decision ${manifest.provisional.decision}, ` : ''}BADGER_PROVISIONAL_POSES)`;
 				out.push({
 					...base,
 					check: 'model-provisional',
-					severity: 'warn',
+					severity: provisionalSeverity(f.comp),
 					key: `${c.key}|provisional|${prov.view}|${prov.pose}`,
-					message: `${who} uses view '${prov.view}' with pose '${prov.pose}', a PROVISIONAL drawing awaiting the owner's OK (${manifest.provisional.decision ? `decision ${manifest.provisional.decision}, ` : ''}BADGER_PROVISIONAL_POSES): fine for review, keep it out of published episodes until the owner accepts it`,
-					measured: {view: prov.view, pose: prov.pose, decision: manifest.provisional.decision},
-					score: 1,
+					message: production
+						? `${what}: ${f.comp} is a production composition, and provisional drawings stay out of published work until the owner accepts them${prov.view === 'left' && (prov.pose === 'sit' || prov.pose === 'lie') ? ` (the right-facing ${prov.pose}, view 'right', is approved)` : ''}`
+						: `${what}: fine for review, keep it out of published episodes until the owner accepts it`,
+					measured: {view: prov.view, pose: prov.pose, decision: manifest.provisional.decision, production},
+					score: production ? 5 : 1,
 					thumb: {kind: 'crop'},
 				});
+			}
 			const expected = expectedBadgerBody(manifest, c.view, c.pose);
 			if (expected) {
 				const body = c.spots.filter((s) => !s.startsWith('H-'));

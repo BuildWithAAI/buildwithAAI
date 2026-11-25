@@ -103,3 +103,18 @@ export const loadProvisional = (projectRoot: string): Provisional => {
 /** The provisional entry a rendered Badger matches (its drawn view and pose), or null. */
 export const provisionalMatch = (list: Provisional, view: string | null, pose: string | null): ProvisionalPose | null =>
 	view && pose ? (list.poses.find((p) => p.view === view && p.pose === pose) ?? null) : null;
+
+/**
+ * The compositions that publish: the episode entry (Episode, EpisodeShort), the show entry (ShowEpisode, ShowShort) and
+ * the thumbnail entry (Thumbnail). Decision BADGER-D23 keeps the provisional drawings out of published work until the
+ * owner accepts them, so in these compositions model-provisional is an ERROR (decision INT-Q1, revised in integration
+ * round 5). Everywhere else (the character sheets, the proof, MouthDemo, dev, probe and fixture compositions) it stays a
+ * WARNING: those exist to show the drawings for review. Exact composition ids; a QA reference twin (QaRef-<id>) counts
+ * as its composition.
+ */
+export const PRODUCTION_COMPOSITIONS: readonly string[] = ['Episode', 'EpisodeShort', 'ShowEpisode', 'ShowShort', 'Thumbnail'];
+
+export const isProductionComposition = (compId: string): boolean => PRODUCTION_COMPOSITIONS.includes(compId.replace(/^QaRef-/, ''));
+
+/** model-provisional's severity in a composition: an error where the work publishes, a warning everywhere else. */
+export const provisionalSeverity = (compId: string): 'error' | 'warn' => (isProductionComposition(compId) ? 'error' : 'warn');

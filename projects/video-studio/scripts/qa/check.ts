@@ -32,6 +32,7 @@ import {buildGeo, demoteInTransitions, demoteTransient, settledAt} from './lib/m
 import {parseFrameList, planSamples, scoutStep as autoScoutStep, type Reason} from './lib/frames.ts';
 import {groupFindings, type Finding, type Issue} from './lib/issues.ts';
 import {loadManifest} from './lib/manifest.ts';
+import {isProductionComposition, provisionalSeverity} from './lib/provisional.ts';
 import {loadPng, QaRenderer, scoutScale} from './lib/render.ts';
 import {renderThumb, writeErrorReport, writeReport, type ThumbSources} from './lib/report.ts';
 import {THRESHOLDS} from './lib/thresholds.ts';
@@ -469,7 +470,7 @@ const runChecks = async (args: Args, shared: Shared, outDir: string): Promise<Ru
 				ignoredBadges: [...badges],
 				scoutMotion: scoutStats,
 				probeMs: {scout: probeCost([...domFacts.values()]), pixels: probeCost([...pFacts.values()])},
-				provisional: manifest.provisional,
+				provisional: {...manifest.provisional, severity: provisionalSeverity(args.comp), production: isProductionComposition(args.comp)},
 			},
 			issues,
 		);

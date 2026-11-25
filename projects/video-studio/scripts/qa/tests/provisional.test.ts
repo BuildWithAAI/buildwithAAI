@@ -1,4 +1,5 @@
-// Unit tests for the model-provisional warning (provisional drawings awaiting the owner's OK, decision BADGER-D23).
+// Unit tests for the model-provisional check (provisional drawings awaiting the owner's OK, decision BADGER-D23): an
+// error in the compositions that publish (Episode, EpisodeShort, ShowEpisode, ShowShort, Thumbnail), a warning elsewhere.
 // Run: node --test scripts/qa/tests/*.test.ts
 import assert from 'node:assert/strict';
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
@@ -10,7 +11,7 @@ import {characterDomFindings} from '../lib/checks/dom.ts';
 import {groupFindings} from '../lib/issues.ts';
 import {demoteInTransitions} from '../lib/motion.ts';
 import {loadManifest} from '../lib/manifest.ts';
-import {findReExport, loadProvisional, provisionalMatch, type Provisional} from '../lib/provisional.ts';
+import {findReExport, isProductionComposition, loadProvisional, PRODUCTION_COMPOSITIONS, provisionalMatch, provisionalSeverity, type Provisional} from '../lib/provisional.ts';
 import {PROJECT_ROOT} from '../lib/bundle.ts';
 
 const manifest = loadManifest(PROJECT_ROOT);
@@ -36,8 +37,10 @@ const badger = (o: Partial<CharacterFact> = {}): CharacterFact => ({
 	coveredBy: [],
 	...o,
 });
-const frame = (chars: CharacterFact[], n = 0): FrameFacts => ({v: 1, pass: 'scout', run: 'r', comp: 'C', frame: n, width: 1920, height: 1080, settled: true, texts: [], chars, banned: [], ms: 1, errors: []});
-const provisionalOf = (chars: CharacterFact[], m = manifest) => characterDomFindings(frame(chars), m).filter((f) => f.check === 'model-provisional');
+const frame = (chars: CharacterFact[], n = 0, comp = 'C'): FrameFacts => ({v: 1, pass: 'scout', run: 'r', comp, frame: n, width: 1920, height: 1080, settled: true, texts: [], chars, banned: [], ms: 1, errors: []});
+const provisionalOf = (chars: CharacterFact[], m = manifest, comp = 'C') => characterDomFindings(frame(chars, 0, comp), m).filter((f) => f.check === 'model-provisional');
+/** The compositions that show drawings for review: the sheets, the proof, the mouth demo, dev, probe and fixture comps. */
+const REVIEW_COMPS = ['BadgerSheet', 'ZooSheet', 'Preview10s', 'MouthDemo', 'BadgerPoses', 'BadgerOne', 'BadgerProof', 'ShowProbe', 'ThumbProbe', 'QaFxClean', 'C'];
 
 const tmp = mkdtempSync(join(tmpdir(), 'qa-provisional-'));
 after(() => rmSync(tmp, {recursive: true, force: true}));
@@ -112,16 +115,47 @@ describe('model-provisional: where the list comes from', () => {
 	});
 });
 
-describe('model-provisional: the warning', () => {
-	it("warns (never errors) for Badger's left-facing sit and lie", () => {
-		for (const pose of ['sit', 'lie']) {
-			const out = provisionalOf([badger({pose, head: 'threeQuarterLeftScreen', props: {view: 'left', pose}})]);
-			assert.equal(out.length, 1, pose);
-			assert.equal(out[0].severity, 'warn');
-			assert.match(out[0].message, new RegExp(`view 'left' with pose '${pose}'.*PROVISIONAL.*BADGER-D23`));
+describe('model-provisional: severity by composition', () => {
+	it('lists exactly the five compositions that publish', () => {
+		assert.deepEqual([...PRODUCTION_COMPOSITIONS].sort(), ['Episode', 'EpisodeShort', 'ShowEpisode', 'ShowShort', 'Thumbnail']);
+		for (const id of PRODUCTION_COMPOSITIONS) {
+			assert.equal(isProductionComposition(id), true, id);
+			assert.equal(isProductionComposition(`QaRef-${id}`), true, `QaRef-${id}`);
+			assert.equal(provisionalSeverity(id), 'error', id);
 		}
 	});
-	it('stays silent for every approved drawing (no false positives)', () => {
+	it('keeps the sheets, the proof, the dev, probe and fixture compositions at warning', () => {
+		for (const id of REVIEW_COMPS) {
+			assert.equal(isProductionComposition(id), false, id);
+			assert.equal(provisionalSeverity(id), 'warn', id);
+		}
+		// exact ids, not prefixes or case variants
+		for (const id of ['EpisodeShorts', 'episode', 'ShowEpisodeProbe', 'ThumbnailSheet', 'MyEpisode', '']) assert.equal(isProductionComposition(id), false, id);
+	});
+});
+
+describe('model-provisional: the finding', () => {
+	it("warns for Badger's left-facing sit and lie on the sheets, the proof and dev compositions", () => {
+		for (const comp of REVIEW_COMPS)
+			for (const pose of ['sit', 'lie']) {
+				const out = provisionalOf([badger({pose, head: 'threeQuarterLeftScreen', props: {view: 'left', pose}})], manifest, comp);
+				assert.equal(out.length, 1, `${comp} ${pose}`);
+				assert.equal(out[0].severity, 'warn', `${comp} ${pose}`);
+				assert.equal(out[0].measured.production, false);
+				assert.match(out[0].message, new RegExp(`view 'left' with pose '${pose}'.*PROVISIONAL.*BADGER-D23.*fine for review`));
+			}
+	});
+	it("is an error for Badger's left-facing sit and lie in every production composition", () => {
+		for (const comp of PRODUCTION_COMPOSITIONS)
+			for (const pose of ['sit', 'lie']) {
+				const out = provisionalOf([badger({pose, head: 'threeQuarterLeftScreen', props: {view: 'left', pose}})], manifest, comp);
+				assert.equal(out.length, 1, `${comp} ${pose}`);
+				assert.equal(out[0].severity, 'error', `${comp} ${pose}`);
+				assert.equal(out[0].measured.production, true);
+				assert.match(out[0].message, new RegExp(`view 'left' with pose '${pose}'.*PROVISIONAL.*BADGER-D23.*${comp} is a production composition.*view 'right'`));
+			}
+	});
+	it('stays silent for every approved drawing, in production compositions too (no false positives)', () => {
 		const clean = [
 			badger(),
 			badger({key: 'b1', view: 'right', pose: 'sit', props: {view: 'right', pose: 'sit'}}),
@@ -131,7 +165,9 @@ describe('model-provisional: the warning', () => {
 			badger({key: 'b5', view: 'front', pose: 'stand', props: {view: 'front'}}),
 			badger({key: 'z0', kind: 'zoo', view: 'front', pose: 'stand', head: null, props: {view: 'front', pose: 'stand'}}),
 		];
-		assert.deepEqual(provisionalOf(clean), []);
+		for (const comp of [...REVIEW_COMPS, ...PRODUCTION_COMPOSITIONS]) assert.deepEqual(provisionalOf(clean, manifest, comp), [], comp);
+		// Zoo has no provisional drawings, whatever his props say
+		assert.deepEqual(provisionalOf([badger({key: 'z1', kind: 'zoo', view: 'left', pose: 'sit', head: null, props: {view: 'left', pose: 'sit'}})], manifest, 'Episode'), []);
 	});
 	it('judges what is drawn: an unknown view falls back to the left-facing body', () => {
 		// Badger renders data-view="left" for a view it does not implement, so a 'sit' there is the provisional drawing
@@ -140,22 +176,26 @@ describe('model-provisional: the warning', () => {
 		assert.equal(provisionalOf([badger({view: null, pose: null, props: {pose: 'lie'}})]).length, 1);
 		assert.equal(provisionalOf([badger({view: null, pose: null, props: {}})]).length, 0);
 	});
-	it('is silent once the list is empty (the owner accepted the poses)', () => {
+	it('is silent once the list is empty (the owner accepted the poses), in production compositions too', () => {
 		const accepted = {...manifest, provisional: {source: 'test', decision: null, poses: []}};
-		assert.deepEqual(provisionalOf([badger({pose: 'sit', props: {view: 'left', pose: 'sit'}})], accepted), []);
+		for (const comp of ['BadgerSheet', ...PRODUCTION_COMPOSITIONS]) assert.deepEqual(provisionalOf([badger({pose: 'sit', props: {view: 'left', pose: 'sit'}})], accepted, comp), [], comp);
 	});
-	it('keeps its warning inside a scene transition (it is about the asset, not the frame)', () => {
-		const findings = characterDomFindings(frame([badger({pose: 'sit', props: {view: 'left', pose: 'sit'}, spots: manifest.badgerBody.sitLeft})], 5), manifest);
-		demoteInTransitions(findings, new Set([5]));
-		assert.equal(findings.find((f) => f.check === 'model-provisional')?.severity, 'warn');
-		// and the left-facing sit is checked against its own LEFT markings, so it raises no marking error
-		assert.equal(findings.filter((f) => f.check === 'model-spots').length, 0);
+	it('keeps its severity inside a scene transition (it is about the asset, not the frame)', () => {
+		for (const [comp, severity] of [['BadgerSheet', 'warn'], ['EpisodeShort', 'error'], ['ShowShort', 'error']] as const) {
+			const findings = characterDomFindings(frame([badger({pose: 'sit', props: {view: 'left', pose: 'sit'}, spots: manifest.badgerBody.sitLeft})], 5, comp), manifest);
+			demoteInTransitions(findings, new Set([5]));
+			assert.equal(findings.find((f) => f.check === 'model-provisional')?.severity, severity, comp);
+			// and the left-facing sit is checked against its own LEFT markings, so it raises no marking error
+			assert.equal(findings.filter((f) => f.check === 'model-spots').length, 0, comp);
+		}
 	});
-	it('groups into one issue per Badger instance across frames', () => {
-		const findings = [0, 1, 2, 30].flatMap((n) => characterDomFindings(frame([badger({pose: 'lie', props: {view: 'left', pose: 'lie'}})], n), manifest));
-		const issues = groupFindings(findings).filter((i) => i.check === 'model-provisional');
-		assert.equal(issues.length, 1);
-		assert.equal(issues[0].severity, 'warn');
-		assert.equal(issues[0].ranges, '0-2, 30');
+	it('groups into one issue per Badger instance across frames, with the severity of its composition', () => {
+		for (const [comp, severity] of [['BadgerSheet', 'warn'], ['Episode', 'error']] as const) {
+			const findings = [0, 1, 2, 30].flatMap((n) => characterDomFindings(frame([badger({pose: 'lie', props: {view: 'left', pose: 'lie'}})], n, comp), manifest));
+			const issues = groupFindings(findings).filter((i) => i.check === 'model-provisional');
+			assert.equal(issues.length, 1, comp);
+			assert.equal(issues[0].severity, severity, comp);
+			assert.equal(issues[0].ranges, '0-2, 30', comp);
+		}
 	});
 });

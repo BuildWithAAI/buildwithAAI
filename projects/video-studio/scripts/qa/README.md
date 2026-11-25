@@ -31,7 +31,7 @@ Exit code 0 = no errors, 1 = errors (or warnings with `--fail-on warn`), 2 = bad
 A run that cannot finish (the composition's own metadata step throws, the browser dies) still writes `report.md`
 and `report.json` with the verdict **ERROR** and the reason, so an older report is never mistaken for this run.
 
-Tests: `node --test scripts/qa/tests/*.test.ts` (76 unit tests) and `node scripts/qa/selftest.ts` (16 fixtures rendered
+Tests: `node --test scripts/qa/tests/*.test.ts` (80 unit tests) and `node scripts/qa/selftest.ts` (16 fixtures rendered
 end to end: 14 planted defects, a clean control and a motion control that must stay clean; 3-5 minutes).
 
 ## The six check areas
@@ -70,15 +70,19 @@ committed fiber copy the way React's `findCurrentFiberUsingSlowPath` does). Then
   carry `L-NECK` twice and `upRightScreen` on the right rig `R-NECK` twice. A third copy, any other repeated id, or the
   same repeat on another head or rig is still an error (`lib/manifest.ts` `allowedMarkingDraws`, unit tests in
   `tests/checks.test.ts`).
-- **Provisional drawings (`model-provisional`, always a warning, never an error):** a Badger instance whose drawn view
-  and pose (`data-view` / `data-pose`, else its props) is on `BADGER_PROVISIONAL_POSES`: today the left-facing sit and
-  lie (decision BADGER-D23, awaiting the owner's OK: their silhouette is the right-facing pose mirrored). Fine for
-  review sheets; keep them out of published episodes until the owner accepts them. The list is read the way the Badger
+- **Provisional drawings (`model-provisional`: an error in a production composition, a warning elsewhere):** a Badger
+  instance whose drawn view and pose (`data-view` / `data-pose`, else its props) is on `BADGER_PROVISIONAL_POSES`: today
+  the left-facing sit and lie (decision BADGER-D23, awaiting the owner's OK: their silhouette is the right-facing pose
+  mirrored). In the compositions that publish, `Episode`, `EpisodeShort`, `ShowEpisode`, `ShowShort` and `Thumbnail`
+  (`PRODUCTION_COMPOSITIONS` in `lib/provisional.ts`, exact ids), it is an **error**, so a run fails until the scene
+  uses an approved drawing (view `right` for sit and lie) or the owner accepts D23. Everywhere else (`BadgerSheet`,
+  `ZooSheet`, `Preview10s`, `MouthDemo`, dev, probe and fixture compositions) it stays a **warning**: those show the
+  drawings for review (decision INT-Q1, revised in integration round 5). The list is read the way the Badger
   index exports it (`src/characters/badger/index.ts`, which Node cannot load because it pulls in the React components,
   so `lib/provisional.ts` follows its re-export, named or `export *`, to `src/characters/badger/provisional.ts`). If the
   index stops exporting it, nothing is provisional; if that module cannot be loaded, or the index defines the list
-  itself, the copy in `manifest.v1.json` (`provisional.badger`) is used. `report.json` records the list and where it
-  was read (`provisional`).
+  itself, the copy in `manifest.v1.json` (`provisional.badger`) is used. `report.json` records the list, where it
+  was read and the severity used for that composition (`provisional`: `source`, `poses`, `severity`, `production`).
 - **Heuristics on S, checked against R and the manifest conventions:** Zoo's teal pin (present, within 12 units of
   its canonical position, on the screen-right side in front/3/4 views, absent in side/back); Badger's dark ear cap
   (a cap-sized `#19191C` blob in the top of the head, same side as R, screen right for the front head and screen
@@ -147,7 +151,7 @@ next scouted frame (a slide-in, a wipe, a fade) are information ("while animatin
 severity. Scene transitions are found from the scout frames (a run of frames with >= 30% of pixels changing, or
 >= 5% for 4+ frames with hysteresis, i.e. slides over flat backgrounds) and from two instances of the same
 character in one frame (both scenes mounted); pixel checks skip those frames and DOM findings there are
-information, except `model-provisional`, which is about the asset, not the frame. A sheet that shows several
+information, except `model-provisional`, which is about the asset, not the frame (it keeps its error or warning). A sheet that shows several
 instances of one character (`BadgerSheet`) therefore counts as a transition: its other findings are information. Text fully hidden by a clip (0% visible) is not "cut" and is information.
 
 **Roles.** A text is a caption when it is inside `data-part="caption"`, `data-caption`, `data-qa-role="caption"`, a
