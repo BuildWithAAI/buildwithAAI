@@ -6,6 +6,10 @@
  *  - Timeline: public/generated/<channel>/<slug>/<lang>/timeline.json (the voice step), or props.timelineOverride.
  *    Only the "_dev" channel falls back to a mock timeline when none exists (silent preview, badged).
  *  - Narration: public/generated/<channel>/<slug>/<lang>/narration.wav (one file, one <Audio>).
+ *  - Sound (added 2026-11-25): the audio plan (src/episode/audio/plan.ts) is computed here, after validation. A dub needs
+ *    the master's storyboard and timeline (moods and the clock follow the master in every language): a missing master
+ *    timeline is an error that names the file. With props.audioPlanHash (render.sh passes the audio-plan CLI's hash),
+ *    a plan that hashes differently throws: the bundle and the CLI saw different files (critic F1).
  */
 import {staticFile} from 'remotion';
 import type {Lang, Storyboard, Timeline} from './types';
@@ -16,6 +20,10 @@ import {chartDataFor, checkChartPlan, planChart, type ChartPlan} from './chart/p
 import {LAYOUTS, type Format} from './layout/specs';
 import {episodeFrames, episodeSpans, shortSpans, spansFrames} from './timing';
 import {msToFrame} from './motion';
+import {MUSIC, SFX} from '../audio/components/library';
+import {planEpisodeAudio, type AudioStem, type EpisodeAudioPlan} from './audio/plan';
+import type {BedLevelTable} from './audio/levels';
+import bedLevels from './audio/bedLevels.json';
 
 type WebpackContext = {keys(): string[]; (id: string): unknown};
 type WebpackRequire = {context(dir: string, deep: boolean, re: RegExp): WebpackContext};
@@ -61,6 +69,10 @@ export type EpisodeProps = {
 	shortId?: string;
 	captions?: boolean;
 	timelineOverride?: Timeline | null;
+	/** Added 2026-11-25. Measurement renders only: play just these audio stems, draw nothing (src/episode/tools/render.sh). */
+	audioStems?: AudioStem[] | null;
+	/** Added 2026-11-25. The audio-plan CLI's hash: the render refuses a plan that differs (src/episode/tools/render.sh). */
+	audioPlanHash?: string | null;
 	/** Filled by calculateMetadata; never pass it yourself. */
 	resolved?: ResolvedEpisode | null;
 };
@@ -75,9 +87,32 @@ export type ResolvedEpisode = {
 	captions: boolean;
 	durationInFrames: number;
 	warnings: string[];
+	/** Added 2026-11-25: the sound plan (beds, sting, effects); silent for a mock timeline */
+	audio: EpisodeAudioPlan;
 };
 
-export const resolveEpisode = async (props: EpisodeInput & {timelineOverride?: Timeline | null}, format: Format, signal?: AbortSignal): Promise<ResolvedEpisode> => {
+const chartPlans = async (sb: Storyboard, tl: Timeline, spanIndexes: number[], format: Format, label: string, signal?: AbortSignal): Promise<Record<string, ChartPlan>> => {
+	const out: Record<string, ChartPlan> = {};
+	for (const index of spanIndexes) {
+		const sc = sb.scenes[index];
+		if (sc.type !== 'chart' || !sc.chart) continue;
+		const box = LAYOUTS.chart[format].chart;
+		const fileData = sc.chart.dataFile ? await fetchJson<ChartData>(sc.chart.dataFile.replace(/^public\//, ''), signal) : undefined;
+		if (sc.chart.dataFile && !fileData) throw new Error(`${label}: scene ${sc.id}: chart data file public/${sc.chart.dataFile} not found`);
+		try {
+			out[sc.id] = planChart(sc, tl.scenes[index], chartDataFor(sc, box, fileData ?? undefined), box, FPS, sb.lang);
+		} catch (err) {
+			throw new Error(`${label}: scene ${sc.id}: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+	return out;
+};
+
+export const resolveEpisode = async (
+	props: EpisodeInput & {timelineOverride?: Timeline | null; masterTimelineOverride?: Timeline | null},
+	format: Format,
+	signal?: AbortSignal,
+): Promise<ResolvedEpisode> => {
 	const short = format === 'vertical';
 	const label = `${short ? 'EpisodeShort' : 'Episode'} ${String(props.channel)}/${String(props.slug)} (${String(props.lang)})`;
 	assertNoErrors(validateProps(props, short), label);
@@ -117,6 +152,32 @@ export const resolveEpisode = async (props: EpisodeInput & {timelineOverride?: T
 	}
 	const speechFrames = timeline.scenes.reduce((a, s) => a + msToFrame(s.speechMs, FPS), 0);
 	if (!timeline.mock && speechFrames === 0) warnings.push({level: 'warning', where: 'timeline', msg: 'the timeline has no speech'});
+
+	// sound: the master decides moods and the clock in every language, so a dub needs the master's files (critic F14)
+	let master: {storyboard: Storyboard; timeline: Timeline} | null = null;
+	let masterCharts: Record<string, ChartPlan> | undefined;
+	if (storyboard.lang !== storyboard.sourceLang && !timeline.mock) {
+		const msb = loadStoryboard(channel, slug, storyboard.sourceLang);
+		const mtl = props.masterTimelineOverride ?? (await fetchJson<Timeline>(timelinePath(channel, slug, storyboard.sourceLang), signal));
+		if (!mtl)
+			throw new Error(
+				`${label}: the ${lang} render needs the ${storyboard.sourceLang} master timeline at public/${timelinePath(channel, slug, storyboard.sourceLang)} (moods and the music clock follow the master in every language). Voice the master first, or unpack it with this job.`,
+			);
+		master = {storyboard: msb, timeline: mtl};
+		if (timeline.mode === 'fit-to-master') masterCharts = await chartPlans(msb, mtl, msb.scenes.map((_, i) => i), format, label, signal);
+	}
+	let audio: EpisodeAudioPlan;
+	try {
+		audio = planEpisodeAudio({format, storyboard, timeline, shortId, master, charts, masterCharts, lib: {music: MUSIC, sfx: SFX, levels: bedLevels as unknown as BedLevelTable}});
+	} catch (err) {
+		throw new Error(`${label}: sound: ${err instanceof Error ? err.message : String(err)}`);
+	}
+	const wantHash = (props as {audioPlanHash?: unknown}).audioPlanHash;
+	if (typeof wantHash === 'string' && wantHash && wantHash !== audio.hash)
+		throw new Error(
+			`${label}: the audio plan this bundle computes (${audio.hash.slice(0, 12)}) is not the one the audio-plan CLI wrote (${wantHash.slice(0, 12)}): the bundle is older or newer than the storyboard, timeline or code on disk. Re-bundle after the voice step and plan again (src/episode/tools/render.sh does both in order).`,
+		);
+	for (const m of audio.warnings) warnings.push({level: 'warning', where: 'sound', msg: m});
 	for (const w of warnings) console.warn(`[episode] ${label}: ${w.where}: ${w.msg}`);
 	return {
 		format,
@@ -129,5 +190,6 @@ export const resolveEpisode = async (props: EpisodeInput & {timelineOverride?: T
 		captions: typeof props.captions === 'boolean' ? props.captions : short,
 		durationInFrames,
 		warnings: warnings.map((w) => `${w.where}: ${w.msg}`),
+		audio,
 	};
 };

@@ -11,6 +11,7 @@ import {C, OUTLINE, R} from '../theme';
 import {LAYOUTS} from '../layout/specs';
 import {Lines, useFit} from '../text/FitText';
 import {CharacterLayer, entry, SceneBg, useDirection, type SceneCtx} from './parts';
+import {sceneCast} from './direction';
 import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 import {uiLabel} from '../i18n/ui';
@@ -20,7 +21,7 @@ export const EndScreenScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const L = LAYOUTS.endscreen[ctx.format];
 	const vertical = ctx.format === 'vertical';
 	const badgerPlace = ctx.sc.badger?.present ? L.badger : null;
-	const dir = useDirection(ctx, {zooView: 'front', badgerPlace, badgerInsert: vertical});
+	const dir = useDirection(ctx, sceneCast(ctx.sc, ctx.format));
 	const outro = str(ctx.sc, 'title') ?? str(ctx.sc, 'outro') ?? '';
 	const oFit = useFit(outro, L.outro, ctx.lang);
 	const slotLabel = L.slotLabel ? (uiLabel(ctx.sb, 'watchNext') ?? '') : '';

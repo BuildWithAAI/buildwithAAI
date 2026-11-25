@@ -11,6 +11,9 @@ export type Lang = 'en' | 'es' | 'pt-br' | 'hi' | 'it' | 'zh' | 'ja';
 
 export type SceneType = 'hook' | 'talk' | 'chart' | 'steps' | 'quote' | 'cta' | 'endscreen';
 
+/** Added 2026-11-25 (episode audio), optional fields only. The four Zoora AI story beds (public/audio/music/bed-story-<mood>-underscore.flac). */
+export type StoryBed = 'curious' | 'tension' | 'ominous' | 'resolve';
+
 export type Source = {
 	id: string; // referenced from narration as [src:id]
 	title: string;
@@ -51,6 +54,19 @@ export type StoryboardScene = {
 	 * phrases, private names or wallet addresses.
 	 */
 	claimWaivers?: Array<{match: string; rule: 'factual' | 'income'; reason: string}>;
+	/**
+	 * Added 2026-11-25 (episode audio), optional. The music FROM THIS SCENE ON, an act marker: 'curious', 'tension',
+	 * 'ominous', 'resolve' or 'none' (no music). Later scenes inherit it until the next scene that sets one; without any,
+	 * the whole episode plays 'curious' (or the hook's choice). On the end screen only 'none' is allowed (it plays its own
+	 * music). Read from the master storyboard (storyboard.json) for every language.
+	 */
+	bed?: StoryBed | 'none';
+	/**
+	 * Added 2026-11-25 (episode audio), optional. This scene's sound effects: `transition` (its entrance: a wipe has a short
+	 * whoosh unless false, a slide a soft air sound only when true, cuts and fades never), `items` (list pops in the gaps of
+	 * the speech, default true), `accent` (the CTA press click, default true; the chart rug's soft tick, default false).
+	 */
+	sfx?: {transition?: boolean; items?: boolean; accent?: boolean};
 };
 
 /**
@@ -78,7 +94,8 @@ export type Storyboard = {
 	scenes: StoryboardScene[];
 	sources: Source[];
 	offers?: string[]; // creator-hub offer ids (the CTA and disclosures use them)
-	shorts?: {id: string; sceneIds: string[]; title: string}[]; // which scenes are re-composed into each vertical Short
+	/** which scenes are re-composed into each vertical Short; `bed` (added 2026-11-25, optional): one bed for the whole Short */
+	shorts?: {id: string; sceneIds: string[]; title: string; bed?: StoryBed | 'none'}[];
 	/**
 	 * 3 variants; text has 4 words or fewer (zh/ja: 10 characters or fewer). A translation (storyboard.<lang>.json) carries
 	 * only {id, text}; expression and badger always come from storyboard.json.
@@ -98,6 +115,16 @@ export type Storyboard = {
 	 * status: 'native-reviewed' (reviewer = a role or initials, never a private full name: the repo is public).
 	 */
 	translation?: {status: 'machine' | 'native-reviewed'; reviewer?: string; date?: string; method?: 'machine' | 'human'; reviewed?: boolean};
+	/**
+	 * Added 2026-11-25 (episode audio), optional; read from the master storyboard for every language.
+	 * `offset`: the 4-bar phrase of the beds' 64 s loop the episode's clock starts on (0-4: 0, 12.8, 25.6, 38.4 or 51.2 s);
+	 * default: the planner's choice (a seeded order, the loop's base section first, the first whose estimated worst phrase
+	 * clears the gate by 2 LU). `sting: 'after-hook'`: the Zoora AI brand sting after the cold open (off by default; the
+	 * scene before it needs room: the planner names the minDurationSec). `stingTagline`: the sting card's tagline in THIS
+	 * file's language (read from this file, not the master; required in a non-English render with the sting; English
+	 * default "Crypto and AI stories, starring you.").
+	 */
+	music?: {offset?: 0 | 1 | 2 | 3 | 4; sting?: 'after-hook'; stingTagline?: string};
 };
 
 /**

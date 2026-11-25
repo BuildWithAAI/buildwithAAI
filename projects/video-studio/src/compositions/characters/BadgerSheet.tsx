@@ -21,7 +21,7 @@ import {BRAND} from '../../characters/palette';
 import type {BadgerPose, BadgerView, Expression} from '../../characters/types';
 import {PROVISIONAL_CAPTION} from './captions';
 import {ContactShadow, FOOTPRINTS, type Footprint} from './contact';
-import {closeLineScale, fullLineScale} from './stage';
+import {BADGER_SHEET_BUSTS, closeLineScale, fullLineScale} from './stage';
 
 const ROW1 = {ground: 424, scale: 0.78} as const;
 const VIEWS: readonly {view: BadgerView; x: number; print: Footprint}[] = [
@@ -69,11 +69,7 @@ const BUSTS: readonly {expression: Expression; judge?: number}[] = [
 	{expression: 'shocked'},
 	{expression: 'neutral', judge: 1},
 ];
-/**
- * Bust row. Round 5: BADGER-D55 drew the front head (and the bust neck with it) 10% smaller, so the row is drawn 1/0.90
- * larger (1.42 -> 1.58) to keep round 4's on-screen bust size and line weight (3 px, closeLineScale).
- */
-export const BADGER_SHEET_BUSTS = {y: 990, scale: 1.58, x0: 290, gap: 335} as const;
+/** Bust row (BADGER_SHEET_BUSTS in stage.ts: drawn at 1.58 since round 5, BADGER-D55). */
 const ROW3 = BADGER_SHEET_BUSTS;
 
 export const BadgerSheet: React.FC = () => (

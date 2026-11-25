@@ -4,7 +4,7 @@
  */
 import type {Expression} from '../../characters/types';
 import type {Lang, StoryboardScene, TimelineScene} from '../types.ts';
-import type {Format, BadgerPlace} from '../layout/specs.ts';
+import {LAYOUTS, type Format, type BadgerPlace} from '../layout/specs.ts';
 import type {ChartPlan} from '../chart/plan.ts';
 import {findCueMs, normWord, revealTimes} from '../cues.ts';
 import {msToFrame} from '../motion.ts';
@@ -78,6 +78,24 @@ const placeAfter = (desired: number, frames: number, beats: Beat[]): {from: numb
 	const to = Math.min(from + INSERT.len, next);
 	if (next === Infinity && frames - to < INSERT.backMin) return {from, to: frames + 1000};
 	return {from, to};
+};
+
+/**
+ * What a template passes to directScene besides the scene: Zoo's view, Badger's placement (null when he is not in the
+ * scene) and whether he reacts in an insert shot (Shorts). Added 2026-11-25: the scene templates and the audio planner
+ * (src/episode/audio/plan.ts) both call this, so the reaction beats the sound plans around are the ones on screen.
+ */
+export const sceneCast = (sc: StoryboardScene, format: Format): Pick<DirectionInput, 'zooView' | 'badgerPlace' | 'badgerInsert'> => {
+	if (sc.type === 'chart') {
+		// landscape: Zoo and Badger share the frame (a pair), or Zoo alone; vertical: Badger reacts in an insert
+		const L = LAYOUTS.chart[format];
+		const badgerOn = !!sc.badger?.present;
+		const pair = badgerOn && L.pair ? L.pair : null;
+		const zooPlace = pair ? pair.zoo : L.solo.zoo;
+		return {zooView: zooPlace.view ?? 'front', badgerPlace: badgerOn ? (pair ? pair.badger : LAYOUTS.hook[format].badger) : null, badgerInsert: badgerOn && !pair};
+	}
+	const L = LAYOUTS[sc.type][format];
+	return {zooView: 'front', badgerPlace: sc.badger?.present ? L.badger : null, badgerInsert: format === 'vertical'};
 };
 
 const list = (sc: StoryboardScene, k: string): string[] => (Array.isArray(sc.onScreen?.[k]) ? (sc.onScreen?.[k] as string[]) : []);

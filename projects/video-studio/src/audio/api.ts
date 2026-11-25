@@ -15,4 +15,6 @@ export {strikePredicate, overlappingRepeats, TRANSITION_SFX, type SfxCue, type T
 export {stingerRest, PEAK_BUDGET_DBTP, type BedMood, type BedChannel, type StingerPlacement} from './core/music.ts';
 export {speechSpansFromAudio, speechSpansFromScenes, speechSpansFromTimeline, type TimelineLike} from './core/speech.ts';
 export {DUCK_DEFAULTS, planBed, type DuckSpec, type LiftSpec} from './core/bed.ts';
-export {mergeSpans, shiftSpans, type Rest, type Span} from './core/envelope.ts';
+export {BedGain, DuckCurve, fadeShape, mergeSpans, rcos, shiftSpans, type FadeCurve, type Rest, type Span} from './core/envelope.ts';
+export {peakBudgetTrimDb, resolveCue, type MusicCue, type MusicManifest} from './core/music.ts';
+export {cue as sfxCueFrom, groupIds, resolveSound, type SfxEntry, type SfxManifest} from './core/sfx.ts';

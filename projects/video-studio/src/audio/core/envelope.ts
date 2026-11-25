@@ -25,6 +25,20 @@ export type Span = {readonly start: number; readonly end: number};
 /** Raised cosine 0 -> 1 on x in [0, 1] (clamped). Zero slope at both ends. */
 export const rcos = (x: number): number => (x <= 0 ? 0 : x >= 1 ? 1 : 0.5 - 0.5 * Math.cos(Math.PI * x));
 
+/**
+ * The shape of a bed's own fade-in and fade-out (added 2026-11-25 for the Episode's bed changes):
+ *  - 'raisedCosine' (default): the amplitude follows rcos. A fade-in and a fade-out of the same length sum to constant
+ *    AMPLITUDE (in + out = 1), right for one fade on its own or for two versions of the same, coherent recording.
+ *  - 'equalPower': the amplitude follows sin(pi/2 * rcos(u)). A fade-in and a fade-out of the same length over the same
+ *    frames sum to constant POWER (in^2 + out^2 = 1), so a crossfade between two UNCORRELATED beds (every measured pair
+ *    of story beds has |r| < 0.15) neither dips 3 dB in the middle nor bumps.
+ * Both start and end with zero slope (no corner, no click).
+ */
+export type FadeCurve = 'raisedCosine' | 'equalPower';
+
+/** Fade amplitude at progress u in [0, 1] (0 = silent end, 1 = full), clamped. */
+export const fadeShape = (u: number, curve: FadeCurve = 'raisedCosine'): number => (curve === 'equalPower' ? Math.sin((Math.PI / 2) * rcos(u)) : rcos(u));
+
 export type DuckTiming = {
 	/** Ramp-down time (ms). */
 	attackMs: number;
@@ -154,8 +168,12 @@ export class DuckCurve {
 /** One source of ducking with its per-band depth in dB (one entry = broadband). */
 export type DuckSource = {curve: DuckCurve; depthsDb: readonly number[]};
 
-/** An amplitude window: the bed fades out before `start` and back in after `end` (a sting or bumper plays alone). */
-export type Rest = {start: number; end: number; fadeOutMs: number; fadeInMs: number};
+/**
+ * An amplitude window: the bed fades out before `start` and back in after `end` (a sting or bumper plays alone).
+ * `floorDb` (optional, added 2026-11-25): the level the bed rests at, in dB (e.g. -18): a dip instead of silence, so a
+ * rest under Kokoro's digital-zero pauses never drops the mix to black. Omitted: silence.
+ */
+export type Rest = {start: number; end: number; fadeOutMs: number; fadeInMs: number; floorDb?: number};
 
 /**
  * The full gain law of a bed: per-band ducks, rests and the bed's own fades.
@@ -167,6 +185,8 @@ export class BedGain {
 	private readonly rests: readonly Rest[];
 	private readonly fadeIn: number;
 	private readonly fadeOut: number;
+	private readonly fadeCurve: FadeCurve;
+	private readonly fadeOutCurve: FadeCurve;
 	private readonly start: number;
 	private readonly end: number;
 
@@ -176,20 +196,41 @@ export class BedGain {
 	 * `boosts` lift the bed instead of ducking it (dB > 0 where their curve is 1): the bed comes up in long
 	 * music-only stretches (core/bed.ts lift). The gain in dB is the highest boost minus the deepest duck.
 	 */
-	constructor(opts: {bands: number; sources?: readonly DuckSource[]; boosts?: readonly DuckSource[]; rests?: readonly Rest[]; start: number; end: number; fadeInMs?: number; fadeOutMs?: number}) {
+	constructor(opts: {
+		bands: number;
+		sources?: readonly DuckSource[];
+		boosts?: readonly DuckSource[];
+		rests?: readonly Rest[];
+		start: number;
+		end: number;
+		fadeInMs?: number;
+		fadeOutMs?: number;
+		/** the shape of the bed's own fades (default 'raisedCosine'; rests always use the raised cosine) */
+		fadeCurve?: FadeCurve;
+		/** the fade-out's shape when it differs from the fade-in's (e.g. in from silence, out into another bed) */
+		fadeOutCurve?: FadeCurve;
+	}) {
 		if (!Number.isInteger(opts.bands) || opts.bands < 1) throw new Error('bands must be a positive integer');
 		for (const s of [...(opts.sources ?? []), ...(opts.boosts ?? [])]) {
 			if (s.depthsDb.length !== 1 && s.depthsDb.length !== opts.bands) throw new Error(`a duck source has ${s.depthsDb.length} depths for ${opts.bands} band(s)`);
 			if (s.depthsDb.some((d) => !Number.isFinite(d) || d < 0)) throw new Error('duck depths must be finite and >= 0 dB');
 		}
-		for (const r of opts.rests ?? []) if (!(r.end >= r.start) || r.fadeOutMs < 0 || r.fadeInMs < 0) throw new Error('a rest needs end >= start and fades >= 0');
+		for (const r of opts.rests ?? []) {
+			if (!(r.end >= r.start) || r.fadeOutMs < 0 || r.fadeInMs < 0) throw new Error('a rest needs end >= start and fades >= 0');
+			if (r.floorDb !== undefined && !(Number.isFinite(r.floorDb) && r.floorDb <= 0)) throw new Error('a rest floorDb must be a finite number <= 0 dB');
+		}
 		if (!(opts.end > opts.start)) throw new Error('the bed must end after it starts');
+		const curve = opts.fadeCurve ?? 'raisedCosine';
+		const outCurve = opts.fadeOutCurve ?? curve;
+		for (const c of [curve, outCurve]) if (c !== 'raisedCosine' && c !== 'equalPower') throw new Error(`unknown fade curve "${String(c)}"`);
 		this.bands = opts.bands;
 		this.sources = opts.sources ?? [];
 		this.boosts = opts.boosts ?? [];
 		this.rests = (opts.rests ?? []).slice().sort((a, b) => a.start - b.start);
 		this.fadeIn = Math.max(0, opts.fadeInMs ?? 0) / 1000;
 		this.fadeOut = Math.max(0, opts.fadeOutMs ?? 0) / 1000;
+		this.fadeCurve = curve;
+		this.fadeOutCurve = outCurve;
 		this.start = opts.start;
 		this.end = opts.end;
 	}
@@ -198,15 +239,17 @@ export class BedGain {
 	amplitude(t: number): number {
 		if (t < this.start || t >= this.end) return 0;
 		let a = 1;
-		if (this.fadeIn > 0 && t < this.start + this.fadeIn) a *= rcos((t - this.start) / this.fadeIn);
-		if (this.fadeOut > 0 && t > this.end - this.fadeOut) a *= rcos((this.end - t) / this.fadeOut);
+		if (this.fadeIn > 0 && t < this.start + this.fadeIn) a *= fadeShape((t - this.start) / this.fadeIn, this.fadeCurve);
+		if (this.fadeOut > 0 && t > this.end - this.fadeOut) a *= fadeShape((this.end - t) / this.fadeOut, this.fadeOutCurve);
 		for (const r of this.rests) {
 			const out = r.fadeOutMs / 1000;
 			const inn = r.fadeInMs / 1000;
 			if (t <= r.start - out || t >= r.end + inn) continue;
-			if (t < r.start) a *= rcos((r.start - t) / out);
-			else if (t <= r.end) a = 0;
-			else a *= rcos((t - r.end) / inn);
+			// the rest's floor (silence unless floorDb is given); the fades move between 1 and it on a raised cosine
+			const fl = r.floorDb === undefined ? 0 : 10 ** (r.floorDb / 20);
+			if (t < r.start) a *= fl + (1 - fl) * rcos((r.start - t) / out);
+			else if (t <= r.end) a *= fl;
+			else a *= fl + (1 - fl) * rcos((t - r.end) / inn);
 		}
 		return a;
 	}

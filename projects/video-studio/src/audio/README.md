@@ -4,7 +4,7 @@ The audio integration plays the music package (`public/audio/music/`) and the SF
 
 - **Import the API from `src/audio/api.ts`.** `src/audio/index.ts` is only the AudioDemo's Remotion entry point (separate from `src/Root.tsx`, `src/episode/index.ts` and `src/show/index.ts`).
 - **Pure core.** Everything that decides what plays and how loud is pure TypeScript in `core/` (no Remotion import), tested in Node. The components in `components/` only place it on Remotion's timeline.
-- **Status.** Built and measured on Remotion 4.0.541 (pinned). The Episode and Show templates do not use it yet: their owners wire it in using the calls in "How the templates call it" below. Nobody has listened to the result; every judgement here comes from measurement.
+- **Status.** Built and measured on Remotion 4.0.541 (pinned). The Episode template plays it (2026-11-25) through its own sound plan: `src/episode/audio/` and `docs/EPISODE_ENGINE.md` §12. The Show template does not use it yet: its owner wires it in using the calls in "How the templates call it" below. Nobody has listened to the result; every judgement here comes from measurement.
 
 ## API
 
@@ -42,7 +42,8 @@ All are exported by `api.ts`. Time values in `duck.speech` and `rests` are **abs
 | `duck.split` | `true` | The engine's band-split duck. The bed is split at 700 Hz and 5 kHz (zero-phase, Linkwitz-Riley 8th-order magnitude, bands sum exactly), and `depthDb` applies to Zoo's consonant band: 2 / 12 / 4 dB at the default. `split: false` is a broadband duck; `depthsDb: [low, mid, high]` sets each band. |
 | `lift` | off | "Music up" in pauses of 1.8 s or more (e.g. `{db: 6}`). It raises the bed's peaks, so pair it with the master step. |
 | `loop` | the cue's loop points | Every bed is a seamless 64 s loop; the wrap is sample-exact, and the bands are split circularly so each band loops too. |
-| `levelDb`, `fadeInMs`, `fadeOutMs`, `rests`, `startAtSec`, `durationInFrames` | 0, 0, 0, none, 0, the enclosing Sequence | Beds are mastered at -26 LUFS-S to sit under -14 LUFS narration; keep `levelDb` at 0 unless the owner asks. |
+| `levelDb`, `fadeInMs`, `fadeOutMs`, `rests`, `startAtSec`, `durationInFrames` | 0, 0, 0, none, 0, the enclosing Sequence | Beds are mastered at -26 LUFS-S to sit under -14 LUFS narration; keep `levelDb` at 0 unless the owner asks (the Episode's planner trims the louder story beds so each sits at the same level under the voice). A rest's `floorDb` (added 2026-11-25) dips the bed to that level instead of silence. |
+| `fadeCurve`, `fadeOutCurve` (added 2026-11-25) | `'raisedCosine'` | `'equalPower'` for one half of a crossfade between two beds: sin(π/2 · raised cosine), so the summed power stays constant through the overlap. `fadeShape(u, curve)` in `core/envelope.ts`. |
 
 The bed plays through **`PcmTrack`**, which writes every frame's samples itself (Remotion's `inline-audio` render assets, the mechanism `@remotion/media`'s `<Audio>` uses) with the gain evaluated per sample. Remotion's own `<Html5Audio volume={f => ...}>` cannot do this; see "Why PcmTrack". In the Studio preview the bed plays through `<Html5Audio>` with a per-frame broadband volume: an approximation for previewing only. Only renders are judged.
 
@@ -81,7 +82,7 @@ The level is the cue as mastered (-16 LUFS-I), trimmed so its true peak is at mo
 
 Both templates already resolve `r.timeline` (the voice step's Timeline) and play `r.narration` with one `<Html5Audio>` (landscape) or per-scene windows (Shorts).
 
-**Episode (`src/episode/Episode.tsx`, `EpisodeView`)**, next to the narration `<Html5Audio>`:
+**Episode: done (2026-11-25).** `src/episode/audio/plan.ts` plans every bed, crossfade, rest, duck hold, sting and effect from the storyboard and timeline, and `src/episode/audio/EpisodeAudio.tsx` plays the plan with `<MusicBed>` (one per bed segment, `startAtSec` on the episode's one musical clock, equal-power crossfades), `<Stinger>` and `SfxPlay`. The sketch below was the starting point it replaced; the Show can still use it:
 
 ```tsx
 import {MusicBed, SfxCues, Stinger, placeStinger, stingerRest, sfxForTransition, speechSpansFromScenes} from '../audio/api';
@@ -116,13 +117,15 @@ const speech = speechSpansFromScenes(spans.map((s) => ({atSec: s.from / fps, unt
 - **Badger** stays nonverbal. His foley (`badger_paw`, `badger_tail`) goes after Zoo's line, never over it. Real dog sounds come later from the owner's clips.
 - **Typing at the desk:** `typingClicks(from, to, 6.5, {scene, isStrike: strikePredicate(fingerLift)})` with `fingerLift` imported from `src/characters/zoo`. The clicks then land on the frames where Zoo's fingers strike.
 
-**Then master the render** (both templates):
+**Then master the render** (both templates; the Episode's `src/episode/tools/render.sh` does all of it and gates the result):
 
 ```bash
-npx remotion render <bundle> <Composition> out/x.wav --codec=wav --config=src/audio/remotion.wav.config.ts --props=...  # lossless mix
-npx remotion render <bundle> <Composition> out/x.raw.mp4 --props=...                                                   # picture
-.venv-audio/bin/python src/audio/tools/master_mix.py --wav out/x.wav --video out/x.raw.mp4 --out out/x.mp4 --wav-out out/x.master.wav
+npx remotion render <bundle> <Composition> out/x.raw.mp4 --separate-audio-to=$PWD/out/x.wav --props=...  # picture + lossless mix, one pass
+.venv-audio/bin/python src/audio/tools/master_mix.py --wav out/x.wav --video out/x.raw.mp4 --out out/x.mp4 --wav-out out/x.master.wav --report out/x.master.json
+.venv-audio/bin/python src/audio/tools/master_mix.py --wav out/x.wav --out out/x.m4a      # audio only (a dub's audio track): .m4a or .wav
 ```
+
+`--separate-audio-to` writes the same pcm-16 mix as `--codec=wav` (the render's audio path is identical) while the picture renders, so one pass gives both; pass it an absolute path (Remotion resolves a relative one against its root). The audio-only `--codec=wav --config=src/audio/remotion.wav.config.ts` render is still the way to render a stem or an audio track without a picture.
 
 ## Levels and delivery
 
@@ -138,6 +141,9 @@ npx remotion render <bundle> <Composition> out/x.raw.mp4 --props=...            
 2. One static gain to -14 LUFS-I (BS.1770-4) into the engine's true-peak limiter at -1.5 dBTP; the gain is re-aimed until the limited result is within 0.05 LU.
 3. AAC with Remotion's own encoder (`libfdk_aac` 320 kb/s through `npx remotion ffmpeg`), the render's video copied untouched.
 4. The MP4 is decoded and measured again. If AAC pushed the true peak over -1 dBTP, the ceiling drops and steps 2-4 repeat.
+5. (2026-11-25) The mastered mix is also encoded as the platforms re-encode an upload (AAC-LC and Opus at 128 kb/s), decoded and measured: over 0 dBTP on either lowers the ceiling and repeats too; over -0.5 dBTP is a warning in the report. Transients overshoot more at 128 kb/s than at 320. `--no-stream-check` skips it.
+
+Without `--video` the master delivers audio only (`--out` .wav 24-bit or .m4a AAC 320 kb/s) with the same steps.
 
 No EQ, no compression. **For a speech-led episode the master is a safety net.** A simulated episode (the intro sting, then the show's real 59 s narration over `bed-show-neutral-underscore` with the band-split duck) measures -14.05 LUFS-I / -1.63 dBTP before the master; the master adds +0.05 dB and limits nothing. The AudioDemo is different: 21 of its 31.5 s are music-only, so its raw mix sits at -16.4 LUFS-I and the master adds +2.6 dB (below).
 
@@ -184,8 +190,8 @@ The narration comes from the voice step: `.venv-voice/bin/python scripts/voice/b
 ## Tests and checks
 
 ```bash
-node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test "src/audio/tests/*.test.ts"   # 84 tests, about 1 s
-.venv-audio/bin/python -m unittest discover -s src/audio/tools/tests -t src/audio/tools  # 10 tests: master, alignment, voice-on-top, meters
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test "src/audio/tests/*.test.ts"   # 92 tests, about 1 s
+.venv-audio/bin/python -m unittest discover -s src/audio/tools/tests -t src/audio/tools  # 14 tests: master (also audio-only .wav and .m4a, chunked meters equal to the engine's), alignment, voice-on-top, meters
 npx tsc --noEmit
 ```
 
@@ -197,6 +203,6 @@ The TS tests cover the duck curve (timing, lookahead, gap filling, continuity, a
 - **The narration has a large DC component (voice step, `scripts/voice`; not fixed here).** Every `narration.wav` measured has a 50 ms mean of about +0.17 while Zoo speaks and exactly 0 in pauses: a whole-file mean of +0.07 to +0.10 over 7 files, with peaks of +0.87 / -0.50. It thumps at every phrase and wastes headroom. The master step's 20 Hz high-pass removes it from the delivery. A render that skips the master step keeps it, and the voice step should remove it at the source.
 - **Zoo's voice reads boxy against a music profile** (+9.6 dB "mud", 200-500 Hz over a pink tilt). A dialogue EQ (a high-pass near 70 Hz, about -3 dB around 300 Hz, a little presence) is a decision for the owner's ear and the voice step. This integration does not change his timbre.
 - **The demo's dialogue is about 2.5 LU hot.** Hitting -14 LUFS-I with 21 s of music-only content puts Zoo at -11.5 LUFS (speech-gated). In a speech-led episode the master changes almost nothing (simulated above).
-- **Preview ≠ render** for beds: the Studio plays a per-frame broadband approximation; judge renders only.
+- **Preview ≠ render** for beds: the Studio plays a per-frame broadband approximation (the whole file at the low band's gain, each loop pass restarted as its own sequence); judge renders only.
 - **Remotion internals:** see "Why PcmTrack". Check them with `tests/internals.test.ts` before any upgrade.
 - **The default duck release is the brief's 450 ms.** The engine's offline split duck (`duck.py`) uses 1.2 s, which makes the blooms in paragraph pauses gentler. Both fill pauses under 0.8 s. Pass `releaseMs: 1200` for the engine's feel.

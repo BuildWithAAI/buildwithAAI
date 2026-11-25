@@ -13,6 +13,7 @@ import {C, R} from '../theme';
 import {LAYOUTS, type BadgerPlace, type ZooPlace} from '../layout/specs';
 import {Lines, useFit} from '../text/FitText';
 import {CharacterLayer, SceneBg, entry, useDirection, type SceneCtx} from './parts';
+import {sceneCast} from './direction';
 import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 import {uiLabel} from '../i18n/ui';
@@ -25,7 +26,7 @@ export const ChartScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const pair = badgerOn && L.pair ? L.pair : null;
 	const zooPlace: ZooPlace = pair ? pair.zoo : L.solo.zoo;
 	const badgerPlace: BadgerPlace | null = badgerOn ? (pair ? pair.badger : LAYOUTS.hook[ctx.format].badger) : null;
-	const dir = useDirection(ctx, {zooView: zooPlace.view ?? 'front', badgerPlace, badgerInsert: badgerOn && !pair});
+	const dir = useDirection(ctx, sceneCast(ctx.sc, ctx.format));
 	const label = str(ctx.sc, 'label') ?? (ctx.sc.chart?.illustrative && ctx.lang !== 'en' ? uiLabel(ctx.sb, 'illustrative') : null) ?? '';
 	const chipFit = useFit(label, L.chip, ctx.lang);
 	const rp = useMemo(() => (plan?.segments ? planReveal(plan.segments, plan.startFrame, plan.data.candles.length) : null), [plan]);

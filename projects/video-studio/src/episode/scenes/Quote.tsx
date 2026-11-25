@@ -10,6 +10,7 @@ import {FRAME, LAYOUTS, type Box} from '../layout/specs';
 import {Lines, useFit} from '../text/FitText';
 import {fontFor} from '../i18n/fonts';
 import {CharacterLayer, Card, entry, SceneBg, useDirection, type SceneCtx} from './parts';
+import {sceneCast} from './direction';
 import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 import {sourceIds, UNSPACED} from '../markup';
@@ -35,7 +36,7 @@ export const QuoteScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const L = LAYOUTS.quote[ctx.format];
 	const vertical = ctx.format === 'vertical';
 	const badgerPlace = ctx.sc.badger?.present ? L.badger : null;
-	const dir = useDirection(ctx, {zooView: 'front', badgerPlace, badgerInsert: vertical});
+	const dir = useDirection(ctx, sceneCast(ctx.sc, ctx.format));
 	const quote = str(ctx.sc, 'quote') ?? '';
 	const attribution = str(ctx.sc, 'attribution') ?? '';
 	const source = quoteSource(ctx);

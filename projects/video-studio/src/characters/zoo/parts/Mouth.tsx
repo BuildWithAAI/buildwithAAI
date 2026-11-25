@@ -5,7 +5,7 @@
  * applied on top of the library shape.
  */
 import React from 'react';
-import {LINE, ZOO_COLORS} from '../../palette';
+import {BRAND, LINE, ZOO_COLORS} from '../../palette';
 import type {MouthShape} from '../../types';
 import {clamp01, line, smooth, type Pt} from '../geometry';
 import {MOUTHS, type MouthSpec} from '../mouth';
@@ -81,7 +81,9 @@ export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: Mouth
 				{spec.teeth ? (
 					<>
 						<path d={smooth(spec.teeth.shape.map(M))} fill={ZOO_COLORS.teeth} />
-						<Stroke d={line(spec.teeth.divider.map(M))} width={ZOO_LINE.fine * 0.75} />
+						{/* Round 6: the teeth parting is a thin light-grey line (brand silver), as on zoo_mouth_ee.png; rounds 1-5 drew a
+						    heavy near-black stroke. */}
+						<Stroke name="teethParting" d={line(spec.teeth.divider.map(M))} width={ZOO_LINE.fine * 0.85} color={BRAND.silver} />
 					</>
 				) : null}
 			</Clipped>

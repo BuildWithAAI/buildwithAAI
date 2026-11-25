@@ -70,6 +70,22 @@ class MasterTests(unittest.TestCase):
         self.assertAlmostEqual(20 * np.log10(kept), -0.37, delta=0.1)  # analog 2nd-order Butterworth at 20 Hz: -0.37 dB at 36.7 Hz
         np.testing.assert_array_equal(master_mix.subsonic(x, 0), x)
 
+    def test_chunked_meters_equal_the_engine_meters(self):
+        # 25 s with clicks that straddle the 10 s chunk boundaries: the chunked meters must agree with audiolib's
+        x = programme(25.0) * 0.5
+        for edge in (10 * SR - 120, 20 * SR - 5):
+            x[:, edge:edge + 240] += np.hanning(240) * 0.4
+        self.assertAlmostEqual(master_mix.integrated_lufs(x), loudness.integrated(x), delta=1e-6)
+        self.assertAlmostEqual(master_mix.true_peak_dbtp(x), loudness.true_peak(x), delta=1e-6)
+        self.assertAlmostEqual(master_mix.integrated_lufs(x[:, : 2 * SR]), loudness.integrated(x[:, : 2 * SR]), delta=1e-6)
+        from audiolib.dynamics import limit as engine_limit
+
+        ours, rep = master_mix.limit(x * 4, -1.5, release_ms=80.0)
+        theirs, rep2 = engine_limit(x * 4, -1.5, release_ms=80.0)
+        self.assertLess(float(np.abs(ours - theirs).max()), 1e-5)
+        self.assertEqual({k: rep[k] for k in ("passes", "grMaxDb", "grOver1dBPct")}, {k: rep2[k] for k in ("passes", "grMaxDb", "grOver1dBPct")})
+        self.assertAlmostEqual(rep["truePeak"], rep2["truePeak"], delta=0.002)
+
     def test_refuses_silence(self):
         with self.assertRaises(ValueError):
             master_mix.master_audio(np.zeros((2, SR)), -14.0, -1.5)
@@ -130,6 +146,53 @@ class MeterAgreementTests(unittest.TestCase):
             ours = measure_mix.level_summary(x)
         self.assertAlmostEqual(ff["integratedLufs"], ours["integratedLufs"], delta=0.1)
         self.assertAlmostEqual(ff["truePeakDbtp"], ours["truePeakDbtp"], delta=0.2)
+
+
+@unittest.skipUnless(shutil.which("ffmpeg"), "ffmpeg not installed")
+class AudioOnlyMasterTests(unittest.TestCase):
+    """Added 2026-11-25: audio-only delivery (a dub's audio track) and the platform re-encode check."""
+
+    def test_audio_only_wav_hits_the_target_and_reports_the_platform_re_encodes(self):
+        x = programme(10.0) * 0.3
+        with tempfile.TemporaryDirectory() as td:
+            src, out, rep = Path(td) / "mix.wav", Path(td) / "track.wav", Path(td) / "master.json"
+            sf.write(str(src), x.T, SR, subtype="PCM_24")
+            code = master_mix.main(["--wav", str(src), "--out", str(out), "--report", str(rep)])
+            self.assertEqual(code, 0)
+            y, sr = sf.read(str(out), always_2d=True, dtype="float64")
+            report = __import__("json").loads(rep.read_text())
+        self.assertEqual(sr, SR)
+        self.assertAlmostEqual(loudness.integrated(y.T), -14.0, delta=0.1)
+        self.assertTrue(report["audioOnly"])
+        streams = report["rounds"][-1]["streams"]
+        self.assertIn("aac128", streams)
+        self.assertIn("opus128", streams)
+        for v in streams.values():
+            if "truePeakDbtp" in v:
+                self.assertLessEqual(v["truePeakDbtp"], master_mix.STREAM_FAIL_DBTP)
+
+    def test_audio_only_m4a_is_aac_at_the_target(self):
+        from scipy.signal import butter, sosfiltfilt
+
+        # band-limited like speech and music: white noise to 24 kHz would lose about 1.4 LU to the encoder's 18 kHz cutoff
+        x = sosfiltfilt(butter(8, 12000, fs=SR, output="sos"), programme(6.0) * 0.3, axis=1)
+        with tempfile.TemporaryDirectory() as td:
+            src, out, rep = Path(td) / "mix.wav", Path(td) / "track.m4a", Path(td) / "master.json"
+            sf.write(str(src), x.T, SR, subtype="PCM_24")
+            code = master_mix.main(["--wav", str(src), "--out", str(out), "--report", str(rep), "--no-stream-check"])
+            self.assertEqual(code, 0)
+            info = __import__("subprocess").run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_name,sample_rate,channels", "-of", "csv=p=0", str(out)],
+                                                capture_output=True, text=True, check=True).stdout.strip()
+            report = __import__("json").loads(rep.read_text())
+        self.assertEqual(info, "aac,48000,2")
+        self.assertAlmostEqual(report["rounds"][-1]["delivered"]["integratedLufs"], -14.0, delta=0.15)
+        self.assertLessEqual(report["rounds"][-1]["delivered"]["truePeakDbtp"], -1.0)
+
+    def test_audio_only_refuses_a_video_extension(self):
+        with tempfile.TemporaryDirectory() as td:
+            src = Path(td) / "mix.wav"
+            sf.write(str(src), programme(2.0).T * 0.3, SR, subtype="PCM_24")
+            self.assertEqual(master_mix.main(["--wav", str(src), "--out", str(Path(td) / "x.mp4")]), 2)
 
 
 class SectionLoudnessTests(unittest.TestCase):

@@ -268,16 +268,18 @@ export const ZooHeadDev: React.FC<React.ComponentProps<typeof ZooRig>> = (p) => 
  * High-resolution zoom on any world box of a view (repair round 3: hands and shoes are compared against the 2x crops at
  * 8-10 px per unit). The box's top-left maps to the image's top-left at min(1200 / w, 1200 / h) px per unit.
  */
-export const ZooZoomDev: React.FC<{view?: ZooView; box: [number, number, number, number]; lineScale?: number; pose?: ZooPose; poseAmount?: number}> = ({
-	view = 'front',
-	box,
-	lineScale = 1,
-	pose,
-	poseAmount,
-}) => (
+export const ZooZoomDev: React.FC<{
+	view?: ZooView;
+	box: [number, number, number, number];
+	lineScale?: number;
+	pose?: ZooPose;
+	poseAmount?: number;
+	expression?: Expression;
+	mouth?: MouthShape;
+}> = ({view = 'front', box, lineScale = 1, pose, poseAmount, expression, mouth}) => (
 	<Bg>
 		<svg width="100%" height="100%" viewBox={box.join(' ')} preserveAspectRatio="xMinYMin meet">
-			<ZooRig view={view} pose={pose} poseAmount={poseAmount} lineScale={lineScale} breathe={false} />
+			<ZooRig view={view} pose={pose} poseAmount={poseAmount} lineScale={lineScale} expression={expression} mouth={mouth} breathe={false} />
 		</svg>
 	</Bg>
 );

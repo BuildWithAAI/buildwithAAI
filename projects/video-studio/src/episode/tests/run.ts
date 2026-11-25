@@ -3,3 +3,4 @@
 import './fit.test.ts';
 import './engine.test.ts';
 import './review.test.ts';
+import './audio.test.ts';

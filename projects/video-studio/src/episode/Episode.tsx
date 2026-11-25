@@ -2,16 +2,25 @@
  * Episode (1920x1080) and EpisodeShort (1080x1920): one component, two formats. calculateMetadata (compositions.tsx)
  * has already loaded, validated and resolved everything into props.resolved.
  *  - Fonts block the render until the language's faces are loaded; text is measured only after that.
- *  - Each scene is a Sequence at its own audio position. Transitions overlap VISUALS only and run in silence
+ *  - Each scene is a Sequence at its own audio position. Transitions overlap VISUALS only and are VOICE-FREE
  *    (timing.ts): the incoming scene's visuals may start `preroll` frames early, held on its frame 0, inside the
- *    outgoing scene's silent tail; the outgoing scene may render `tail` frames past its end. Audio never moves.
+ *    outgoing scene's silent tail; the outgoing scene may render `tail` frames past its end. Audio never moves. Since
+ *    2026-11-25 the music bed is continuous through transitions, and no effect plays in one unless the storyboard asks
+ *    (a wipe's short whoosh; a slide's soft air only with sfx.transition): audio/plan.ts, measured by the gate.
  *  - A slide is a short push with a fade; a wipe's edge carries motion blur (ART_GUIDE MO16; timing.ts).
  *  - Episode: ONE <Audio> plays narration.wav. Short: each scene plays its own window of narration.wav (trimBefore =
  *    the scene's frame in the full episode), retimed to start at 0.
- *  - A mock timeline is silent and badged; an unreviewed translation is badged.
+ *  - Sound (2026-11-25): <EpisodeAudio> plays resolved.audio, the plan made in calculateMetadata (beds, sting, effects).
+ *    The opt-in brand sting draws the branding kit's ZooraSting over its slot. audioStems (measurement renders) draws
+ *    no picture at all and plays only the stems asked for.
+ *  - A mock timeline is silent and badged; an unreviewed translation is badged; the Studio preview's approximate bed
+ *    audio is badged (only renders are judged).
  */
 import React, {useEffect, useMemo, useState} from 'react';
-import {AbsoluteFill, Freeze, Html5Audio, Sequence, staticFile, useCurrentFrame, useDelayRender, useVideoConfig} from 'remotion';
+import {AbsoluteFill, Freeze, Html5Audio, Sequence, staticFile, useCurrentFrame, useDelayRender, useRemotionEnvironment, useVideoConfig} from 'remotion';
+import {ZooraSting} from '../branding/kit';
+import {EpisodeAudio} from './audio/EpisodeAudio';
+import type {AudioStem} from './audio/plan';
 import type {SceneType} from './types';
 import type {EpisodeProps, ResolvedEpisode} from './load';
 import {loadLangFonts} from './i18n/fonts';
@@ -103,10 +112,47 @@ const SceneView: React.FC<{r: ResolvedEpisode; span: SceneSpan}> = ({r, span}) =
 	);
 };
 
+/** The narration as the render plays it: one track (Episode), or each Short scene's own window of it. */
+const Narration: React.FC<{r: ResolvedEpisode; spans: SceneSpan[]}> = ({r, spans}) => {
+	if (!r.narration) return null;
+	if (r.format === 'landscape') return <Html5Audio src={staticFile(r.narration)} name="narration" />;
+	return (
+		<>
+			{spans.map((s) => (
+				<Sequence key={`a-${s.id}`} from={s.from} durationInFrames={s.durationInFrames} name={`audio ${s.id}`}>
+					<Html5Audio src={staticFile(r.narration as string)} trimBefore={s.srcFrom} />
+				</Sequence>
+			))}
+		</>
+	);
+};
+
+/** Picture spans: the plan may force a cut (the scene after the brand sting enters on a cut). */
+const useSpans = (r: ResolvedEpisode): SceneSpan[] => {
+	const {fps} = useVideoConfig();
+	return useMemo(() => {
+		if (r.format === 'vertical') return shortSpans(r.storyboard, r.timeline, r.shortId as string, fps);
+		const forceCut = r.audio.picture.forceCut;
+		return episodeSpans(r.storyboard, r.timeline, fps, 'landscape', forceCut.length ? {forceCut: new Set(forceCut)} : {});
+	}, [r, fps]);
+};
+
+/** A measurement render (src/episode/tools/render.sh): only the audio stems asked for, no picture, no fonts. */
+const StemsOnly: React.FC<{r: ResolvedEpisode; stems: readonly AudioStem[]}> = ({r, stems}) => {
+	const spans = useSpans(r);
+	return (
+		<AbsoluteFill style={{backgroundColor: C.bg}}>
+			{stems.includes('voice') ? <Narration r={r} spans={spans} /> : null}
+			<EpisodeAudio plan={r.audio} stems={stems} />
+		</AbsoluteFill>
+	);
+};
+
 const EpisodeBody: React.FC<{r: ResolvedEpisode}> = ({r}) => {
 	const {fps} = useVideoConfig();
+	const env = useRemotionEnvironment();
 	const sb = r.storyboard;
-	const spans = useMemo(() => (r.format === 'vertical' ? shortSpans(sb, r.timeline, r.shortId as string, fps) : episodeSpans(sb, r.timeline, fps)), [r, sb, fps]);
+	const spans = useSpans(r);
 	// caption pages are clipped to their scene: the last page of a scene never runs over the next shot
 	const track = useMemo(
 		() =>
@@ -150,22 +196,31 @@ const EpisodeBody: React.FC<{r: ResolvedEpisode}> = ({r}) => {
 					<FictionCard format={r.format} sb={sb} />
 				</Sequence>
 			) : null}
+			{r.audio.picture.sting ? (
+				// the opt-in brand sting: the branding kit's card over its slot (its jingle plays in EpisodeAudio, on the plan)
+				<Sequence from={r.audio.picture.sting.from} durationInFrames={r.audio.picture.sting.durationInFrames} name="brand sting">
+					<ZooraSting tagline={r.audio.picture.sting.tagline ?? undefined} />
+				</Sequence>
+			) : null}
 			{r.captions ? <Captions track={track} format={r.format} lang={sb.lang} fps={fps} /> : null}
-			<ReviewBadges format={r.format} mock={!!r.timeline.mock} machine={machine} />
-			{r.narration && r.format === 'landscape' ? <Html5Audio src={staticFile(r.narration)} name="narration" /> : null}
-			{r.narration && r.format === 'vertical'
-				? spans.map((s) => (
-						<Sequence key={`a-${s.id}`} from={s.from} durationInFrames={s.durationInFrames} name={`audio ${s.id}`}>
-							<Html5Audio src={staticFile(r.narration as string)} trimBefore={s.srcFrom} />
-						</Sequence>
-					))
-				: null}
+			<ReviewBadges format={r.format} mock={!!r.timeline.mock} machine={machine} previewAudio={!env.isRendering && r.audio.beds.length > 0} />
+			<Narration r={r} spans={spans} />
+			<EpisodeAudio plan={r.audio} stems={null} />
 		</AbsoluteFill>
 	);
 };
 
 /** Fonts gate: blocks the render until the language's fonts are loaded, then measures and draws. */
 export const EpisodeView: React.FC<EpisodeProps> = (props) => {
+	if (props.audioStems && props.audioStems.length) {
+		// a measurement render draws nothing, so it needs no fonts (critic F16: it used to render every scene)
+		if (!props.resolved) throw new Error('Episode: props.resolved is missing (calculateMetadata did not run)');
+		return <StemsOnly r={props.resolved} stems={props.audioStems} />;
+	}
+	return <EpisodeFull {...props} />;
+};
+
+const EpisodeFull: React.FC<EpisodeProps> = (props) => {
 	const r = props.resolved;
 	const lang = r?.storyboard.lang ?? props.lang;
 	const {delayRender, continueRender, cancelRender} = useDelayRender();

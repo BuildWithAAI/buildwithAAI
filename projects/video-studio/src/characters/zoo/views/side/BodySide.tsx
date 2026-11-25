@@ -133,22 +133,28 @@ const LEG_CREASE = line([[-6, -404], [-12, -320], [-18, -240], [-24, -160], [-28
 // front face at x ~73-74 from y -22 down to the sole (front edge 59 / 72 / 75 at y -30 / -22 / -15 against the sheet's
 // 59-61 / 72-73 / 75-76). Round 2's long low toe ran ~6 u further forward at every height (73 / 79 / 81) and its top
 // sat 3-6 u above the sheet's, so the sneaker read as a slipper.
+// Repair round 6 (R5 review): the toe runs down into the sole as ONE convex curve (rounding into the flat bottom ~5 u behind
+// the toe front, as on zoo_turn_side.png). Round 3-5 ended the toe at (70.4, -1.75) straight before a 70 u flat bottom, so the
+// spline's tangent there overshot 2.8 u past the toe as a spur under it, read as a separate lip; extra bottom points keep the
+// heel corner and the flat sole from overshooting too.
 const SHOE: Pt[] = [
 	[-71, -42], [-60, -40], [-45, -39], [-30, -41.4], [-16, -46.4], [-4, -53], [4, -55.4], [12, -49.8], [20, -43.4], [30, -37.4],
-	[40, -32.6], [48, -30.8], [56, -29.4], [62, -27.8], [66.4, -25.6], [70, -22], [72.6, -16.8], [73.8, -10.8], [73.4, -5.4],
-	[70.4, -1.75], [0, -1.75], [-66, -1.75], [-71.4, -6], [-72.4, -22], [-71.6, -34],
+	[40, -32.6], [48, -30.8], [56, -29.4], [62, -27.8], [66.4, -25.6], [70, -22], [72.6, -16.8], [73.8, -11.2], [73.6, -7.2],
+	[72.5, -4.3], [70.2, -2.3], [66.4, -1.75], [58, -1.75], [30, -1.75], [-30, -1.75], [-58, -1.75], [-65.2, -1.85], [-69.4, -3],
+	[-71.6, -5.6], [-72.4, -10], [-72.4, -22], [-71.6, -34],
 ];
-const SHOE_SOLE: Pt[] = [[-76, -12.4], [0, -11.8], [76, -12.6], [76, 2], [-76, 2]];
+/** The sole band under the midsole line, in the off-white (sneakerSole, ZOO-C8): ~8.5 u to the outline (sheet ~8.6; round 5: 6.8). */
+const SHOE_SOLE: Pt[] = [[-76, -14], [0, -13.6], [76, -14.2], [76, 2], [-76, 2]];
 /** Line art in the soft sneakerLine grey (repair round 4, ZOO-C7: the sheet's shoe lines are mid-grey, not near-black): the
  * midsole, three lace crossings on the instep, the toe-cap seam and the heel-counter seam. No shadow band (round 4: the
  * sheet's uppers are flat off-white). */
 const SHOE_LINES: Pt[][] = [
-	[[-71.4, -12.2], [0, -11.6], [72, -12.4]], // midsole
+	[[-71.4, -13.6], [0, -13.3], [72, -13.8]], // midsole
 	[[3, -47.6], [7.4, -45.2]], // four lace dashes down the instep (zoo_turn_side.png)
 	[[10, -43.4], [14.4, -41]],
 	[[17, -39.2], [21.4, -36.8]],
 	[[24, -35], [28.4, -32.8]],
-	[[31, -31.6], [29, -24], [27, -17], [26.2, -12.4]], // the toe cap's rear seam (round 3: a horizontal toe line and a heel line the sheet does not draw)
+	[[31, -31.6], [29, -24], [27.2, -18.4], [26.6, -13.6]], // the toe cap's rear seam (round 3: a horizontal toe line and a heel line the sheet does not draw)
 ];
 
 export const LegSide: React.FC = () => {

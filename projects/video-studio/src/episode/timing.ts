@@ -1,9 +1,12 @@
 /**
  * Scene spans on the frame grid (pure). Audio is never moved: every scene starts on the exact frame of its own audio
- * (timeline.startMs). A transition only OVERLAPS VISUALS, and it runs in SILENCE:
+ * (timeline.startMs). A transition only OVERLAPS VISUALS, and it is VOICE-FREE:
  *  - it ends no later than the incoming scene's first voiced frame (ZOO is never heard while his face is still fading
  *    or sliding in), and
  *  - it starts no earlier than the outgoing scene's last voiced frame (+2 f for the decay of the last sound).
+ * Since 2026-11-25 (episode sound) "voice-free" replaces "silent": the music bed plays on through every transition
+ * (src/episode/audio/plan.ts), and no effect plays in one unless the storyboard asks for it (a wipe's short whoosh, a
+ * slide's soft air with sfx.transition). The gate measures every transition window on the voice stem (under -60 dBFS).
  * The transition first uses the outgoing scene's silent tail: the incoming scene's visuals start `preroll` frames
  * BEFORE its audio frame, held on its own frame 0 (mouth closed, nothing revealed yet). Whatever the transition still
  * needs runs in the incoming scene's leading silence, with the outgoing scene rendered `tail` frames past its end under
@@ -64,10 +67,13 @@ const spanFor = (s: TimelineScene, fps: number) => {
 
 type Raw = Omit<SceneSpan, 'transition' | 'transitionFrames' | 'preroll' | 'tail'> & {want: TransitionKind; silence: {lead: number; tail: number}};
 
-const withTransitions = (raw: Raw[]): SceneSpan[] => {
+/** Span options (added 2026-11-25, episode audio): scenes that must enter on a hard cut (the scene after the brand sting). */
+export type SpanOptions = {forceCut?: ReadonlySet<string>};
+
+const withTransitions = (raw: Raw[], opts: SpanOptions = {}): SceneSpan[] => {
 	const spans: SceneSpan[] = raw.map((r, k) => {
 		const base = {index: r.index, id: r.id, type: r.type, from: r.from, durationInFrames: r.durationInFrames, srcFrom: r.srcFrom, tail: 0};
-		const kind: TransitionKind = k === 0 ? 'cut' : r.want;
+		const kind: TransitionKind = k === 0 || opts.forceCut?.has(r.id) ? 'cut' : r.want;
 		if (kind === 'cut') return {...base, transition: 'cut', transitionFrames: 0, preroll: 0};
 		const prev = raw[k - 1];
 		// never longer than half of either neighbour, so a short scene is never mostly transition
@@ -95,13 +101,14 @@ export const defaultTransition = (prev: StoryboardScene | undefined, sc: Storybo
 };
 
 /** The full episode: one span per scene at its own audio position. */
-export const episodeSpans = (sb: Storyboard, tl: Timeline, fps: number, format: Format = 'landscape'): SceneSpan[] =>
+export const episodeSpans = (sb: Storyboard, tl: Timeline, fps: number, format: Format = 'landscape', opts: SpanOptions = {}): SceneSpan[] =>
 	withTransitions(
 		tl.scenes.map((s, index) => {
 			const {from, dur} = spanFor(s, fps);
 			const sc = sb.scenes[index];
 			return {index, id: s.id, type: sc.type, from, durationInFrames: dur, srcFrom: from, want: defaultTransition(sb.scenes[index - 1], sc, format), silence: silentEdges(s, dur)};
 		}),
+		opts,
 	);
 
 export const episodeFrames = (tl: Timeline, fps: number): number => Math.max(1, msToFrame(tl.totalMs, fps));

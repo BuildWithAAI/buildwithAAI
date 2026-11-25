@@ -6,10 +6,16 @@ Renders a storyboard plus its voice timeline into a 1920×1080 episode and 1080�
 
 | What | Command |
 | --- | --- |
-| Episode | `npx remotion render src/episode/index.ts Episode out/episodes/<slug>/<lang>/episode.mp4 --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en"}'` |
-| Short | `npx remotion render src/episode/index.ts EpisodeShort out/episodes/<slug>/<lang>/<shortId>.mp4 --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en","shortId":"<id>"}'` |
+| Episode or Short, with sound (deliveries) | `src/episode/tools/render.sh <channel>/<slug> --lang <lang> [--short <id>] [--bundle <dir>] --out out/episodes/<slug>/<lang>/episode.mp4`: plan, picture + lossless mix, voice stem, 2-pass master, gate (`docs/EPISODE_ENGINE.md` §4, §12). Exit 0 delivered and passed, 1 gate or master failed, 2 bad input |
+| A dub's audio track (`--fit-to` voice) | `src/episode/tools/render.sh <channel>/<slug> --lang es --audio-track [--bundle <dir>] --out <path>.m4a` |
+| The sound plan and cue sheet only | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/dev/audioPlan.ts <channel>/<slug> --lang <lang> [--short <id>] [--out plan.json] [--cues cues.md] [--variant '<json>'] [--check plan.json]` (prints the plan's hash last; `--check` exit 1 when the files on disk now give another plan) |
+| The gate on a render | `.venv-audio/bin/python src/episode/tools/audio_check.py --plan P.json --mix M.wav --voice V.wav [--picture X.mp4] [--delivered D.mp4 --master D.master.json] --report R.json` (exit 0 pass, 1 fail, 2 bad input) |
+| Offline mixes from a plan (calibration, A/B clips) | `.venv-audio/bin/python src/episode/tools/audio_sim.py --plan P.json [--duck-from Q.json] [--master --wav-out x.wav] [--json out.json]` |
+| The story beds' level table | `.venv-audio/bin/python src/episode/tools/bed_levels.py [--check]` (re-run after the composer re-renders a story bed) |
+| Episode, picture and plain mix (no master, no gate) | `npx remotion render src/episode/index.ts Episode out/episodes/<slug>/<lang>/episode.mp4 --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en"}'` |
+| Short, the same | `npx remotion render src/episode/index.ts EpisodeShort out/episodes/<slug>/<lang>/<shortId>.mp4 --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en","shortId":"<id>"}'` |
 | One frame | `npx remotion still src/episode/index.ts Episode out/x.png --frame=120 --props=...` |
-| Tests | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/tests/run.ts` |
+| Tests | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/tests/run.ts` (engine and sound) and `.venv-audio/bin/python -m unittest discover -s src/episode/tools/tests -t src/episode/tools` (the gate: its gain-law port against the TypeScript, the null test's sensitivity) |
 | Frames worth inspecting | `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/dev/sampleFrames.ts <storyboard.json> [landscape\|vertical] [--props out.json]` |
 | Typecheck | `npx tsc --noEmit` |
 
@@ -20,12 +26,14 @@ Renders a storyboard plus its voice timeline into a 1920×1080 episode and 1080�
 
 ## Props
 
-`{channel, slug, lang, shortId?, captions?, timelineOverride?}`
+`{channel, slug, lang, shortId?, captions?, timelineOverride?, audioStems?, audioPlanHash?}`
 
 - `lang`: `en | es | pt-br | hi | it | zh | ja`. French is rejected (Kokoro has no male French voice).
 - `captions`: burned-in captions. Default **off** for `Episode` (YouTube carries subtitles; PROJECT_INSTRUCTIONS: captions only when requested), **on** for `EpisodeShort`.
 - `shortId`: which `storyboard.shorts[]` entry; default the first.
 - `timelineOverride`: a `Timeline` object used instead of `timeline.json` (tests, mock renders).
+- `audioStems` (measurement renders only): play only these of `voice`, `music` (the beds and the sting) and `sfx`, with a blank picture and no fonts (render.sh's voice stem is `["voice"]`).
+- `audioPlanHash`: the hash the audio-plan CLI printed; the render stops before frame 0 when its own plan hashes differently (render.sh passes it; the gate then rebuilds the music from the same plan).
 
 `calculateMetadata` loads `content/<channel>/<slug>/storyboard.json` (en) or `storyboard.<lang>.json`, then the timeline, validates both (every error is listed before frame 0), plans the charts, and sets the duration from `timeline.totalMs` (Short: the sum of its scenes).
 
@@ -36,6 +44,7 @@ Renders a storyboard plus its voice timeline into a 1920×1080 episode and 1080�
 - A scene with no `transitionIn` enters on a hard cut, except where that cut would be a landscape **jump cut** (ZOO on the same side, nearly the same size, moved under 300 px: `layout/faces.ts isJumpCut`), which gets a short fade. An explicit `transitionIn` always wins.
 - Episode: **one** `<Audio>` plays `timeline.narration` (default `generated/<channel>/<slug>/<lang>/narration.wav`).
 - Short: its scenes only, retimed from frame 0; each plays its own window of the same `narration.wav` (`trimBefore` = the scene's frame in the full episode).
+- Music, the brand sting and the effects come from the **sound plan** (`audio/plan.ts`, below), computed in `calculateMetadata` (`ResolvedEpisode.audio`) and played by `audio/EpisodeAudio.tsx` through `src/audio`'s `MusicBed`, `Stinger` and `SfxPlay`. Since 2026-11-25 a transition is **voice-free**, not silent: the bed plays through it (bed changes themselves happen only in those voice-free windows).
 - ZOO's mouth is `timeline.mouth[frame]` of the scene; outside the track it is `closed`.
 
 ## Scene templates and their `onScreen` keys
@@ -70,10 +79,24 @@ Any scene: `zoo: {present, expression, pose, view}`, `badger: {present, reaction
 - A storyboard whose `lang` differs from `sourceLang` renders with a **MACHINE TRANSLATION · needs native review** badge until `translation.status` is `native-reviewed`.
 - Known limit: the chart's own header, footer and callout text (src/charts, read-only here) are English; non-English renders add the localized illustrative chip under the panel.
 
+## Sound (2026-11-25)
+
+The whole design, the gate and the owner's listening steps: `docs/EPISODE_ENGINE.md` §12. In short:
+
+- `audio/plan.ts` `planEpisodeAudio(input)` is pure: storyboard + timeline (+ the master's for a dub) + the music and SFX manifests + `audio/bedLevels.json` → `EpisodeAudioPlan` (plain JSON, SHA-256 `hash` over its canonical form, `audio/hash.ts`). The render (`load.ts`), the CLI (`dev/audioPlan.ts`, inputs from disk via `node/audioInputs.ts`) and the tests all call it.
+- Moods by act (`scene.bed` from here on; regions of 8+ bars, one change a minute at most), every bed trimmed to the same loudness under the voice (`BED_UNDER_VOICE`), one musical clock offset by a 4-bar phrase, bed changes only in the voice-free window between scenes (equal-power, or staggered when the bars clash: `audio/moods.ts` `HARMONY`), a 2/12/4 dB band-split duck held through short pauses, scene changes and Badger's reaction beats, rests after 2 loops, the end screen's music-up on a bar line, sparing effects in the gaps of the speech, an opt-in brand sting. Every number is in `audio/constants.ts`.
+- `audio/cueSheet.ts` writes the owner's cue sheet (every change with its timecode, the breaths to judge, the effects placed and left out).
+- `tools/render.sh` runs the 2-pass delivery; `tools/audio_check.py` is the gate (the null test rebuilds the music, stingers and effects from the plan with a Python port of the gain law, proved against the plan's `gainProbe` first); `tools/audio_sim.py` mixes offline from a plan.
+- The Studio preview plays the beds through a per-frame broadband approximation (`PcmPreview`): judge renders only.
+
 ## Contract additions (types.ts; all optional)
 
 | Field | Meaning |
 | --- | --- |
+| `StoryboardScene.bed` | 2026-11-25. The music from this scene on: `curious`, `tension`, `ominous`, `resolve` or `none`; read from the master storyboard for every language. End screen: only `none`. |
+| `StoryboardScene.sfx` | 2026-11-25. `{transition?, items?, accent?}`: a wipe's whoosh (default on; a slide's only when true), list pops in speech gaps (default on), the CTA click (default on) and the chart rug's tick (default off). |
+| `Storyboard.shorts[].bed` | 2026-11-25. One bed for the whole Short (default: the mood of its first scene). |
+| `Storyboard.music` | 2026-11-25. `{offset?: 0-4, sting?: 'after-hook', stingTagline?}`: the clock's phrase, the opt-in brand sting, the sting card's tagline in this file's language. |
 | `StoryboardScene.showSources` | Show the sources card for this scene's `[src:id]` claims. Default: on when the narration cites a source, except quotes. |
 | `Storyboard.ui` (`UiLabels`) | Localized UI labels (see above). |
 | `Storyboard.translation` | `{status: 'machine' \| 'native-reviewed', reviewer?, date?}` of this file. |
@@ -96,4 +119,6 @@ Internal interfaces added 2026-11-24 (review fixes; not contract fields): `Scene
 
 ## Files
 
-`compositions.tsx` (Episode, EpisodeShort) · `Episode.tsx` (fonts gate, sequences, transitions, audio, captions, badges) · `load.ts` (storyboard registry, timeline, chart planning) · `validate.ts` · `timing.ts` · `cues.ts` · `markup.ts` (port of the voice step's markup) · `scenes/` (seven templates, overlays, sources line timing and geometry, insert, direction) · `perf/` (ZOO, Badger) · `layout/` (specs, block geometry, faces) · `text/` (fit, measure, FitText, phrasing) · `captions/` · `i18n/` (fonts, UI labels) · `chart/plan.ts` · `node/claimGate.ts` (Node tools only) · `dev/` (mock timeline, fixtures, sample frames) · `tests/` (`engine.test.ts`, `fit.test.ts`, `review.test.ts`).
+`compositions.tsx` (Episode, EpisodeShort) · `Episode.tsx` (fonts gate, sequences, transitions, narration, sound, sting, captions, badges; `StemsOnly` for measurement renders) · `load.ts` (storyboard registry, timeline, chart planning, the sound plan and its hash check) · `validate.ts` · `timing.ts` · `cues.ts` · `markup.ts` (port of the voice step's markup) · `scenes/` (seven templates, overlays, sources line timing and geometry, insert, direction and `sceneCast`) · `perf/` (ZOO, Badger) · `layout/` (specs, block geometry, faces) · `text/` (fit, measure, FitText, phrasing) · `captions/` · `i18n/` (fonts, UI labels) · `chart/plan.ts` · `audio/` (`constants.ts`, `moods.ts`, `levels.ts` + `bedLevels.json`, `plan.ts`, `hash.ts`, `cueSheet.ts`, `EpisodeAudio.tsx`) · `node/claimGate.ts`, `node/audioInputs.ts` (Node tools only) · `dev/` (mock timeline, fixtures, sample frames, `audioPlan.ts`) · `tools/` (`render.sh`, `audio_check.py`, `audio_sim.py`, `bed_levels.py`) · `tests/` (`engine.test.ts`, `fit.test.ts`, `review.test.ts`, `audio.test.ts`).
+
+Internal interfaces added 2026-11-25 (sound; not contract fields): `sceneCast` (scenes/direction.ts: the cast every template passes to `useDirection`, so the planner sees the same reaction beats the scenes draw); `SpanOptions.forceCut` and `episodeSpans`'s options argument (timing.ts: the scene after the sting cuts); `ResolvedEpisode.audio`, `EpisodeProps.audioStems` / `audioPlanHash`, `chartPlans` (load.ts); `EN_STING_TAGLINE` (i18n/ui.ts); `ReviewBadges` `previewAudio` (scenes/Overlays.tsx).

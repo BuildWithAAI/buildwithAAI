@@ -49,6 +49,13 @@ export const closeLineScale = (pxPerUnit: number): number => {
 /** The proof's pair framing: 0.88 px per unit gives a 3.08 px outline, inside SL5, so 1. */
 export const PAIR_LINE_SCALE = fullLineScale(PAIR_SCALE);
 
+/**
+ * BadgerSheet's bust row (collar line y, scale in px per unit, first bust x, gap). Round 5: BADGER-D55 drew the front
+ * head (and the bust neck with it) 10% smaller, so the row is drawn 1/0.90 larger (1.42 -> 1.58) to keep round 4's
+ * on-screen bust size; its close-up line weight stays the 3 px floor (closeLineScale).
+ */
+export const BADGER_SHEET_BUSTS = {y: 990, scale: 1.58, x0: 290, gap: 335} as const;
+
 /** Easing curves (cubic bezier) used by the proof animation. */
 export const EASE = {
 	inOut: Easing.bezier(0.45, 0, 0.25, 1),

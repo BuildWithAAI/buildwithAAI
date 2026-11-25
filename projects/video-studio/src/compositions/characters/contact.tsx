@@ -7,7 +7,8 @@
  * Footprints are world units relative to the character's ground point (x = centre offset, rx/ry = radii): the outermost
  * sole, paw, wheel or leg pixels in the 8 units above the ground line, plus a 10-unit margin at each end. Measured on the
  * round-2 rigs and re-measured on the round-4 rigs (each figure alone at scale 1; integration round 4 updated the Zoo
- * side and back views and Badger's 3/4, sit, lie, walk and look-up entries, which had drifted 2-5 units). They agree with
+ * side and back views and Badger's 3/4, sit, lie, walk and look-up entries, which had drifted 2-5 units; integration round 5
+ * re-checked every entry on the round-5 rigs: all within 1.5 units, unchanged). They agree with
  * the episode engine's ellipses (src/episode/scenes/parts.tsx) to within about 10 units.
  */
 import React from 'react';

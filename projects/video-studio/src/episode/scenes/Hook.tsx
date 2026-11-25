@@ -10,6 +10,7 @@ import {FRAME, LAYOUTS, type Box} from '../layout/specs';
 import {hookBlock, RULE_H, TITLE_HEADROOM_EM, titleLineTops} from '../layout/blocks';
 import {Lines, useFit} from '../text/FitText';
 import {CharacterLayer, entry, RiseClip, SceneBg, useDirection, type SceneCtx} from './parts';
+import {sceneCast} from './direction';
 import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 
@@ -18,7 +19,7 @@ export const HookScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const L = LAYOUTS.hook[ctx.format];
 	const vertical = ctx.format === 'vertical';
 	const badgerPlace = ctx.sc.badger?.present ? L.badger : null;
-	const dir = useDirection(ctx, {zooView: 'front', badgerPlace, badgerInsert: vertical});
+	const dir = useDirection(ctx, sceneCast(ctx.sc, ctx.format));
 	const kicker = str(ctx.sc, 'kicker') ?? '';
 	const subtitle = (L.subtitle && str(ctx.sc, 'subtitle')) || '';
 	const kFit = useFit(kicker, L.kicker, ctx.lang);

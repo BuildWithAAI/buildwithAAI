@@ -51,19 +51,26 @@ const BREAK_CREASE: Pt[] = [[40.4, -70.6], [47, -73.6], [54.6, -77], [60.4, -78.
  */
 const SHOE: Pt[] = [
 	[30.6, -46], [31.4, -60], [44, -66], [60, -67], [73, -64.6], [77.8, -58], [79.2, -50], [80.6, -46], [82.6, -42], [84.8, -38],
-	[87.2, -34], [90, -30], [94.2, -26], [100, -22], [104.6, -18], [107.4, -14], [108.8, -10], [109.4, -5.6], [108.2, -2.4], [103, -1.75],
-	[60, -1.75], [32, -1.75], [28.6, -3.4], [27.8, -8], [28.2, -16], [28.6, -26], [29.2, -34], [30, -40],
+	[87.2, -34], [90, -30], [94.2, -26], [100, -22], [104.6, -18], [107.4, -14], [108.8, -10], [109.4, -5.6], [108.2, -2.4],
+	// round 6: extra points along the flat bottom keep the spline from overshooting at the toe and the inner corner (round 4-5
+	// tangents ran 2-3 u past both bottom corners and back, as small hooks in the outline)
+	[105.2, -1.8], [100, -1.75], [88, -1.75], [60, -1.75], [36, -1.75], [31.4, -1.9], [28.6, -3.4], [27.8, -8], [28.2, -16], [28.6, -26],
+	[29.2, -34], [30, -40],
 ];
-/** The sole below the midsole line (sneakerSole: the sneaker's shadow tone under the off-white upper, ZOO-C8). */
-const SOLE: Pt[] = [[112, -9.4], [60, -9.2], [22, -9.4], [22, 2], [112, 2]];
+/**
+ * The sole below the midsole line (sneakerSole: the off-white, as light as the upper on the sheet; ZOO-C8 as corrected in round
+ * 6). Repair round 6 (R5 review): the band is ~7 u between the midsole stroke and the outline (the sheet's ~7 u at world x
+ * 70-90; round 5: 4.5 u), so the midsole line sits 2.6 u higher.
+ */
+const SOLE: Pt[] = [[112, -12], [60, -11.8], [22, -12], [22, 2], [112, 2]];
 /**
  * Line art in ZOO_COLORS.sneakerLine (soft mid-grey, as on the sheet; round 3 drew them near-black, which read as a
  * canvas high-top): the midsole line, the vamp/toe-cap seam that arches from the inner sole over the toe box and back
  * down near the toe, and the lace panel on the instep: its inner edge and three lace bars, each lower bar set further
  * toward the outward-turned toe.
  */
-const MIDSOLE: Pt[] = [[26, -9.2], [60, -9.1], [111, -9.6]];
-const VAMP: Pt[] = [[27.4, -11.4], [34, -14.6], [41.4, -19.4], [49.6, -23.8], [59.6, -26.2], [70.6, -26.4], [80.4, -24.8], [89.4, -21.2], [96.4, -16.4], [101.6, -10]];
+const MIDSOLE: Pt[] = [[26, -11.8], [60, -11.7], [111, -12.2]];
+const VAMP: Pt[] = [[27.6, -13.8], [34, -16.6], [41.4, -20.6], [49.6, -24.4], [59.6, -26.6], [70.6, -26.8], [80.4, -25.4], [89.4, -22.4], [96.4, -18.2], [101.4, -12.8]];
 const LACE_EDGE: Pt[] = [[47.2, -48.6], [49.6, -38.4], [53.2, -28.6]];
 const LACES: Pt[][] = [
 	[[47.8, -46.4], [61, -47], [74.6, -45.4]],

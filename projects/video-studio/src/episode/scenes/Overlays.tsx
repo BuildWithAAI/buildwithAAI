@@ -167,9 +167,14 @@ export const SourcesCard: React.FC<{format: Format; sb: Storyboard; sc: Storyboa
 };
 
 /** Owner-facing markers (English on purpose). Never publish a render that shows one. */
-export const ReviewBadges: React.FC<{format: Format; mock: boolean; machine: boolean}> = ({format, mock, machine}) => {
+export const ReviewBadges: React.FC<{format: Format; mock: boolean; machine: boolean; previewAudio?: boolean}> = ({format, mock, machine, previewAudio}) => {
 	const area = BADGE_AREA[format];
-	const items = [mock ? 'SILENT PREVIEW · mock timing · not lip-synced' : null, machine ? 'MACHINE TRANSLATION · needs native review' : null].filter((x): x is string => !!x);
+	// previewAudio (added 2026-11-25): the Studio plays every bed through a broadband approximation of its duck; only renders are judged
+	const items = [
+		mock ? 'SILENT PREVIEW · mock timing · not lip-synced' : null,
+		machine ? 'MACHINE TRANSLATION · needs native review' : null,
+		previewAudio ? 'PREVIEW AUDIO APPROXIMATE · judge renders only' : null,
+	].filter((x): x is string => !!x);
 	if (!items.length) return null;
 	const f = fontFor('en', 'body', 800);
 	const size = format === 'vertical' ? 24 : 26;

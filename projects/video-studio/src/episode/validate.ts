@@ -22,7 +22,11 @@ export const MIN_VIDEO_FOR_END_SCREEN_MS = 25_000;
 
 const SLUG = /^[A-Za-z0-9_][A-Za-z0-9_-]{0,80}$/;
 
-export type EpisodeInput = {channel?: unknown; slug?: unknown; lang?: unknown; shortId?: unknown; captions?: unknown};
+export type EpisodeInput = {channel?: unknown; slug?: unknown; lang?: unknown; shortId?: unknown; captions?: unknown; audioStems?: unknown; audioPlanHash?: unknown};
+
+/** Added 2026-11-25 (episode audio): the story beds a scene's `bed` may name, and the audio stems a measurement render may ask for. */
+export const BEDS = ['curious', 'tension', 'ominous', 'resolve', 'none'] as const;
+export const STEMS = ['voice', 'music', 'sfx'] as const;
 
 export const validateProps = (p: EpisodeInput, short: boolean): Issue[] => {
 	const out: Issue[] = [];
@@ -34,6 +38,14 @@ export const validateProps = (p: EpisodeInput, short: boolean): Issue[] => {
 	if (p.shortId !== undefined && (typeof p.shortId !== 'string' || !p.shortId)) e('shortId must be a non-empty string');
 	if (!short && p.shortId !== undefined) out.push({level: 'warning', where: 'props', msg: 'shortId is ignored by Episode (use EpisodeShort)'});
 	if (p.captions !== undefined && typeof p.captions !== 'boolean') e('captions must be true or false');
+	// measurement renders (src/episode/tools/render.sh): a subset of the audio stems, no picture
+	if (p.audioStems !== undefined && p.audioStems !== null) {
+		const v = p.audioStems;
+		if (!Array.isArray(v) || !v.length || v.some((x) => !(STEMS as readonly unknown[]).includes(x)) || new Set(v).size !== v.length)
+			e(`audioStems must be a non-empty list of distinct ${STEMS.join(', ')} (got ${JSON.stringify(v)}); it is for measurement renders only`);
+	}
+	if (p.audioPlanHash !== undefined && p.audioPlanHash !== null && (typeof p.audioPlanHash !== 'string' || !/^[0-9a-f]{64}$/.test(p.audioPlanHash)))
+		e('audioPlanHash must be the 64-character hex hash the audio-plan CLI printed');
 	return out;
 };
 
@@ -104,6 +116,16 @@ export const validateStoryboard = (sb: Storyboard, c: StoryboardCtx): Issue[] =>
 		if (sc.badger?.reaction && !REACTIONS.includes(sc.badger.reaction)) e(at, `badger.reaction must be one of ${REACTIONS.join(', ')}`);
 		if (sc.zoo?.pose === 'point' && sc.zoo.view && sc.zoo.view !== 'front') w(at, 'ZOO can only point in the front view; the point is skipped');
 		if (sc.zoo?.pose === 'typing') w(at, "zoo.pose 'typing' needs a desk set and is not used by the scene templates; ZOO stands");
+		// sound (added 2026-11-25): the music from this scene on, and this scene's effects
+		if (sc.bed !== undefined) {
+			if (!(BEDS as readonly string[]).includes(sc.bed)) e(at, `bed must be one of ${BEDS.join(', ')} (got ${JSON.stringify(sc.bed)})`);
+			else if (sc.type === 'endscreen' && sc.bed !== 'none') e(at, 'the end screen plays its own music: its bed can only be "none" (a silent end screen)');
+			else if (i === 0 && sc.bed === 'none') w(at, 'bed "none" on the first scene: the video opens without music, and stays silent until a later scene sets a bed');
+		}
+		if (sc.sfx !== undefined) {
+			const ok = typeof sc.sfx === 'object' && sc.sfx !== null && !Array.isArray(sc.sfx) && Object.entries(sc.sfx).every(([k, v]) => ['transition', 'items', 'accent'].includes(k) && typeof v === 'boolean');
+			if (!ok) e(at, 'sfx must be an object of booleans: {transition?, items?, accent?}');
+		}
 		const cues = list(sc, 'cues');
 		switch (sc.type) {
 			case 'hook':
@@ -186,12 +208,26 @@ export const validateStoryboard = (sb: Storyboard, c: StoryboardCtx): Issue[] =>
 		}
 	}
 	for (const k of needUi) if (!uiLabel(sb, k)) e('storyboard.ui', `"${k}" is required in a ${sb.lang} storyboard (no English UI text in a dubbed render)`);
+	// music settings (added 2026-11-25); offset and sting are read from the master storyboard for every language
+	if (sb.music !== undefined) {
+		const m = sb.music;
+		if (typeof m !== 'object' || m === null || Array.isArray(m)) e('storyboard.music', 'must be an object {offset?, sting?, stingTagline?}');
+		else {
+			if (m.offset !== undefined && !(Number.isInteger(m.offset) && m.offset >= 0 && m.offset <= 4)) e('storyboard.music', `offset must be a whole 4-bar phrase 0-4 (got ${JSON.stringify(m.offset)})`);
+			if (m.sting !== undefined && m.sting !== 'after-hook') e('storyboard.music', `sting must be "after-hook" (got ${JSON.stringify(m.sting)})`);
+			if (m.sting && sb.scenes[0]?.type !== 'hook') e('storyboard.music', 'sting "after-hook" needs a hook as the first scene');
+			if (m.sting && sb.lang !== 'en' && !(typeof m.stingTagline === 'string' && m.stingTagline.trim()))
+				e('storyboard.music', `stingTagline is required in a ${sb.lang} storyboard with the sting (no English text in a dubbed render)`);
+			if (m.stingTagline !== undefined && typeof m.stingTagline !== 'string') e('storyboard.music', 'stingTagline must be a string');
+		}
+	}
 	// shorts
 	const shortIds = new Set<string>();
 	for (const s of sb.shorts ?? []) {
 		if (shortIds.has(s.id)) e(`shorts "${s.id}"`, 'duplicate short id');
 		shortIds.add(s.id);
 		if (!s.sceneIds?.length) e(`shorts "${s.id}"`, 'sceneIds must not be empty');
+		if (s.bed !== undefined && !(BEDS as readonly string[]).includes(s.bed)) e(`shorts "${s.id}"`, `bed must be one of ${BEDS.join(', ')} (got ${JSON.stringify(s.bed)})`);
 		for (const id of s.sceneIds ?? []) {
 			const sc = sb.scenes.find((x) => x.id === id);
 			if (!sc) e(`shorts "${s.id}"`, `scene "${id}" does not exist`);

@@ -7,9 +7,10 @@
  *
  * Anatomical LEFT = screen RIGHT (+x) in the front view. Part names ending in L / R are anatomical.
  */
-import type {Expression} from '../types';
-import {clamp01, lerp, smoothstep} from './geometry';
-import {HAPPY_MOUTH, SHOCKED_MOUTH, type MouthSpec} from './mouth';
+import type {Expression, MouthShape} from '../types';
+// '.ts' extensions (allowImportingTsExtensions): node:test loads this module directly (tests/mouthRule.test.ts).
+import {clamp01, lerp, smoothstep} from './geometry.ts';
+import {HAPPY_MOUTH, SHOCKED_MOUTH, type MouthSpec} from './mouth.ts';
 
 export const FRONT = {
 	totalHeight: 900, // sole (y=0) to top of hair (y=-900)
@@ -289,9 +290,22 @@ export const BROW_LIFT = {left: 4.5, right: 1.6} as const;
 export type EyePose = {lidTop: number; lidBottom: number; scale: number; iris: number};
 /**
  * Mouth modifiers applied on top of a library shape. cornerR / moustacheLiftR act on the SCREEN-right side (anatomical left),
- * cornerL / moustacheLiftL on the screen-left side. moustacheLiftL is optional (repair round 4).
+ * cornerL / moustacheLiftL on the screen-left side. moustacheLiftL is optional (repair round 4). moustacheLiftR / L are the
+ * rises (u) of the moustache's ENDS on a linear profile about the philtrum (repair round 6, ZOO-E6: parts/Beard.tsx
+ * moustachePts); moustacheRaise (optional, round 6) lifts the whole moustache with the upper lip.
  */
-export type MouthMod = {cornerL: number; cornerR: number; openScale: number; widthScale: number; wave: number; moustacheLiftR: number; moustacheLiftL?: number};
+export type MouthMod = {
+	cornerL: number;
+	cornerR: number;
+	openScale: number;
+	widthScale: number;
+	wave: number;
+	moustacheLiftR: number;
+	moustacheLiftL?: number;
+	moustacheRaise?: number;
+	/** Optional (round 6): the moustache's lower edge rises this much more than its upper edge (the band thins in a smile). */
+	moustacheThin?: number;
+};
 
 export type ExpressionSpec = {
 	browL: BrowPose; // anatomical left (screen right)
@@ -317,20 +331,22 @@ export const MOD0: MouthMod = {cornerL: 0, cornerR: 0, openScale: 1, widthScale:
 export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	// Deadpan: flat straight mouth; the anatomical-left (screen-right) brow is subtly raised in its base shape.
 	neutral: {browL: B0, browR: B0, eyes: E0, mouth: 'closed', mod: MOD0, crease: 0},
-	// Small asymmetric smirk (repair round 5, decision ZOO-E5; zoo_expr_happy.png): the eyes stay as open as neutral (Prompt 1:
-	// "eyes open and alert"; the panel keeps ~94% of the neutral eye white) with only a 0.5 u lower-lid lift, and the brows rise
-	// a little. Its own closed mouth (HAPPY_MOUTH) is a thin ~33 u smile line tucked under the moustache: the screen-left corner
-	// rises ~1.5 u and the screen-right ~3 u above its lowest point (the panel: ~33 u wide, 1.5-3 u deep), with a thin lower-lip
-	// arc; the moustache ends lift 2 / 3 u without curling and the cheek stays smooth (no crease on the panel). Round 4 (ZOO-E4)
-	// squinted the eyes to slits (lids -0.8 / 3.8) and drew a 40 u U-grin (corners 4 / 9 u, moustache tips 4 / 8 u, a shaded lip
-	// crescent and a cheek crease), which read as a smug grin; rounds 1-3 were illegible (ZOO-E2: no head yaw).
+	// Small asymmetric smirk (repair round 6, decision ZOO-E6, on round 5's ZOO-E5; zoo_expr_happy.png): the eyes stay as open as
+	// neutral (Prompt 1: "eyes open and alert"; the panel keeps ~94% of the neutral eye white) with only a 0.5 u lower-lid lift,
+	// and the brows rise a little. The panel's main cue is a LEVELLED moustache with the smile's upturned ends showing under it:
+	// each moustache half is lifted on a linear profile about the philtrum (ends +4.5 u screen left, +5.5 u screen right) and the
+	// whole moustache rises 0.6 u with the upper lip, so its top edge stays within ~3.5 u of level with no upturned tip. Its own
+	// closed mouth (HAPPY_MOUTH) is a thin ~33 u smile line under it whose corners rise 1.5 / 3 u (L / R), <= 3 u deep, with a
+	// thin lower-lip arc; the cheek stays smooth. Round 5 lifted the old crescent's tips only 2 / 3 u on a tip-weighted profile,
+	// which kept the droop and read as neutral (R5 review: 13-19% of the panel pair's mouth-region change); round 4 (ZOO-E4)
+	// squinted and grinned; rounds 1-3 were illegible (ZOO-E2: no head yaw).
 	happy: {
 		browL: {lift: 2.8, inner: 0, outer: 1, arch: 0.8},
 		browR: {lift: 3.4, inner: 0.4, outer: 0.6, arch: 0.8},
 		eyes: {lidTop: 0, lidBottom: 0.5, scale: 1, iris: 1},
 		mouth: 'closed',
 		mouthSpec: HAPPY_MOUTH,
-		mod: {...MOD0, cornerL: 1.5, cornerR: 3, moustacheLiftR: 3, moustacheLiftL: 2},
+		mod: {...MOD0, cornerL: 1.2, cornerR: 3.2, moustacheLiftR: 5.8, moustacheLiftL: 4.4, moustacheRaise: 0.6, moustacheThin: 1.2},
 		crease: 0,
 	},
 	// Worried (zoo_expr_worried.png): both inner ends rise ~6-7.5 u with a sharp upturn (curl), the screen-right brow's
@@ -356,4 +372,39 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 		mod: MOD0,
 		crease: 0,
 	},
+};
+
+/**
+ * Expression modifiers that still apply when an explicit (spoken) mouth shape is given: the mouth corners and the worried wave
+ * are softened so every library shape keeps its own drawing, but the moustache pose is kept in full (repair round 6, ZOO-E6):
+ * it belongs to the expression, not to the mouth shape, so a happy line no longer drops its levelled moustache on every
+ * spoken frame and lifts it again on every silent one (round 5 scaled it by 0.6).
+ */
+export const explicitMod = (m: MouthMod): MouthMod => ({
+	...MOD0,
+	cornerL: m.cornerL * 0.5,
+	cornerR: m.cornerR * 0.5,
+	wave: m.wave * 0.4,
+	moustacheLiftR: m.moustacheLiftR,
+	moustacheLiftL: m.moustacheLiftL ?? 0,
+	moustacheRaise: m.moustacheRaise ?? 0,
+	moustacheThin: m.moustacheThin ?? 0,
+});
+
+/** What a head draws for its mouth: the library shape, the modifiers and (optionally) the expression's own drawing of it. */
+export type MouthPlan = {shape: MouthShape; mod: MouthMod; spec?: MouthSpec};
+
+/**
+ * The mouth rule every head (front, 3/4, profile) uses (repair round 6, decision ZOO-E7). `mouth` undefined or 'closed' is
+ * the REST mouth: the expression's own default mouth with its full modifiers and its own drawing when it has one (happy:
+ * HAPPY_MOUTH; shocked: SHOCKED_MOUTH, the gasp; worried: the downturned closed line; neutral: the flat closed line). Any
+ * other shape is lip-sync: the library shape with explicitMod. Why: the Episode and Show engines pass an explicit mouth on
+ * every frame, 'closed' whenever Zoo is silent (src/episode/perf/zoo.ts, src/show/perf/plan.ts), so before round 6 a silent
+ * shocked Zoo showed wide eyes over a flat closed line and a silent happy Zoo the library line with half its smile, and the
+ * expression mouths drawn to match the panels appeared only on sheets, dev renders and thumbnails (R5 review).
+ */
+export const mouthFor = (expression: Expression, mouth?: MouthShape): MouthPlan => {
+	const e = EXPRESSIONS[expression];
+	if (mouth === undefined || mouth === 'closed') return {shape: e.mouth, mod: e.mod, spec: e.mouthSpec};
+	return {shape: mouth, mod: explicitMod(e.mod)};
 };

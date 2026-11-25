@@ -238,7 +238,10 @@ const LEG_FAR_SHADOW = smooth([[66, -446], [-14, -446], [-14, -410], [30, -404],
  */
 const SHOE_NEAR: Pt[] = [
 	[-106, -38.6], [-100, -46.4], [-88, -53.4], [-73, -56.6], [-58, -55], [-50, -50], [-44.6, -43], [-40.8, -36.4], [-36.8, -30.4],
-	[-30.6, -26], [-22.8, -21.6], [-17.6, -17.2], [-14.6, -11.8], [-13.6, -6.6], [-15.2, -2.6], [-22, -1.75], [-72, -1.75], [-104, -1.9], [-107.4, -8], [-107.6, -24],
+	[-30.6, -26], [-22.8, -21.6], [-17.6, -17.2], [-14.6, -11.8], [-13.6, -6.6], [-15.2, -2.6],
+	// round 6: extra points along the flat bottom so the spline rounds both bottom corners without overshooting (round 2-5's
+	// long bottom segment pushed its tangents ~2-3 u past the toe and the heel, as small hooks in the outline)
+	[-18.6, -1.8], [-24, -1.75], [-36, -1.75], [-72, -1.75], [-92, -1.75], [-101.6, -1.85], [-105.6, -3.6], [-107.4, -8], [-107.6, -24],
 ];
 const SHOE_NEAR_SOLE: Pt[] = [[-110, -12.4], [-72, -11.6], [-10, -12.2], [-10, 2], [-110, 2]];
 /**
@@ -262,7 +265,8 @@ const SHOE_NEAR_LINES: Pt[][] = [
 // between the legs.
 const SHOE_FAR: Pt[] = [
 	[-15.6, -50], [-4, -55], [16, -57.6], [32, -57], [44, -52], [60, -44.4], [76, -38.4], [88, -33.4], [96.4, -29],
-	[101.6, -22.6], [103.4, -14], [101.8, -6], [97, -1.75], [60, -1.75], [-14, -1.75], [-19.6, -3.4], [-21, -12], [-20.2, -20], [-18.8, -28], [-17.4, -36], [-16.4, -43],
+	[101.6, -22.6], [103.4, -14], [101.8, -6], [99.6, -2.6], [95.6, -1.75], [86, -1.75], [60, -1.75], [10, -1.75], [-10, -1.75], [-15.4, -2],
+	[-19.6, -3.4], [-21, -12], [-20.2, -20], [-18.8, -28], [-17.4, -36], [-16.4, -43],
 ];
 const SHOE_FAR_SOLE: Pt[] = [[-26, -12.6], [30, -12], [108, -12.6], [108, 2], [-26, 2]];
 /** Far sneaker line art (zoo_turn_34.png): the midsole line; the lace panel seen from the side, i.e. its eyestay edge running
@@ -279,7 +283,7 @@ const SHOE_FAR_LINES: Pt[][] = [
 	[[69.6, -35.8], [67.8, -27.6], [65.6, -20], [64.2, -12.8]], // toe-cap seam
 ];
 
-/** A 3/4 sneaker: off-white upper, the sole in the sneaker's shadow tone (ZOO-C8), soft grey line art clipped to the shoe
+/** A 3/4 sneaker: off-white upper and sole (ZOO-C8, round 6: the midsole line alone separates them), soft grey line art clipped to the shoe
  * (the first line is the midsole, drawn a little heavier), near-black silhouette on top. No shadow band on the upper
  * (repair round 4: the sheet's uppers are flat). */
 export const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; lines: Pt[][]; name: string}> = ({outline, sole, lines, name}) => {

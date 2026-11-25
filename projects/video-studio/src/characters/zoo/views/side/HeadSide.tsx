@@ -12,15 +12,15 @@
  * `jaw` / `hole` amounts the front head uses, so the beard stays coherent.
  */
 import React, {useId} from 'react';
-import {LINE, ZOO_COLORS} from '../../../palette';
+import {BRAND, LINE, ZOO_COLORS} from '../../../palette';
 import type {Expression, MouthShape} from '../../../types';
 import {clamp, clamp01, lerpPts, line, safeId, smooth, tapered, type Pt} from '../../geometry';
 import {featureScale, LID_MIN_SCALE, ZOO_LINE} from '../../lines';
 import {MOUTHS, type MouthSpec} from '../../mouth';
-import {EXPRESSIONS, type BrowPose, type EyePose, type MouthMod} from '../../rig';
+import {EXPRESSIONS, mouthFor, type BrowPose, type EyePose, type MouthMod} from '../../rig';
 import {BROW_R, posed} from '../../parts/Brows';
 import {HIGHLIGHT, lidProfile} from '../../parts/Eyes';
-import {browLifts, explicitMod} from '../../parts/Head';
+import {browLifts} from '../../parts/Head';
 import {mouthDrops} from '../../parts/Mouth';
 import {nostrilWidth} from '../../parts/Nose';
 import {Clipped, Shape, Stroke, useLineScale} from '../../parts/Shape';
@@ -102,12 +102,15 @@ const mouthGeo = (shape: MouthShape, mod: MouthMod, jawDrop: number, override?: 
 		const hw = Math.max(...spec.line.map((p) => Math.abs(p[0])));
 		const depth = hw * 0.62;
 		const pressed = shape === 'mbp';
+		// An expression's own line (round 6: HAPPY_MOUTH) lifts its visible corner by half its height above the closed line:
+		// the lip front stays on the profile and the line slopes up toward the cheek (the beard keeps the library corner).
+		const own = override ? spec.line[0][1] * 0.5 : 0;
 		return {
 			notch: false,
 			top: [m.x, m.y],
 			corner: [m.x - depth, m.y + 0.6 + lift],
 			bottom: [m.x, m.y],
-			lineEnd: [m.x - depth, m.y + 0.6 + lift],
+			lineEnd: [m.x - depth, m.y + 0.6 + lift + own],
 			protrude: pressed ? 0.8 : 0,
 			teeth: false,
 			tongue: false,
@@ -150,7 +153,13 @@ const dropLower = (pts: Pt[], jawDrop: number): Pt[] =>
 		return p.length === 3 ? [p[0], p[1] + jawDrop * w, 'c'] : [p[0], p[1] + jawDrop * w];
 	});
 
-const faceProfile = (g: MouthGeo, jawDrop: number): {fill: Pt[]; outline: Pt[]} => {
+/**
+ * The face contour: `outline` is the silhouette stroke (one piece for closed lips; for an open mouth two pieces that stop at
+ * the lip fronts), `notch` the open mouth's lip edges (top lip -> corner -> lower lip), stroked at the mouth-rim weight as in
+ * the front view (repair round 6, R5 review: rounds 1-5 ran the 3.5 u silhouette stroke round the notch, which filled a small
+ * opening such as slightlyOpen, ~3 u at the lip front, so the profile showed no gap, only a thicker lip corner).
+ */
+const faceProfile = (g: MouthGeo, jawDrop: number): {fill: Pt[]; outline: Pt[][]; notch: Pt[] | null} => {
 	const lower = dropLower(LOWER_PROFILE, jawDrop);
 	const lips: Pt[] = g.notch
 		? [[g.top[0], g.top[1], 'c'], [g.corner[0], g.corner[1], 'c'], [g.bottom[0], g.bottom[1], 'c']]
@@ -158,7 +167,9 @@ const faceProfile = (g: MouthGeo, jawDrop: number): {fill: Pt[]; outline: Pt[]} 
 	const fill = [...UPPER_PROFILE, ...lips, ...lower];
 	const start = 3; // forehead below the hairline
 	const end = UPPER_PROFILE.length + lips.length + 12; // up the jaw to below the ear
-	return {fill, outline: fill.slice(start, end + 1)};
+	if (!g.notch) return {fill, outline: [fill.slice(start, end + 1)], notch: null};
+	const u = UPPER_PROFILE.length;
+	return {fill, outline: [fill.slice(start, u + 1), fill.slice(u + 2, end + 1)], notch: fill.slice(u, u + 3)};
 };
 
 const FACE_SHADOW = smooth([[14, -838], [30, -838], [32, -832], [24, -826], [18, -812], [14, -800], [10, -820]]);
@@ -166,10 +177,11 @@ const NOSE_UNDER = smooth([[64.4, -784.4], [70.6, -784.6], [74.4, -786.4], [69, 
 const NOSTRIL: Pt[] = [[66.8, -785.6], [64.8, -787.6], [66, -790.2]];
 
 // ---------------------------------------------------------------- beard and moustache (profile)
-const beardSide = (hole: number, jawDrop: number, corner: Pt): Pt[] => {
+/** `cheek` (round 6): the smile pushes the cheek beard's top up beside the mouth corner, so a lifted moustache end stays in it. */
+const beardSide = (hole: number, jawDrop: number, corner: Pt, cheek = 0): Pt[] => {
 	const lip = (p: Pt): Pt => [p[0], p[1] + hole * 0.9];
 	const pts: Pt[] = [
-		[5, -795], [13.4, -791.6], [15.4, -786], [17.6, -777.2], [23.6, -769.4], [31, -765], [corner[0] - 2, corner[1] + 1.6],
+		[5, -795], [13.4, -791.6], [15.4, -786], [17.6, -777.2 - cheek * 0.3], [23.6, -769.4 - cheek * 0.7], [31, -765 - cheek], [corner[0] - 2, corner[1] + 1.6],
 		lip([46, -756.4]), lip([51.8, -753]), lip([54.4, -754.6, 'c']), lip([58.4, -754.4]), [64, -752], [64, -730], [0, -730],
 	];
 	return dropLower(pts, jawDrop);
@@ -184,6 +196,21 @@ const MOUSTACHE: Pt[] = [
 	[63.8, -781], [58, -782.4], [49, -781.6], [42.4, -778.6], [37.2, -774.2], [33.6, -769], [32.2, -763.8], [34.8, -763],
 	[38.4, -765.6], [42.4, -768.8], [47, -771.2], [53, -772], [59, -771.4], [62.6, -770, 'c'],
 ];
+/** The profile moustache's front (under the nose) and back end x, for the smile's lift profile. */
+const MUST_FRONT_X = 63.8;
+const MUST_BACK_X = 32.2;
+/**
+ * The smile pose in profile (repair round 6, ZOO-E6): the visible near half (anatomical right, the front view's screen-left
+ * half, so `moustacheLiftL`) swings up straight about the philtrum front: its back end rises `lift` on a linear profile, the
+ * whole moustache rises `raise`, and the lower edge (the back tip and the points after it) a further `thin`, as in the front
+ * view. Round 1-5's profile moustache did not move for any expression.
+ */
+const moustacheSide = (lift: number, raise: number, thin: number): Pt[] =>
+	MOUSTACHE.map((p, i) => {
+		const t = clamp01((MUST_FRONT_X - p[0]) / (MUST_FRONT_X - MUST_BACK_X));
+		const dy = -raise - lift * t - (i >= 6 ? thin : 0);
+		return p.length === 3 ? [p[0], p[1] + dy, 'c'] : [p[0], p[1] + dy];
+	});
 
 // ---------------------------------------------------------------- eye and brow (anatomical right)
 // Repair round 1: the eye sits ~3 u further back so ~7 u of nasal bridge shows in front of it, as on zoo_turn_side.png.
@@ -255,11 +282,12 @@ export type HeadSideProps = {expression: Expression; mouth?: MouthShape; blink: 
 
 export const HeadSide: React.FC<HeadSideProps> = ({expression, mouth, blink, browLift, lookX, lookY, headTilt}) => {
 	const spec = EXPRESSIONS[expression];
-	const shape = mouth ?? spec.mouth;
-	const mod = mouth ? explicitMod(spec.mod) : spec.mod;
-	const mouthSpec = mouth ? undefined : spec.mouthSpec;
+	// mouth undefined or 'closed' = the expression's rest mouth (rig.ts mouthFor, ZOO-E7); other shapes are lip-sync
+	const {shape, mod, spec: mouthSpec} = mouthFor(expression, mouth);
 	const {hole, jaw} = mouthDrops(shape, mod, mouthSpec);
 	const g = mouthGeo(shape, mod, jaw, mouthSpec);
+	// The near half's end lift, foreshortened: the profile sees the moustache end where it wraps into the cheek (round 6).
+	const mustLift = (mod.moustacheLiftL ?? 0) * 0.55;
 	const face = faceProfile(g, jaw);
 	const faceD = smooth(face.fill);
 	// The opening ends at the lip fronts (repair round 1): nothing of the dark interior pokes out beyond the face line,
@@ -281,22 +309,29 @@ export const HeadSide: React.FC<HeadSideProps> = ({expression, mouth, blink, bro
 					<path d={interior} fill={ZOO_COLORS.mouthInterior} />
 					<Clipped clip={interior}>
 						{g.tongue ? <path d={smooth([[g.corner[0] + 2, g.bottom[1] - 2], [g.bottom[0] - 4, g.bottom[1] - 4.6], [g.bottom[0] + 4, g.bottom[1] + 2], [g.corner[0], g.bottom[1] + 4]])} fill={ZOO_COLORS.tongue} /> : null}
-						{g.teeth ? <path d={smooth([[g.corner[0] + 3, g.top[1] - 1], [g.top[0] + 4, g.top[1] - 1], [g.top[0] + 4, g.top[1] + 3.4], [g.corner[0] + 4, g.top[1] + 3]])} fill={ZOO_COLORS.teeth} /> : null}
+						{g.teeth ? (
+							// Round 6 (R5 review): the teeth fill the front of the opening (upper and lower, parted by a thin light-grey line),
+							// set ~3.5 u back from the corner, so the profile ee reads as teeth, not a maroon wedge (rounds 1-5: ~6 px of white).
+							<>
+								<path data-part="teeth" d={smooth([[g.corner[0] + 3.4, g.corner[1] - 1.4], [g.top[0] + 3, g.top[1] - 2], [g.bottom[0] + 3, g.bottom[1] + 2], [g.corner[0] + 3.4, g.corner[1] + 1.4]])} fill={ZOO_COLORS.teeth} />
+								<Stroke name="teethParting" d={line([[g.corner[0] + 3.4, g.corner[1]], [(g.top[0] + g.bottom[0]) / 2 + 2, (g.top[1] + g.bottom[1]) / 2 + 0.3]])} width={ZOO_LINE.fine * 0.85} color={BRAND.silver} />
+							</>
+						) : null}
 					</Clipped>
 				</g>
 			) : null}
 			<Shape name="face" d={faceD} fill={ZOO_COLORS.skin} shadow={{d: FACE_SHADOW, fill: ZOO_COLORS.skinShadow}} stroke={0} />
 			<g data-part="beard">
 				<Clipped clip={faceD}>
-					<path d={smooth(beardSide(hole, jaw, g.corner))} fill={ZOO_COLORS.beard} />
-					<Clipped clip={smooth(beardSide(hole, jaw, g.corner))}>
+					<path d={smooth(beardSide(hole, jaw, g.corner, mustLift))} fill={ZOO_COLORS.beard} />
+					<Clipped clip={smooth(beardSide(hole, jaw, g.corner, mustLift))}>
 						<path d={BEARD_SHADOW(jaw)} fill={ZOO_COLORS.beardShadow} />
 					</Clipped>
 				</Clipped>
 			</g>
 			<g data-part="moustache">
 				<Clipped clip={faceD}>
-					<path d={smooth(MOUSTACHE)} fill={ZOO_COLORS.moustache} />
+					<path d={smooth(moustacheSide(mustLift, mod.moustacheRaise ?? 0, (mod.moustacheThin ?? 0) * 0.5))} fill={ZOO_COLORS.moustache} />
 				</Clipped>
 			</g>
 			{!g.notch ? (
@@ -305,7 +340,10 @@ export const HeadSide: React.FC<HeadSideProps> = ({expression, mouth, blink, bro
 					{g.lowerLip ? <Stroke d={line([[SIDE_MOUTH.x - 1, SIDE_MOUTH.y + 4.4], [SIDE_MOUTH.x - 6, SIDE_MOUTH.y + 4]])} width={ZOO_LINE.fine} color={ZOO_COLORS.skinShadow} /> : null}
 				</g>
 			) : null}
-			<path data-part="profileOutline" d={line(face.outline)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
+			{face.outline.map((o, i) => (
+				<path key={i} data-part="profileOutline" d={line(o)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
+			))}
+			{face.notch ? <path data-part="lipEdges" d={line(face.notch)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.feature * ls} strokeLinecap="round" strokeLinejoin="round" /> : null}
 			{g.notch ? <Stroke name="lipFront" d={line([g.top, g.bottom])} width={ZOO_LINE.fine} /> : null}
 			<g data-part="nose">
 				<path d={NOSE_UNDER} fill={ZOO_COLORS.skinShadow} />

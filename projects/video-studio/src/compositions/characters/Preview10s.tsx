@@ -227,7 +227,7 @@ export type BadgerState = {
  *   neck's back corner at the collar (an open seam in rigLeft.ts, reported by the round-5 Badger repair), so the front
  *   and 3/4-left heads never hold or pass through that band here.
  */
-const SWAP = {
+export const SWAP = {
 	/** 3/4-right head entering at the turn (f97): low and nose-down where the front head left the skull, then it rises. */
 	threeQuarterRightIn: {neck: -3, tilt: -4},
 	/** 3/4-right head, end of its rise before the look-up (f190). */
@@ -237,17 +237,24 @@ const SWAP = {
 	 * skull with a counter-tilt and rolls toward Zoo.
 	 */
 	breakdown: {neck: [14, 10], tilt: [-8, 6]},
-	/** The look-up's 3/4-left in-between (round 4): held where the front breakdown left the skull, the nose lifting. */
-	lookUpThreeQuarter: {neck: [9, 9], tilt: [2, 3.5]},
-	/** The up head enters low where the in-between left the skull and the neck eases up from here (round 5: -3, was -1). */
-	upStart: -3,
+	/**
+	 * The look-up's 3/4-left in-between (round 4): it enters where the front breakdown left the skull and, round 5, rises
+	 * on the neck toward the up head (9 -> 13 deg) while its tilt eases (2 -> -0.5), so the head still lifts (total 11 ->
+	 * 12.5) and the up head's higher skull is met halfway.
+	 */
+	lookUpThreeQuarter: {neck: [9, 13], tilt: [2, -0.5]},
+	/** The up head enters where the in-between left the skull and the neck eases up from here (round 5: -1.5, was -1). */
+	upStart: -1.5,
 	/**
 	 * Judging look: the up head lowers to `upDown` (round 4: -12, was -8, so its nose comes down ~12 px more before the
 	 * swap), then the 3/4-left in-between and the front head take over.
 	 */
 	upDown: -12,
-	/** The in-between starts low where the lowered up head left the skull and lifts toward the front head's (below the band). */
-	threeQuarterLeft: {neck: [-1, 2], tilt: [3, 7]},
+	/**
+	 * The in-between starts where the lowered up head left the skull and lifts its nose toward the front head's (round 5:
+	 * neck 2, below the band; tilt -3 -> 6, which brings its skull 1.5 px nearer the up head's than round 4's (-1, 3)).
+	 */
+	threeQuarterLeft: {neck: [2, 2], tilt: [-3, 6]},
 	/**
 	 * Front head: neck and total head rotation (neck + headTilt) at the swap, then the judging pose. Round 5: the front
 	 * head enters at neck 7.5, above the band (it reaches ~6.5 deg under the push-in), with total 10, so the judging rise

@@ -73,26 +73,31 @@ export const MOUTHS: Record<MouthShape, MouthSpec> = {
 		hole: 6.8,
 		jaw: 1,
 	},
+	// Repair round 6 (R5 review; zoo_mouth_ee.png measured relative to its moustache): a flatter lozenge, ~31 x 9.8 u with the
+	// rim and ~27 x 6.4 u of visible teeth (the panel: 0.55 x 0.14 of its moustache; round 1-5: 35 x 11.7 u), the upper and
+	// lower teeth parted by a thin light-grey line (Mouth.tsx `divider`; rounds 1-5 split them with a heavy near-black stroke the
+	// panel does not draw).
 	ee: {
 		kind: 'open',
-		top: [[-15.6, -2.4], [-12, -3.9], [0, -4.3], [12, -3.9], [16.1, -2.4]],
-		bottom: [[16.9, 0.6], [13, 4.6], [0, 6.4], [-12.5, 4.6], [-16.4, 0.6]],
+		top: [[-13.9, -1.8], [-10.6, -3], [0, -3.4], [10.6, -3], [14.3, -1.8]],
+		bottom: [[14.9, 0.6], [11.6, 3.6], [0, 4.8], [-11.1, 3.6], [-14.5, 0.6]],
 		teeth: {
-			shape: [[-14, -3.6], [0, -4], [14.4, -3.6], [15.6, 0.6], [12.6, 4.2], [0, 5.9], [-12.2, 4.2], [-15.1, 0.6]],
-			divider: [[-13.6, 0.4], [0, 1.4], [14.1, 0.4]],
+			shape: [[-12.4, -2.9], [0, -3.2], [12.7, -2.9], [13.9, 0.6], [11.2, 3.3], [0, 4.5], [-10.8, 3.3], [-13.4, 0.6]],
+			divider: [[-12.1, 0.6], [0, 1.2], [12.5, 0.6]],
 		},
-		hole: 2,
-		jaw: 1,
+		hole: 1.6,
+		jaw: 0.8,
 	},
-	// Repair round 4 (ZOO-M3; zoo_mouth_oh.png): an egg, narrow at the top and widest at ~55% of its height, ~13.4 x 13 u with
-	// the rim (panel ~13 x 12.5); round 1-3's oh widened to full width within 6 px of its top and kept straight sides (a
-	// tombstone, 14.8 x 14 u).
+	// Repair round 4 (ZOO-M3; zoo_mouth_oh.png): an egg, narrow at the top and widest at ~55% of its height; round 1-3's oh
+	// widened to full width within 6 px of its top and kept straight sides (a tombstone, 14.8 x 14 u). Repair round 6 (R5 review):
+	// ~13.3 x 13 u with the rim (0.27 of the moustache's width, as on the panel; round 4-5: 14.0 x 13.6) and a ROUND bottom that
+	// narrows into its lowest point (round 4-5 kept ~35% of the widest row at the bottom, a flat-bottomed U).
 	oh: {
 		kind: 'open',
-		top: [[-5.8, 1.6], [-5, -1.4], [-2.8, -3.4], [0.3, -4], [3.4, -3.4], [5.6, -1.4], [6.4, 1.6]],
-		bottom: [[6.6, 3.8], [5.6, 6.2], [3.2, 7.8], [0.3, 8.3], [-2.6, 7.8], [-5, 6.2], [-6, 3.8]],
-		tongue: [[-6.4, 6.6], [0.3, 3.4], [7, 6.6], [0.3, 10.6]],
-		hole: 4.4,
+		top: [[-5.6, 2.6], [-4.35, -0.55], [-2.2, -2.86], [0.3, -3.7], [2.8, -2.86], [4.95, -0.55], [6.2, 2.6]],
+		bottom: [[5.6, 4.9], [3.8, 6.6], [1.7, 7.5], [0.3, 7.75], [-1.1, 7.5], [-3.2, 6.6], [-5, 4.9]],
+		tongue: [[-6.4, 5.8], [0.3, 3.1], [7, 5.8], [0.3, 9.8]],
+		hole: 4.2,
 		jaw: 0.6,
 	},
 	mbp: {
@@ -125,20 +130,20 @@ export const SHOCKED_MOUTH: MouthSpec = {
 };
 
 /**
- * The happy expression's own closed mouth (repair round 5, decision ZOO-E5; zoo_expr_happy.png at 0.699 u/px): a thin smile
- * line ~33 u wide tucked right under the moustache (its middle 1.4 u above the closed line, as the panel's smile sits closer
- * to the moustache than the deadpan line), almost flat before the expression's corner lifts: it falls 0.6 u toward the screen
- * right, so the larger right lift still leaves it <= 3 u deep. With EXPRESSIONS.happy's corners (1.5 / 3 u) it is the locked
- * "small asymmetric smirk": its ends sit ~1.8 u (screen left) and ~2.7 u (screen right) above its lowest point and tuck
- * under the lifted moustache edge (stroke centre 0.65 / 1.1 u below it). A thin lower-lip arc (<= 0.8 u, skinShadow) sits
- * ~2.5 u under its middle. Used only when the expression is happy and no explicit mouth is passed; the lip-sync library is
- * unchanged. Round 4 (ZOO-E4) drew a 40 u U-line dipping 3.4 u with a filled lip crescent up to 4 u thick.
+ * The happy expression's own closed mouth (repair round 5, decision ZOO-E5; re-placed in round 6, ZOO-E6; zoo_expr_happy.png at
+ * 0.699 u/px): a thin smile line ~33 u wide under the levelled moustache, its middle 2.5 u above the closed line so it sits
+ * ~4.4 u under the moustache's lower edge as on the panel (round 5: 1.4 u, under the old crescent), almost flat before the
+ * expression's corner lifts: it falls 0.6 u toward the screen right, so the larger right lift still leaves it <= 3 u deep.
+ * With EXPRESSIONS.happy's corners (1.5 / 3 u) it is the locked "small asymmetric smirk": its ends sit ~1.8 u (screen left)
+ * and ~2.7 u (screen right) above its lowest point and show ~2.5-3 u under the lifted moustache ends. A thin lower-lip arc
+ * (<= 0.8 u, skinShadow) sits ~2.5 u under its middle. It is the happy REST mouth (rig.ts mouthFor: no mouth or 'closed');
+ * lip-sync draws the library. Round 4 (ZOO-E4) drew a 40 u U-line dipping 3.4 u with a filled lip crescent up to 4 u thick.
  */
 export const HAPPY_MOUTH: MouthSpec = {
 	kind: 'line',
-	line: [[-15.6, -1.7], [-8, -1.42], [0, -1.4], [8, -1.3], [15.9, -1.1]],
+	line: [[-15.6, -2.8], [-8, -2.52], [0, -2.5], [8, -2.4], [15.9, -2.2]],
 	width: 1.9,
-	band: [[-8.6, 0.95, 'c'], [-4, 1.25], [1, 1.35], [6, 1.15], [9.8, 0.7, 'c'], [6, 1.75], [1, 2.05], [-4, 1.9]],
+	band: [[-8.6, -0.15, 'c'], [-4, 0.15], [1, 0.25], [6, 0.05], [9.8, -0.4, 'c'], [6, 0.65], [1, 0.95], [-4, 0.8]],
 	hole: 0.3,
 	jaw: 0,
 };

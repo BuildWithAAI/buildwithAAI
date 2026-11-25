@@ -41,6 +41,9 @@ import soundfile as sf  # noqa: E402
 from audiolib import duck, loudness  # noqa: E402
 from composer import voicegate  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import master_mix  # noqa: E402  (its chunked meters, for episode-length stems)
+
 SR = 48000
 TARGET_I, TOL_I, CEIL_TP = -14.0, 1.0, -1.0
 INDEX_MIN, VOICE_OVER_MIN_LU = 0.75, 10.0
@@ -96,8 +99,9 @@ def voice_on_top(voice: np.ndarray, rest: np.ndarray, plan: dict) -> dict:
     one-third-octave SNR 160 Hz-8 kHz during speech frames, band audibility clip((SNR+15)/30), ANSI S3.5 weights."""
     n = voice.shape[1]
     act = speech_mask(plan, n)
-    f, t, pv = voicegate._stft_power(voicegate._mono_sum(voice))
-    _, _, pr = voicegate._stft_power(voicegate._mono_sum(rest))
+    # the voice gate's mono sum (x 1.414), in float32: a 10-minute stem's STFT then fits in a few hundred MB
+    f, t, pv = voicegate._stft_power(np.asarray(voice, dtype=np.float32).mean(axis=0) * np.float32(np.sqrt(2)))
+    _, _, pr = voicegate._stft_power(np.asarray(rest, dtype=np.float32).mean(axis=0) * np.float32(np.sqrt(2)))
     fr_act = act[np.minimum((t * SR).astype(int), n - 1)]
     vtot = 10 * np.log10(pv.sum(axis=0) + 1e-20)
     sp = fr_act & (vtot > np.percentile(vtot[fr_act], 95) - 25)
@@ -108,8 +112,8 @@ def voice_on_top(voice: np.ndarray, rest: np.ndarray, plan: dict) -> dict:
     idx = (np.asarray(voicegate.SII_W)[:, None] * np.clip((snr + 15) / 30, 0, 1)).sum(axis=0)
     hb = (f >= 1000) & (f <= 4000)
     snr14 = 10 * np.log10(pv[hb][:, sp].sum(axis=0) + 1e-20) - 10 * np.log10(pr[hb][:, sp].sum(axis=0) + 1e-20)
-    vl = loudness.integrated(voice[:, act])
-    rl = loudness.integrated(rest[:, act])
+    vl = master_mix.integrated_lufs(voice[:, act])
+    rl = master_mix.integrated_lufs(rest[:, act])
     # phrase by phrase (word spans merged across gaps under 0.25 s): the worst phrase matters more than the average
     phrases = []
     for a, b in _runs(duck.activity_from_intervals([(x["start"], x["end"]) for x in plan["bed"]["speech"]], n, SR, min_gap=0.25)):

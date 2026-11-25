@@ -5,7 +5,7 @@
  * near ear, nose and face contour are drawn for this view from the sheet.
  *
  * Layer order (back to front): neck is drawn by the body; back hair (with the nape), near ear, face
- * skin, mouth, beard, moustache, jaw outline, nose, eyes, front hair, brows (repair round 1: brows over the hair; the
+ * skin, mouth, beard, nose, moustache (round 6: nose under the moustache), jaw outline, eyes, front hair, brows (repair round 1: brows over the hair; the
  * forelock lifts when a raised near brow would reach it, as in the front view).
  * Anatomical RIGHT = near side (screen left); anatomical LEFT = far side (screen right).
  */
@@ -14,15 +14,15 @@ import {LINE, ZOO_COLORS} from '../../../palette';
 import type {Expression, MouthShape} from '../../../types';
 import {clamp, clamp01, lerp, lerpPts, line, safeId, smooth, tapered, type Pt} from '../../geometry';
 import {featureScale, LID_MIN_SCALE, ZOO_LINE} from '../../lines';
-import {EXPRESSIONS, type BrowPose, type EyePose} from '../../rig';
+import {EXPRESSIONS, mouthFor, type BrowPose, type EyePose} from '../../rig';
 import {BEARD_BASE, MOUSTACHE, moustachePts, smileShift} from '../../parts/Beard';
 import {BROW_L, BROW_R, browTopIn, posed} from '../../parts/Brows';
 import {CLOSED, HIGHLIGHT, INNER, IRIS, LOWER, OUTER, OUTER_EXT, UPPER, lidProfile} from '../../parts/Eyes';
-import {browLifts, explicitMod, smileOf} from '../../parts/Head';
+import {browLifts, smileOf} from '../../parts/Head';
 import {Mouth, mouthDrops} from '../../parts/Mouth';
 import {bridgeWidth, nostrilWidth} from '../../parts/Nose';
 import {Clipped, Shape, Stroke, useLineScale} from '../../parts/Shape';
-import {TQ_BROWS, TQ_EYES, tqBrowX, tqMouth, tqPt} from './tq';
+import {TQ_BROWS, TQ_EYES, tqBrowX, tqMouth, tqMustPt, tqPt} from './tq';
 
 /** Head pivot for headTilt in the 3/4 view (top of the neck, under the jaw). */
 export const HEAD34_PIVOT = {x: -6, y: -748} as const;
@@ -237,10 +237,10 @@ const Beard34: React.FC<{hole: number; jawDrop: number; smileR?: number; smileL?
 	);
 };
 
-const Moustache34: React.FC<{liftR: number; liftL?: number}> = ({liftR, liftL = 0}) => (
+const Moustache34: React.FC<{liftR: number; liftL?: number; raise?: number; thin?: number}> = ({liftR, liftL = 0, raise = 0, thin = 0}) => (
 	<g data-part="moustache">
 		<Clipped clip={face34Path(0)}>
-			<path d={smooth(moustachePts(MOUSTACHE, liftR, liftL).map(tqPt))} fill={ZOO_COLORS.moustache} />
+			<path d={smooth(moustachePts(MOUSTACHE, liftR, liftL, raise, thin).map(tqMustPt))} fill={ZOO_COLORS.moustache} />
 		</Clipped>
 	</g>
 );
@@ -292,9 +292,8 @@ export const HairFront34: React.FC<{forelockLift?: number}> = ({forelockLift = 0
 
 export const Head34: React.FC<Head34Props> = ({expression, mouth, blink, browLift, lookX, lookY, headTilt}) => {
 	const spec = EXPRESSIONS[expression];
-	const shape = mouth ?? spec.mouth;
-	const mod = mouth ? explicitMod(spec.mod) : spec.mod;
-	const mouthSpec = mouth ? undefined : spec.mouthSpec;
+	// mouth undefined or 'closed' = the expression's rest mouth (rig.ts mouthFor, ZOO-E7); other shapes are lip-sync
+	const {shape, mod, spec: mouthSpec} = mouthFor(expression, mouth);
 	const {hole, jaw} = mouthDrops(shape, mod, mouthSpec);
 	const {liftL, liftR} = browLifts(browLift);
 	const ls = useLineScale();
@@ -309,14 +308,15 @@ export const Head34: React.FC<Head34Props> = ({expression, mouth, blink, browLif
 			<Shape name="face" d={face34Path(jaw)} fill={ZOO_COLORS.skin} shadow={{d: FACE_SHADOW, fill: ZOO_COLORS.skinShadow}} stroke={0} />
 			<Mouth shape={shape} mod={mod} project={tqMouth} spec={mouthSpec} />
 			<Beard34 hole={hole} jawDrop={jaw} smileR={smileOf(mod.cornerR)} smileL={smileOf(mod.cornerL)} />
-			<Moustache34 liftR={mod.moustacheLiftR} liftL={mod.moustacheLiftL ?? 0} />
-			<path data-part="jawOutline" d={jaw34Outline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
+			{/* Round 6: the nose before the moustache (as in the front head), so the moustache's top covers the under-tip shadow. */}
 			<g data-part="nose">
 				<path d={UNDER_TIP} fill={ZOO_COLORS.skinShadow} />
 				<path data-part="noseBridge" d={tapered(BRIDGE, bridgeWidth(ZOO_LINE.fine * 1.2 * featureScale(ls)))} fill={ZOO_COLORS.noseLine} />
 				<Stroke d={line(TIP_TURN)} width={ZOO_LINE.fine * 0.9} color={ZOO_COLORS.noseLine} />
 				<path data-part="nostril" d={tapered(NOSTRIL, nostrilWidth(ZOO_LINE.feature * featureScale(ls)))} fill={LINE.color} />
 			</g>
+			<Moustache34 liftR={mod.moustacheLiftR} liftL={mod.moustacheLiftL ?? 0} raise={mod.moustacheRaise ?? 0} thin={mod.moustacheThin ?? 0} />
+			<path data-part="jawOutline" d={jaw34Outline(jaw)} fill="none" stroke={LINE.color} strokeWidth={ZOO_LINE.outline * ls} strokeLinecap="round" strokeLinejoin="round" />
 			<g data-part="eyes">
 				<Eye34 which="far" pose={spec.eyes} blink={blink} lookX={lookX} lookY={lookY} />
 				<Eye34 which="near" pose={spec.eyes} blink={blink} lookX={lookX} lookY={lookY} />

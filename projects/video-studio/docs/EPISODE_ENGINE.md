@@ -1,6 +1,6 @@
 # Episode engine: how to make a Zoora AI episode
 
-Version 2026-11-24. One storyboard becomes a 1920×1080 episode, 1080×1920 Shorts and three 1280×720 thumbnails, in
+Version 2026-11-25 (sound: section 12). One storyboard becomes a 1920×1080 episode, 1080×1920 Shorts and three 1280×720 thumbnails, in
 English and in dubbed languages. Binding rules: `docs/PROJECT_INSTRUCTIONS.md` (characters, style, audio, delivery),
 `docs/ART_GUIDE.md`, `docs/CHART_SPEC.md`. Contracts: `src/episode/types.ts` (`Storyboard`, `Timeline`, `Lang`).
 The whole media pipeline around it (fact bank, publish kit, render farm, approvals, uploader) is
@@ -18,6 +18,7 @@ scheduled, and its es and pt-br files are machine translations.
 | Dubbing | `scripts/dub` ([README](../scripts/dub/README.md)), `scripts/backtranslate` ([README](../scripts/backtranslate/README.md)) | `storyboard.<lang>.json`, `dub/sheet.<lang>.json`, `out/dub/<slug>.<lang>.md` |
 | Voice | `scripts/voice` ([README](../scripts/voice/README.md)): Kokoro (kokoro-onnx 0.6.1, int8 model), Zoo = `im_nicola` | `public/generated/<channel>/<slug>/<lang>/`: `narration.wav`, `scenes/*.wav`, `timeline.json`, `phonemes.json` |
 | Render | `src/episode` ([README](../src/episode/README.md)): compositions `Episode` (16:9) and `EpisodeShort` (9:16) | MP4 (H.264 High, yuv420p, BT.709, 30 fps, AAC) |
+| Sound (2026-11-25) | `src/episode/audio` (the sound plan) and `src/episode/tools/render.sh` (plan, picture + lossless mix, voice stem, master, gate), over `src/audio` ([README](../src/audio/README.md)) and the music and SFX packages | the mastered MP4 plus `.audio-plan.json`, `.cues.md`, `.master.json`, `.audio.json` (section 12) |
 | Thumbnails | `scripts/thumbnails.ts` + `src/thumbnails` ([README](../src/thumbnails/README.md)): composition `Thumbnail` | `v0.png`, `v1.png`, `v2.png` per language, plus checks |
 
 Episodes render from their own Remotion entry point, `src/episode/index.ts` (`EpisodeCompositions` and
@@ -42,7 +43,8 @@ in any committed file (the claim gate fails on wallets and on names from the pri
 ## 3. Write the storyboard
 
 `storyboard.json` (contract in `src/episode/types.ts`): `version: 1`, `channel`, `slug`, `lang`, `sourceLang`,
-`title`, `fiction`, `scenes[]`, `sources[]`, and optionally `offers`, `shorts`, `thumbnails`, `ui`, `translation`.
+`title`, `fiction`, `scenes[]`, `sources[]`, and optionally `offers`, `shorts`, `thumbnails`, `ui`, `translation`,
+`music`.
 
 | Scene `type` | Required `onScreen` | Optional | Notes |
 | --- | --- | --- | --- |
@@ -57,6 +59,17 @@ in any committed file (the claim gate fails on wallets and on names from the pri
 Narration markup: `{display|spoken}` shows `display` and speaks `spoken` (write every number that could be read two
 ways this way: `{$40,000|forty thousand dollars}`); `[src:id]` after a factual sentence cites `sources[id]` and is
 neither shown in captions nor spoken.
+
+Sound fields (all optional; section 12; read from the master storyboard for every language):
+
+| Field | Values | Default |
+| --- | --- | --- |
+| `scene.bed` | The music **from this scene on**: `curious`, `tension`, `ominous`, `resolve`, `none`. Mark acts, not templates: a region shorter than 8 bars (25.6 s) is merged unless you set it, and the bed changes at most once a minute | `curious` for the whole story (the end screen has its own music; there only `none` is allowed) |
+| `scene.sfx` | `{transition, items, accent}`: a wipe's whoosh (off with `false`; a slide's soft air only with `true`), list pops in the gaps of the speech, the CTA's click (on) and the chart rug's tick (off unless `true`) | as listed |
+| `shorts[].bed` | One bed for the whole Short | the mood of its first scene |
+| `music.offset` | 0-4: which 4-bar phrase of the beds' 64 s loop the episode's clock starts on | the planner's choice |
+| `music.sting` | `"after-hook"`: the Zoora AI brand sting after the cold open; the hook needs room (the render names the `minDurationSec` it needs) | off |
+| `music.stingTagline` | The sting card's tagline in this file's language (required in a dub with the sting) | "Crypto and AI stories, starring you." |
 
 Rules the render enforces before frame 0 (`src/episode/validate.ts`): Badger in at least one scene; the end screen
 last; a seeded chart marked illustrative with a fictional pair; cited sources verified, `https`, with an `accessed`
@@ -73,6 +86,7 @@ episode (`_engine-demo` there).
 # 0. once per machine
 npm ci
 scripts/voice/setup.sh                          # .venv-voice + Kokoro model files (size and sha256 checked)
+scripts/audio/setup.sh                          # .venv-audio (hash-pinned numpy, scipy, soundfile): the master and the gate
 
 # 1. claim gate, master language (exit 0 = pass). Needs data/private/names.txt; only a run that cannot have the
 #    list (CI, or a machine without the private file) passes --no-names; the report then says "names NOT checked"
@@ -81,12 +95,11 @@ node scripts/claims/check.ts content/zoora-ai/<slug>
 # 2. voice (Zoo's voice comes from content/zoora-ai/channel.json: im_nicola)
 .venv-voice/bin/python scripts/voice/build.py content/zoora-ai/<slug> --lang en --voice im_nicola
 
-# 3. render: bundle AFTER the voice step (the bundle copies public/), then each output
+# 3. render with sound: bundle AFTER the voice step (the bundle copies public/), once per batch; then every output
+#    goes through render.sh: plan, picture + lossless mix, voice stem, the 2-pass master, the gate (below, section 12)
 npx remotion bundle src/episode/index.ts --out-dir=/tmp/episode-bundle
-npx remotion render /tmp/episode-bundle Episode out/episodes/<slug>/en/episode.mp4 \
-  --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en"}'
-npx remotion render /tmp/episode-bundle EpisodeShort out/episodes/<slug>/en/short1.mp4 \
-  --props='{"channel":"zoora-ai","slug":"<slug>","lang":"en","shortId":"short1"}'
+src/episode/tools/render.sh zoora-ai/<slug> --lang en --bundle /tmp/episode-bundle --out out/episodes/<slug>/en/episode.mp4
+src/episode/tools/render.sh zoora-ai/<slug> --lang en --short short1 --bundle /tmp/episode-bundle --out out/episodes/<slug>/en/short1.mp4
 
 # 4. thumbnails (refuses a language whose claim report is missing, failed or older than the text it checked)
 node scripts/thumbnails.ts zoora-ai/<slug> --lang en --out out/episodes/<slug>
@@ -97,12 +110,56 @@ node scripts/qa/check.ts --entry src/episode/index.ts --comp Episode --props '{"
 ```
 
 Exit codes: claim gate and dub tools 0 pass, 1 failed (findings listed), 2 bad input; voice 0 ok, 1 error, 2 bad
-arguments, 3 `--fit-to` overflow (files written); thumbnails 0, 1 failed check or claim gate, 2 bad arguments.
-`remotion.config.ts` already sets PNG frames, CRF 12, preset slow, yuv420p and BT.709: pass no encoder flags.
+arguments, 3 `--fit-to` overflow (files written); `render.sh` 0 delivered and passed (warnings allowed), 1 the gate or
+the master failed (every file kept, the report named), 2 bad input or a step failed; thumbnails 0, 1 failed check or
+claim gate, 2 bad arguments. `remotion.config.ts` already sets PNG frames, CRF 12, preset slow, yuv420p and BT.709:
+pass no encoder flags.
+
+**What `render.sh` runs: two passes and a master.** `$B` is the bundle, `$O` the output path without `.mp4`, `$P` the
+props of section 3's render plus `"audioPlanHash"` (and `"shortId"` for `EpisodeShort`):
+
+```bash
+# 1. the plan: the music, the duck, the effects and the master's gate lines, computed from the files on disk by the
+#    same code the render runs; JSON for the gate, a cue sheet for the owner; the plan's hash is the last line printed
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/episode/dev/audioPlan.ts zoora-ai/<slug> --lang en [--short short1] \
+  --out "$O.audio-plan.json" --cues "$O.cues.md"
+# 2. pass 1, the picture: the MP4 without audio, and the mix written beside it losslessly (pcm-16) in the same pass.
+#    calculateMetadata refuses to start when its own plan hashes differently (a stale bundle, or a storyboard or
+#    timeline changed after step 1)
+npx remotion render "$B" Episode "$O.picture.mp4" --separate-audio-to="$O.mix.wav" --props="$P"
+# 3. the voice stem: the same composition with the narration only, no picture and no fonts (13 s for the demo)
+npx remotion render "$B" Episode "$O.voice.wav" --codec=wav --config=src/audio/remotion.wav.config.ts \
+  --props="<$P with \"audioStems\":[\"voice\"]>"
+# 4. pass 2, the master: 20 Hz high-pass, one gain to -14 LUFS-I into a true-peak limiter at -1.5 dBTP, libfdk AAC
+#    320 kb/s, the picture's video stream copied untouched; measured again after the encode and after AAC and Opus
+#    128 kb/s re-encodes (what YouTube serves). Over -1 dBTP after the encode, or over 0 dBTP after a re-encode, lowers
+#    the ceiling and repeats the pass (at most 5 rounds)
+.venv-audio/bin/python src/audio/tools/master_mix.py --wav "$O.mix.wav" --video "$O.picture.mp4" --out "$O.mp4" \
+  --wav-out "$O.master.wav" --report "$O.master.json"
+# 5. the gate (section 12.3): the render is the plan (a null test), Zoo on top, the duck follows the voice,
+#    voice-free bed changes and transitions, the effects, the delivery
+.venv-audio/bin/python src/episode/tools/audio_check.py --plan "$O.audio-plan.json" --mix "$O.mix.wav" --voice "$O.voice.wav" \
+  --picture "$O.picture.mp4" --delivered "$O.mp4" --master "$O.master.json" --report "$O.audio.json"
+```
+
+- Only `<name>.mp4` has sound; the picture pass has none, so an unmastered file cannot be uploaded by mistake. Keep
+  `<name>.cues.md` (the owner listens with it), `.audio-plan.json`, `.master.json` and `.audio.json` with the delivery;
+  `.picture.mp4`, `.mix.wav`, `.voice.wav` and `.master.wav` are working files (11.5 MB a minute for each 16-bit WAV,
+  17 MB for the 24-bit master).
+- A dub's audio track (`--fit-to` voice): `render.sh zoora-ai/<slug> --lang es --audio-track --bundle <b> --out
+  out/episodes/<slug>/es/audio-track.m4a` renders the mix without a picture (`--codec=wav`), masters it to .m4a (AAC)
+  or .wav, and gates it the same way. It needs the master's `timeline.json` in `public/generated/`.
+- Without `--bundle`, render.sh bundles into a temporary folder for that one output and deletes it afterwards; for a
+  batch, bundle once after the voice step and pass `--bundle`.
+- **Do not apply another loudness pass.** The delivered MP4 is mastered and gated; a second `loudnorm` (the publish
+  kit's `render-plan.sh` still adds one after a plain `npx remotion render`) re-encodes the AAC and moves the true
+  peak. Use render.sh for Episode outputs until the publish kit calls it.
+- A plain `npx remotion render ... Episode` still works (tests, a quick look): it plays the same plan, unmastered and
+  ungated, with the narration's DC offset (section 11).
 
 After any change to the storyboard or `research.md`, re-run the claim gate, then the voice step, then the renders.
 The publish kit (`node scripts/publish-kit/cli.ts <channel>/<slug>`) then writes the upload texts and a
-`render-plan.sh` that also applies the final loudness pass; see `docs/MEDIA_PIPELINE.md` §6.
+`render-plan.sh`; see `docs/MEDIA_PIPELINE.md` §6.
 
 ## 5. Dub into another language
 
@@ -215,8 +272,11 @@ only the phonemizer changes. Badger is nonverbal.
 ## 8. Check what was made
 
 For every MP4: `ffprobe` (H.264 High, yuv420p, BT.709, 30 fps, 1920×1080 or 1080×1920, AAC 48 kHz), the frame
-count against `timeline.json`, and loudness (`ffmpeg -i x.mp4 -af ebur128=peak=true -f null -`: about -14 LUFS,
-true peak under -1 dBTP; `narration.wav` is normalized to -14 LUFS / -1 dBTP by the voice step). Then LOOK at the
+count against `timeline.json`, and the sound gate's report `<name>.audio.json` (render.sh prints its summary: the
+null test, Zoo on top, duck coverage, voice-free windows, effects, -14 LUFS-I ± 0.5 and at most -1 dBTP delivered,
+after AAC and Opus re-encodes too; section 12.3). `ffmpeg -i x.mp4 -af ebur128=peak=true -f null -` should agree
+with it. Listen with the cue sheet `<name>.cues.md` (section 12.4). The Remotion Studio preview plays the beds through
+a per-frame broadband approximation: judge the delivered files only. Then LOOK at the
 first, middle and last frame of every scene of every language, taken from the MP4, not from stills (ART_GUIDE QA).
 The voice step checks lip sync itself (`timeline.warnings`); `scripts/voice/tests/test_demo_sync.py` re-checks the
 built demo. Thumbnails: `out/.../<lang>/check/sheet.png` shows each one at 168×94. Then run `scripts/qa` on every
@@ -272,7 +332,8 @@ stereo; video length equals the timeline to the frame; the AAC stream runs 1-15 
   the localized chip in es/pt-br). A title's first frame can show a descender cut by its rising mask ("hvpe"): that is
   one frame of the 10-frame rise, not a defect.
 - All 12 transitions of the final files (3 per episode, 1 per Short) run in silence: the loudest frame inside any
-  transition window is -92.8 dBFS. The Shorts' button column (x ≥ 950, y ≥ 960) is empty in every 12th frame of the
+  transition window is -92.8 dBFS. (These renders had no music. Since 2026-11-25 a transition is **voice-free**: the
+  bed plays through it and Zoo never speaks in it; the sound gate checks every transition window, section 12.) The Shorts' button column (x ≥ 950, y ≥ 960) is empty in every 12th frame of the
   chart scenes; only Badger's tail enters it during his inserts.
 - Thumbnails (17:45 UTC; no thumbnail, character or chart code changed after them): 9 PNGs (3 per language), every
   check passed, 130.5-148.1 KB, headline contrast 15.9-16.1:1, letters 13.1-19.2 px tall at 168×94; the es/pt-br ones
@@ -324,7 +385,9 @@ Tests (all re-run after the last code change, 18:37-18:44 UTC)
 2. **Read the claim reports** (`out/claims/<slug>.<lang>.md`): the claims and their sources, every waiver, the rules
    the gate could not check, and the warnings. Open the cited pages yourself where a fact matters.
 3. **Watch and listen** to every render with sound, at full size and on a phone. Check Zoo and Badger against the
-   model sheets, the charts (green up, red down, "Illustrative · fictional token"), captions and the mouth.
+   model sheets, the charts (green up, red down, "Illustrative · fictional token"), captions and the mouth. Listen with
+   the render's cue sheet and decide the sound questions in section 12.4; publish only files `render.sh` delivered
+   with the gate passed.
 4. **Native-speaker review of every dub, before it is published in any form** (an upload, an audio track, a
    localized title or thumbnail):
    - a native speaker reads every line aloud against the review sheet at the end of `out/dub/<slug>.<lang>.md` and
@@ -400,3 +463,180 @@ Picture
   Run `scripts/qa` on every dubbed render: it reports such clipping as `text-clipped`.
 - Zoo and Badger are being repaired in parallel (repair round 2): renders use the character code present at bundle
   time, and the thumbnail rig boxes (`src/thumbnails/layout.ts` RIG) need a probe re-run after character changes.
+
+Sound (2026-11-25; section 12)
+- **Nobody has heard it.** Every sound claim is a measurement: levels, the null test, masking indices, timing against
+  the word timings. The owner's listening pass (12.4) decides the open questions.
+- The gate's acoustic lines were calibrated on the one demo (59-74 s, 3 languages × 4 moods × 5 clock offsets, 60
+  mixes and 40 wrong-duck controls); recheck them on the first real episodes (`audio_sim.py`, 12.5).
+- The demo places no effect: its narration leaves no 4-frame gap at any reveal and its slides are silent by rule.
+  The effect rules are tested on padded fixtures only.
+- The bed level table (`bedLevels.json`) and the harmony table (`moods.ts` `HARMONY`, copied from the composer's
+  scores) describe today's beds: after the composer re-renders a story bed, run `bed_levels.py` (the engine test
+  fails on a changed bed) and update `HARMONY` by hand (no test compares it with the score).
+- The sting is opt-in and the demo's hook has no room for it (the render names the `minDurationSec` it would need);
+  it has been measured on a padded fixture only.
+- The Studio preview plays the beds through a per-frame broadband approximation. Judge the delivered files only.
+- Picture renders are the slow part: 134-174 s for the 59-74 s demo episodes on this 4-core machine; the voice stem
+  adds 11-14 s and the master and the gate about 26 s (12.5 has the proof times and a 12.75-minute probe).
+- Kokoro's narration carries a DC offset; the master's 20 Hz high-pass removes it from the delivery. A plain
+  `npx remotion render` keeps it (src/audio README, Limits).
+
+## 12. Sound: music, effects, the master and the gate
+
+Added 2026-11-25. Every Episode and Short plays the music package (`public/audio/music/`, the four Zoora AI story
+beds and their `-underscore` versions) and the SFX library (`public/audio/sfx/`) under Zoo's narration, through
+`src/audio` ([README](../src/audio/README.md)). **Nobody has heard the result yet**: everything below was measured,
+not judged by ear (this environment has no audio output). The owner's listening steps are in 12.4.
+
+### 12.1 The plan
+
+`src/episode/audio/plan.ts` decides everything before frame 0, from the storyboard, the timeline (and, for a dub, the
+master's), the music and SFX manifests and the beds' level table (`src/episode/audio/bedLevels.json`). It is pure:
+the render's `calculateMetadata`, the audio-plan CLI and the tests run the same code, and the plan is plain JSON with
+a SHA-256 hash. Every number below is in `src/episode/audio/constants.ts`.
+
+- **Moods by act, not by template.** `scene.bed` marks "from here on" (section 3); without one the story plays
+  `curious`. A region lasts at least 8 bars (25.6 s) unless the writer set it, and the bed changes at most once a
+  minute (the end screen excepted). Under speech each mood plays its `-underscore` version (motif and lead muted).
+- **The same level under the voice.** The tension and ominous underscores play 2.2-2.5 dB louder under the duck than
+  curious; each bed is trimmed (never raised) to the curious level: curious 0, resolve -1.1, ominous -2.1, tension
+  -2.5 dB. Without the trim, correct tension mixes failed the gate's worst-phrase and index lines.
+- **One clock.** Every bed of an episode plays on one musical clock: a bed entering at frame `f` starts `f × 1600`
+  samples into its 64 s loop, plus an offset of a whole 4-bar phrase (0-4 × 12.8 s), so the music never jumps
+  between sections at a change. The planner tries the phrases in a seeded order (the loop's base section first) and
+  takes the first whose estimated worst phrase sits 14 LU under the voice (2 LU above the gate's line); `music.offset`
+  overrides it. A Short uses the offset of its own seed.
+- **The opening** fades in from silence over the first sentence (1-4 s): the hook's first words are never fighting a
+  full bed, and no effect plays in the opening scene.
+- **Bed changes only where Zoo is silent:** in the window from the outgoing scene's last sound to the incoming
+  scene's first voiced frame (or 12 frames in), with a guard frame each side. An equal-power crossfade of 9-24 frames;
+  where the two beds' bars clash at that moment (a semitone between notes foreign to each other, from the composer's
+  scores: `src/episode/audio/moods.ts` `HARMONY`) the fades are staggered: a short breath, listed in the cue sheet
+  for the owner to judge. With less room than 9 frames the bed plays on to the next boundary with room.
+- **The duck:** 2 / 12 / 4 dB below 700 Hz / 700 Hz-5 kHz / above 5 kHz (the band-split duck the voice gate
+  measured), 120 ms attack with lookahead, 1.2 s release. Pauses under 2 s stay ducked, and the duck is also held
+  through every scene change with less than 3 s of silence, every bed change, and every Badger reaction beat (from 6
+  frames before his reaction to 30 frames after it, or Zoo's turn + 10): the joke lands on a steady bed, not a swell.
+- **Rests.** After 2 loops (128 s) of one bed, the bed dips 18 dB (never to digital silence) for a scene and at least
+  8 bars, then comes back on a phrase start under the duck; a rest late in a region carries on to the next bed change.
+- **The end screen:** `bed-story-resolve-underscore` under the outro line, then, once the duck has released, a
+  2-beat equal-power "music up" to the motif version (+8 dB) ending on a bar line, faded over the last 2 s so it ends
+  on the last frame. Without an end screen the bed fades over the final voice-free tail.
+- **Shorts:** one bed for the whole Short (its first scene's mood, or `shorts[].bed`), ducked from the Short's own
+  windows, fading in over the first sentence and out over at most the last 12 frames (a clean loop on replay); no
+  sting.
+- **Effects, sparingly** (PROJECT_INSTRUCTIONS: restraint). A list item (bullet, step) gets a soft pitch-stable pop
+  (-30 LUFS) only where Zoo leaves a 4-frame gap from 1 frame before to 4 frames after its reveal; the CTA's click
+  only when the button press lands in a gap of the speech; a wipe gets a short whoosh (at most -24 LUFS and 6 LU over
+  the bed, its pass-by on the wipe's fastest frame) unless its tail would reach the first word; a slide is silent
+  unless `sfx.transition` is true; the chart's rug is silent unless `sfx.accent` is true. At most 3 effects in 10 s, 6 a minute and 6 a scene,
+  6 frames apart, and nothing within 0.5 s of a spoken disclosure. Every effect left out is listed with its reason.
+  On the demo, whose narration runs without 4-frame gaps at its reveals, no effect is placed.
+- **The brand sting** (`music.sting: "after-hook"`, off by default): `intro-sting-zoora` (4.5 s) after the hook, in
+  a slot that starts after the hook's last sound, Badger's reaction + 30 frames and the fiction card, keeps at most
+  4 s without narration in the first 12 s, and cuts to the next scene; the bed rests under it. Never in Shorts.
+- **Dubs.** A dub's plan needs the master's storyboard and timeline (the render names the missing file). The bed map,
+  offset and sting come from the master storyboard; a native dub's duck, windows and effects follow its own voice; an
+  audio track (`--fit-to`) places effects on the master's picture and checks every window against the dub's voice.
+
+### 12.2 The cue sheet
+
+`<name>.cues.md` lists every bed segment (cue, in and out, loops, clock position, level, fades), every change with its
+timecode and voice-free window, the breaths and dips to judge, the duck and its holds, the sting, every effect placed
+and every effect left out with its reason, and what to listen for.
+
+### 12.3 The gate (`src/episode/tools/audio_check.py`)
+
+The gate runs on the render's own lossless mix, its voice stem and the delivered file. It fails the delivery (exit 1)
+on any FAIL line; WARN lines are read by a person.
+
+| Check | What | Line |
+| --- | --- | --- |
+| null | The render is the plan: mix − voice − (beds, stingers and effects rebuilt from the plan) | residual ≤ -60 dBFS peak |
+| voice-over-rest, worst-phrase | Zoo over everything else under speech; the worst phrase | ≥ 10 LU (warn < 14); ≥ 12 LU (warn < 13) |
+| index, index-p10, under-3db | The band-audibility index and the 1-4 kHz frames under 3 dB | ≥ 0.75; ≥ 0.45; ≤ 16 % |
+| worst-phrase-snr | The worst phrase's median 1-4 kHz voice-to-rest ratio (Zoo's consonants) | ≥ 12.5 dB (warn < 13) |
+| phone | The same on a phone-speaker model | warn < 12 LU |
+| duck-coverage | The bed's mid band at least 10 dB down while Zoo is heard | ≥ 98 % of voiced 10 ms frames |
+| voice-free | No voice in a bed change, a fade, the sting slot or a transition | ≤ -60 dBFS |
+| sfx-masking | Effects over the voice: 1-4 kHz voice-to-rest, first 150 ms (phone model in Shorts) | fail < 6 dB, warn < 10 dB |
+| protect | The first second of speech and a spoken disclosure | ≥ 15 LU and ≥ 15 dB |
+| premaster-peak, master-gain, limiter | Remotion's sum has headroom; the master's gain within ±3 dB; the limiter on transients only | < -0.1 dBFS; ±3 dB; warn > 1 % |
+| platform-reencode | True peak after AAC and Opus 128 kb/s re-encodes | fail > 0, warn > -0.5 dBTP |
+| loudness, true-peak, dc, dialogue | The delivery (ours and ffmpeg's meter) | -14 ± 0.5 LUFS-I; ≤ -1 dBTP; ≤ 0.001; dialogue warn outside -15 to -12.5 LUFS |
+| streams | AAC-LC 48 kHz stereo, the picture's video stream copied bit for bit, audio as long as the video | |
+| plan-rules | Effect caps and spacing, no effect in the opening scene or near a disclosure, the clock, the final fades | |
+
+Before the null test the gate proves its Python port of the gain law against the TypeScript one (the plan's
+`gainProbe`). A wrong duck (the English duck under the Spanish voice) passes the loudness lines almost as well as a
+good one, and is caught either way: a plan built from the wrong timeline fails duck coverage (73-75 %) and the worst
+phrase's 1-4 kHz ratio; a render that plays something other than its plan fails the null test (12.5).
+
+### 12.4 Listening (the owner)
+
+Listen on headphones and on a phone speaker, with the cue sheet open, before anything with sound is published:
+
+1. The demo deliveries: `out/episodes/_engine-demo/sound/<lang>/episode.mp4` and `short1.mp4` (en, es, pt-br), each
+   with its `.cues.md`.
+2. The A/B clips in `out/episodes/_engine-demo/sound/listen/` (offline mixes from the plan, mastered like a delivery;
+   each with its cue sheet and plan):
+   - `en.as-delivered.m4a` against `en.sfx-on-every-reveal.m4a`: no effects (the rule: pops only in gaps of the
+     speech) against a pop on every bullet and step reveal, 3 dB down where it lands on a word;
+   - against `en.release-450ms.m4a`: the duck's 1.2 s release against the AudioDemo's 450 ms (more "breathing"
+     between sentences);
+   - against `en.no-opening-fade.m4a`: the bed fading in under the first sentence against starting at full level;
+   - `es.as-delivered.m4a` against `es.wrong-duck.m4a`: what the gate's null test and duck coverage catch (the
+     English duck under the Spanish voice);
+   - `en.sting-on.m4a` against `en.sting-off.m4a`: the brand sting after the cold open, on a scratch copy of the demo
+     whose hook has five sentences (the demo's own one-sentence hook leaves no room for it).
+3. Decide, and tell the engine's owner:
+   - Are the bed changes and breaths clean (no smear of two keys, no dropout)? The cue sheet lists each one.
+   - Is a transition with the bed playing through it right (the rule is now "voice-free", not silent)?
+   - Release 1.2 s or 450 ms? Effects only in gaps (today) or on the reveal frame? When the CTA press lands on a
+     word: no click (today), or a click just after the word?
+   - Should the brand sting play after the hook by default (it needs a longer hook)?
+   - Is the music level under Zoo right (about 17 LU under him on the demo), on the phone too?
+
+### 12.5 Measured on 2026-11-25 (not heard)
+
+**Gate calibration** (`src/episode/tools/audio_sim.py`, offline mixes rebuilt from the plans): 60 correct mixes (the
+demo in en, es and pt-br, each story mood forced over the whole episode, each of the 5 clock phrases) against 40
+wrong-duck controls (es and pt-br under the English plan's duck):
+
+| Measure | Correct mixes | Wrong-duck controls | Line |
+| --- | --- | --- | --- |
+| Zoo over the rest under speech | 15.97-18.09 LU | 15.36-16.56 LU | ≥ 10 LU |
+| Worst phrase | 14.05-16.39 LU | 12.36-14.87 LU | ≥ 12 LU |
+| Band-audibility index / its P10 | 0.786-0.868 / 0.475-0.670 | 0.781-0.831 / 0.449-0.618 | ≥ 0.75 / ≥ 0.45 |
+| Frames under 3 dB at 1-4 kHz | 7.4-13.7 % | 11.8-18.2 % | ≤ 16 % |
+| Worst phrase at 1-4 kHz | 13.3-19.1 dB | 2.3-12.1 dB | ≥ 12.5 dB |
+| Duck coverage | 100 % | 72.8-74.8 % | ≥ 98 % |
+| Result | all 60 pass | all 40 fail 2-4 lines (coverage and the worst phrase at 1-4 kHz in every one) | |
+
+Under these quiet, trimmed underscores a wrong duck costs only about 1 LU overall, so the loudness and index lines
+cannot tell it apart; duck coverage and the worst phrase's 1-4 kHz ratio can, and the null test catches any render
+that differs from its plan. Before the bed trims (12.1), correct tension mixes measured 14.0-14.8 LU over the rest
+and failed the worst-phrase line (11.55 LU) and the index P10 line (0.471). The worst-phrase lines were set on mixes
+of 8-10 phrases; a 10-minute episode has about 15 times more, so its worst phrase will sit lower: recheck the lines
+on the first real episodes.
+
+**Proof renders** (`render.sh`, one bundle, `out/episodes/_engine-demo/sound/<lang>/`; every check passed with no
+warning). Each Episode plays curious under the story, a staggered change (the bars clash) to the resolve underscore
+in the voice-free window before the end screen, the music-up and the final 2 s fade; each Short one curious bed. No
+effect is placed (12.1). Clock phrase 1 everywhere (the first estimate over 14 LU).
+
+| Output | Null test | Zoo over the rest / worst phrase | Worst phrase at 1-4 kHz | Duck coverage | Delivered | AAC / Opus 128 kb/s | Render (picture + mix, voice stem, total) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| en `episode.mp4` (59.0 s) | -81.1 dBFS | 16.7 / 15.9 LU | 16.4 dB | 100 % | -14.02 LUFS, -2.1 dBTP | -2.1 / -2.2 dBTP | 134 s, 11 s, 171 s |
+| en `short1.mp4` (14.5 s) | -86.7 dBFS | 17.3 / 16.5 LU | 21.3 dB | 100 % | -14.01 LUFS, -4.3 dBTP | -4.3 / -3.9 dBTP | 38 s, 6 s, 55 s |
+| es `episode.mp4` (73.7 s) | -80.9 dBFS | 16.7 / 14.2 LU | 16.5 dB | 100 % | -14.01 LUFS, -2.6 dBTP | -2.6 / -2.5 dBTP | 174 s, 14 s, 215 s |
+| es `short1.mp4` (20.6 s) | -86.6 dBFS | 17.0 / 16.4 LU | 17.6 dB | 100 % | -14.01 LUFS, -3.2 dBTP | -3.2 / -3.0 dBTP | 36 s, 5 s, 52 s |
+| pt-br `episode.mp4` (71.9 s) | -80.9 dBFS | 17.0 / 15.5 LU | 16.4 dB | 100 % | -14.01 LUFS, -3.0 dBTP | -3.5 / -2.8 dBTP | 146 s, 14 s, 186 s |
+| pt-br `short1.mp4` (20.5 s) | -86.6 dBFS | 17.1 / 16.7 LU | 17.6 dB | 100 % | -14.01 LUFS, -3.7 dBTP | -3.6 / -3.7 dBTP | 39 s, 6 s, 55 s |
+
+The master's gain was -0.16 to +0.96 dB and the limiter never acted (0 % of blocks over 1 dB); voice-free windows
+held the voice at -85.7 dBFS or quieter; the first second of speech sat 40.9-43.5 LU over the music (the bed is
+still fading in); dialogue after the master measured -14.0 to -13.1 LUFS. Every delivered video stream is
+bit-identical to its picture render, and the audio runs exactly as long as the video.
+

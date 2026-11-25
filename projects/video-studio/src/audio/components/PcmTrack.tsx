@@ -13,7 +13,11 @@
  * audio, even on the first frame of a render tab while the source is still being decoded.
  *
  * Preview (Studio/Player): an <Html5Audio> with a per-frame volume (a broadband approximation; the
- * Studio cannot play inline audio). Only renders are judged.
+ * Studio cannot play inline audio). Only renders are judged. The volume follows the LOW band's gain by
+ * default (fixed 2026-11-25, episode critic: the mid band's 12 dB made every ducked bed sound far thinner in
+ * the Studio than in the render, which keeps the lows 2 dB down), and a looping bed restarts each loop at the
+ * loop start, on the composition's clock (Html5Audio's own loop wraps to trimBefore, so a bed started part-way
+ * into its loop drifted off the clock after one loop).
  *
  * Internals are pinned to Remotion 4.0.541 (package.json pins every remotion package). A missing
  * internal fails the render loudly instead of dropping the music; tests/internals.test.ts checks
@@ -39,7 +43,7 @@ export type PcmTrackProps = {
 	trim?: number;
 	/** frames this track lasts (local) */
 	durationInFrames: number;
-	/** the band whose gain drives the preview's broadband volume (default: the middle band) */
+	/** the band whose gain drives the preview's broadband volume (default: band 0, the lows) */
 	previewBand?: number;
 	name?: string;
 };
@@ -124,17 +128,30 @@ const PcmRender: React.FC<PcmTrackProps & {absStart: number}> = (p) => {
 
 const PcmPreview: React.FC<PcmTrackProps & {absStart: number}> = (p) => {
 	const {fps} = useVideoConfig();
-	const band = p.previewBand ?? Math.floor(p.gain.bands / 2);
+	const band = Math.min(p.gain.bands - 1, p.previewBand ?? 0);
 	const trim = p.trim ?? 1;
 	const offsetFrames = Math.round(((p.offsetSamples ?? 0) / SAMPLE_RATE_FALLBACK) * fps);
+	// volume of a part that starts `at` frames into this track (f counts from that part's own start)
+	const volumeAt = (at: number) => (f: number) => Math.min(1, trim * p.gain.gain((p.absStart + at + f) / fps, band));
+	if (!p.loop) {
+		return <Html5Audio src={staticFile(p.src)} trimBefore={offsetFrames > 0 ? offsetFrames : undefined} volume={volumeAt(0)} name={p.name} />;
+	}
+	// a loop: the first part plays from the offset to the loop's end, then every pass restarts at the loop start
+	const loopStart = Math.round((p.loop.startSample / SAMPLE_RATE_FALLBACK) * fps);
+	const loopEnd = Math.round((p.loop.endSample / SAMPLE_RATE_FALLBACK) * fps);
+	const loopLen = Math.max(1, loopEnd - loopStart);
+	const first = Math.max(0, loopEnd - offsetFrames);
+	const parts: Array<{at: number; len: number; trim: number}> = [];
+	if (first > 0) parts.push({at: 0, len: Math.min(first, p.durationInFrames), trim: offsetFrames});
+	for (let at = first; at < p.durationInFrames; at += loopLen) parts.push({at, len: Math.min(loopLen, p.durationInFrames - at), trim: loopStart});
 	return (
-		<Html5Audio
-			src={staticFile(p.src)}
-			loop={p.loop !== null}
-			trimBefore={offsetFrames > 0 ? offsetFrames : undefined}
-			volume={(f) => Math.min(1, trim * p.gain.gain((p.absStart + f) / fps, band))}
-			name={p.name}
-		/>
+		<>
+			{parts.map((part) => (
+				<Sequence key={part.at} from={part.at} durationInFrames={part.len} layout="none" name={`${p.name ?? 'bed'} (preview ${part.at})`}>
+					<Html5Audio src={staticFile(p.src)} trimBefore={part.trim > 0 ? part.trim : undefined} volume={volumeAt(part.at)} />
+				</Sequence>
+			))}
+		</>
 	);
 };
 

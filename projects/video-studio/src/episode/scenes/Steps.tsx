@@ -10,6 +10,7 @@ import {LAYOUTS, type Box} from '../layout/specs';
 import {Lines, useFit, useFitGroup} from '../text/FitText';
 import {fontFor} from '../i18n/fonts';
 import {CharacterLayer, entry, SceneBg, useDirection, type SceneCtx} from './parts';
+import {sceneCast} from './direction';
 import {BadgerInsert, inInsert} from './Insert';
 import {list, str} from '../validate';
 import {placeBlock, stackRows} from '../layout/blocks';
@@ -19,7 +20,7 @@ export const StepsScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const L = LAYOUTS.steps[ctx.format];
 	const vertical = ctx.format === 'vertical';
 	const badgerPlace = ctx.sc.badger?.present ? L.badger : null;
-	const dir = useDirection(ctx, {zooView: 'front', badgerPlace, badgerInsert: vertical});
+	const dir = useDirection(ctx, sceneCast(ctx.sc, ctx.format));
 	const steps = (list(ctx.sc, 'steps') ?? []).slice(0, 5);
 	const title = str(ctx.sc, 'title') ?? '';
 	const titleFit = useFit(title, L.title, ctx.lang);

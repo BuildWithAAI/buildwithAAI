@@ -30,11 +30,11 @@ import {
 	type BadgerSpot,
 } from '../src/characters/badger/spots';
 import {ZOO_LINE} from '../src/characters/zoo/lines';
-import {BEATS, POINT} from '../src/compositions/characters/Preview10s';
+import {BEATS, POINT, SWAP} from '../src/compositions/characters/Preview10s';
 import {PROVISIONAL_CAPTION} from '../src/compositions/characters/captions';
 import {POINT_PATH_LENGTH, pathForPoseAmount, pointPath} from '../src/compositions/characters/gesture';
 import {FOOTPRINTS} from '../src/compositions/characters/contact';
-import {closeLineScale, fullLineScale, GROUND_Y, FRAME, PAIR_LINE_SCALE, PAIR_SCALE, PAIR_SPACING} from '../src/compositions/characters/stage';
+import {BADGER_SHEET_BUSTS, closeLineScale, fullLineScale, GROUND_Y, FRAME, PAIR_LINE_SCALE, PAIR_SCALE, PAIR_SPACING} from '../src/compositions/characters/stage';
 
 const ROOT = process.cwd();
 const sha = (rel: string) => createHash('sha256').update(readFileSync(join(ROOT, rel))).digest('hex');
@@ -78,7 +78,30 @@ const crops = [
 	'reference/crops/zoo_pose_point.png',
 ];
 
-const zooDecisions = ZOO_MANIFEST.decisions.map((d) => ({character: 'zoo', ...d}));
+/**
+ * Integration corrections (round 5) to three recorded panel readings that the R4 review measured as wrong. The source
+ * texts in src/characters/zoo/manifest.ts keep their wording; the manifest carries the corrected `sheet` reading and a
+ * `correction` note that says what changed and why.
+ */
+const ZOO_CORRECTIONS: Record<string, {sheet?: string; why?: string; correction: string}> = {
+	'ZOO-E1': {
+		why: 'v1-round 3 kept the fixed six-shape mouth library; a scaled "ah" could not match the gasp\'s proportions (~23.5 x 11 u, an arched top, widest low; round 4 review).',
+		correction: "Round 5 (integration, R4 review): this entry called the gasp 'flat-topped'; the panel's opening is arched (ZOO-E3).",
+	},
+	'ZOO-E2': {
+		sheet: 'zoo_expr_worried.png: inner brow ends rise 5-7.5 u with a sharp upturn, the screen-right arch inverts ~4 u, tails rise ~1.5-2 u. Shocked: brows ~8-11 u up and a wide gasp with an arched top (ZOO-E3). Happy: a small closed smile tucked under an almost level moustache with the eyes still open (eye-white area 72-98% of neutral\'s), head turned ~15 deg.',
+		correction: "Round 5 (integration, R4 review): this entry read the happy panel as 'soft closed U-smile, lower lids up'. Measured, the panel keeps the eyes open (eye-white area 72-98% of neutral's; the far eye is foreshortened by the turn) and its smile is a thin line 1.5-3 u deep. The happy values under 'chosen' are rounds 1-2; ZOO-E4 (round 4) and then ZOO-E5 (round 5) replaced them.",
+	},
+	'ZOO-E3': {
+		sheet: "zoo_expr_shocked.png (0.699 u/px): a wide gasp, ~23.5 x 11 u, with an arched top (the opening is ~10 px wide at its top row against ~32 px at its widest) and widest low (~68% of its height), ~2.9 u under the moustache.",
+		correction: "Round 5 (integration, R4 review): this entry called the panel's opening 'flat-topped'; it is arched, as SHOCKED_MOUTH draws it. ZOO-M4 (round 5) moved SHOCKED_MOUTH 2 u lower and set the shocked iris to 1.",
+	},
+	'ZOO-E4': {
+		sheet: "zoo_expr_happy.png: a small asymmetric smirk: a thin smile ~33-35 u wide and 1.5-3 u deep tucked under an almost level moustache, the screen-right corner lifted a little more; the eyes stay open (eye-white area 72-98% of neutral's) and there is no cheek fold.",
+		correction: "Round 5 (integration, R4 review): this entry read the panel as 'a wide U-smile, a cheek fold beside it, lower lids up'; that misreading drove round 4's squint and grin. Superseded by ZOO-E5.",
+	},
+};
+const zooDecisions = ZOO_MANIFEST.decisions.map((d) => ({character: 'zoo', ...d, ...(ZOO_CORRECTIONS[d.id] ?? {})}));
 const badgerDecisions = BADGER_MANIFEST.decisions.map((d) => ({character: 'badger', id: d.id, sheet: d.sheetShowed, chosen: d.chosen, why: d.why}));
 const integrationDecisions = [
 	{
@@ -93,7 +116,7 @@ const integrationDecisions = [
 		id: 'INT-P2',
 		sheet: `The panel stands the pair ${SIZE_COMPARISON.spacingUnits} units apart (ground point to ground point); Badger's head sits just beside Zoo's hanging hand.`,
 		chosen: `When Zoo points to screen right over Badger, the pair stands ${PAIR_SPACING} units apart and Badger is drawn in front of Zoo (depth), for the whole shot (no sliding). Scale and ground line stay the panel's. Integration rounds: 560 (round 1), 570 (round 3), ${PAIR_SPACING} (round 4; ${Math.round(PAIR_SPACING - SIZE_COMPARISON.spacingUnits)} units, ${Math.round((PAIR_SPACING - SIZE_COMPARISON.spacingUnits) * PAIR_SCALE)} px, wider than the panel).`,
-		why: "Spacing is staging, not anatomy; relative scale is unchanged. Round 1: at the panel spacing the swinging hand overlaps Badger's pale ear (poseAmount ~0.2), so the pair moved to 560 units; round 3 moved to 570 for the earlier-opening arm of ZOO-P5. Round 4: the rig's upper-arm lead (ZOO-P6, the upper arm abducted at least 0.3 x the forearm's swing) opens the elbow sooner, and at 570 units the fist passed 1.0 px from the pale ear at f96 and 10.4 px at f187. At 608 units (ZOO_X 655, BADGER_X 1190 px), Zoo-only and Badger-only renders of all 300 frames give a closest pass of 30.0 px at f97 and 31.0 px at f96 on the raise and 36.2 px at f188 on the lowering, with no overlapping pixel; rendered at 1/10-frame steps through both passes, the hand's continuous path stays at least 26.9 px from his head (t 96.3, the front head's pale ear) and 30.5 px (t 187.5, the 3/4 head's ear tip). 600 units would give 23.4 px at f96 (the ground points are placed on whole pixels). Badger's eyes close as the fist passes on the raise (blink f94-99). Acting does not buy the gap: a 4 deg neck rise or head tilt on Badger gains about 3 px at f96 but loses 2-3 px at f97, an ear fold and holding the front head longer change nothing, and turning to the 3/4 head a frame earlier is worse (its ear sits nearer the path).",
+		why: "Spacing is staging, not anatomy; relative scale is unchanged. Round 1: at the panel spacing the swinging hand overlaps Badger's pale ear (poseAmount ~0.2), so the pair moved to 560 units; round 3 moved to 570 for the earlier-opening arm of ZOO-P5. Round 4: the rig's upper-arm lead (ZOO-P6, the upper arm abducted at least 0.3 x the forearm's swing) opens the elbow sooner, and at 570 units the fist passed 1.0 px from the pale ear at f96 and 10.4 px at f187. At 608 units (ZOO_X 655, BADGER_X 1190 px), Zoo-only and Badger-only renders of all 300 frames give a closest pass of 30.0 px at f97 and 31.0 px at f96 on the raise and 36.2 px at f188 on the lowering, with no overlapping pixel; rendered at 1/10-frame steps through both passes, the hand's continuous path stays at least 26.9 px from his head (t 96.3, the front head's pale ear) and 30.5 px (t 187.5, the 3/4 head's ear tip). 600 units would give 23.4 px at f96 (the ground points are placed on whole pixels). Round 5 (BADGER-D55 drew the front head 10% and the 3/4 heads 5% smaller; INT-A2 re-tuned the swaps): on Zoo-only and Badger-only renders the closest passes are 38.6 px (f97), 40.5 px (f96), 40.6 px (f188) and 43.8 px (f187), with no overlapping pixel, and at 1/10-frame steps the continuous path stays at least 37.8 px (t 96.3) and 35.8 px (t 187.6) away; the spacing stays 608. Badger's eyes close as the fist passes on the raise (blink f94-99). Acting does not buy the gap: a 4 deg neck rise or head tilt on Badger gains about 3 px at f96 but loses 2-3 px at f97, an ear fold and holding the front head longer change nothing, and turning to the 3/4 head a frame earlier is worse (its ear sits nearer the path).",
 	},
 	{
 		character: 'both',
@@ -126,7 +149,7 @@ const integrationDecisions = [
 	{
 		character: 'both',
 		id: 'INT-C1',
-		sheet: 'The approved sheets draw no contact shadows (the size panel has only a ground line). ART_GUIDE CV4a/LS4: Badger\'s off-white coat (L* 4.9 from the background) and Zoo\'s sneakers (L* 0.4) separate from #E6E8EB only by their outline, so every shot showing feet or paws gets one flat contact shadow in backgroundShadow. The round-2 Badger review asked for it in the proof and the sheet stills.',
+		sheet: 'The approved sheets draw no contact shadows (the size panel has only a ground line). ART_GUIDE CV4a/LS4: Badger\'s off-white coat and, since ZOO-C8 (round 5), Zoo\'s off-white sneaker uppers (both #F4F6F8, L* 4.9 above the background; the round-4 uppers sat 0.4 above it) separate from #E6E8EB mostly by their outline, so every shot showing feet or paws gets one flat contact shadow in backgroundShadow. The round-2 Badger review asked for it in the proof and the sheet stills.',
 		chosen: `BRAND.backgroundShadow ${BRAND.backgroundShadow} (ART_GUIDE CV2; the value the branding, episode and show themes already use) is added to palette.ts as the background colour's one flat shadow tone. Preview10s, ZooSheet and BadgerSheet draw one flat ellipse under each figure (src/compositions/characters/contact.tsx, FOOTPRINTS: measured sole, paw, wheel or leg extents + 10 units, e.g. Zoo front rx ${FOOTPRINTS.zooFront.rx}, Badger 'left' rx ${FOOTPRINTS.badgerLeft.rx}; ry 15-16 units). In the proof the shadows sit over the silver ground line (the line passes behind the feet); on the sheets the near-black baseline runs over them, so it stays unbroken. No blur, opacity or gradient.`,
 		why: 'ART_GUIDE is the craft guide and PROJECT_INSTRUCTIONS allows one flat shadow tone per colour; the background stays plain #E6E8EB. ART_GUIDE asks for the owner\'s sign-off on the palette entry, so it is recorded here and is still pending.',
 	},
@@ -134,15 +157,15 @@ const integrationDecisions = [
 		character: 'both',
 		id: 'INT-L1',
 		sheet: 'The sheet keeps a near-constant screen line weight: close-up panels (zoo_expr_*, badger_expr_*) draw outlines at about half of LINE.width in world units (1.4-2.1 units at 0.699 units/px).',
-		chosen: `Every composition passes lineScale to both rigs. Full-body framings use ART_GUIDE SL5 (outline clamp(3.5 x k, 3, 6) px, k = output px per unit): the proof pair at ${PAIR_SCALE} gives ${PAIR_LINE_SCALE.toFixed(2)}, the Zoo sheet row at 0.54 gives ${fullLineScale(0.54).toFixed(2)}, Badger's pose row at 0.5 gives ${fullLineScale(0.5).toFixed(2)}. Close-ups keep the sheet's close-up weight (half of LINE.width), floored at 3 px and capped at 6 px: MouthDemo bust ${closeLineScale(900 / 280).toFixed(2)}, sheet busts ${closeLineScale(322 / 279.6).toFixed(2)} (Zoo) and ${closeLineScale(1.42).toFixed(2)} (Badger).`,
+		chosen: `Every composition passes lineScale to both rigs. Full-body framings use ART_GUIDE SL5 (outline clamp(3.5 x k, 3, 6) px, k = output px per unit): the proof pair at ${PAIR_SCALE} gives ${PAIR_LINE_SCALE.toFixed(2)}, the Zoo sheet row at 0.54 gives ${fullLineScale(0.54).toFixed(2)}, Badger's pose row at 0.5 gives ${fullLineScale(0.5).toFixed(2)}. Close-ups keep the sheet's close-up weight (half of LINE.width), floored at 3 px and capped at 6 px: MouthDemo bust ${closeLineScale(900 / 280).toFixed(2)}, sheet busts ${closeLineScale(322 / 279.6).toFixed(2)} (Zoo) and ${closeLineScale(BADGER_SHEET_BUSTS.scale).toFixed(2)} (Badger, drawn at ${BADGER_SHEET_BUSTS.scale} px/u since round 5: BADGER-D55 drew the front head and bust neck 10% smaller, so the row grew 1/0.90 to keep round 4's on-screen bust size).`,
 		why: 'Fixed world-unit strokes were about twice the sheet weight in close-ups and under SL5\'s 3 px floor on the small sheet rows.',
 	},
 	{
 		character: 'badger',
 		id: 'INT-A2',
 		sheet: 'Prompt 2: Badger looks toward the gesture with a small head turn, looks up at Zoo, then gives a restrained judging reaction. Prompt 1: emotion through brows, folded ears, head angle and tail; eyes open between natural blinks.',
-		chosen: `Every head replacement in the proof happens with Badger's eyes closed, and the two big turns go through held in-betweens. The turn to the 3/4 head under a blink (f${BEATS.badgerTurn}). The look-up (round 4): the eyes and neck lead (f${BEATS.badgerLookUp.eyes[0]}-${BEATS.badgerLookUp.eyes[1]}), then, eyes closed, a front-head breakdown held ${BEATS.badgerLookUp.toThreeQuarter - BEATS.badgerLookUp.toFront} frames (f${BEATS.badgerLookUp.toFront}-${BEATS.badgerLookUp.toThreeQuarter - 1}) rolling toward Zoo, then threeQuarterLeftScreen held ${BEATS.badgerLookUp.toUp - BEATS.badgerLookUp.toThreeQuarter} frames with its nose lifting (f${BEATS.badgerLookUp.toThreeQuarter}-${BEATS.badgerLookUp.toUp - 1}), then upLeftScreen (f${BEATS.badgerLookUp.toUp}): a four-drawing turn (3/4 right, front, 3/4 left, profile up) instead of round 3's front-to-profile jump; the blink holds until that frame. The judging look: on the up head the neck eases down over ${BEATS.judge.neckDown[1] - BEATS.judge.neckDown[0]} frames (f${BEATS.judge.neckDown[0]}-${BEATS.judge.neckDown[1]}, to -12 deg; round 3: -8) while a slow blink closes (f${BEATS.judge.blink}), then threeQuarterLeftScreen holds ${BEATS.judge.swap - BEATS.judge.toThreeQuarter} frames (f${BEATS.judge.toThreeQuarter}-${BEATS.judge.swap - 1}, lifting from where the lowered up head left the skull), then the front head (f${BEATS.judge.swap}); the eyes open on Zoo, the judge brows, ears 0.42 and the ~8 deg tilt follow, with one slow push-in (1.00 -> 1.04, f${BEATS.pushIn[0]}-${BEATS.pushIn[1]}, ART_GUIDE MO13) anchored on his eyes. Neck and tilt at each swap keep the skull where the old head left it, measured on Badger-only renders (centroids of the skull's top 70 px of coat / the head's top 120 px): f190 (+0.7, +5.3) / (+2.4, +4.3) px, f193 (+2.1, +4.5) / (-1.4, +5.1), f195 (-0.4, -1.4) / (+2.0, -3.5), f241 (+3.2, +1.0) / (-1.2, +1.2), f244 (-3.2, -3.3) / (+0.1, -3.2). Idle life in 0-3 s: one blink and one ear flick.`,
-		why: 'The round-2 review found the judge swap popping in one frame from the profile pitched up at Zoo to a level frontal head (the nose moved half a head length and the ears changed from one hanging profile ear to two frontal ears), and the look-up going 3/4-right, front, up-left in three frames. Lowering the up head first and passing through held in-betweens turns both into readable head turns: the skull stays within 6 px at every replacement and the face features (the nose 38-69 px per replacement, the ears) move around it under closed eyes, as in a drawn turn. The judging look stays on the front head because there the lids and brows read (on the pitched profile each cue moved only 2-7 px).',
+		chosen: `Every head replacement in the proof happens with Badger's eyes closed, and the two big turns go through held in-betweens. The turn to the 3/4 head under a blink (f${BEATS.badgerTurn}) enters it low and nose-down (neck ${SWAP.threeQuarterRightIn.neck}, tilt ${SWAP.threeQuarterRightIn.tilt} deg; round 5), and the neck rises along the point to 5 deg by f112. The look-up: the eyes and neck lead (f${BEATS.badgerLookUp.eyes[0]}-${BEATS.badgerLookUp.eyes[1]}), then, eyes closed, a front-head breakdown held ${BEATS.badgerLookUp.toThreeQuarter - BEATS.badgerLookUp.toFront} frames (f${BEATS.badgerLookUp.toFront}-${BEATS.badgerLookUp.toThreeQuarter - 1}) rolling toward Zoo (neck ${SWAP.breakdown.neck.join(' -> ')}, tilt ${SWAP.breakdown.tilt.join(' -> ')}), then threeQuarterLeftScreen held ${BEATS.badgerLookUp.toUp - BEATS.badgerLookUp.toThreeQuarter} frames (f${BEATS.badgerLookUp.toThreeQuarter}-${BEATS.badgerLookUp.toUp - 1}) rising on its neck (${SWAP.lookUpThreeQuarter.neck.join(' -> ')}) as its tilt eases (${SWAP.lookUpThreeQuarter.tilt.join(' -> ')}; the head still lifts), then upLeftScreen (f${BEATS.badgerLookUp.toUp}, neck ${SWAP.upStart} easing up): a four-drawing turn (3/4 right, front, 3/4 left, profile up); the blink holds until that frame. The judging look: on the up head the neck eases down over ${BEATS.judge.neckDown[1] - BEATS.judge.neckDown[0]} frames (f${BEATS.judge.neckDown[0]}-${BEATS.judge.neckDown[1]}, to ${SWAP.upDown} deg) while a slow blink closes (f${BEATS.judge.blink}), then threeQuarterLeftScreen holds ${BEATS.judge.swap - BEATS.judge.toThreeQuarter} frames (f${BEATS.judge.toThreeQuarter}-${BEATS.judge.swap - 1}; neck ${SWAP.threeQuarterLeft.neck.join(' -> ')}, tilt ${SWAP.threeQuarterLeft.tilt.join(' -> ')}, its nose lifting toward the front head's), then the front head (f${BEATS.judge.swap}) at neck ${SWAP.front.neck} and total head rotation ${SWAP.front.total} deg; the eyes open on Zoo, the judge brows, ears 0.42 and the settle to neck ${SWAP.judge.neck} / total ${SWAP.judge.total} deg follow, with one slow push-in (1.00 -> 1.04, f${BEATS.pushIn[0]}-${BEATS.pushIn[1]}, ART_GUIDE MO13) anchored on his eyes. On the left rig a neckTurn of about 2.5-6.5 deg (and below -13) opens a 1-2 px seam at the neck's back corner by the collar (rigLeft.ts; reported by the round-5 Badger repair), so the front and 3/4-left heads never hold or cross that band in the proof. Round 5, measured on Badger-only renders (centroid of the skull's top 70 px of coat / of the head's top 120 px, then the crown top): f97 (-4.7, -7.2) / (-5.8, -5.5), crown -7 px; f190 (+0.4, +9.9) / (+3.2, +10.7), crown +11; f193 (+1.8, -0.9) / (-0.7, -1.0), crown -1; f195 (-4.0, -4.6) / (-1.2, -5.6), crown -4; f241 (+3.2, +4.2) / (-0.4, +4.0), crown +3; f244 (-0.3, -1.2) / (+2.2, -2.1), crown -1. Idle life in 0-3 s: one blink and one ear flick.`,
+		why: 'The round-2 review found the judge swap popping in one frame from the profile pitched up at Zoo to a level frontal head (the nose moved half a head length and the ears changed from one hanging profile ear to two frontal ears), and the look-up going 3/4-right, front, up-left in three frames. Lowering the up head first and passing through held in-betweens turns both into readable head turns: in round 4 the skull stayed within 6 px at the replacements it measured (f190-f244) and the face features (the nose 38-69 px per replacement, the ears) moved around it under closed eyes, as in a drawn turn. The judging look stays on the front head because there the lids and brows read (on the pitched profile each cue moved only 2-7 px). Round 5: BADGER-D55 drew the front head 10% and the 3/4 heads 5% smaller, which opened the round-4 values to 12.4 px at f97 (a swap round 4 had not measured), 10.7 at f190, 8.8 at f195 and 6.7 at f241; re-tuned, f97 is 8.6 px, f195 6.1, f241 5.3 and f244 3.0. The two swaps with the 3/4-right head on the left body stay at 8.6 px (f97) and 11.2 px (f190): that head\'s mount (LEFT_HEAD_MOUNT.threeQuarterRightScreen dy 16 against the front head\'s 25) sets its skull ~10 px higher than the front head\'s at any neck and tilt, and neck and tilt move the skull mostly sideways (a grid of 396 neck/tilt renders puts the best reachable at ~8.5 and ~9 px), so only a mount change in the Badger rig, with its generated jaw and nape re-fitted (BADGER-D56), can close them. At f190 the drop reads as the dip of a turn through camera.',
 	},
 	{
 		character: 'badger',
@@ -154,9 +177,9 @@ const integrationDecisions = [
 	{
 		character: 'badger',
 		id: 'INT-Q1',
-		sheet: 'BADGER-D23 is provisional: the left-facing sit and lie keep working, and tools should warn wherever a scene uses them.',
-		chosen: 'Visual QA (scripts/qa) reports model-provisional, always a WARNING and never an error, for any Badger instance whose drawn view and pose are on BADGER_PROVISIONAL_POSES (today view left with sit or lie). It reads the list the way the Badger index exports it (src/characters/badger/index.ts; Node follows its re-export to src/characters/badger/provisional.ts because the index also loads the React components), falls back to this manifest\'s provisional.badger, and reports nothing once the index stops exporting it. Unit tests: scripts/qa/tests/provisional.test.ts.',
-		why: 'A warning keeps the poses usable for reviews and sheets while making every episode use visible in the QA report until the owner decides.',
+		sheet: 'BADGER-D23 is provisional: the left-facing sit and lie keep working, and tools should flag wherever a scene uses them. The R4 owner review asked that QA fail, not warn, when an episode uses them.',
+		chosen: 'Visual QA (scripts/qa) reports model-provisional for any Badger instance whose drawn view and pose are on BADGER_PROVISIONAL_POSES (today view left with sit or lie). Integration round 5: it is an ERROR in the compositions that publish, Episode, EpisodeShort, ShowEpisode, ShowShort and Thumbnail (PRODUCTION_COMPOSITIONS in scripts/qa/lib/provisional.ts, exact ids), and stays a WARNING everywhere else (BadgerSheet, ZooSheet, Preview10s, MouthDemo, dev, probe and fixture compositions); report.json records the severity used. It reads the list the way the Badger index exports it (src/characters/badger/index.ts; Node follows its re-export to src/characters/badger/provisional.ts because the index also loads the React components), falls back to this manifest\'s provisional.badger, and reports nothing once the index stops exporting it. Unit tests: scripts/qa/tests/provisional.test.ts; end to end, a scratch EpisodeShort that draws the left sit fails (exit 1) while the same scene under a review id passes with one warning.',
+		why: 'The sheets and the proof must keep showing the drawings for review, while no published render may ship one until the owner accepts BADGER-D23; an error makes the production QA run fail instead of leaving a warning to be overlooked.',
 	},
 	{
 		character: 'badger',
@@ -171,7 +194,7 @@ const zooFront = ZOO_MANIFEST.pivots;
 const manifest = {
 	manifest: 'zoora-characters',
 	version: '1.0.0',
-	date: '2026-11-24',
+	date: '2026-11-25',
 	binding: 'docs/PROJECT_INSTRUCTIONS.md (reference priority, locked designs, style); human guide: docs/CHARACTERS.md',
 	sources: {
 		sheets: {
@@ -236,7 +259,7 @@ const manifest = {
 		lineWeights: {
 			rule: 'decision INT-L1: both rigs take lineScale (multiplier on every stroke). Full body: ART_GUIDE SL5, outline clamp(3.5 x k, 3, 6) px with k = output px per unit (fullLineScale). Close-ups: half of LINE.width in world units, clamped to 3..6 px (closeLineScale). Same value for both characters in a two-shot.',
 			zooLine: ZOO_LINE,
-			examples: {proofPair: r(PAIR_LINE_SCALE, 3), zooSheetRow: r(fullLineScale(0.54), 3), badgerPoseRow: r(fullLineScale(0.5), 3), mouthDemoBust: r(closeLineScale(900 / 280), 3), zooSheetBust: r(closeLineScale(322 / 279.6), 3), badgerSheetBust: r(closeLineScale(1.42), 3)},
+			examples: {proofPair: r(PAIR_LINE_SCALE, 3), zooSheetRow: r(fullLineScale(0.54), 3), badgerPoseRow: r(fullLineScale(0.5), 3), mouthDemoBust: r(closeLineScale(900 / 280), 3), zooSheetBust: r(closeLineScale(322 / 279.6), 3), badgerSheetBust: r(closeLineScale(BADGER_SHEET_BUSTS.scale), 3)},
 		},
 	},
 	conventions: {
@@ -320,7 +343,7 @@ const manifest = {
 		badger: {
 			...BADGER_MANIFEST.provisional,
 			source: 'BADGER_PROVISIONAL_POSES (src/characters/badger/provisional.ts, exported by src/characters/badger/index.ts)',
-			tools: 'visual QA warns model-provisional for these drawings (decision INT-Q1); BadgerSheet captions them (INT-S1)',
+			tools: 'visual QA reports model-provisional for these drawings: an error in Episode, EpisodeShort, ShowEpisode, ShowShort and Thumbnail, a warning elsewhere (decision INT-Q1); BadgerSheet captions them (INT-S1)',
 		},
 	},
 	proof: {

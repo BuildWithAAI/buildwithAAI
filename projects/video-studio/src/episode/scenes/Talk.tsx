@@ -10,6 +10,7 @@ import {C, OUTLINE, R} from '../theme';
 import {LAYOUTS, type Box} from '../layout/specs';
 import {Lines, useFit, useFitGroup} from '../text/FitText';
 import {CharacterLayer, entry, SceneBg, useDirection, type SceneCtx} from './parts';
+import {sceneCast} from './direction';
 import {BadgerInsert, inInsert} from './Insert';
 import {list, str} from '../validate';
 import {placeBlock, stackCards} from '../layout/blocks';
@@ -20,7 +21,7 @@ export const TalkScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const L = LAYOUTS.talk[ctx.format];
 	const vertical = ctx.format === 'vertical';
 	const badgerPlace = ctx.sc.badger?.present ? L.badger : null;
-	const dir = useDirection(ctx, {zooView: 'front', badgerPlace, badgerInsert: vertical});
+	const dir = useDirection(ctx, sceneCast(ctx.sc, ctx.format));
 	const bullets = (list(ctx.sc, 'bullets') ?? []).slice(0, 4);
 	const title = str(ctx.sc, 'title') ?? '';
 	const titleFit = useFit(title, L.title, ctx.lang);

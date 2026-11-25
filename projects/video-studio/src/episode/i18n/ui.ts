@@ -15,6 +15,9 @@ export const EN_UI: Required<UiLabels> = {
 	subscribeSlot: 'Subscribe',
 };
 
+/** The brand sting's English tagline (storyboard.music.stingTagline overrides it; a non-English render must set it). */
+export const EN_STING_TAGLINE = 'Crypto and AI stories, starring you.';
+
 /** The label for `key` in the storyboard's language, or null when a non-English storyboard does not supply it. */
 export const uiLabel = (sb: Pick<Storyboard, 'lang' | 'ui'>, key: UiKey): string | null => {
 	const own = sb.ui?.[key];

@@ -11,7 +11,7 @@
  *    music critic measured as keeping the bed 2-3 LU more present than a broadband duck at a better
  *    band-audibility index. split: false is a plain broadband duck of depthDb.
  */
-import {BedGain, DuckCurve, type DuckSource, type Rest, type Span} from './envelope.ts';
+import {BedGain, DuckCurve, type DuckSource, type FadeCurve, type Rest, type Span} from './envelope.ts';
 import {VOICE_CROSSOVERS} from './bands.ts';
 
 export const SPLIT_DEPTH_RATIOS: readonly [number, number, number] = [1 / 6, 1, 1 / 3];
@@ -84,7 +84,19 @@ export const liftSpans = (o: {start: number; end: number; fadeInMs?: number; fad
 	return out;
 };
 
-export const planBed = (o: {start: number; end: number; duck?: DuckSpec | null; lift?: LiftSpec | null; rests?: readonly Rest[]; fadeInMs?: number; fadeOutMs?: number}): BedPlan => {
+export const planBed = (o: {
+	start: number;
+	end: number;
+	duck?: DuckSpec | null;
+	lift?: LiftSpec | null;
+	rests?: readonly Rest[];
+	fadeInMs?: number;
+	fadeOutMs?: number;
+	/** the shape of the bed's own fades: 'raisedCosine' (default) or 'equalPower' (crossfades between different beds) */
+	fadeCurve?: FadeCurve;
+	/** the fade-out's shape, when it differs from the fade-in's */
+	fadeOutCurve?: FadeCurve;
+}): BedPlan => {
 	const d = o.duck ?? null;
 	const split = d ? d.split ?? DUCK_DEFAULTS.split : false;
 	const depth = d?.depthDb ?? DUCK_DEFAULTS.depthDb;
@@ -110,6 +122,6 @@ export const planBed = (o: {start: number; end: number; duck?: DuckSpec | null; 
 		const ramp = o.lift.rampMs ?? LIFT_DEFAULTS.rampMs;
 		boosts.push({curve: new DuckCurve(lifts, {attackMs: ramp, releaseMs: ramp, lookaheadMs: 0, minGapMs: 0}), depthsDb: [o.lift.db]});
 	}
-	const gain = new BedGain({bands: split ? 3 : 1, sources, boosts, rests: o.rests, start: o.start, end: o.end, fadeInMs: o.fadeInMs, fadeOutMs: o.fadeOutMs});
+	const gain = new BedGain({bands: split ? 3 : 1, sources, boosts, rests: o.rests, start: o.start, end: o.end, fadeInMs: o.fadeInMs, fadeOutMs: o.fadeOutMs, fadeCurve: o.fadeCurve, fadeOutCurve: o.fadeOutCurve});
 	return {gain, crossovers: split ? VOICE_CROSSOVERS : undefined, depthsDb, lifts};
 };

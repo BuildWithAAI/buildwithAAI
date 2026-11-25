@@ -16,7 +16,7 @@
 import React, {useMemo} from 'react';
 import {useVideoConfig} from 'remotion';
 import {planBed, type DuckSpec, type LiftSpec} from '../core/bed.ts';
-import type {Rest, Span} from '../core/envelope.ts';
+import type {FadeCurve, Rest, Span} from '../core/envelope.ts';
 import {loopOf, type BedChannel, type BedMood, type MusicCue} from '../core/music.ts';
 import {speechSpansFromLevels, speechSpansFromTimeline, type TimelineLike, type WordPadding} from '../core/speech.ts';
 import {bedFor, MUSIC, musicCue} from './library.ts';
@@ -57,6 +57,10 @@ export type MusicBedProps = {
 	levelDb?: number;
 	fadeInMs?: number;
 	fadeOutMs?: number;
+	/** the shape of the bed's own fades: 'raisedCosine' (default) or 'equalPower' (a crossfade between two different beds) */
+	fadeCurve?: FadeCurve;
+	/** the fade-out's shape when it differs from the fade-in's (default: fadeCurve) */
+	fadeOutCurve?: FadeCurve;
 	/** spans where the bed steps out (stingers, bumpers): absolute seconds */
 	rests?: readonly Rest[];
 	/** start this far into the bed */
@@ -104,9 +108,11 @@ export const MusicBed: React.FC<MusicBedProps> = (p) => {
 			rests: p.rests,
 			fadeInMs: p.fadeInMs,
 			fadeOutMs: p.fadeOutMs,
+			fadeCurve: p.fadeCurve,
+			fadeOutCurve: p.fadeOutCurve,
 		});
 		// the settings are dependencies through their JSON; timeline, spans and levels by identity (stable per render)
-	}, [waiting, absStart, frames, fps, duckKey, p.duck && p.duck.timeline, p.duck && p.duck.speech, p.duck && p.duck.levels, narrationSpans, liftKey, p.rests, p.fadeInMs, p.fadeOutMs]);
+	}, [waiting, absStart, frames, fps, duckKey, p.duck && p.duck.timeline, p.duck && p.duck.speech, p.duck && p.duck.levels, narrationSpans, liftKey, p.rests, p.fadeInMs, p.fadeOutMs, p.fadeCurve, p.fadeOutCurve]);
 	if (!plan) return null; // the narration is still loading (useNarrationSpans holds the frame)
 	return (
 		<PcmTrack

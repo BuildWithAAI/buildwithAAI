@@ -10,6 +10,7 @@ import {C, OUTLINE, R} from '../theme';
 import {FRAME, LAYOUTS, type Box} from '../layout/specs';
 import {Lines, useFit} from '../text/FitText';
 import {CharacterLayer, Card, entry, SceneBg, useDirection, type SceneCtx} from './parts';
+import {sceneCast} from './direction';
 import {BadgerInsert, inInsert} from './Insert';
 import {str} from '../validate';
 import {uiLabel} from '../i18n/ui';
@@ -22,7 +23,7 @@ export const CtaScene: React.FC<{ctx: SceneCtx}> = ({ctx}) => {
 	const L = LAYOUTS.cta[ctx.format];
 	const vertical = ctx.format === 'vertical';
 	const badgerPlace = ctx.sc.badger?.present ? L.badger : null;
-	const dir = useDirection(ctx, {zooView: 'front', badgerPlace, badgerInsert: vertical});
+	const dir = useDirection(ctx, sceneCast(ctx.sc, ctx.format));
 	const offers = (ctx.sb.offers ?? []).length > 0;
 	const title = str(ctx.sc, 'title') ?? '';
 	const button = str(ctx.sc, 'button') ?? uiLabel(ctx.sb, 'subscribe') ?? '';

@@ -30,6 +30,13 @@ export const tqX = (x: number) => {
 	return TQ_MID_X + 0.86 * x;
 };
 export const tqPt = (p: Pt): Pt => (p.length === 3 ? [tqX(p[0]), p[1], 'c'] : [tqX(p[0]), p[1]]);
+/**
+ * The moustache's own x map (repair round 6, ZOO-F6): the near (anatomical right, x < 0) half is not foreshortened (x1.0, as
+ * the near cheek faces the viewer), the far half follows tqX. On zoo_turn_34.png the near half runs ~25 u from the philtrum
+ * (x ~28) to its blunt end (x ~3); through tqX's x0.86 the re-traced 49 u moustache would end ~5 u short of that.
+ */
+export const tqMustX = (x: number) => (x < 0 ? TQ_MID_X + x : tqX(x));
+export const tqMustPt = (p: Pt): Pt => (p.length === 3 ? [tqMustX(p[0]), p[1], 'c'] : [tqMustX(p[0]), p[1]]);
 /** Mouth-local (front units, origin = jaw anchor) -> 3/4 head space. */
 export const tqMouth = (x: number, y: number) => [tqX(x), PIVOTS.jaw.y + y] as const;
 
