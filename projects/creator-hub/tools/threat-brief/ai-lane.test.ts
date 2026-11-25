@@ -22,6 +22,8 @@ const aiIncident = (over: Record<string, unknown> = {}) => ({
 	id: '2026-11-24-exampleagent',
 	title: 'ExampleAgent: prompt injection',
 	protocol: 'ExampleAgent',
+	// the radar knows the subject (an AI product on its list), so the brief may name it
+	subjectKnown: true,
 	lane: 'ai',
 	chains: [],
 	type: 'prompt-injection',

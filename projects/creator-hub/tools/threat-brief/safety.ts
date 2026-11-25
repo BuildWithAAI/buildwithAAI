@@ -47,11 +47,29 @@ export const RULE_TITLE: Record<Rule, string> = {
  * Allowed (non-person) names, matched case-insensitively per token; handles and nicknames that are always
  * flagged; and threat-group names, which need a named source wherever they appear (news gate R3).
  */
-export type NameAllow = {tokens: ReadonlySet<string>; blocked: readonly string[]; handles: ReadonlySet<string>; groups: readonly string[]};
+export type NameAllow = {
+	/** One-word names, matched case-insensitively. */
+	tokens: ReadonlySet<string>;
+	/**
+	 * Multi-word names (lower case, tokens joined by one space), allowed only as the whole phrase: "OpenAI Sora" never
+	 * makes a lone "Sora" a known word, and "123 Reg" never a lone "Reg".
+	 */
+	phrases: readonly string[];
+	/**
+	 * One-word product names that are also personal names (Claude, Sora, Jules, Kiro, Cline...): known in plain text,
+	 * but never next to a person cue (a role word, an apposition) and never in a quoted headline.
+	 */
+	ambiguous: ReadonlySet<string>;
+	blocked: readonly string[];
+	handles: ReadonlySet<string>;
+	groups: readonly string[];
+};
 
 /** The show's own names, which every text may use. */
 const SHOW_NAMES = ['Zoo', 'Badger', 'Zoora', 'Zoora AI', 'The Zoo & Badger Show', 'Threat Brief', "Zoo's One Fix", 'One Fix', 'YouTube', 'Shorts', 'Telegram', 'Kit'];
 const OWN_HANDLES = ['@zooratechnologies'];
+/** Product names that are also given names or surnames (the news gate's "ambiguousNames" adds to these). */
+const AMBIGUOUS_NAMES = ['claude', 'sora', 'jules', 'kiro', 'cline', 'gemma', 'veo', 'devin', 'manus', 'reg'];
 
 const tokenize = (name: string): string[] =>
 	name
@@ -60,12 +78,24 @@ const tokenize = (name: string): string[] =>
 		.map((t) => t.replace(/^[.'’&-]+|[.'’&-]+$/g, '').replace(/['’]s$/, ''))
 		.filter((t) => t.length > 0);
 
+/** Adds each name: a one-word name as a token, a multi-word name as a whole phrase only. */
+const addNames = (tokens: Set<string>, phrases: Set<string>, names: Iterable<string>): void => {
+	for (const name of names) {
+		const parts = tokenize(name);
+		if (parts.length === 1 && parts[0]) tokens.add(parts[0]);
+		else if (parts.length > 1) phrases.add(parts.join(' '));
+	}
+};
+
 /** Builds an allow set from plain names (organisations, publishers, protocols, chains...). */
-export const makeAllow = (names: Iterable<string>, blocked: Iterable<string> = [], groups: Iterable<string> = []): NameAllow => {
+export const makeAllow = (names: Iterable<string>, blocked: Iterable<string> = [], groups: Iterable<string> = [], ambiguous: Iterable<string> = []): NameAllow => {
 	const tokens = new Set<string>();
-	for (const name of [...SHOW_NAMES, ...names]) for (const t of tokenize(name)) tokens.add(t);
+	const phrases = new Set<string>();
+	addNames(tokens, phrases, [...SHOW_NAMES, ...names]);
 	return {
 		tokens,
+		phrases: [...phrases].sort((a, b) => b.length - a.length),
+		ambiguous: new Set([...AMBIGUOUS_NAMES, ...[...ambiguous].map((a) => a.trim().toLowerCase()).filter(Boolean)]),
 		blocked: [...blocked].map((b) => b.trim()).filter(Boolean),
 		handles: new Set(OWN_HANDLES),
 		groups: [...groups].map((g) => g.trim()).filter((g) => g.length >= 3),
@@ -75,9 +105,28 @@ export const makeAllow = (names: Iterable<string>, blocked: Iterable<string> = [
 /** Adds names (an incident's protocol, today's publishers) to an allow set. */
 export const extendAllow = (allow: NameAllow, names: Iterable<string>): NameAllow => {
 	const tokens = new Set(allow.tokens);
-	for (const name of names) for (const t of tokenize(name)) tokens.add(t);
-	return {tokens, blocked: allow.blocked, handles: allow.handles, groups: allow.groups};
+	const phrases = new Set(allow.phrases);
+	addNames(tokens, phrases, names);
+	return {...allow, tokens, phrases: [...phrases].sort((a, b) => b.length - a.length)};
 };
+
+/**
+ * The text with every allowed multi-word name blanked (same length, so positions do not move): the person checks
+ * then never read a product or organisation phrase as a name, and never read its words outside the phrase as known.
+ */
+export const blankPhrases = (text: string, allow?: NameAllow): string => {
+	if (!allow || allow.phrases.length === 0) return text;
+	let out = text;
+	for (const phrase of allow.phrases) {
+		const words = phrase.split(' ').map(escapeRe);
+		const re = new RegExp(`(?<![\\p{L}\\p{N}_])${words.join(`[^\\p{L}\\p{N}]+`)}(?:['’]s)?(?![\\p{L}\\p{N}_])`, 'giu');
+		out = out.replace(re, (m) => ' '.repeat(m.length));
+	}
+	return out;
+};
+
+/** A known one-word name that is not also a personal name. */
+const knownWord = (allow: NameAllow | undefined, word: string): boolean => !!allow && allow.tokens.has(word) && !allow.ambiguous.has(word);
 
 /**
  * Reads the news gate's allowlist (video-studio/scripts/news/allowlist.json): every list of names except
@@ -95,17 +144,19 @@ export const loadAllowlist = (file: string): {allow: NameAllow | null; error: st
 	const names: string[] = [];
 	const blocked: string[] = [];
 	const groups: string[] = [];
+	const ambiguous: string[] = [];
 	for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
 		if (key === 'officials' || !Array.isArray(value)) continue;
 		for (const entry of value) {
 			if (typeof entry === 'string') {
 				if (key === 'blocked') blocked.push(entry);
+				else if (key === 'ambiguousNames') ambiguous.push(entry);
 				else names.push(entry);
 				if (key === 'attributedGroups') groups.push(entry);
 			} else if (key === 'aliases' && Array.isArray(entry)) names.push(...entry.filter((e): e is string => typeof e === 'string'));
 		}
 	}
-	return {allow: makeAllow(names, blocked, groups), error: null};
+	return {allow: makeAllow(names, blocked, groups, ambiguous), error: null};
 };
 
 // Given names that are rarely English words or brands (from the news gate's list, lib/names.ts, 2026-11-24).
@@ -158,15 +209,28 @@ resigns arrested charged sentenced pleads faces blames vows plans sues sued quit
 apologizes apologises speaks breaks addresses insists the a an and of to in on at for with`.split(/\s+/),
 );
 
+// Names may start with any capital letter ("José", "Łukasz", "Özgür", "Сергей"): \p{Lu}/\p{Ll} with the u flag, and a
+// letter lookbehind instead of \b (which only knows ASCII letters).
 const ROLE_BEFORE =
-	/\b(?:CEO|CTO|COO|CFO|CISO|founder|co-founder|cofounder|chairman|chairwoman|developer|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|sleuth|analyst|spokesperson|spokesman|spokeswoman|director|lawyer|attorney|prosecutor|judge|senator|minister|president|streamer|youtuber|whale|insider|defendant|plaintiff|victim|teenager|student|programmer|dev)\s+((?:[A-Z][a-z'’-]+)(?:\s+[A-Z][a-z'’-]+)?)/g;
-const HONORIFIC = /\b(?:Mr|Mrs|Ms|Dr|Sir|Dame|Prof)\.?\s+[A-Z][a-z'’-]+/g;
+	/(?<![\p{L}\p{N}_])(?:CEO|CTO|COO|CFO|CISO|founder|co-founder|cofounder|chairman|chairwoman|developer|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|sleuth|analyst|spokesperson|spokesman|spokeswoman|director|lawyer|attorney|prosecutor|judge|senator|minister|president|streamer|youtuber|whale|insider|defendant|plaintiff|victim|teenager|student|programmer|dev)\s+((?:\p{Lu}[\p{Ll}'’-]+)(?:\s+\p{Lu}[\p{Ll}'’-]+)?)/gu;
+const HONORIFIC = /(?<![\p{L}\p{N}_])(?:Mr|Mrs|Ms|Dr|Sir|Dame|Prof)\.?\s+\p{Lu}[\p{Ll}'’-]+/gu;
 const APPOSITION =
-	/\b([A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’-]+)+),\s+(?:the\s+|a\s+|an\s+|its\s+|their\s+)?(?:former\s+|ex-|co-|chief\s+|lead\s+|alleged\s+|pseudonymous\s+|anonymous\s+)?(?:founder|co-founder|cofounder|ceo|cto|coo|cfo|developer|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|analyst|executive|spokesperson|director|owner|insider|whale|programmer|victim|defendant|lawyer|attorney|partner|manager|head)\b/gi;
-const AGE = /\b[A-Z][a-z'’-]+,\s*(?:aged\s+)?\d{1,2},/g;
-const PLACEHOLDER_NAME = /\[\s*(?:named person|name|redacted|person|individual)\s*\]/gi;
+	/(?<![\p{L}\p{N}_])(\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+)+),\s+(?:the\s+|a\s+|an\s+|its\s+|their\s+)?(?:former\s+|ex-|co-|chief\s+|lead\s+|alleged\s+|pseudonymous\s+|anonymous\s+)?(?:founder|co-founder|cofounder|ceo|cto|coo|cfo|developer|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|analyst|executive|spokesperson|director|owner|insider|whale|programmer|victim|defendant|lawyer|attorney|partner|manager|head)\b/giu;
+const AGE = /(?<![\p{L}\p{N}_])\p{Lu}[\p{Ll}'’-]+,\s*(?:aged\s+)?\d{1,2},/gu;
+const PLACEHOLDER_NAME = /\[\s*(?:named person|name|redacted|person|individual|non-English text)\s*\]/gi;
+/** Chinese, Japanese or Korean script: names in it cannot be checked, so a headline with a run of it is never quoted. */
+const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]{2,}/u;
 const HANDLE = /(?<![\w.@/])@[A-Za-z0-9_]{1,30}\b/g;
-const CAPITALISED = /(?<![\w'’#@-])[A-Z][a-z][a-zA-Z0-9'’-]*/g;
+const CAPITALISED = /(?<![\p{L}\p{N}_'’#@-])\p{Lu}\p{Ll}[\p{L}\p{N}'’-]*/gu;
+/** Lower case without diacritics, for the given-name list: "José" -> "jose", "Łukasz" -> "lukasz". */
+const fold = (word: string): string =>
+	word
+		.replace(/[łŁ]/g, 'l')
+		.replace(/[øØ]/g, 'o')
+		.replace(/[đĐ]/g, 'd')
+		.normalize('NFKD')
+		.replace(/\p{M}+/gu, '')
+		.toLowerCase();
 
 /** Words that may be capitalised without being names (calendar words and common sentence words). */
 const COMMON_CAPS = new Set(
@@ -220,7 +284,11 @@ const HOWTO: Pattern[] = [
 	p('how-to', '"how to bypass / exploit / ..."', /\bhow (?:to|you can|you could|anyone can|one can|they could) (?:bypass|exploit|hack|drain|steal|attack|phish|launder|mix|rug|scam|crack|break into|get around|evade|trick|clone|deepfake|spoof|jailbreak|inject|impersonate|replicate|reproduce|front-?run|sandwich|manipulate|sneak)\b/i),
 	p('try-it', 'an invitation to reproduce it', /\b(?:try (?:this|it) (?:yourself|at home)|you can (?:do|try|replicate|reproduce) (?:this|it)|(?:replicate|reproduce|recreate) (?:the|this|that) (?:attack|exploit|hack|jailbreak|injection)|copy (?:this|the) (?:prompt|code|script|payload|command))\b/i),
 	p('injection-string', 'a prompt-injection or jailbreak string', /\b(?:ignore (?:all |any )?(?:previous|prior|above|earlier|preceding) (?:instructions|prompts|messages|rules)|disregard (?:all |any )?(?:previous|prior|above) (?:instructions|rules)|(?:jailbreak|injection) (?:prompt|payload|string|template)s?|system prompt\s*[:=])/i),
-	p('placeholder-code', "the radar's [code] or [address] placeholder", /\[\s*(?:code|address)\s*\]/i),
+	p('placeholder-code', "the radar's [code], [address] or [instruction] placeholder", /\[\s*(?:code|address|instruction)\s*\]/i),
+	// text addressed to an AI, quoted or paraphrased: a prompt-injection payload or a jailbreak recipe (AI lane)
+	p('ai-addressed', 'text addressed to an AI (an injected instruction)', /\b(?:AI|assistants?|agents?|models?|chat ?bots?|LLMs?|copilots?)\s+(?:reading|processing|summari[sz]ing|parsing|browsing)\s+(?:this|these)\b/i),
+	p('roleplay-instruction', 'a jailbreak instruction ("pretend", "act as", "you are now")', /\b(?:you are now (?:a|an|in|the|DAN|free|unrestricted|jailbroken)|pretend (?:you are|you're|to be|it (?:is|was) an? (?:AI|assistant|model|chatbot))|act as (?:an? )?(?:unrestricted|unfiltered|jailbroken|evil|DAN)\b|developer mode|forget (?:everything|all) (?:above|before)|(?:ignore|disregard) (?:its|your|their|all) (?:rules|guidelines|instructions|safeguards))/i),
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', /\b(?:told|instructed|asked|ordered|directed) the (?:agent|assistant|model|chatbot|AI|bot|copilot)\s*(?::|to (?:open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|reveal|ignore|disable))/i),
 	p('tutorial', 'tutorial or step-by-step framing', /\b(?:step[- ]by[- ]step|walkthrough|walk-through|tutorial|cheat ?sheet)\b/i, true),
 	p('here-is-how', '"here\'s how to"', /\bhere'?s (?:exactly )?how (?:to|you|anyone|they could)\b/i, true),
 	p('step-marker', 'a numbered step', /\bstep (?:one|two|three|four|five|six|\d+)\b/i, true),
@@ -326,9 +394,12 @@ export type ScanContext = {
 
 const finding = (rule: Rule, code: string, level: Level, where: string, message: string, match: string): Finding => ({rule, code, level, where, message, match: match.trim().slice(0, 120)});
 
-export const scanNames = (text: string, ctx: ScanContext): Finding[] => {
+export const scanNames = (original: string, ctx: ScanContext): Finding[] => {
 	const out: Finding[] = [];
 	const add = (code: string, level: Level, message: string, match: string): void => void out.push(finding('names', code, level, ctx.where, message, match));
+	const text = original;
+	// the person checks read the text with allowed multi-word names blanked
+	const blank = blankPhrases(original, ctx.allow);
 	for (const m of text.matchAll(PLACEHOLDER_NAME)) add('placeholder', 'error', "the radar's redaction placeholder: a person was named in the source. Leave this text out", m[0]);
 	for (const m of text.matchAll(HANDLE)) {
 		if (ctx.allow?.handles.has(m[0].toLowerCase()) ?? OWN_HANDLES.includes(m[0].toLowerCase())) continue;
@@ -339,30 +410,30 @@ export const scanNames = (text: string, ctx: ScanContext): Finding[] => {
 		const re = new RegExp(`(?<![\\w@])@?${escapeRe(b)}(?!\\w)`, b.length > 3 ? 'i' : '');
 		if (re.test(text)) add('blocked', 'error', "a handle or nickname on the news gate's blocked list", b);
 	}
-	for (const m of text.matchAll(HONORIFIC)) add('title-or-role', 'error', 'a person named by title', m[0]);
-	for (const m of text.matchAll(ROLE_BEFORE)) {
+	for (const m of blank.matchAll(HONORIFIC)) add('title-or-role', 'error', 'a person named by title', m[0]);
+	for (const m of blank.matchAll(ROLE_BEFORE)) {
 		const words = (m[1] ?? '').split(/\s+/);
 		if (NOT_A_NAME.has((words[0] ?? '').toLowerCase())) continue;
-		if (words.some((w) => ORG_SUFFIXES.has(w.toLowerCase()) || ctx.allow?.tokens.has(w.toLowerCase()))) continue;
+		if (words.some((w) => ORG_SUFFIXES.has(w.toLowerCase()) || knownWord(ctx.allow, w.toLowerCase()))) continue;
 		add('title-or-role', 'error', 'a person named after their role', m[0]);
 	}
-	for (const m of text.matchAll(APPOSITION)) {
+	for (const m of blank.matchAll(APPOSITION)) {
 		const words = (m[1] ?? '').split(/\s+/);
-		if (words.every((w) => ctx.allow?.tokens.has(w.toLowerCase()) || ORG_SUFFIXES.has(w.toLowerCase()))) continue;
+		if (words.every((w) => knownWord(ctx.allow, w.toLowerCase()) || ORG_SUFFIXES.has(w.toLowerCase()))) continue;
 		add('apposition', 'error', 'a person named with their role ("X, the founder")', m[0]);
 	}
-	for (const m of text.matchAll(AGE)) add('age', 'error', 'a person named with their age', m[0]);
-	for (const m of text.matchAll(/\b([A-Z][a-z]+)\s+([A-Z][a-z'’-]+)\b/g)) {
-		const first = (m[1] ?? '').toLowerCase();
+	for (const m of blank.matchAll(AGE)) add('age', 'error', 'a person named with their age', m[0]);
+	for (const m of blank.matchAll(/(?<![\p{L}\p{N}_])(\p{Lu}\p{Ll}+)\s+(\p{Lu}[\p{Ll}'’-]+)(?![\p{L}\p{N}_])/gu)) {
+		const first = fold(m[1] ?? '');
 		const second = (m[2] ?? '').toLowerCase().replace(/['’]s$/, '');
 		if (!FIRST_NAMES.has(first) || ORG_SUFFIXES.has(second) || NOT_A_NAME.has(second)) continue;
-		if (ctx.allow?.tokens.has(first) && ctx.allow.tokens.has(second)) continue;
+		if (knownWord(ctx.allow, first) && knownWord(ctx.allow, second)) continue;
 		add('first-name', 'error', 'looks like a personal name (given name + surname)', m[0]);
 	}
 	if (!ctx.trusted) {
 		// A line or quoted headline in Title Case cannot tell names from words, so only the high-precision checks
 		// above apply to it.
-		for (const line of text.split('\n')) {
+		for (const line of blank.split('\n')) {
 			const quotes = quotedSpans(line);
 			const titleQuotes = quotes.filter(([a, b]) => isTitleCase(line.slice(a + 1, b - 1)));
 			// the words outside quotation marks decide whether the line itself is a headline
@@ -371,7 +442,9 @@ export const scanNames = (text: string, ctx: ScanContext): Finding[] => {
 				const word = m[0].replace(/['’]s$/, '');
 				const key = word.toLowerCase();
 				if (inside(quotes, m.index) ? inside(titleQuotes, m.index) : titleLine) continue;
-				if (sentenceStartAt(line, m.index) || COMMON_CAPS.has(key) || ctx.allow?.tokens.has(key) || ORG_SUFFIXES.has(key)) continue;
+				if (sentenceStartAt(line, m.index) || COMMON_CAPS.has(key) || ORG_SUFFIXES.has(key)) continue;
+				// a known one-word name; one that is also a personal name only outside a quoted headline
+				if (ctx.allow?.tokens.has(key) && (!ctx.allow.ambiguous.has(key) || !inside(quotes, m.index))) continue;
 				add('unknown-name', 'warning', 'an unknown capitalised word: if it is a person, leave it out', word);
 			}
 		}
@@ -477,6 +550,7 @@ export const quoteLine = (publisher: string, headline: string): string => `${pub
  */
 export const isSafeQuote = (headline: string, publisher: string, allow?: NameAllow): boolean => {
 	if (!headline.trim() || /[“”"]/.test(headline)) return false; // nested quotes would hide what is quoted
+	if (CJK_RUN.test(headline)) return false; // names in Chinese, Japanese or Korean script cannot be checked
 	const ctx: ScanContext = {where: 'quote', allow: allow ? extendAllow(allow, [publisher]) : makeAllow([publisher])};
 	const findings = [...scanText(quoteLine(publisher, headline), ctx), ...scanNames(maskLinks(headline), ctx)];
 	return findings.every((f) => f.level !== 'error' && f.code !== 'unknown-name');

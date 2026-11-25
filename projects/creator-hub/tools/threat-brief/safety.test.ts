@@ -14,7 +14,8 @@ describe('loadAllowlist', () => {
 	it('reads every list except officials, keeps blocked handles and threat groups apart', () => {
 		assert.ok(fixtureAllow);
 		assert.ok(allow.tokens.has('fixtureswap'));
-		assert.ok(allow.tokens.has('wire'));
+		// a multi-word name is allowed only as the whole phrase ("Example Wire"), never as its separate words
+		assert.ok(allow.phrases.includes('example wire') && !allow.tokens.has('wire'));
 		assert.deepEqual(allow.blocked, ['FixtureSleuth', 'CZ']);
 		assert.deepEqual(allow.groups, ['Fixture Group']);
 	});
@@ -176,7 +177,7 @@ describe('fixed text (concepts.ts) passes every rule', () => {
 	it('extendAllow adds names without touching the original', () => {
 		const base = makeAllow([]);
 		const more = extendAllow(base, ['Quiet DAO']);
-		assert.ok(more.tokens.has('quiet') && !base.tokens.has('quiet'));
+		assert.ok(more.phrases.includes('quiet dao') && !base.phrases.includes('quiet dao') && !more.tokens.has('quiet'));
 		assert.equal(hasErrors(scanText('Quiet DAO paused.', {where: 't', allow: more})), false);
 	});
 });
