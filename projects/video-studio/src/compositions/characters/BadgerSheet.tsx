@@ -69,7 +69,12 @@ const BUSTS: readonly {expression: Expression; judge?: number}[] = [
 	{expression: 'shocked'},
 	{expression: 'neutral', judge: 1},
 ];
-const ROW3 = {y: 982, scale: 1.42, x0: 290, gap: 335} as const;
+/**
+ * Bust row. Round 5: BADGER-D55 drew the front head (and the bust neck with it) 10% smaller, so the row is drawn 1/0.90
+ * larger (1.42 -> 1.58) to keep round 4's on-screen bust size and line weight (3 px, closeLineScale).
+ */
+export const BADGER_SHEET_BUSTS = {y: 990, scale: 1.58, x0: 290, gap: 335} as const;
+const ROW3 = BADGER_SHEET_BUSTS;
 
 export const BadgerSheet: React.FC = () => (
 	<AbsoluteFill style={{backgroundColor: BRAND.background}}>

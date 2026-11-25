@@ -12,8 +12,9 @@
  *           upper-arm lead (ZOO-P6) keeps the elbow out at least 0.3 x the forearm's swing on the way up and down, so no
  *           frame carries the forearm level with the elbow at the waist (25-29 deg out at the level crossings f98-99 and
  *           f186). Badger's eyes follow the hand (f89-94) and close as the fist passes over his head; his head is
- *           replaced by threeQuarterRightScreen at f97 under that blink, then his neck and gaze rise along the point
- *           (f99-112). After Zoo's nod he answers with a small curious head tilt (f140-180) and one blink (f158).
+ *           replaced by threeQuarterRightScreen at f97 under that blink, entering low and nose-down where the front head
+ *           left the skull, then his neck and gaze rise along the point (f97-112). After Zoo's nod he answers with a
+ *           small curious head tilt (f140-180) and one blink (f158).
  *   6-10 s  Zoo lowers the arm (f181-197, no tuck) back to deadpan. Badger looks up at him: eyes and neck lead (f183-190);
  *           with his eyes closed (blink f188-199) the head turns through two held in-betweens, the front head (f190-192)
  *           and the 3/4-left head with its nose lifting (f193-194), to upLeftScreen (f195), then the neck eases up
@@ -215,11 +216,20 @@ export type BadgerState = {
 };
 
 /**
- * Neck values at the head swaps, chosen so the skull stays where the old head left it (measured on Badger-only renders:
- * the centroid of the skull's top 70 px of coat and of the head's top 120 px; integration rounds 3-4). Every replacement
- * moves those centroids <= 6 px.
+ * Neck values at the head swaps, chosen so the skull stays as close as it can to where the old head left it (measured on
+ * Badger-only renders: the centroid of the skull's top 70 px of coat and of the head's top 120 px; integration rounds
+ * 3-5). Round 5 re-tuned them for the rescaled heads (BADGER-D55: front x0.90, 3/4 x0.95). Two limits shape the values:
+ * - The 3/4-right head sits on the left body about 10 px higher than the front head at any neck and tilt (its mount,
+ *   LEFT_HEAD_MOUNT.threeQuarterRightScreen dy 16 against the front head's 25, plus the drawings), and neck and tilt move
+ *   the skull mostly sideways, so the two swaps with that head (f97, f190) keep a ~9-10 px skull move; f97 enters the
+ *   3/4 head low and nose-down and lets it rise with the point instead of popping up 12 px.
+ * - On the left rig a neckTurn of about 2.5-5 deg (up to ~6.5 under the push-in; and below -13) opens 1-2 px of the
+ *   neck's back corner at the collar (an open seam in rigLeft.ts, reported by the round-5 Badger repair), so the front
+ *   and 3/4-left heads never hold or pass through that band here.
  */
 const SWAP = {
+	/** 3/4-right head entering at the turn (f97): low and nose-down where the front head left the skull, then it rises. */
+	threeQuarterRightIn: {neck: -3, tilt: -4},
 	/** 3/4-right head, end of its rise before the look-up (f190). */
 	threeQuarterRight: 8,
 	/**
@@ -228,18 +238,22 @@ const SWAP = {
 	 */
 	breakdown: {neck: [14, 10], tilt: [-8, 6]},
 	/** The look-up's 3/4-left in-between (round 4): held where the front breakdown left the skull, the nose lifting. */
-	lookUpThreeQuarter: {neck: [9, 9], tilt: [2, 4]},
-	/** The up head enters where the in-between left the skull and the neck eases up from here. */
-	upStart: -1,
+	lookUpThreeQuarter: {neck: [9, 9], tilt: [2, 3.5]},
+	/** The up head enters low where the in-between left the skull and the neck eases up from here (round 5: -3, was -1). */
+	upStart: -3,
 	/**
 	 * Judging look: the up head lowers to `upDown` (round 4: -12, was -8, so its nose comes down ~12 px more before the
 	 * swap), then the 3/4-left in-between and the front head take over.
 	 */
 	upDown: -12,
-	/** The in-between starts low where the lowered up head left the skull and lifts toward the front head's. */
-	threeQuarterLeft: {neck: [-1, 3], tilt: [3, 3]},
-	/** Front head: neck and total head rotation (neck + headTilt) at the swap, then the judging pose. */
-	front: {neck: 1, total: 13},
+	/** The in-between starts low where the lowered up head left the skull and lifts toward the front head's (below the band). */
+	threeQuarterLeft: {neck: [-1, 2], tilt: [3, 7]},
+	/**
+	 * Front head: neck and total head rotation (neck + headTilt) at the swap, then the judging pose. Round 5: the front
+	 * head enters at neck 7.5, above the band (it reaches ~6.5 deg under the push-in), with total 10, so the judging rise
+	 * (to neck 10) never crosses it; round 4 entered at neck 1, total 13.
+	 */
+	front: {neck: 7.5, total: 10},
 	judge: {neck: 10, total: 8.5},
 } as const;
 
@@ -300,9 +314,9 @@ export const badgerTrack = (f: number): BadgerState => {
 		const headTilt = track(
 			f,
 			[
-				[BEATS.badgerTurn, 1.6],
-				[BEATS.badgerTurn + 6, -0.4],
-				[BEATS.badgerTurn + 12, 0],
+				[BEATS.badgerTurn, SWAP.threeQuarterRightIn.tilt],
+				[BEATS.badgerTurn + 7, 0.6],
+				[BEATS.badgerTurn + 13, 0],
 				[t0, 0],
 				[t1, 2.5],
 				[t2, 2.5],
@@ -313,7 +327,7 @@ export const badgerTrack = (f: number): BadgerState => {
 		const neckTurn = track(
 			f,
 			[
-				[99, 0],
+				[BEATS.badgerTurn, SWAP.threeQuarterRightIn.neck],
 				[112, 5],
 				[LU.eyes[0], 5],
 				[LU.toFront, SWAP.threeQuarterRight],
