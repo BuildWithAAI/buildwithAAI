@@ -74,6 +74,11 @@ export type RadarIncident = {
 	 * names always count as known, as they did before the radar exported this field.
 	 */
 	subjectKnown?: boolean;
+	/**
+	 * The radar's warning that the subject, read from a headline, may be a person's name ("Kruw", whose wallet was
+	 * drained): never allowlisted, in any lane, and the daily names the incident by its type (radar.ts subjectKnown).
+	 */
+	personRisk?: boolean;
 	/** crypto, ai or both (older radar files: crypto). */
 	lane?: Lane;
 	chains: string[];

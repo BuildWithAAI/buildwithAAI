@@ -21,6 +21,8 @@ const fixtureAgent = (over: Partial<RadarIncident> = {}): RadarIncident =>
 	incident({
 		id: '2026-11-24-exampleagent',
 		protocol: 'ExampleAgent',
+		// the radar knows the product (an AI subject it only read from a headline's shape is named by its type: radar.ts)
+		subjectKnown: true,
 		lane: 'ai',
 		title: 'ExampleAgent: prompt injection',
 		type: 'prompt-injection',

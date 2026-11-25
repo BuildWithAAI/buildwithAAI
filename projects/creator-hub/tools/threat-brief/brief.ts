@@ -19,7 +19,7 @@
  */
 import {conceptFor, fixFor, KIND_LABEL} from './concepts.ts';
 import type {Radar, RadarIncident, RadarSource, Status, Tier} from './radar.ts';
-import {extendAllow, hasErrors, isSafeQuote, quoteLine, scanText, type Finding, type NameAllow} from './safety.ts';
+import {extendAllow, hasErrors, isSafeQuote, looksPersonal, quoteLine, scanText, slugNamesPerson, subjectWords, urlOrigin, withBlocked, WITHHELD_LINK_NOTE, type Finding, type NameAllow} from './safety.ts';
 
 export const DEFAULT_BRAND = 'The Zoo & Badger Show';
 export const DEFAULT_COUNT = 3;
@@ -305,7 +305,18 @@ const statusOf = (incident: RadarIncident, hedges: readonly BriefHedge[]): {stat
 	return {status: 'developing', line: `${DEVELOPING_LINE}${tail ? ` ${tail}` : ''}`};
 };
 
-const lossesOf = (incident: RadarIncident, radar: Radar, notes: string[]): {losses: BriefLoss[]; note: string | null} => {
+/**
+ * A source link as the email may show it: the outlet's address instead when the article's address names a person (the
+ * radar withheld it, or its slug spells a name the radar missed: a role word and the next word, a given name, a word
+ * the headline's own person checks flag).
+ */
+const linkFor = (incident: RadarIncident, url: string, allow: NameAllow): string => {
+	const source = incident.sources.find((s) => s.url === url);
+	if (source?.urlWithheld) return url;
+	return slugNamesPerson(url, source?.title ?? '', allow) ? urlOrigin(url) : url;
+};
+
+const lossesOf = (incident: RadarIncident, radar: Radar, notes: string[], allow: NameAllow): {losses: BriefLoss[]; note: string | null} => {
 	const rows = incident.reportedLosses
 		.map((l, i) => ({l, i}))
 		.sort((a, b) => TIER_RANK[a.l.tier] - TIER_RANK[b.l.tier] || a.i - b.i)
@@ -330,7 +341,9 @@ const lossesOf = (incident: RadarIncident, radar: Radar, notes: string[]): {loss
 		}
 		const publisher = publisherOf(incident, radar, l.by, l.url);
 		if (losses.some((x) => x.publisher === publisher && Math.abs(x.amountUsd - l.amountUsd) < 0.5)) continue;
-		losses.push({amount: quoted ?? exactUsd(l.amountUsd), amountUsd: l.amountUsd, publisher, url: l.url, tier: l.tier});
+		const url = linkFor(incident, l.url, allow);
+		if (url !== l.url) notes.push(`${incident.id}: the link for ${publisher}'s figure names a person, so it goes to the outlet's address`);
+		losses.push({amount: quoted ?? exactUsd(l.amountUsd), amountUsd: l.amountUsd, publisher, url, tier: l.tier});
 		if (losses.length >= MAX_LOSSES) break;
 	}
 	const distinct = new Set(losses.map((l) => Math.round(l.amountUsd)));
@@ -359,6 +372,11 @@ const TYPE_WORDS: Record<string, RegExp> = {
 const howItWorked = (incident: RadarIncident, allow: NameAllow): BriefHow => {
 	const tierOf = (url: string): Tier => incident.sources.find((s) => s.url === url)?.tier ?? 'C';
 	const clean = (text: string): boolean => !hasErrors(scanText(text, {where: 'how', allow}));
+	const how = howParts(incident, allow, tierOf, clean);
+	return {...how, parts: how.parts.map((p) => (p.url ? {...p, url: linkFor(incident, p.url, allow)} : p))};
+};
+
+const howParts = (incident: RadarIncident, allow: NameAllow, tierOf: (url: string) => Tier, clean: (text: string) => boolean): BriefHow => {
 	const parts: HowPart[] = [];
 	let concept: string | null = null;
 
@@ -433,7 +451,8 @@ const sourcesOf = (incident: RadarIncident, allow: NameAllow): BriefLink[] => {
 		const day = shortDay(s.publishedUtc);
 		const plainLabel = `${s.publisher} ${KIND_LABEL[s.kind] ?? 'article'}${day ? `, ${day}` : ''}`;
 		// the article's link spells a person's name: only the outlet's address is kept, so the label says so
-		if (s.urlWithheld) return {text: `${plainLabel} (the link goes to the outlet: the article's address names a person)`, url: s.url};
+		if (s.urlWithheld) return {text: `${plainLabel} (${WITHHELD_LINK_NOTE})`, url: s.url};
+		if (slugNamesPerson(s.url, s.title, allow)) return {text: `${plainLabel} (${WITHHELD_LINK_NOTE})`, url: urlOrigin(s.url)};
 		if (s.title && s.title.toLowerCase().startsWith(s.publisher.toLowerCase()) && !hasErrors(scanText(s.title, {where: 'source', allow}))) return {text: s.title, url: s.url};
 		return {text: s.title && isSafeQuote(s.title, s.publisher, allow) ? quoteLine(s.publisher, s.title) : plainLabel, url: s.url};
 	});
@@ -468,17 +487,24 @@ const dateOf = (incident: RadarIncident): BriefIncident['date'] => {
  * and its first outlet instead: that word could be a person or a handle, so it never reaches the email or the
  * subject line.
  */
-const incidentName = (incident: RadarIncident): string => {
-	if (!incident.subjectKnown && incident.lane !== 'crypto') {
+/**
+ * An incident named by its type, never by its subject: an AI-lane subject read only from a headline's shape, a subject
+ * the radar flags as possibly a person (personRisk), or one that looks like a person here ("Trader Kruw", "Investor
+ * Kiro"), in any lane.
+ */
+const byType = (incident: RadarIncident, allow: NameAllow): boolean =>
+	(!incident.subjectKnown && incident.lane !== 'crypto') || incident.personRisk || looksPersonal(incident.protocol, allow);
+const typeLabel = (incident: RadarIncident): string => TYPE_LABEL[incident.type] ?? (incident.lane === 'crypto' ? 'security incident' : 'AI-security incident');
+const incidentName = (incident: RadarIncident, allow: NameAllow): string => {
+	if (byType(incident, allow)) {
 		const outlet = incident.sources.find((s) => !s.listed)?.publisher ?? incident.sources[0]?.publisher ?? 'the radar';
-		return `${TYPE_LABEL[incident.type] ?? 'AI-security incident'}, reported by ${outlet}`;
+		return `${typeLabel(incident)}, reported by ${outlet}`;
 	}
 	let name = incident.title.replace(/\s*\(developing\)\s*$/i, '').trim();
 	for (const [re, label] of RADAR_TITLE_LABELS) name = name.replace(re, label);
 	return name;
 };
-const shortName = (incident: RadarIncident): string =>
-	!incident.subjectKnown && incident.lane !== 'crypto' ? (TYPE_LABEL[incident.type] ?? 'AI-security incident') : incident.protocol;
+const shortName = (incident: RadarIncident, allow: NameAllow): string => (byType(incident, allow) ? typeLabel(incident) : incident.protocol);
 
 // ---------------------------------------------------------------------------------------------
 // Corrections from the radar ("Changed since the <date> radar")
@@ -521,26 +547,27 @@ export const buildBrief = (radar: Radar, options: BuildOptions): BuildResult => 
 		}
 		pool.push(incident);
 	}
-	const known = pool.filter((i) => i.subjectKnown || i.lane === 'crypto');
-	const alsoKnownAs = known.flatMap((i) => i.notes.flatMap((n) => /^Also reported as: (.+)\.$/.exec(n)?.[1]?.split(/,\s*/) ?? []));
-	const allow = extendAllow(options.allow, [
-		...known.flatMap((i) => [i.protocol, incidentName(i)]),
-		...pool.flatMap((i) => [...i.chains, ...i.sources.map((s) => s.publisher)]),
-		...alsoKnownAs,
-		...Object.values(radar.sourceNames),
-		brandName,
-	]);
+	// a subject that may be a person (personRisk, "Trader Kruw") is never allowed, in any lane, nor is an "also reported
+	// as" name that looks like one; the publishers, chains and the brand are configuration and trusted
+	const known = pool.filter((i) => !byType(i, options.allow));
+	const alsoKnownAs = known
+		.flatMap((i) => i.notes.flatMap((n) => /^Also reported as: (.+)\.$/.exec(n)?.[1]?.split(/,\s*/) ?? []))
+		.filter((n) => !looksPersonal(n, options.allow));
+	const trusted = extendAllow(options.allow, [...pool.flatMap((i) => [...i.chains, ...i.sources.map((s) => s.publisher)]), ...Object.values(radar.sourceNames), brandName], true);
+	const allow = extendAllow(trusted, [...known.flatMap((i) => [i.protocol, incidentName(i, options.allow)]), ...alsoKnownAs]);
 
 	const picked = pickIncidents(pool, count);
 	const swap = laneSwap(pool, picked, count);
 	const laneLabel = swap?.lane === 'ai' ? 'AI-security' : 'crypto-security';
 	if (swap) notes.push(`${swap.added.id}: #${pool.indexOf(swap.added) + 1} on the radar, shown as the radar's top ${laneLabel} incident in place of #${count}`);
 	const incidents: BriefIncident[] = picked.map((incident) => {
-		const {losses, note} = lossesOf(incident, radar, notes);
-		const how = howItWorked(incident, allow);
-		const sources = sourcesOf(incident, allow);
+		// an incident named by its type: its subject's words are refused in its quotes and links (they may be a name)
+		const incAllow = byType(incident, options.allow) ? withBlocked(allow, subjectWords(incident.protocol)) : allow;
+		const {losses, note} = lossesOf(incident, radar, notes, incAllow);
+		const how = howItWorked(incident, incAllow);
+		const sources = sourcesOf(incident, incAllow);
 		if (sources.length === 0) notes.push(`${incident.id}: no https source could be linked`);
-		const hedges = hedgesOf(incident, allow);
+		const hedges = hedgesOf(incident, incAllow);
 		const status = statusOf(incident, hedges);
 		if (status.status !== incident.status) {
 			notes.push(`${incident.id}: the radar marks it confirmed, but every tier-A and tier-B source hedges (${hedges.map((h) => `${h.publisher}: "${h.word}"`).join(', ')}), so the brief labels it DEVELOPING`);
@@ -550,8 +577,8 @@ export const buildBrief = (radar: Radar, options: BuildOptions): BuildResult => 
 		}
 		return {
 			id: incident.id,
-			name: incidentName(incident),
-			protocol: shortName(incident),
+			name: incidentName(incident, options.allow),
+			protocol: shortName(incident, options.allow),
 			status: status.status,
 			radarStatus: incident.status,
 			hedges,

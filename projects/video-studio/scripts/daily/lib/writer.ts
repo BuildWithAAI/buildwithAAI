@@ -6,6 +6,7 @@
 import type {ChannelConfig} from './channel.ts';
 import type {DailyBrief, Opportunity} from './types.ts';
 import {isAiStory} from './types.ts';
+import {safeSource} from './persons.ts';
 import {clip, shortDate, usdExact} from './util.ts';
 
 /** Markdown table cell: no pipes, no line breaks, no link syntax from feed text. */
@@ -73,7 +74,12 @@ const sourceEntry = (b: DailyBrief, id: string) => {
 	const s = b.sources.find((x) => x.id === id);
 	if (!s) return null;
 	const quote = s.excerpt ?? s.excerpts?.[0] ?? s.title;
-	return {id: s.id, title: `${s.title} (${s.publisher})`, url: s.url, publisher: s.publisher, ...(s.publishedAt ? {publishedAt: s.publishedAt.slice(0, 10)} : {}), accessed: b.date, status: 'verified', quote};
+	// storyboard.sources becomes the video description's source list: a title or link that names a person (one the
+	// radar missed) is prefilled as "<Publisher> article, <date>" with the outlet's address (the news gate's R4 refuses
+	// the name there too)
+	const safe = safeSource({title: s.title, url: s.url, publisher: s.publisher, date: s.publishedAt ?? null});
+	const title = safe.withheld ? safe.title : `${s.title} (${s.publisher})`;
+	return {id: s.id, title, url: s.url, publisher: s.publisher, ...(s.publishedAt ? {publishedAt: s.publishedAt.slice(0, 10)} : {}), accessed: b.date, status: 'verified', quote};
 };
 
 /** The show-native skeleton (src/show/types.ts): segments, Rekt Meter data, the concept diagram, Badger's beats. */

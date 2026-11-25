@@ -60,7 +60,7 @@ philippines indonesia malaysia nigeria kenya taiwan carolina dakota jersey hamps
 );
 
 /** Words right before a capitalised word that mark it as a person (roles, titles, kinship). */
-const PERSON_CUES = new Set(
+export const PERSON_CUES = new Set(
 	`mr mrs ms miss dr sir dame lord lady prof professor ceo cto coo cfo ciso founder co-founder cofounder chairman
 chairwoman chairperson president director developer dev devs engineer employee staffer hacker attacker suspect suspects
 scammer fraudster influencer trader whale researcher investigator sleuth analyst journalist reporter programmer insider
@@ -69,7 +69,9 @@ officer spokesperson spokesman spokeswoman executive manager advisor adviser mem
 woman boy girl brother sister father mother son daughter wife husband named dubbed alias aka nicknamed defendant
 plaintiff lawyer streamer youtuber podcaster billionaire entrepreneur investor admin administrator moderator user
 pseudonymous anonymous commissioner chief inspector sergeant superintendent constable deputy assistant acting
-general chair head ambassador congressman congresswoman lawmaker official prosecutors justice magistrate counsel`.split(/\s+/),
+general chair head ambassador congressman congresswoman lawmaker official prosecutors justice magistrate counsel
+nurse teacher doctor pastor priest gamer cybercriminal criminal elderly grandson granddaughter grandchild nephew niece uncle
+aunt cousin retiree pensioner grandmother grandfather grandma grandpa mom mum dad parent`.split(/\s+/),
 );
 
 // "and" is not a connector: it would merge "Example Security Group and North Carolina" into one name
@@ -90,7 +92,7 @@ podcaster journalist reporter founder co-founder cofounder ceo cto coo cfo trade
 /** Roles whose name follows only as an apposition between commas ("the engineer, teng, opened ..."). */
 const APPOSITION_CUES = new Set('engineer developer dev employee staffer recruiter user hacker attacker suspect victim worker contractor admin'.split(' '));
 /** Words that commonly follow those roles and are not names. */
-const AFTER_ROLE_OK = new Set(
+export const AFTER_ROLE_OK = new Set(
 	`team group community firm firms report reports account accounts laptop laptops machine computer device devices credentials
 role interview interviews job jobs offer offers position salary access wallet wallets key keys data tool tools platform
 side network who that which whose and or but with at in on of for from to by as was were is are has had have will would
@@ -101,6 +103,22 @@ journey portal forum crew gang collective campaign kit playbook tactic technique
 thread channel blog note alert profile handle page site say warn note find show argue believe think suspect agree explain
 confirm estimate`.split(/\s+/),
 );
+
+/**
+ * A subject name that reads as a person: a role or person word followed by another word ("Trader Kruw", "Investor
+ * Kiro", "Memecoin Whale Kruw"), or a given name followed by another word ("John Smith"), unless that word names an
+ * organisation or is a verb or noun ("Whale Finance", "Developer Tools"). Used where a radar subject read from a
+ * headline would otherwise be allowlisted (a radar file read directly, the daily's other candidates).
+ */
+export const looksPersonal = (name: string): boolean => {
+	const words = (name.normalize('NFKD').replace(/\p{M}+/gu, '').toLowerCase().match(/[\p{L}\p{N}'’-]+/gu) ?? []).map((w) => w.replace(/['’]s$/, ''));
+	for (let i = 0; i + 1 < words.length; i++) {
+		const [a, b] = [words[i] ?? '', words[i + 1] ?? ''];
+		if (ORG_SUFFIXES.has(b) || AFTER_ROLE_OK.has(b) || PERSON_CUES.has(b) || /^\d/.test(b)) continue;
+		if (PERSON_CUES.has(a) || FIRST_NAMES.has(a)) return true;
+	}
+	return false;
+};
 
 export type PersonReason =
 	| 'two-word-name'
@@ -387,12 +405,15 @@ const analyseRun = (
 	}
 };
 
+const PERSON_TOKEN_REASONS: ReadonlySet<PersonReason> = new Set<PersonReason>(['two-word-name', 'title-or-role', 'apposition', 'age', 'speaker-name']);
+/** The cues that mark a person beyond doubt (a role, an apposition, an age, a speech verb): never a Title Case pair alone. */
+export const STRONG_PERSON_REASONS: ReadonlySet<PersonReason> = new Set<PersonReason>(['title-or-role', 'apposition', 'age', 'speaker-name']);
 /** Lower-case tokens of person-like names in a text (two-word names and role-cued names), for the surname cross-check. */
-export const personTokensIn = (text: string, idx: AllowIndex): Set<string> => {
+export const personTokensIn = (text: string, idx: AllowIndex, reasons: ReadonlySet<PersonReason> = PERSON_TOKEN_REASONS): Set<string> => {
 	const out = new Set<string>();
 	const scan = scanNames(text, {idx});
 	for (const p of scan.persons)
-		if (p.reason === 'two-word-name' || p.reason === 'title-or-role' || p.reason === 'apposition' || p.reason === 'age' || p.reason === 'speaker-name')
+		if (reasons.has(p.reason))
 			for (const t of tokenize(p.text)) {
 				const w = lw(t.text);
 				if (!CONNECTORS.has(w) && !COMMON.has(w) && !PERSON_CUES.has(w) && w.length > 1) out.add(w);

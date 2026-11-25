@@ -7,6 +7,7 @@
  */
 import type {ChannelConfig} from './channel.ts';
 import type {Splitter} from './narration.ts';
+import {safeSource} from './persons.ts';
 import {isRecord, str, unique} from './util.ts';
 
 export type SbScene = {id: string; type: string; narration: string; segment?: string; onScreen?: Record<string, unknown>; badger?: {present?: boolean; reaction?: string}; badgerBeats?: Array<{reaction?: string}>};
@@ -115,9 +116,20 @@ export const kitSources = (sources: SbLite['sources']): Array<{title: string; ur
 		} catch {
 			u = null;
 		}
+		// a title or link that names a person the radar missed: the outlet and its address only (persons.ts)
+		const publisher = /\(([^()]{2,60})\)\s*$/.exec(entry.title)?.[1] ?? u?.hostname ?? 'Source';
+		const safe = safeSource({title: s.title, url: s.url, publisher}, {placeholderTitleOk: true});
+		if (safe.withheld) {
+			entry = {title: safe.title === s.title ? entry.title : safe.title, url: safe.url};
+			try {
+				u = new URL(safe.url);
+			} catch {
+				u = null;
+			}
+		}
 		// a link the radar withheld because it spells a person's name is only the outlet's address: say so in words
 		if (u && (u.pathname === '/' || u.pathname === '') && !u.search && !u.hash)
-			entry = {title: `${entry.title} (${u.hostname} home page: the article's own link names a person)`.slice(0, 200), url: s.url};
+			entry = {title: `${entry.title} (${u.hostname} home page: the article's own link names a person)`.slice(0, 200), url: entry.url};
 		if (u && u.hostname === 'api.llama.fi' && u.pathname.replace(/\/+$/, '') === '/hacks') {
 			let rec = '';
 			try {

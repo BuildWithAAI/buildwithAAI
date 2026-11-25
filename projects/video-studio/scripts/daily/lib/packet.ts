@@ -71,8 +71,13 @@ export const quotesOf = (sb: SbLite, scenes: SceneView[]): QuoteView[] => {
 		const q = text.replace(/\s+/g, ' ').trim();
 		if (q.split(' ').length >= 2 && !out.some((x) => x.where === where && x.text === q)) out.push({where, text: q});
 	};
+	// every quotation-mark style: “…” and "…", ‘…’ and '…' used as quotation marks (never an apostrophe: "don't",
+	// "users' keys"), « » and ‹ ›
 	const scan = (where: string, text: string): void => {
-		for (const m of text.replace(/[“”„‟″]/g, '"').matchAll(/"([^"\n]{2,400}?)"/g)) push(where, m[1] ?? '');
+		const n = text.replace(/[“”„‟″]/g, '"').replace(/[‘’‚‛′]/g, "'");
+		for (const m of n.matchAll(/"([^"\n]{2,400}?)"/g)) push(where, m[1] ?? '');
+		for (const m of n.matchAll(/(?<![\p{L}\p{N}])'(?=[\p{L}\p{N}])((?:[^'\n]|'(?=\p{L}))+?)(?<=[\p{L}\p{N}.,!?)])'(?![\p{L}\p{N}])/gu)) push(where, m[1] ?? '');
+		for (const m of n.matchAll(/«\s*([^»\n]{2,400}?)\s*»|‹\s*([^›\n]{2,400}?)\s*›/gu)) push(where, m[1] ?? m[2] ?? '');
 	};
 	scan('title', sb.title);
 	for (const sh of sb.shorts) scan(`shorts[${sh.id}].title`, sh.title);

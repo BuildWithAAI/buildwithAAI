@@ -3,8 +3,10 @@
  * caller supplies the candidates, our previous episodes and a function that says which real (strong, not template)
  * analyses each candidate has. "No video today" is the normal outcome whenever nothing qualifies.
  */
+import {createHash} from 'node:crypto';
 import type {PreviousEpisode} from './history.ts';
 import {sameIncident} from './match.ts';
+import {incidentName, incidentTitle, subjectKnown, typeName} from './radar.ts';
 import type {CandidateSummary, RadarIncident, Selection} from './types.ts';
 import {slugify} from './util.ts';
 
@@ -21,6 +23,8 @@ export const POLICY = [
 ];
 
 export const dateSlugFor = (date: string, inc: RadarIncident): string => {
+	// a subject that may be a person never names the episode's folder: its type and a short stable key instead
+	if (!subjectKnown(inc)) return `${date}-${slugify(typeName(inc), 32)}-${createHash('sha256').update(inc.id).digest('hex').slice(0, 6)}`;
 	const fromId = inc.id.replace(/^\d{4}-\d{2}-\d{2}-/, '');
 	return `${date}-${slugify(fromId || inc.protocol, 40)}`;
 };
@@ -49,8 +53,8 @@ export const summarize = (inc: RadarIncident, rank: number, ctx: SelectContext):
 		rank,
 		incidentId: inc.id,
 		dateSlug: dateSlugFor(ctx.date, inc),
-		title: inc.title,
-		protocol: inc.protocol,
+		title: incidentTitle(inc),
+		protocol: incidentName(inc),
 		status: inc.status,
 		type: inc.type,
 		evergreenTopic: inc.evergreenTopic,

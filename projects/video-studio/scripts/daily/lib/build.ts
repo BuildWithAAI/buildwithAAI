@@ -19,8 +19,9 @@ import {displayOf, loadSplitter, type Splitter} from './narration.ts';
 import {buildModel, readGate, type GateJson, type Thumb} from './packet.ts';
 import {CHANNEL, episodePaths, type Paths} from './paths.ts';
 import type {PostInput, RadarMention} from './postapproval.ts';
-import {readRadarFile} from './radar.ts';
-import type {DailyBrief, Opportunity, PacketSummary, StepResult} from './types.ts';
+import {safeSource, slugNamesPerson, urlOrigin} from './persons.ts';
+import {incidentName, readRadarFile} from './radar.ts';
+import type {DailyBrief, Opportunity, PacketSummary, RadarIncident, StepResult} from './types.ts';
 import {fileSize, isRecord, localTime, parseDateSlug, readJson, rel, scrubEnv, sha256, sha256File, writeAtomic, writeJson} from './util.ts';
 import {isRealAnalysis} from './writer.ts';
 
@@ -179,9 +180,13 @@ export const radarMentions = (root: string, brief: DailyBrief | null): RadarMent
 		const coverage: RadarMention['coverage'] = [];
 		for (const s of sources) {
 			const publisher = typeof s.publisher === 'string' ? s.publisher : String(s.id);
-			if (coverage.length < 2 && !coverage.some((c) => c.publisher === publisher)) coverage.push({publisher, url: String(s.url)});
+			// a link that spells a person's name goes to the outlet's address (persons.ts)
+			const url = String(s.url);
+			if (coverage.length < 2 && !coverage.some((c) => c.publisher === publisher)) coverage.push({publisher, url: slugNamesPerson(url) ? urlOrigin(url) : url});
 		}
-		if (coverage.length) out.push({name: x.protocol, status: x.status === 'confirmed' ? 'confirmed' : 'developing', coverage});
+		// a subject that may be a person is named by its type (radar.ts incidentName), never by the name
+		const name = incidentName({...(x as unknown as RadarIncident), sources: sources as unknown as RadarIncident['sources']});
+		if (coverage.length) out.push({name, status: x.status === 'confirmed' ? 'confirmed' : 'developing', coverage});
 	}
 	return out.slice(0, 4);
 };
@@ -206,6 +211,19 @@ export const postInput = (o: {sb: SbLite; brief: DailyBrief | null; gate: GateJs
 	const {sb, brief, gate} = o;
 	const srcById = new Map((brief?.sources ?? []).map((s) => [s.id, s]));
 	const sbSrc = new Map(sb.sources.map((s) => [s.id, s]));
+	// the outlet's name: the brief's, else the "(Publisher)" the storyboard's title ends with, else the link's host; never
+	// the storyboard's whole title (it is the article's headline, which may name someone)
+	const publisherOf = (id: string): string => {
+		const fromBrief = srcById.get(id)?.publisher;
+		if (fromBrief) return fromBrief;
+		const fromTitle = /\(([^()]{2,60})\)\s*$/.exec(sbSrc.get(id)?.title ?? '')?.[1]?.trim();
+		if (fromTitle) return fromTitle;
+		try {
+			return new URL(sbSrc.get(id)?.url ?? '').hostname.replace(/^www\./, '') || id;
+		} catch {
+			return id;
+		}
+	};
 	const whatWeKnow: PostInput['whatWeKnow'] = [];
 	for (const sc of sb.scenes) {
 		let ss;
@@ -220,7 +238,11 @@ export const postInput = (o: {sb: SbLite; brief: DailyBrief | null; gate: GateJs
 			if (!traced || whatWeKnow.length >= 5) return;
 			whatWeKnow.push({
 				text: s.display,
-				sources: s.srcIds.map((id) => ({publisher: srcById.get(id)?.publisher ?? sbSrc.get(id)?.title ?? id, url: srcById.get(id)?.url ?? sbSrc.get(id)?.url ?? ''})),
+				sources: s.srcIds.map((id) => {
+					const url = srcById.get(id)?.url ?? sbSrc.get(id)?.url ?? '';
+					// the announcer prints links as text: one that spells a person's name goes to the outlet's address
+					return {publisher: publisherOf(id), url: url && slugNamesPerson(url) ? urlOrigin(url) : url};
+				}),
 			});
 		});
 	}
@@ -231,7 +253,14 @@ export const postInput = (o: {sb: SbLite; brief: DailyBrief | null; gate: GateJs
 			return [];
 		}
 	}));
-	const sources = [...cited].map((id) => ({publisher: srcById.get(id)?.publisher ?? id, title: srcById.get(id)?.title ?? sbSrc.get(id)?.title ?? id, url: srcById.get(id)?.url ?? sbSrc.get(id)?.url ?? ''}));
+	const sources = [...cited].map((id) => {
+		const publisher = publisherOf(id);
+		const title = srcById.get(id)?.title ?? sbSrc.get(id)?.title ?? id;
+		const url = srcById.get(id)?.url ?? sbSrc.get(id)?.url ?? '';
+		// a title or link that names a person the radar missed: the outlet and its address only (persons.ts)
+		const safe = url ? safeSource({title, url, publisher, date: srcById.get(id)?.publishedAt ?? null}) : null;
+		return safe?.withheld ? {publisher, title: safe.title, url: safe.url} : {publisher, title, url};
+	});
 	return {
 		slug: sb.slug,
 		date: o.date,

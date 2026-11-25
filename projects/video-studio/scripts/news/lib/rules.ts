@@ -37,7 +37,7 @@ import {
 	type FigureRole,
 	type Pattern,
 } from './lexicon.ts';
-import {FIRST_NAMES, personFix, personMessage, type NameScan} from './names.ts';
+import {AFTER_ROLE_OK, FIRST_NAMES, ORG_SUFFIXES, PERSON_CUES, personFix, personMessage, type NameScan} from './names.ts';
 import {describeNum, extractNumbers, knownTickers, matchNum, speechMismatch, type DateParts, type Num} from './numbers.ts';
 import {clip, COMMON, contentStems, coverage, findAll, hasPhrase, narrowStems, norm, normalizePunct, unique} from './text.ts';
 import type {BriefFact, ClaimRecord, CorrectionsFile, CorrectionStatus, Finding, RuleId, RuleSummary, Severity, Where} from './types.ts';
@@ -68,6 +68,18 @@ const ATTACKER_REF = /\b(?:attackers?|hackers?|exploiters?|scammers?|thie(?:f|ve
 const TICKERISH = /^(?:[a-z]{0,4}[A-Z]{2,6}[a-z]?|[A-Z][a-zA-Z]{1,6}SOL)$/;
 const CAMEL = /\b[a-z]{3,}(?:[A-Z][a-z0-9]+)+[A-Za-z0-9]*\b/g;
 const QUOTE_RE = /"([^"\n]{2,400}?)"/g;
+/**
+ * Quotation marks other than double quotes (after normalizePunct, ‘…’ reads '…'): single quotes used as quotation marks,
+ * never an apostrophe ("don't", "users' keys"), and guillemets « » ‹ ›.
+ */
+const SINGLE_QUOTE_RE = /(?<![\p{L}\p{N}])'(?=[\p{L}\p{N}])((?:[^'\n]|'(?=\p{L}))+?)(?<=[\p{L}\p{N}.,!?)])'(?![\p{L}\p{N}])/gu;
+const GUILLEMET_RE = /«\s*([^»\n]{2,400}?)\s*»|‹\s*([^›\n]{2,400}?)\s*›/gu;
+/** Every quoted span in a normalised text, in any quotation-mark style. */
+export const quotedSpans = (n: string): string[] => [
+	...findAll(QUOTE_RE, n).map((m) => m.text.slice(1, -1)),
+	...[...n.matchAll(SINGLE_QUOTE_RE)].map((m) => m[1] ?? ''),
+	...[...n.matchAll(GUILLEMET_RE)].map((m) => m[1] ?? m[2] ?? ''),
+];
 
 const at = (u: Unit, spoken = false): Where => ({surface: spoken ? `${u.surface} (spoken)` : u.surface, scene: u.scene?.id, text: clip(spoken ? u.spoken : u.display, 220)});
 
@@ -682,20 +694,58 @@ const ruleR4 = (ctx: Ctx, add: Add) => {
 		const where: Where = {surface: 'storyboard.sources', text: `${String(s.id ?? '')}: ${clip(title, 120)}`};
 		const scan = ctx.scan(title);
 		for (const p of scan.persons)
-			if (p.reason === 'placeholder' || p.reason === 'handle' || p.reason === 'blocked')
-				add('R4', `source-${p.reason}`, 'error', where, `A source title in storyboard.sources ${personMessage(p).replace(/^"[^"]*" /, `contains "${p.text}" `)}.`, 'Use the outlet and a neutral description, or the brief\'s withheld form of the source.');
+			if (SOURCE_TITLE_REASONS.has(p.reason) && p.severity === 'error' && (p.reason !== 'two-word-name' || titlePairIsName(title, p.start, p.end)) && (p.reason !== 'title-or-role' || !afterOrgWord(title, p.start)))
+				add('R4', `source-${p.reason}`, 'error', where, `A source title in storyboard.sources ${personMessage(p).replace(/^"[^"]*" /, `contains "${p.text}" `)}.`, 'Use the outlet and a neutral description ("<Publisher> article, <date>"), or the brief\'s withheld form of the source.');
 		if (CJK_RUN.test(title)) add('R4', 'cjk-text', 'error', where, 'A source title contains Chinese, Japanese or Korean script.', 'Use the outlet and a neutral description instead.');
 		const slug = typeof s.url === 'string' ? slugName(s.url, ctx) : null;
 		if (slug) add('R4', 'url-name', 'error', {surface: 'storyboard.sources', text: String(s.url)}, `The link's address spells what looks like a person's name ("${slug}").`, 'Use the brief\'s withheld form of this source (the outlet\'s address), as the radar writes it when a link names a person.');
 	}
 };
 
+/**
+ * The person checks a source title in storyboard.sources must pass: it becomes the video description's source list and
+ * the announcer's source lines, so a name the radar missed there is published. An unknown word alone is not refused
+ * (a title is full of them); a name next to a role, an age, an apposition, a speech verb, a given name or a two-word
+ * name is.
+ */
+const SOURCE_TITLE_REASONS = new Set(['placeholder', 'handle', 'blocked', 'title-or-role', 'two-word-name', 'first-name', 'age', 'apposition', 'speaker-name', 'source-person', 'role-handle', 'lowercase-name', 'identifying-detail']);
+
+/** Verbs a person takes right after a name in a headline ("Kiro Loses", "Lena Weiss Arrested"). */
+const PERSON_VERB = /^(?:lose|loses|lost|says|said|tells|told|admits|admitted|pleads|pleaded|charged|arrested|sentenced|jailed|indicted|extradited|convicted|detained|recounts|recalls|describes|dies|died|scammed|duped|tricked|defrauded|robbed|falls)$/i;
+const SMALL = new Set('a an the of in on at to for and or but nor by via with from as is are was were be it its vs per into over after'.split(' '));
+/**
+ * A Title Case source title is full of capitalised pairs that are not names ("Family Emergency Scam", "Account
+ * Freeze"): there a two-word run counts as a name only next to a person cue: a given name in it, a role word before it
+ * or in it ("Victim Kiro Loses", "Crypto Investor Kiro"), a person's verb in it or right after it ("Kiro Tanaka Loses",
+ * "Lena Weiss Arrested"), or a possessive ("Priya Natarajan's Wallet"). In a sentence-case title any such run counts.
+ */
+const titlePairIsName = (title: string, start: number, end: number): boolean => {
+	const words = (title.match(/[\p{L}][\p{L}'’-]*/gu) ?? []).filter((w) => !SMALL.has(w.toLowerCase()));
+	const caps = words.slice(1).filter((w) => /^\p{Lu}/u.test(w)).length;
+	if (words.length < 3 || caps / Math.max(1, words.length - 1) < 0.6) return true;
+	const hit = title.slice(start, end);
+	const inside = (hit.match(/[\p{L}][\p{L}'’-]*/gu) ?? []).map((w) => w.toLowerCase().replace(/['’]s$/, ''));
+	const before = (title.slice(0, start).match(/[\p{L}][\p{L}'’-]*/gu) ?? []).slice(-1).map((w) => w.toLowerCase());
+	const after = (title.slice(end).match(/^\s+([\p{L}][\p{L}'’-]*)/u)?.[1] ?? '').toLowerCase();
+	if (inside.some((w) => FIRST_NAMES.has(w.normalize('NFKD').replace(/\p{M}+/gu, '')) || PERSON_CUES.has(w) || PERSON_VERB.test(w))) return true;
+	if (before.some((w) => PERSON_CUES.has(w)) || PERSON_VERB.test(after)) return true;
+	return /['’]s$/.test(hit) || /^['’]s\b/.test(title.slice(end));
+};
+
+/** "Justice Department Moves ...": the cue word belongs to an organisation's name when an organisation word follows it. */
+const afterOrgWord = (title: string, start: number): boolean => {
+	const prev = (title.slice(0, start).match(/[\p{L}][\p{L}'’-]*/gu) ?? []).slice(-1)[0]?.toLowerCase() ?? '';
+	return ORG_SUFFIXES.has(prev);
+};
+
 /** Chinese, Japanese or Korean script (2+ characters in a row). */
 const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]{2,}/u;
 
 /**
- * A given name followed by another word in a link's path ("...-crypto-trader-john-doe-says-..."), unless the pair is an
- * allowlisted name: outlets put the people they write about in their slugs.
+ * A person in a link's path: outlets put the people they write about in their slugs. A given name followed by another
+ * word ("...-crypto-trader-john-doe-says-..."), a role word followed by a word that is not a verb, noun or allowlisted
+ * name ("victim-kiro-loses", "investor-kiro", "researcher-lena"), unless the pair is an allowlisted name; and any person
+ * token the brief's own texts flag (a name the sources use).
  */
 const slugName = (url: string, ctx: Ctx): string | null => {
 	let path = '';
@@ -711,13 +761,17 @@ const slugName = (url: string, ctx: Ctx): string | null => {
 		.toLowerCase()
 		.split(/[^a-z0-9]+/)
 		.filter(Boolean);
+	const knownWord = (w: string): boolean => (ctx.idx.byFirst.get(w) ?? []).some((en) => en.category !== 'blocked' && en.tokens.length === 1 && !en.ambiguous);
 	for (let i = 0; i + 1 < words.length; i++) {
 		const [a, b] = [words[i], words[i + 1]];
-		if (!FIRST_NAMES.has(a) || b.length < 2 || /^\d/.test(b) || COMMON.has(b)) continue;
+		const cue = PERSON_CUES.has(a);
+		if ((!FIRST_NAMES.has(a) && !cue) || b.length < 2 || /^\d/.test(b) || COMMON.has(b)) continue;
+		if (cue && (PERSON_CUES.has(b) || AFTER_ROLE_OK.has(b) || knownWord(b))) continue;
 		const pair = `${a} ${b}`;
 		if ((ctx.idx.byFirst.get(a) ?? []).some((en) => en.category !== 'blocked' && en.tokens.join(' ').startsWith(pair))) continue;
 		return pair;
 	}
+	for (const w of words) if (w.length >= 3 && !COMMON.has(w) && ctx.slugPersonTokens.has(w)) return w;
 	return null;
 };
 
@@ -793,7 +847,7 @@ const ruleR5 = (ctx: Ctx, add: Add) => {
 /** Quoted spans of 3 or more words in a unit (the whole field for onScreen.quote), as written. */
 const quotesIn = (u: Unit, t: string): string[] => {
 	const n = normalizePunct(t);
-	const raw = u.surface === 'onScreen.quote' ? [n.replace(/^["\s]+|["\s]+$/g, '')] : findAll(QUOTE_RE, n).map((m) => m.text.slice(1, -1));
+	const raw = u.surface === 'onScreen.quote' ? [n.replace(/^["'«‹\s]+|["'»›\s]+$/g, '')] : quotedSpans(n);
 	return raw.map((q) => q.trim()).filter((q) => q.split(/\s+/).length >= 3);
 };
 /** A setting's label or the One Fix's own wording in quotes ("turn on “ask before running commands”"): not a statement. */

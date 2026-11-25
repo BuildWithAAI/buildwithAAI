@@ -8,7 +8,7 @@ import {findAttributions, type Attribution} from './attribution.ts';
 import {factDeveloping, hostOf, normalizeBrief, publisherFor} from './brief.ts';
 import {MarkupError, splitNarration, type ClaimSpan, type Pair} from './claims.ts';
 import {extractNumbers, isoDateParts, setKnownTickers, type DateParts, type Num} from './numbers.ts';
-import {personTokensIn, scanNames, type NameScan} from './names.ts';
+import {personTokensIn, scanNames, STRONG_PERSON_REASONS, type NameScan} from './names.ts';
 import {COMMON, contentStems, coverage, hasPhrase, norm, unique} from './text.ts';
 import type {Brief, BriefFact, BriefSource, Finding, NewsAnalysis, NewsStoryboard, Source, StoryboardScene} from './types.ts';
 
@@ -57,6 +57,8 @@ export type Ctx = {
 	/** storyboard source id -> brief source id (same id, or matched by URL) */
 	resolveId: Map<string, string>;
 	sourcePersonTokens: Set<string>;
+	/** Person tokens the brief's texts show beyond doubt (a role, an apposition, an age, a speech verb) or name as a person: a link's path that spells one names that person. */
+	slugPersonTokens: Set<string>;
 	briefText: string;
 	analysis: NormAnalysis[];
 	findings: Finding[];
@@ -172,6 +174,9 @@ export const buildContext = (input: BuildInput): Ctx => {
 	const sourcePersonTokens = new Set<string>();
 	for (const t of briefTexts) for (const w of personTokensIn(t, idx)) sourcePersonTokens.add(w);
 	for (const en of brief.entities) if (en.kind === 'person') for (const w of norm(en.name).split(' ')) if (w.length > 1 && !COMMON.has(w)) sourcePersonTokens.add(w);
+	const slugPersonTokens = new Set<string>();
+	for (const t of briefTexts) for (const w of personTokensIn(t, idx, STRONG_PERSON_REASONS)) slugPersonTokens.add(w);
+	for (const en of brief.entities) if (en.kind === 'person') for (const w of norm(en.name).split(' ')) if (w.length > 2 && !COMMON.has(w)) slugPersonTokens.add(w);
 	const briefText = norm([...briefTexts, ...brief.incidents.map((i) => i.name), ...brief.sources.map((s) => s.publisher)].join(' \n '));
 
 	const lowerWords = new Set<string>();
@@ -320,6 +325,7 @@ export const buildContext = (input: BuildInput): Ctx => {
 		briefSources,
 		resolveId,
 		sourcePersonTokens,
+		slugPersonTokens,
 		briefText,
 		analysis,
 		findings,

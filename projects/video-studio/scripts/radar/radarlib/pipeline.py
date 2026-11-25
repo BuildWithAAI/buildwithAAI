@@ -115,8 +115,9 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
                         "AI subjects are known AI products and companies only; restore the file")
         log(f"[radar] WARNING: {warnings[-1]}")
     held = []
+    run_names = {}
     mentions, counts = cluster.build_mentions(results, sources_by_id, run_date, hist["seenKeys"], has_history,
-                                              max_age_days=max_age_days, held=held)
+                                              max_age_days=max_age_days, held=held, run=run_names)
     clusters, unclustered = cluster.cluster_mentions(mentions)
     # sources that never confirm an incident alone (a single researcher's blog): one outlet's vote
     no_solo = frozenset(sid for sid, s in sources_by_id.items() if s.get("confirmsAlone") is False)
@@ -157,7 +158,10 @@ def run_collect(run_date, offline=False, out_dir=None, cache_dir=DEFAULT_CACHE, 
             # the same incident as in an earlier live run: keep its id (stable across days), and let the sources that
             # have since rotated out of their feeds still count for the status, unless a source now retracts
             retracted = any(m.retraction for m in members)
-            carried = [] if retracted else history_mod.carried_sources(previous, incident, no_solo)
+            # carried entries are redacted with today's names (a crypto incident with the crypto items' names only)
+            people = run_names.get("peopleCrypto" if incident.get("lane", "crypto") == "crypto" else "people")
+            carried = [] if retracted else history_mod.carried_sources(previous, incident, no_solo, people=people,
+                                                                       known=run_names.get("known", frozenset()))
             incident = cluster.build_incident(members, run_date, carried=carried, previous_id=previous.get("id"),
                                               no_solo=no_solo)
             built[index] = (incident, members)

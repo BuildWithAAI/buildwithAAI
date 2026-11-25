@@ -6,6 +6,7 @@ import {existsSync} from 'node:fs';
 import {join} from 'node:path';
 import type {Exec} from './exec.ts';
 import {minutes, outputTail} from './exec.ts';
+import {looksPersonal} from '../../news/lib/names.ts';
 import type {RadarFile, RadarIncident} from './types.ts';
 import {isDate, isRecord, readJson} from './util.ts';
 
@@ -124,18 +125,46 @@ const normalizeClean = (x: RadarIncident): RadarIncident => ({
 	mechanismStatus: x.mechanismStatus === 'stated' || x.mechanismStatus === 'suspected' || x.mechanismStatus === 'unknown' ? x.mechanismStatus : undefined,
 	mechanismNote: isRecord(x.mechanismNote) && typeof x.mechanismNote.sourceId === 'string' && typeof x.mechanismNote.url === 'string' ? x.mechanismNote : undefined,
 	userSide: x.userSide === true,
+	personRisk: x.personRisk === true,
 	dateNote: typeof x.dateNote === 'string' ? x.dateNote : undefined,
 	type: typeof x.type === 'string' ? x.type : 'other',
 	shortReady: {ready: x.shortReady.ready === true, missing: Array.isArray(x.shortReady.missing) ? x.shortReady.missing.filter((m) => typeof m === 'string') : []},
 });
 
 /**
- * May the incident's name be allowlisted for the run (the brief's nameKnown, the other candidates' names)? An AI or
- * both-lane name the radar read only from a headline's shape (subjectKnown false, or missing in an older file) could be
- * a person or a handle: no. A crypto name always: the radar names crypto incidents from a headline's shape too (and
- * checks them for people there), and the crypto lane relies on that dynamic allowlisting, so without it R4 refuses
- * every mention of a news-only crypto pick. The Threat Brief applies the same rule (its radar.ts and brief.ts).
+ * May the incident's name be allowlisted for the run (the brief's nameKnown, the other candidates' names)? Never when
+ * the radar flags the subject as possibly a person (personRisk) or the name reads as one here ("Trader Kruw", "Investor
+ * Kiro": a role word and a name), in any lane. Otherwise an AI or both-lane name the radar read only from a headline's
+ * shape (subjectKnown false, or missing in an older file) could be a person or a handle: no. A crypto name yes: the
+ * radar names crypto incidents from a headline's shape too (and checks them for people there), and the crypto lane
+ * relies on that dynamic allowlisting, so without it R4 refuses every mention of a news-only crypto pick. The Threat
+ * Brief applies the same rule (its radar.ts and brief.ts).
  */
-export const subjectKnown = (inc: RadarIncident): boolean => inc.subjectKnown === true || (inc.lane ?? 'crypto') === 'crypto';
+export const subjectKnown = (inc: RadarIncident): boolean =>
+	inc.personRisk !== true && !looksPersonal(inc.protocol) && (inc.subjectKnown === true || (inc.lane ?? 'crypto') === 'crypto');
+
+/** The radar's incident types in plain words, for an incident named by its type. */
+const TYPE_WORDS: Record<string, string> = {
+	exploit: 'exploit', phishing: 'phishing', drainer: 'wallet drainer', rug: 'rug pull', 'key-compromise': 'key compromise',
+	'social-engineering': 'social engineering', bridge: 'bridge exploit', oracle: 'oracle manipulation', governance: 'governance attack',
+	'prompt-injection': 'prompt injection', 'ai-agent-exploit': 'AI agent exploit', 'malicious-ai-tool': 'malicious AI tool',
+	'model-supply-chain': 'AI model supply-chain attack', 'ai-data-exposure': 'data exposure through an AI tool', 'ai-assisted-attack': 'AI-assisted attack',
+	'deepfake-fraud': 'deepfake or voice-clone scam', 'ai-phishing': 'AI-generated phishing', 'ai-washing': 'AI-washing case',
+};
+
+/** "phishing" for an incident whose subject is withheld: its type in plain words. */
+export const typeName = (inc: Pick<RadarIncident, 'type' | 'lane'>): string => TYPE_WORDS[inc.type] ?? ((inc.lane ?? 'crypto') === 'crypto' ? 'security incident' : 'AI-security incident');
+
+/**
+ * How the daily names an incident in what it writes (the brief's incident name and title, WRITER.md, the selection
+ * table, the folder name): its subject when that may be allowlisted (subjectKnown), else its type and first outlet, as
+ * the Threat Brief does ("phishing, reported by The Defiant"), so a person's name never names a folder or a heading.
+ */
+export const incidentName = (inc: RadarIncident): string => {
+	if (subjectKnown(inc)) return inc.protocol;
+	const outlet = inc.sources.find((s) => !s.listedReport)?.publisher ?? inc.sources[0]?.publisher ?? 'the radar';
+	return `${typeName(inc)}, reported by ${outlet}`;
+};
+export const incidentTitle = (inc: RadarIncident): string => (subjectKnown(inc) ? inc.title : `${incidentName(inc)} (subject withheld: it may be a person)${inc.status === 'confirmed' ? '' : ' (developing)'}`);
 
 export const allCandidates = (f: RadarFile): RadarIncident[] => [...f.top, ...f.alsoSeen].sort((a, b) => b.score.total - a.score.total);

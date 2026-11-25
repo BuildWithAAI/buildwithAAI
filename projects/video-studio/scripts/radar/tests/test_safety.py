@@ -69,9 +69,9 @@ class PersonPropagation(unittest.TestCase):
             "Wiz Says Attacker Mined AI Coding Histories",
             "Exampleswap said it paused the pools",                  # "it" is not a person
             "an entity called Kruwex moved the funds",               # a pseudonym cue is evidence on its own
-            "executive chairman Michael Saylor said on Nov. 23",      # a full name spreads as written
-        ])
-        self.assertEqual(tokens, {"Quorvex", "Kruwex", "Michael Saylor"})
+            "executive chairman Michael Saylor said on Nov. 23",      # a full name spreads as written, and its
+        ])                                                           # surname alone (round 3)
+        self.assertEqual(tokens, {"Quorvex", "Kruwex", "Michael Saylor", "Saylor"})
 
     def test_pronoun_must_be_in_the_same_sentence(self):
         self.assertEqual(self.tokens(["Sonic says the supply mismatch is under review. He added nothing."]), set())

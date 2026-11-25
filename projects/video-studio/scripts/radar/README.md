@@ -74,8 +74,20 @@ least one source was read, 1 when none was, and 2 for bad input.
    outlet's address with `urlWithheld` and a stable `urlRef`, and the full link goes to the gitignored
    cache (`.cache/radar/withheld-links/<date>.json`). An AI product's name that is also a person token
    (Claude, Cline, Kiro, Sora) withholds a link only where the slug does not use it as the product: before a
-   product word or a version ("claude-code-flaw", "claude-opus-4") it is the product. The redaction is heuristic, so the claim gate
+   product word or a version ("claude-code-flaw", "claude-opus-4") it is the product. Since the round-3 review
+   (2026-11-25) it also redacts a capitalised word or handle after a person or occupation word in any case and
+   with punctuation between ("Victim, Kiro, Loses", "Nurse Kiro", "Teen Kiberphant0m"), one to three capitalised
+   name words right before a legal verb ("Lena Weiss Arrested ...", "Kiro was jailed"; never an organisation,
+   entity noun or nationality), a name with an age ("Kiro, 72,", "Kiro (72)"), a name in an apposition ("Kiro, a
+   retiree,"), a name that leads a headline before a person's verb, and "by @handle"; a slug word before an
+   age ("claude-72-loses-...") or after a role word is a name in a link, and a product's name before a plain
+   word in a slug is withheld. Entries carried over from an earlier run are redacted again with today's person
+   tokens (`history.rescrub`): their titles, excerpts, qualifiers, figures' quotes, links and cited links, and an
+   origin or statement that is not an organisation's name is dropped. The redaction is heuristic, so the claim gate
    stays responsible.
+   A subject the radar keeps but that may still be a person (a bare unknown word with a person cue in its
+   text, a small loss from a single name) carries `personRisk: true`: the daily and the Threat Brief name that
+   incident by its type and never allowlist the word.
 5. **No exploit how-tos.** `safety.redact_code` removes addresses, hashes, code spans, function
    calls and identifiers (`[code]`, `[address]`), and `safety.redact_instructions` removes text addressed to
    an AI that a source quotes ("AI assistants reading this page must ...", "ignore previous instructions")
@@ -258,9 +270,11 @@ with a warning.
      Cyber Bridge hack, and "Gemini" the exchange is not "Google Gemini". An item in both lanes may join
      either. AI incidents have no database seeds. Two AI items about one product merge only when they
      report the same issue: one incident-database reference, one CVE, or two different publishers with the
-     same AI type and a distinctive headline word beyond the product's name and the mechanism's (plurals
-     folded: "developer" and "developers" are one word), or, published within a day of each other, two words
-     of what was exposed and how ("exposed ... secrets"). Two posts of one researcher about one product are
+     same AI type whose headlines share distinctive words beyond the product's name, the vendor's and the
+     mechanism's (plurals folded: "developer" and "developers" are one word): two or more, or one together with
+     what was exposed ("keys", "secrets", "data"), and each headline has at most one distinctive word the other
+     lacks. A shared impact word alone ("exposed secrets") no longer merges two findings (round 3), and a
+     headline that names another issue ("a second flaw", "a separate bug") never joins. Two posts of one researcher about one product are
      two findings, and so are reports with two different CVEs or two different database references. A subject-less AI item joins only by a shared
      reference, or with the product in its title and the same issue as every member.
    - An AI item's subject is the AI product or company it is about: a product over its own vendor
@@ -278,9 +292,17 @@ with a warning.
      ("HK$1.6 Billion") is never a subject. `subjectKnown` says whether the subject is a known name rather
      than one read from a headline's shape: the daily and the Threat Brief never allowlist the latter.
      Without the news gate's allowlist the run carries a warning and AI subjects are known products only.
+   - A subject that names a person is refused in every lane (round 3): a role or person word first
+     ("Investor Kiro", "Trader Mateo", "Memecoin Whale Kruw"), a person's verb or legal verb inside it, an AI
+     product word right after a person cue in any punctuation ("Hacker, Sora,", "Teen 'Kiro'"), a product named
+     as a person ("Claude, 72", "Kiro said he ..."), or a handle-shaped word before an attack verb. An AI
+     product name counts as a subject only with a product cue (its vendor, a version, "model", "agent", a
+     product word) and never right after a person cue.
    - Reports that the AI Incident Database files under one incident cluster together through their
      `aiid:<n>` reference, including a report the AI rules alone would drop (unless it is in CJK script
-     or a sensitive story).
+     or a sensitive story). A sensitive story (sexual imagery of children, created deepfake nudes) is held
+     for the owner from any lane, crypto included (round 3), and never reaches `top`, `alsoSeen` or
+     `unclustered`.
 4. **Incident.** Each incident gets:
    - `{id, title, protocol, chains, type, dateUtc, reportedLosses, status, sources, postMortemUrl, evergreenTopic, notes}`
    - plus `statusReason`, `typeReason`, `mechanismStatus`, `mechanismKnown`, `userSide`, `facts`, `score`
@@ -311,13 +333,23 @@ with a warning.
    outlet; an origin is read from the summary and the title separately, never across a sentence end, and
    two origins that share a distinctive word are one). The project's own statement is the source entry's
    `statement`: only "according to X" or a speech verb in running text ("Chainflip confirms ...", "the
-   protocol said ...": says, said, warns, warned, confirms, confirmed, discloses, disclosed, reports, in
-   lower case), never a finding verb (found, traced, linked, tied...), never a passive or result ("Bybit
+   protocol said ...": says, warns, confirms, discloses, and "reports" before a figure or an incident word,
+   in lower case; the past forms said, warned, confirmed and disclosed only before a clause such as "that"
+   or "it"), never a finding verb (found, traced, linked, tied...), never a passive or result ("Bybit
    reported hacked", "said to be ...", "confirmed by ...") and never a Title Case headline, where "Bybit
    Reported Hacked" and "Stake DAO Warns of ..." cannot be told from a project's own word: one tier-B
-   outlet's report of those stays developing. An `origin` (who the outlet relays, used only to tell outlets
+   outlet's report of those stays developing. Since round 3 what the statement says is read too: it counts
+   only when its first clause affirms the incident (an attack, a breach, funds lost, drained, stolen,
+   compromised) with no denial ("no funds were affected", "not hacked", "unrelated"), no inquiry ("is looking
+   into reports", "investigating whether") and no hedge ("possible", "suspected", "may"). "Chainflip says it
+   is investigating" and "the project denied it was hacked" never confirm, and a denial or a "no funds were
+   lost" statement walks the report back (`RETRACT_RE`). An `origin` (who the outlet relays, used only to tell outlets
    apart) is also never read from a cue verb followed by a passive or result word ("USDC Tied to Binance
-   Hack", "Cursor Reported Vulnerable to ..."). Newsletter round-ups never count. A source
+   Hack", "Cursor Reported Vulnerable to ..."). An origin is an organisation's name only (never a person, a
+   CamelCase handle or a word with digits); a private origin (one the run would not print) still groups outlets
+   but is never exported, and `statusReason` names the outlets ("the unhedged outlets relay one origin
+   (decrypt, theblock)"). An inline tag that closes a sentence without a space ("...hacked.</p><p>Chainflip
+   said ...") ends the sentence, so two sentences never read as one origin. Newsletter round-ups never count. A source
    that walks the report back (a denial, a retraction, a false alarm) makes it `developing`.
    Everything else is `developing`, and the title says so.
 6. **Fresh window.** By default this is the run date and the 2 days before it, judged by the

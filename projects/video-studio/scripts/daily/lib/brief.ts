@@ -11,7 +11,8 @@ import type {ChannelConfig} from './channel.ts';
 import type {OppResult} from './opportunities.ts';
 import type {BriefFact, BriefIncident, BriefSource, CandidateSummary, DailyBrief, MustNotSay, Opportunity, RadarFile, RadarIncident, RadarSource, Selection, SourceKind} from './types.ts';
 import {isAiStory} from './types.ts';
-import {subjectKnown} from './radar.ts';
+import {slugNamesPerson, urlOrigin} from './persons.ts';
+import {incidentName, incidentTitle, subjectKnown} from './radar.ts';
 import {clip, unique, usdExact} from './util.ts';
 
 export const EXCERPT_MAX = 280;
@@ -65,7 +66,8 @@ export const indexSources = (inc: RadarIncident): SourceIndex => {
 		sources.push({
 			id,
 			feed: s.id,
-			url: s.url,
+			// a link whose path spells a person's name (one the radar missed) keeps only the outlet's address
+			url: slugNamesPerson(s.url) ? urlOrigin(s.url) : s.url,
 			title: clip(String(s.title ?? '').trim(), EXCERPT_MAX),
 			publisher: s.publisher?.trim() || s.id,
 			kind: kindOf(s),
@@ -145,7 +147,7 @@ export const mustNotSayFor = (inc: RadarIncident, idx: SourceIndex, developing: 
 		});
 	}
 	if (inc.userSide)
-		out.push({rule: 'user-side', text: `The sources describe a user-side incident (a user's or trader's own key, device, API key or unofficial software), not a breach of ${inc.protocol}'s own systems. Never say ${inc.protocol} was hacked or breached; say whose keys or devices were affected, attributed.`});
+		out.push({rule: 'user-side', text: `The sources describe a user-side incident (a user's or trader's own key, device, API key or unofficial software), not a breach of ${incidentName(inc)}'s own systems. Never say ${incidentName(inc)} was hacked or breached; say whose keys or devices were affected, attributed.`});
 	const unverified = idx.sources.filter((x) => x.unverified);
 	if (unverified.length)
 		out.push({rule: 'unverified', text: `${unique(unverified.map((x) => x.publisher)).join(', ')} cite${unverified.length === 1 ? 's' : ''} only a post on X that nobody here could read: never carry a claim on that entry alone.`});
@@ -204,7 +206,8 @@ export const buildBrief = (b: BriefInput): DailyBrief => {
 	const {facts, dropped} = buildFacts(inc, idx);
 	const developing = inc.status !== 'confirmed';
 	const sources: BriefSource[] = [...idx.sources];
-	const incidents: BriefIncident[] = [{id: inc.id, name: inc.protocol, status: inc.status, date: inc.dateUtc, role: 'primary', ...(subjectKnown(inc) ? {} : {nameKnown: false})}];
+	// a subject that may be a person (subjectKnown false) is named by its type, and never allowlisted (nameKnown false)
+	const incidents: BriefIncident[] = [{id: inc.id, name: incidentName(inc), status: inc.status, date: inc.dateUtc, role: 'primary', ...(subjectKnown(inc) ? {} : {nameKnown: false})}];
 	const entities = new Set<string>(b.otherProtocols.filter((p) => p && p !== inc.protocol && p !== 'Unknown subject'));
 	const opps: Opportunity[] = [];
 	for (const r of b.opportunities) {
@@ -231,8 +234,9 @@ export const buildBrief = (b: BriefInput): DailyBrief => {
 		format: b.format ?? (developing ? 'what-we-know' : 'daily-short'),
 		incident: {
 			id: inc.id,
-			title: inc.title,
-			protocol: inc.protocol,
+			title: incidentTitle(inc),
+			// the matching key for coverage and corrections (radar ids and names); shown only through incidentName
+			protocol: subjectKnown(inc) ? inc.protocol : incidentName(inc),
 			type: inc.type,
 			dateUtc: inc.dateUtc,
 			chains: inc.chains,

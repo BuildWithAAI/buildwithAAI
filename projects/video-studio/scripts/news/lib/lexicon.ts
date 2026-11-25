@@ -64,25 +64,62 @@ const ci = (phrase: string): string =>
 		.split(/\s+/)
 		.map((w) => escapeRe(w).replace(/['’]/g, "['’]").replace(/[a-z]/gi, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`))
 		.join(String.raw`\s+`);
-/** Reported instructions: what someone (the attack) told an AI to do. */
-const INSTRUCT_VERBS = 'told|instructed|asked|ordered|directed|made|commanded|prompted';
+/**
+ * Reported instructions and manipulations: what an attack told, got or tricked an AI into doing. "to <action>" after
+ * these ("told/got/caused/convinced the agent to upload ..."), "into <action>ing" after the INTO ones ("tricked Copilot
+ * into uploading ..."), a bare exfiltration verb after the BARE ones ("had Claude Code upload ...", "makes Copilot
+ * upload ..."), or "<it> should <action>" ("told Copilot it should upload ...").
+ */
+const TO_VERBS = `told tells tell telling instructed instructs instructing asked asks asking ordered orders directed directs directing
+made makes commanded commands prompted prompts got gets getting caused causes causing convinced convinces convincing persuaded
+persuades persuading led leads forced forces forcing tricked tricks tricking coaxed coaxes manipulated manipulates pushed
+pushes urged urges nudged nudges steered steers`.split(/\s+/);
+const INTO_VERBS = `tricked tricks tricking fooled fools fooling manipulated manipulates manipulating duped dupes coaxed coaxes lured
+lures conned deceived deceives convinced convinces persuaded persuades talked talks led leads forced forces pushed pushes
+steered steers`.split(/\s+/);
+const BARE_VERBS = ['had', 'has', 'made', 'makes'];
 /**
  * What the instruction made the AI do. Not the user's own trigger: "asked the assistant to summarise the page" is how
  * a prompt injection starts, and is fine to say.
  */
-const AI_ACTIONS = 'open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|e-mail|reveal|ignore|disable|download|install|write|post|leak|exfiltrate|share|transfer|grant|approve|push|publish|output|repeat|dump|encode';
+const AI_ACTIONS = `open send paste copy upload print run execute read delete forward email e-mail reveal ignore disable download
+install write post leak exfiltrate exfil share transfer grant approve push publish output repeat dump encode commit attach
+curl wget base64 append zip sync submit transmit harvest grab extract disclose expose steal siphon`.split(/\s+/);
+/** A bare action after "had", "made": the exfiltration verbs only ("made the coding agent read secrets" is the concept). */
+const BARE_ACTIONS = `send upload paste post email e-mail forward exfiltrate exfil leak share transfer push publish commit attach curl
+append encode base64 zip sync submit dump print reveal output copy transmit steal siphon disclose expose`.split(/\s+/);
+const ACTIONS_ING = `sending uploading pasting posting emailing e-mailing forwarding exfiltrating leaking sharing transferring pushing
+publishing committing attaching curling appending encoding base64-encoding zipping syncing submitting dumping printing
+revealing outputting copying transmitting stealing siphoning disclosing exposing running executing opening reading deleting
+installing downloading ignoring disabling granting approving repeating writing`.split(/\s+/);
 const DETERMINERS = ['the', 'an', 'a', 'its', 'their', "a user's", "the user's", "the victim's", "victims'", "users'"];
-const RECIPIENT_DET = `(?:(?:${DETERMINERS.map(ci).join('|')})\\s+)?`;
+/** A determiner, then at most one owner ("the company's AI assistant", "Windsurf's"). */
+const RECIPIENT_DET = String.raw`(?:(?:${DETERMINERS.map(ci).join('|')})\s+)?(?:[\p{L}-]+['’]s?\s+)?`;
 /** An AI by its generic name, with up to two describing words ("the coding agent", "AI assistants"). */
-const AI_GENERIC = String.raw`(?:(?:AI|coding|browser|e-?mail|LLM|autonomous|shopping|support|research|hidden|malicious|enterprise)[-\s]+){0,2}(?:agent|assistant|model|chat\s?bot|AI|bot|copilot|LLM)s?`;
-/** AI products an instruction can be addressed to, longest first, in their exact case ("Cursor", never "the cursor"). A bare "Copilot" is AI_GENERIC's. */
-const AI_PRODUCT_NAMES = [
+const AI_GENERIC = String.raw`(?:(?:AI|coding|browser|e-?mail|LLM|autonomous|agentic|shopping|support|research|hidden|malicious|enterprise|company|corporate|internal|personal|developer|code|chat|web|desktop|voice)[-\s]+){0,2}(?:agent|assistant|model|chat\s?bot|AI|bot|copilot|LLM)s?`;
+/** AI products an instruction can be addressed to, longest first, in their exact case or all capitals ("Cursor", "CURSOR", never "the cursor"). A bare "Copilot" is AI_GENERIC's. */
+const AI_PRODUCT_LIST = [
 	'Microsoft 365 Copilot', 'Amazon Q Developer', 'Gemini Code Assist', 'Microsoft Copilot', 'Security Copilot', 'Perplexity Comet', 'ChatGPT Operator', 'GitHub Copilot',
 	'Copilot Studio', 'ChatGPT Atlas', 'Claude Desktop', 'Google Gemini', 'M365 Copilot', 'Copilot Chat', 'Replit Agent', 'OpenAI Codex', 'Google Jules', 'Claude Code',
 	'Gemini CLI', 'Antigravity', 'Codex CLI', 'Amazon Q', 'AWS Kiro', 'Roo Code', 'Perplexity', 'Windsurf', 'OpenClaw', 'Operator', 'DeepSeek', 'ChatGPT',
 	'Codeium', 'Lovable', 'Mistral', 'Gemini', 'Claude', 'Cursor', 'Replit', 'Devin', 'Codex', 'Comet', 'Jules', 'Manus', 'Aider', 'Llama', 'Alexa', 'Grok', 'Kiro',
-	'Cline', 'Qwen', 'Siri',
-].map((n) => escapeRe(n).replace(/ /g, String.raw`\s+`));
+	'Cline', 'Qwen', 'Siri', 'Copilot', 'Cascade',
+];
+const AI_PRODUCT_NAMES = AI_PRODUCT_LIST.flatMap((n) => [n, n.toUpperCase()]).map((n) => escapeRe(n).replace(/ /g, String.raw`\s+`));
+/** Words after a product name that still name the AI ("the Copilot coding agent", "GitHub Copilot Chat", "Windsurf's Cascade agent"). */
+const AI_TAIL = String.raw`(?:\s+(?:${['agent', 'agents', 'assistant', 'extension', 'CLI', 'IDE', 'chatbot', 'bot', 'model', 'coding', 'chat', 'browser', 'plugin', 'app', 'desktop', 'web', 'mobile'].map(ci).join('|')}|\p{Lu}[\p{L}\d-]*)){0,3}`;
+/** An apposition after the AI's name: "GitHub Copilot, the coding agent, ...". */
+const AI_APPOSITION = String.raw`(?:\s*,\s*(?:${['the', 'its', 'a', 'an'].map(ci).join('|')})\s+(?:[\p{L}-]+\s+){0,3}?(?:${['agent', 'assistant', 'chatbot', 'bot', 'model', 'extension', 'tool', 'copilot', 'AI', 'LLM'].map(ci).join('|')})s?\s*,)?`;
+const SHOULD = String.raw`(?:(?:${ci('that')}\s+)?(?:${['it', 'they'].map(ci).join('|')})\s+(?:${['should', 'must', 'would', 'could', 'needed to', 'needs to', 'need to', 'had to', 'has to', 'have to', 'was to', 'were to'].map(ci).join('|')})\s+|${ci('to')}\s+)`;
+/** The three manipulations ("... to <action>", "... into <action>ing", "had/made ... <action>") after a recipient. */
+const toldTheAgent = (recipient: string): string => {
+	const words = (list: readonly string[]): string => [...list].sort((a, b) => b.length - a.length).map(ci).join('|');
+	return [
+		String.raw`\b(?:${words(TO_VERBS)})\s+${recipient}(?:\s*(?::|["“])|\s+${SHOULD}(?:${words(AI_ACTIONS)})\b)`,
+		String.raw`\b(?:${words(INTO_VERBS)})\s+${recipient}\s+${ci('into')}\s+(?:${words(ACTIONS_ING)})\b`,
+		String.raw`\b(?:${words(BARE_VERBS)})\s+${recipient}\s+(?:${words(BARE_ACTIONS)})\b`,
+	].join('|');
+};
 
 export const HOWTO: Pattern[] = [
 	p('code-span', 'a code span', /`[^`\n]+`/),
@@ -108,10 +145,10 @@ export const HOWTO: Pattern[] = [
 	// jailbreak recipe), whoever said it
 	p('ai-addressed', 'text addressed to an AI (an injected instruction)', /\b(?:AI|A\.I\.|assistants?|agents?|models?|chat ?bots?|LLMs?|copilots?)\s+(?:reading|processing|summari[sz]ing|parsing|browsing|seeing)\s+(?:this|these)\b/i),
 	p('roleplay-instruction', 'a jailbreak instruction ("pretend", "you are now", "no rules")', /\b(?:you are now (?:a|an|in|the|DAN|free|unrestricted|jailbroken|uncensored)|pretend (?:you\b|that you\b|to be\b|it (?:is|was) an? (?:AI|assistant|model|chatbot|bot))|act as (?:an? )?(?:unrestricted|unfiltered|uncensored|jailbroken|evil|DAN)\b|role-?play(?:ing|ed)? as|developer mode|forget (?:everything|all) (?:above|before)|(?:ignore|disregard|override) (?:its|your|their|the|all) (?:rules|guidelines|instructions|safeguards|guardrails)|(?:an? )?(?:AI|assistant|model|chatbot|bot) with(?:out)? (?:no )?(?:rules|restrictions|limits|guardrails|filters)\b)/i),
-	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS})\s+${RECIPIENT_DET}${AI_GENERIC}\s*(?::|["“]|to\s+(?:${AI_ACTIONS})\b)|\b(?:the )?(?:hidden )?(?:text|comment|note|instruction|prompt|message|page) (?:said|read|told|asked)\s*:`, 'i')),
-	// the same with the AI named by product ("The README told Copilot to upload the env file"): exact case, so "the
-	// cursor" or "an operator" never match
-	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS.split('|').map(ci).join('|')})\s+${RECIPIENT_DET}(?:${AI_PRODUCT_NAMES.join('|')})(?:['’]s)?(?:\s+(?:${['agent', 'assistant', 'extension', 'CLI', 'IDE', 'chatbot', 'bot', 'model'].map(ci).join('|')}))?\s*(?::|["“]|${ci('to')}\s+(?:${AI_ACTIONS.split('|').map(ci).join('|')})\b)`, 'u')),
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(`${toldTheAgent(`${RECIPIENT_DET}${AI_GENERIC}${AI_APPOSITION}`)}|\\b(?:the )?(?:hidden )?(?:text|comment|note|instruction|prompt|message|page) (?:said|read|told|asked)\\s*:`, 'iu')),
+	// the same with the AI named by product ("The README got Copilot to upload the env file"): exact case or capitals,
+	// so "the cursor" or "an operator" never match
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(toldTheAgent(`${RECIPIENT_DET}(?:${AI_PRODUCT_NAMES.join('|')})(?:['’]s)?${AI_TAIL}${AI_APPOSITION}`), 'u')),
 	p('bypass-setting', 'the setting that got past a safeguard', /\b(?:["“]?don['’]t ask again["”]?|always allow|auto-?approv\w*|auto-?run|yolo mode|skip(?:ped|s|ping)? the (?:confirmation|approval|permission) (?:prompt|step|dialog))\b/i),
 ];
 
@@ -120,7 +157,7 @@ export const HOWTO: Pattern[] = [
  * ..."). Quoted words in an AI story are an organisation's statement, never the payload.
  */
 export const AI_QUOTE_FRAME =
-	/\b(?:the|a|an|its|this|that)\s+(?:(?:hidden|malicious|injected|invisible|poisoned|crafted|booby-trapped|white|tiny)\s+){0,2}(?:text|comments?|note|instructions?|prompts?|message|page|web\s?page|website|site|README|file|e-?mail|issue|document|doc|PDF|(?:calendar\s+)?invite|ticket|pull\s+request|commit\s+message|docstring|description|metadata|alt\s+text|payload|string|line|image|skill|plugin|extension|tool|server|rules?\s+file)\s+(?:said|says|read|reads|told|tells|asked|asks|instructed|instructs|stated|states|contained|contains|included|includes|ordered|orders|directed|directs)\s*(?::|["“‘'])/i;
+	/\b(?:the|a|an|its|this|that)\s+(?:(?:hidden|malicious|injected|invisible|poisoned|crafted|booby-trapped|white|tiny)\s+){0,2}(?:text|comments?|note|instructions?|prompts?|message|page|web\s?page|website|site|README|file|e-?mail|issue|document|doc|PDF|(?:calendar\s+)?invite|ticket|pull\s+request|commit\s+message|docstring|description|metadata|alt\s+text|payload|string|line|image|skill|plugin|extension|tool|server|rules?\s+file)\s+(?:said|says|read|reads|told|tells|asked|asks|instructed|instructs|stated|states|contained|contains|included|includes|ordered|orders|directed|directs)\s*(?::|["“‘'«‹])/i;
 
 /**
  * AI stories only (R5): quoted words that read as an instruction to an AI, whoever is quoted: an override or jailbreak

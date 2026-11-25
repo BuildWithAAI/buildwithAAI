@@ -46,6 +46,12 @@ def clean_ws(text):
     return _WS.sub(" ", text).strip()
 
 
+# An inline tag boundary (<span>, <a>, <em>): no space of its own, but a sentence end across one gets its space back
+# ("GitGuardian.</span><span>The firm" reads "GitGuardian. The firm", never one word "GitGuardian.The")
+_INLINE = "\ue000"
+_INLINE_SENTENCE = re.compile("([.!?;:])\ue000+(?=[\\s\ue000]*[A-Z\u201c\"(\\[])")
+
+
 class _TextExtractor(HTMLParser):
     SKIP = {"script", "style", "noscript", "template", "svg", "iframe", "object", "head"}
     BLOCK = {
@@ -64,10 +70,14 @@ class _TextExtractor(HTMLParser):
             self.skip += 1
         elif tag in self.BLOCK:
             self.parts.append(" ")
+        else:
+            self.parts.append(_INLINE)
 
     def handle_startendtag(self, tag, attrs):
         if tag in self.BLOCK:
             self.parts.append(" ")
+        else:
+            self.parts.append(_INLINE)
 
     def handle_endtag(self, tag):
         if tag in self.SKIP:
@@ -75,6 +85,8 @@ class _TextExtractor(HTMLParser):
                 self.skip -= 1
         elif tag in self.BLOCK:
             self.parts.append(" ")
+        else:
+            self.parts.append(_INLINE)
 
     def handle_data(self, data):
         if not self.skip:
@@ -94,7 +106,8 @@ def html_to_text(fragment):
         parser.close()
     except Exception:  # html.parser is lenient; this is a last-resort guard
         return clean_ws(re.sub(r"<[^>]*>", " ", fragment))
-    return clean_ws("".join(parser.parts))
+    text = _INLINE_SENTENCE.sub(r"\1 ", "".join(parser.parts))
+    return clean_ws(text.replace(_INLINE, ""))
 
 
 def truncate(text, limit=EXCERPT_MAX):

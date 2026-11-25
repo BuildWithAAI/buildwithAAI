@@ -18,7 +18,7 @@ import {dateLabel} from './brief.ts';
 import {stripInvisible} from './radar.ts';
 import {bodyRules, htmlSafety, htmlToText, markdownLinks, markdownToText} from './lint.ts';
 import {a, button, developingPill, emailCard, emailDocument, FONT, H2, ITEM, LIST, mdLink, MUTED, P, PAPER, row, SHOW_LINK_PENDING, SLATE, TEAL, TEXT, yaml} from './render.ts';
-import {extendAllow, isSafeQuote, quoteLine, scanText, type Finding, type Level, type NameAllow, type Rule} from './safety.ts';
+import {extendAllow, isSafeQuote, quoteLine, scanText, slugNamesPerson, urlOrigin, WITHHELD_LINK_NOTE, type Finding, type Level, type NameAllow, type Rule} from './safety.ts';
 
 // ---------------------------------------------------------------------------------------------
 // The daily's PostInput (video-studio scripts/daily/lib/postapproval.ts), read strictly
@@ -221,7 +221,15 @@ export type DailyBuild = {brief: DailyBrief; notes: string[]; allow: NameAllow};
 export const buildDailyBrief = (input: PostInput, options: {allow: NameAllow; now: Date; inputFile?: string | null; inputSha256: string}): DailyBuild => {
 	const notes: string[] = [];
 	const publishers = [...input.whatWeKnow.flatMap((f) => f.sources), ...input.sources, ...input.alsoOnRadar.flatMap((m) => m.coverage)].map((s) => s.publisher);
-	const allow = extendAllow(options.allow, [...publishers, input.showName, input.displayName]);
+	const allow = extendAllow(options.allow, [...publishers, input.showName, input.displayName], true);
+	// a link whose address spells a person's name (a role word and the next word, a given name, a word the article's
+	// own headline flags) goes to the outlet's address instead, in every section
+	const titleOf = new Map(input.sources.map((s) => [s.url, s.title]));
+	const linkOf = (url: string, headline: string, where: string): string => {
+		if (!url || !slugNamesPerson(url, headline, allow)) return url;
+		notes.push(`${where}: the link ${url} names a person, so it goes to the outlet's address`);
+		return urlOrigin(url);
+	};
 	const computedSubject = clip(`Threat Brief, ${dateLabel(input.date, false)}: ${input.developing ? 'DEVELOPING: ' : ''}${input.title}`, 100);
 	const subject = input.email?.subject || computedSubject;
 	if (input.email?.subject && input.email.subject !== computedSubject) notes.push(`the subject is the approve step's ("${input.email.subject}")`);
@@ -229,9 +237,12 @@ export const buildDailyBrief = (input: PostInput, options: {allow: NameAllow; no
 	for (const m of input.alsoOnRadar.slice(0, RADAR_SHOWN)) {
 		const problems = scanText(m.name, {where: 'also on the radar', allow}).filter((f) => f.level === 'error');
 		if (problems.length > 0) notes.push(`also on the radar: "${m.name}" breaks a safety rule (${problems.map((f) => `${f.rule}/${f.code}`).join(', ')}) and is left out`);
-		else alsoOnRadar.push(m);
+		else alsoOnRadar.push({...m, coverage: m.coverage.map((c) => ({...c, url: linkOf(c.url, m.name, 'also on the radar')}))});
 	}
-	const sources = input.sources.map((s) => ({text: sourceText(s.publisher, s.title, allow), url: s.url}));
+	const sources = input.sources.map((s) => {
+		const url = linkOf(s.url, s.title, 'sources');
+		return url === s.url ? {text: sourceText(s.publisher, s.title, allow), url} : {text: `${s.publisher} (${WITHHELD_LINK_NOTE})`, url};
+	});
 	for (const [i, s] of sources.entries()) if (s.text === input.sources[i]?.publisher && input.sources[i]?.title) notes.push(`sources: the headline from ${s.text} is not quoted (it breaks a safety rule); only the publisher is shown`);
 	if (!input.oneFix) notes.push("the input has no One Fix, so the email has no Zoo's One Fix section");
 	const brief: DailyBrief = {
@@ -243,7 +254,7 @@ export const buildDailyBrief = (input: PostInput, options: {allow: NameAllow; no
 		showName: input.showName,
 		title: input.title,
 		developing: input.developing,
-		facts: input.whatWeKnow.map((f) => ({text: f.text, sources: f.sources.map((s) => ({publisher: s.publisher, url: s.url || null}))})),
+		facts: input.whatWeKnow.map((f, i) => ({text: f.text, sources: f.sources.map((s) => ({publisher: s.publisher, url: s.url ? linkOf(s.url, titleOf.get(s.url) ?? '', `what we know ${i + 1}`) : null}))})),
 		analysis: input.analysis,
 		oneFix: input.oneFix,
 		watchUrl: input.youtubeId ? `https://youtu.be/${input.youtubeId}` : null,

@@ -49,6 +49,11 @@ export type RadarIncident = {
 	 * than reading it from a headline's shape. Older radar files: crypto incidents count as known, as before.
 	 */
 	subjectKnown: boolean;
+	/**
+	 * The radar's warning that the subject, read from a headline, may be a person's name ("Kruw", a trader whose wallet
+	 * was drained): the brief then names the incident by its type and never puts the name in the allow set.
+	 */
+	personRisk: boolean;
 	lane: Lane;
 	chains: string[];
 	type: string;
@@ -174,6 +179,7 @@ const readIncident = (raw: unknown, where: string, warnings: string[]): RadarInc
 		title,
 		protocol,
 		subjectKnown: raw.subjectKnown === true || (raw.subjectKnown === undefined && lane === 'crypto'),
+		personRisk: raw.personRisk === true,
 		lane,
 		chains: strList(raw.chains),
 		type: str(raw.type) || 'other',

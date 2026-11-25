@@ -8,6 +8,7 @@ import type {RadarHistory, TrackerData, TrackerRow} from './history.ts';
 import {defillamaKey} from './history.ts';
 import type {BriefFact, BriefIncident, BriefSource, Opportunity, RadarIncident} from './types.ts';
 import {sameIncident} from './match.ts';
+import {incidentName, subjectKnown} from './radar.ts';
 import {addDays, daysBetween, shortDate, unique, usdExact} from './util.ts';
 
 export type OppResult = {opp: Opportunity; sources: BriefSource[]; facts: BriefFact[]; entities: string[]; incidents: BriefIncident[]};
@@ -218,6 +219,7 @@ export const radarComparison = (inc: RadarIncident, hist: RadarHistory, minFiles
 	const facts: BriefFact[] = [];
 	const incidents: BriefIncident[] = [];
 	const cited: string[] = [];
+	const allowed: string[] = [];
 	same.slice(0, 8).forEach((x, i) => {
 		const fact = x.facts.find((f) => /classifies it as|attack method/.test(f.text)) ?? x.facts[0];
 		const src = fact ? x.sources.find((s) => s.id === fact.sourceId && s.url === fact.url) : undefined;
@@ -225,16 +227,19 @@ export const radarComparison = (inc: RadarIncident, hist: RadarHistory, minFiles
 		if (!fact || !src || !stored.includes(fact.quote)) return;
 		const id = `hist-${i + 1}`;
 		sources.push({id, feed: src.id, url: src.url, title: src.title, publisher: src.publisher ?? src.id, kind: src.kind === 'structured' ? 'tracker' : 'news', tier: src.tier, publishedAt: src.publishedUtc ?? null, excerpt: stored});
-		facts.push({id: `h${i + 1}`, text: `${x.protocol} (${x.dateUtc}): ${fact.text}`, sourceIds: [id], excerpts: [{sourceId: id, text: stored}], incidentId: x.id, quote: fact.quote, kind: 'radar-fact'});
-		incidents.push({id: x.id, name: x.protocol, status: x.status, date: x.dateUtc, role: 'comparison'});
-		cited.push(x.protocol);
+		// a subject that may be a person (radar.ts subjectKnown) is named by its type and never allowlisted
+		const name = incidentName(x);
+		facts.push({id: `h${i + 1}`, text: `${name} (${x.dateUtc}): ${fact.text}`, sourceIds: [id], excerpts: [{sourceId: id, text: stored}], incidentId: x.id, quote: fact.quote, kind: 'radar-fact'});
+		incidents.push({id: x.id, name, status: x.status, date: x.dateUtc, role: 'comparison', ...(subjectKnown(x) ? {} : {nameKnown: false})});
+		cited.push(name);
+		if (subjectKnown(x)) allowed.push(name);
 	});
 	const n = cited.length + 1;
 	const label = inc.type.replace(/-/g, ' ');
 	const detail =
 		n === 1
-			? `In ${hist.files.length} daily radar runs from ${shortDate(hist.from)} to ${shortDate(hist.to)}, ${inc.protocol} is the only ${label} incident our radar logged.`
-			: `In ${hist.files.length} daily radar runs from ${shortDate(hist.from)} to ${shortDate(hist.to)}, our radar logged ${n} ${label} incidents: ${[inc.protocol, ...cited.slice(0, 3)].join(', ')}${n > 4 ? ' and others' : ''}.`;
+			? `In ${hist.files.length} daily radar runs from ${shortDate(hist.from)} to ${shortDate(hist.to)}, ${incidentName(inc)} is the only ${label} incident our radar logged.`
+			: `In ${hist.files.length} daily radar runs from ${shortDate(hist.from)} to ${shortDate(hist.to)}, our radar logged ${n} ${label} incidents: ${[incidentName(inc), ...cited.slice(0, 3)].join(', ')}${n > 4 ? ' and others' : ''}.`;
 	return {
 		opp: {
 			...base,
@@ -249,7 +254,7 @@ export const radarComparison = (inc: RadarIncident, hist: RadarHistory, minFiles
 		},
 		sources,
 		facts,
-		entities: cited,
+		entities: allowed,
 		incidents,
 	};
 };

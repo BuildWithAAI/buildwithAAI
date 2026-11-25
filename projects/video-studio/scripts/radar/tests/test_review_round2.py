@@ -61,8 +61,12 @@ class OwnStatements(unittest.TestCase):
         self.assertEqual(classify.statement_of("Abracadabra says it was exploited for $13 million", "CoinDesk",
                                                headline=True), "abracadabra")
         self.assertEqual(classify.statement_of("The lending protocol was drained. Abracadabra said its cauldrons were "
-                                               "paused.", "CoinDesk"), "abracadabra")
-        self.assertEqual(classify.statement_of("Funds left the cold wallet, according to Bybit.", "CoinDesk"), "bybit")
+                                               "drained of $13 million.", "CoinDesk"), "abracadabra")
+        self.assertEqual(classify.statement_of("Attackers drained the cold wallet, according to Bybit.", "CoinDesk"), "bybit")
+        # round 3 (repro-statement-not-a-confirmation): only words that affirm the incident are its statement
+        self.assertIsNone(classify.statement_of("The lending protocol was drained. Abracadabra said its cauldrons were "
+                                                "paused.", "CoinDesk"))
+        self.assertIsNone(classify.statement_of("Funds left the cold wallet, according to Bybit.", "CoinDesk"))
         # finding verbs name an origin (who the outlet relays), never a statement
         self.assertIsNone(classify.statement_of("Elliptic traced the funds to Lazarus.", "CoinDesk"))
         self.assertEqual(classify.origin_of("Elliptic traced the funds to Lazarus.", "CoinDesk"), "elliptic")
@@ -215,11 +219,12 @@ class SameIssue(Scenario):
         self.assertEqual(len(claude), 1, [i["id"] for i in claude])
         self.assertEqual({s["id"] for s in claude[0]["sources"]}, {"bleepingcomputer", "securityweek"})
         self.assertEqual(claude[0]["status"], "confirmed", claude[0]["statusReason"])
-        # no shared rarer word: two words of what was exposed, the same day
+        # round 3 (regress-same-issue-impact-overmerge): words of what was exposed alone ("exposed", "secrets",
+        # "keys") no longer join two reports; without a shared distinctive word they stay apart (developing)
         doc = self.pair("Claude Code flaw leaked API keys and exposed secrets", "The bug exposed secrets.",
                         "Anthropic Patches Claude Code Flaw That Exposed Secrets and Leaked Keys",
                         "Secrets and keys were exposed.", "claude-keys")
-        self.assertEqual(len([i for i in self.incidents(doc) if i["protocol"] == "Claude Code"]), 1)
+        self.assertEqual(len([i for i in self.incidents(doc) if i["protocol"] == "Claude Code"]), 2)
 
     def test_distinct_issues_stay_apart(self):
         doc = self.pair("Claude Code flaw CVE-2026-11111 exposed developer secrets", "The bug exposed secrets.",
@@ -228,18 +233,20 @@ class SameIssue(Scenario):
         self.assertEqual(len([i for i in self.incidents(doc) if i["protocol"] == "Claude Code"]), 2)
 
     def test_impact_words_join_only_reports_a_day_apart(self):
+        # round 3: renamed rule. A shared distinctive word and a specific thing exposed join two reports; impact words
+        # alone never do (regress-same-issue-impact-overmerge), whatever the dates
         def mention(title, publisher, day, vote="ai-agent-exploit", ref=None):
             when = dt.datetime.fromisoformat(day + "T10:00:00+00:00")
             return cluster.Mention(title=title, excerpt="", aliases={"claude code"}, publisher=publisher, sid=publisher,
                                    type_vote=(vote, None, "test"), published=when, fresh=when, ref=ref)
-        a = mention("Claude Code flaw leaked API keys and exposed secrets", "BleepingComputer", "2026-11-21")
-        self.assertTrue(cluster._same_issue(a, mention("Anthropic Patches Claude Code Flaw That Exposed Secrets and "
-                                                       "Leaked Keys", "SecurityWeek", "2026-11-22")))
-        self.assertFalse(cluster._same_issue(a, mention("Anthropic Patches Claude Code Flaw That Exposed Secrets and "
-                                                        "Leaked Keys", "SecurityWeek", "2026-11-23")))
-        self.assertFalse(cluster._same_issue(a, mention("Anthropic Patches Claude Code Flaw That Exposed Secrets and "
-                                                        "Leaked Keys", "SecurityWeek", "2026-11-22",
-                                                        vote="prompt-injection")))
+        a = mention("Claude Code flaw leaked developers' API keys", "BleepingComputer", "2026-11-21")
+        self.assertTrue(cluster._same_issue(a, mention("Anthropic Patches Claude Code Flaw That Leaked Developer Keys",
+                                                       "SecurityWeek", "2026-11-22")))
+        self.assertFalse(cluster._same_issue(a, mention("Anthropic Patches Claude Code Flaw That Leaked Developer Keys",
+                                                        "SecurityWeek", "2026-11-22", vote="prompt-injection")))
+        b = mention("Claude Code flaw leaked API keys and exposed secrets", "BleepingComputer", "2026-11-21")
+        self.assertFalse(cluster._same_issue(b, mention("Anthropic Patches Claude Code Flaw That Exposed Secrets and "
+                                                        "Leaked Keys", "SecurityWeek", "2026-11-22")))
         # two different incident-database incidents are two findings, whatever words they share
         self.assertFalse(cluster._same_issue(
             mention("Claude Code flaw exposed developer secrets", "Outlet A", "2026-11-22", ref="aiid:1"),

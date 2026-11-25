@@ -5,6 +5,7 @@
  * Anything it cannot read is reported, and an unknown status counts as developing (fail closed).
  */
 import type {Brief, BriefEntity, BriefExcerpt, BriefFact, BriefIncident, BriefMustNotSay, BriefOpportunity, BriefSource, SourceKind} from './types.ts';
+import {looksPersonal} from './names.ts';
 
 export type BriefProblem = {level: 'error' | 'warning'; msg: string};
 
@@ -122,13 +123,21 @@ const isRadarIncident = (o: Record<string, unknown>): boolean =>
  * turns one incident into a brief: unique source ids (coindesk, coindesk-2), fact ids f1..fn, and each fact's excerpt =
  * the stored excerpt (or title, for title facts) of its own article.
  */
+/**
+ * A radar subject that must never be allowlisted: the radar flags it as possibly a person (personRisk), it is an AI or
+ * both-lane subject the radar only read from a headline's shape (subjectKnown not true), or it reads as a person here.
+ */
+const nameUnsafe = (x: Record<string, unknown>): boolean =>
+	x.personRisk === true || ((x.lane === 'ai' || x.lane === 'both') && x.subjectKnown !== true) || looksPersonal(str(x.protocol) ?? '');
+
 export const briefFromRadar = (raw: Record<string, unknown>, incidentId: string | undefined, problems: BriefProblem[]): Record<string, unknown> | null => {
 	let inc: Record<string, unknown> | undefined;
 	let others: string[] = [];
 	if (typeof raw.schema === 'string' && raw.schema.startsWith('zoora-security/radar') && (Array.isArray(raw.top) || Array.isArray(raw.alsoSeen))) {
 		const all = [...((raw.top as unknown[]) ?? []), ...((raw.alsoSeen as unknown[]) ?? [])].filter((x): x is Record<string, unknown> => !!x && typeof x === 'object');
-		// the other incidents' protocol names come from the radar's structured sources: organisations, not people
-		others = all.map((x) => str(x.protocol)).filter((x): x is string => !!x && x !== 'Unknown subject');
+		// the other incidents' protocol names, except a subject the radar read from a headline that may be a person
+		// (personRisk, an AI-lane subject it does not know, a role word and a name): those are never allowlisted
+		others = all.filter((x) => !nameUnsafe(x)).map((x) => str(x.protocol)).filter((x): x is string => !!x && x !== 'Unknown subject');
 		if (incidentId) inc = all.find((x) => x.id === incidentId);
 		else if (all.length === 1) inc = all[0];
 		if (!inc) {
@@ -176,7 +185,7 @@ export const briefFromRadar = (raw: Record<string, unknown>, incidentId: string 
 	return {
 		slug: raw.slug,
 		generatedAt: raw.generatedUtc ?? raw.generatedAt,
-		incidents: [{id: inc.id, name: inc.protocol, status: inc.status, date: inc.dateUtc}],
+		incidents: [{id: inc.id, name: inc.protocol, status: inc.status, date: inc.dateUtc, ...(nameUnsafe(inc) ? {nameKnown: false} : {})}],
 		sources: outSources,
 		facts,
 		entities: others.filter((n) => n !== inc?.protocol).map((name) => ({name, kind: 'protocol'})),

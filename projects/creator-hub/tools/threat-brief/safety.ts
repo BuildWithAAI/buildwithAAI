@@ -21,6 +21,8 @@
 import {readFileSync} from 'node:fs';
 import {findClaims} from '../../src/claims.ts';
 
+const escapeRe = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export type Rule = 'names' | 'howto' | 'attribution' | 'speculation' | 'price' | 'placeholder' | 'developing' | 'links' | 'structure' | 'html' | 'limits' | 'offers';
 export type Level = 'error' | 'warning';
 export type Finding = {rule: Rule; code: string; level: Level; where: string; message: string; match: string};
@@ -63,6 +65,13 @@ export type NameAllow = {
 	blocked: readonly string[];
 	handles: ReadonlySet<string>;
 	groups: readonly string[];
+	/**
+	 * The names from the allowlist file and the show (makeAllow), as tokens and phrases. Only these may hide a role word
+	 * and the word after it, or a name before a legal verb: a name added for one day (extendAllow: an incident's
+	 * subject, its "also reported as" names) is the radar's reading of a headline and may itself be "Investor Kiro".
+	 */
+	trustedTokens: ReadonlySet<string>;
+	trustedPhrases: readonly string[];
 };
 
 /** The show's own names, which every text may use. */
@@ -92,9 +101,12 @@ export const makeAllow = (names: Iterable<string>, blocked: Iterable<string> = [
 	const tokens = new Set<string>();
 	const phrases = new Set<string>();
 	addNames(tokens, phrases, [...SHOW_NAMES, ...names]);
+	const sorted = [...phrases].sort((a, b) => b.length - a.length);
 	return {
 		tokens,
-		phrases: [...phrases].sort((a, b) => b.length - a.length),
+		phrases: sorted,
+		trustedTokens: new Set(tokens),
+		trustedPhrases: sorted,
 		ambiguous: new Set([...AMBIGUOUS_NAMES, ...[...ambiguous].map((a) => a.trim().toLowerCase()).filter(Boolean)]),
 		blocked: [...blocked].map((b) => b.trim()).filter(Boolean),
 		handles: new Set(OWN_HANDLES),
@@ -102,19 +114,28 @@ export const makeAllow = (names: Iterable<string>, blocked: Iterable<string> = [
 	};
 };
 
-/** Adds names (an incident's protocol, today's publishers) to an allow set. */
-export const extendAllow = (allow: NameAllow, names: Iterable<string>): NameAllow => {
+/**
+ * Adds names to an allow set. `trusted`: names from configuration (today's publishers, the show, chains from the
+ * databases); an incident's subject or its "also reported as" names, read from headlines, never are (see NameAllow).
+ */
+export const extendAllow = (allow: NameAllow, names: Iterable<string>, trusted = false): NameAllow => {
+	const list = [...names];
 	const tokens = new Set(allow.tokens);
 	const phrases = new Set(allow.phrases);
-	addNames(tokens, phrases, names);
-	return {...allow, tokens, phrases: [...phrases].sort((a, b) => b.length - a.length)};
+	addNames(tokens, phrases, list);
+	const extended: NameAllow = {...allow, tokens, phrases: [...phrases].sort((a, b) => b.length - a.length)};
+	if (!trusted) return extended;
+	const trustedTokens = new Set(allow.trustedTokens);
+	const trustedPhrases = new Set(allow.trustedPhrases);
+	addNames(trustedTokens, trustedPhrases, list);
+	return {...extended, trustedTokens, trustedPhrases: [...trustedPhrases].sort((a, b) => b.length - a.length)};
 };
 
 /**
  * The text with every allowed multi-word name blanked (same length, so positions do not move): the person checks
  * then never read a product or organisation phrase as a name, and never read its words outside the phrase as known.
  */
-export const blankPhrases = (text: string, allow?: NameAllow): string => {
+export const blankPhrases = (text: string, allow?: Pick<NameAllow, 'phrases'>): string => {
 	if (!allow || allow.phrases.length === 0) return text;
 	let out = text;
 	for (const phrase of allow.phrases) {
@@ -127,6 +148,8 @@ export const blankPhrases = (text: string, allow?: NameAllow): string => {
 
 /** A known one-word name that is not also a personal name. */
 const knownWord = (allow: NameAllow | undefined, word: string): boolean => !!allow && allow.tokens.has(word) && !allow.ambiguous.has(word);
+/** The same, from the allowlist file and the show only (never a name added for the day). */
+const trustedWord = (allow: NameAllow | undefined, word: string): boolean => !!allow && allow.trustedTokens.has(word) && !allow.ambiguous.has(word);
 
 /**
  * Reads the news gate's allowlist (video-studio/scripts/news/allowlist.json): every list of names except
@@ -232,7 +255,8 @@ role interview interviews job jobs offer offers position salary access wallet wa
 side network interface experience error end base behavior behaviour education protection safety security support
 onboarding agreement consent identity address email phone password session flow journey portal forum crew gang collective
 campaign kit playbook tactic technique toolkit dashboard desk feed post thread channel blog note alert alerts profile
-handle page site mode program programme bounty bounties funds money savings life loans news threat threats general
+handle page site mode program programme bounty bounties funds money savings life loan loans news threat threats general
+relations infrastructure
 order environment environments server servers machines code repo repos repository repositories project projects app apps
 behind over after into against under amid via from by as who whose whom that which while when where how why what
 is are was were be been has had have will would could can may might must should did does do not no
@@ -240,44 +264,145 @@ the a an and of to in on at for with or but`.split(/\s+/),
 );
 
 /**
- * Role, title and kinship words after which a capitalised word reads as a person's name, plus the words that introduce
- * a nickname ("dubbed", "aka"). Matched in any case: a Title Case headline capitalises them ("Victim Kiro Loses ...").
+ * Role, title, kinship and occupation words after which a capitalised word reads as a person's name, plus the words
+ * that introduce a nickname ("dubbed", "aka"). Matched in any case: a Title Case headline capitalises them ("Victim Kiro
+ * Loses ...", "Nurse Kiro Loses ..."). A role word may be followed by punctuation before the name ("Victim, Kiro,
+ * Loses", "Victim (Kiro)", "Victim «Kiro»", "Victim: Kiro", "Victim—Kiro—").
  */
 const ROLE_WORDS = `CEO CTO COO CFO CISO founder co-founder cofounder chairman chairwoman developer engineer employee hacker attacker
 suspect trader influencer researcher investigator sleuth analyst spokesperson spokesman spokeswoman director lawyer attorney
 prosecutor judge senator minister president streamer youtuber whale insider defendant plaintiff victim teenager student
 programmer dev investor teen man woman boy girl scammer fraudster whistleblower podcaster journalist reporter entrepreneur
-billionaire millionaire executive exec owner grandmother grandfather grandma grandpa mother father mom dad son daughter
-wife husband widow widower retiree pensioner named dubbed nicknamed alias aka`.split(/\s+/);
+billionaire millionaire executive exec owner grandmother grandfather grandma grandpa mother father mom mum dad son daughter
+wife husband widow widower retiree pensioner nurse teacher doctor pastor priest gamer cybercriminal criminal elderly
+grandson granddaughter grandchild nephew niece uncle aunt cousin brother sister boyfriend girlfriend fiance fiancee fiancé
+fiancée parent child patient veteran soldier officer accountant banker farmer worker contractor consultant artist singer
+rapper actor actress celebrity athlete holder named dubbed nicknamed alias aka`.split(/\s+/);
 const ROLE_SET = new Set(ROLE_WORDS.map((w) => w.toLowerCase()));
 /** Each ASCII letter as a class of both cases ("Victim", "VICTIM", "victim"), since Node 22 has no (?i:...) groups. */
 const anyCase = (word: string): string => word.replace(/[a-z]/gi, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`);
+const anyOf = (words: readonly string[]): string => [...words].sort((a, b) => b.length - a.length).map((w) => anyCase(escapeRe(w))).join('|');
+const NUMBER_WORDS = 'one two three four five six seven eight nine ten eleven twelve'.split(' ');
+/** Role phrases: "Mother Of Two Kiro", "72-Year-Old Kiro", "Hacker Known As Sora". */
+const ROLE_PHRASES = [
+	String.raw`(?:${anyOf(['mother', 'father', 'mom', 'mum', 'dad', 'parent'])})\s+${anyCase('of')}\s+(?:${anyOf(NUMBER_WORDS)}|\d{1,2})`,
+	String.raw`\d{1,3}[-\s]${anyCase('year')}(?:${anyCase('s')})?[-\s]${anyCase('old')}`,
+	String.raw`${anyCase('known')}\s+${anyCase('as')}`,
+];
 // Names may start with any capital letter ("José", "Łukasz", "Özgür", "Сергей"): \p{Lu}/\p{L} with the u flag, and a
 // letter lookbehind instead of \b (which only knows ASCII letters). The name is read in a lookahead, so the next role
-// word can start its own match ("Student Hacker Kiro"); an opening quotation mark may sit between ("Hacker ‘Sora’").
-const NAME_TOKEN = `[‘“"']?\\p{Lu}[\\p{L}\\p{N}'’-]*`;
-const ROLE_BEFORE = new RegExp(
-	`(?<![\\p{L}\\p{N}_])(?:${[...ROLE_WORDS].sort((a, b) => b.length - a.length).map(anyCase).join('|')})\\s+(?=(${NAME_TOKEN})(?:\\s+(${NAME_TOKEN}))?)`,
-	'gu',
-);
-/** A token as a lower-case word: no surrounding quotation marks, no possessive. */
-const bareWord = (token: string): string => token.replace(/^[‘“"']+|[’”"']+$/g, '').replace(/['’]s$/, '').toLowerCase();
+// word can start its own match ("Student Hacker Kiro"); an opening quotation mark, guillemet or bracket may sit between
+// ("Hacker ‘Sora’", "Victim «Kiro»", "Victim (Kiro)").
+const NAME_TOKEN = `[‘“"'«‹(]?\\p{Lu}[\\p{L}\\p{N}'’-]*`;
+/**
+ * Between a role and the name: a space, a bracket or a guillemet; in a quoted headline also a comma, a colon or a dash
+ * ("Victim, Kiro, Loses", "Victim: Kiro Loses", "Victim—Kiro—Loses"). Body text keeps those out: "the victim, Example
+ * Wire reports" names an outlet.
+ */
+const ROLE_GAP = String.raw`(?:\s*[(«‹]\s*|\s+)`;
+const ROLE_GAP_HEADLINE = String.raw`(?:\s*[,:(«‹—–]\s*|\s+[-–—]\s+|\s+)`;
+const roleBefore = (gap: string): RegExp =>
+	new RegExp(`(?<![\\p{L}\\p{N}_])(?:${[...ROLE_PHRASES, anyOf(ROLE_WORDS)].join('|')})${gap}(?=(${NAME_TOKEN})(?:\\s+(${NAME_TOKEN}))?)`, 'gu');
+const ROLE_BEFORE = roleBefore(ROLE_GAP);
+const ROLE_BEFORE_HEADLINE = roleBefore(ROLE_GAP_HEADLINE);
+/** A token as a lower-case word: no surrounding quotation marks, guillemets or brackets, no possessive. */
+const bareWord = (token: string): string => token.replace(/^[‘“"'«‹(]+|[’”"'»›),:]+$/g, '').replace(/['’]s$/, '').toLowerCase();
 
 /** "<Name> said ... he/she": whoever speaks of himself or herself is a person (as the news gate's SPEECH_AFTER). */
 const SPEECH_AFTER =
-	/^(?:['’]s)?\s+(?:also\s+|later\s+|then\s+|now\s+)?(?:said|says|told|tells|added|adds|wrote|writes|posted|tweeted|explained|explains|noted|notes|warned|warns|claimed|claims|argued|argues|insisted|insists|denied|denies|admitted|admits|stated|states|recalled|recalls|testified|testifies)\b/iu;
+	/^(?:['’]s)?\s+(?:also\s+|later\s+|then\s+|now\s+)?(?:said|says|told|tells|added|adds|wrote|writes|posted|tweeted|explained|explains|noted|notes|warned|warns|claimed|claims|argued|argues|insisted|insists|denied|denies|admitted|admits|stated|states|recalled|recalls|recounted|recounts|described|describes|revealed|reveals|confessed|confesses|complained|complains|remembered|remembers|shared|shares|testified|testifies)\b/iu;
 const PRONOUN_LATER = /^[^.!?]*?(?<![\p{L}\p{N}_])(?:he|she|his|her|him|hers|himself|herself)(?![\p{L}\p{N}_])/iu;
-/** Speakers that are not one person ("Prosecutors said he ...", "Officials say she ..."). */
-const SPEAKER_NOUNS = new Set(
-	`officials official prosecutors authorities investigators researchers regulators analysts experts victims attackers hackers
+/** In a quoted headline "they" counts too ("Kiro says they lost $40,000"): refusing an organisation's quote costs a label. */
+const PRONOUN_LATER_HEADLINE = /^[^.!?]*?(?<![\p{L}\p{N}_])(?:he|she|his|her|him|hers|himself|herself|they|them|their|theirs|themselves)(?![\p{L}\p{N}_])/iu;
+/** Speakers that are not one person ("Prosecutors said he ...", "Officials say she ..."), and every role's plural. */
+const SPEAKER_NOUNS = new Set([
+	...`officials official prosecutors authorities investigators researchers regulators analysts experts victims attackers hackers
 scammers users customers sources lawyers judges documents filings records witnesses neighbors neighbours relatives family
 friends staff employees executives agents officers detectives police court courts reports company firm government
-spokesperson representatives`.split(/\s+/),
-);
+spokesperson representatives people men women children parents families thousands hundreds dozens millions members
+residents citizens nationals`.split(/\s+/),
+	...ROLE_WORDS.map((w) => `${w.toLowerCase()}s`),
+]);
 const HONORIFIC = /(?<![\p{L}\p{N}_])(?:Mr|Mrs|Ms|Dr|Sir|Dame|Prof)\.?\s+\p{Lu}[\p{Ll}'’-]+/gu;
+const APPOSITION_ROLES = `founder co-founder cofounder ceo cto coo cfo developer engineer employee hacker attacker suspect trader influencer
+researcher investigator analyst executive spokesperson director owner insider whale programmer victim defendant lawyer
+attorney partner manager head retiree pensioner nurse teacher doctor pastor priest gamer cybercriminal criminal student
+teenager teen mother father grandmother grandfather man woman scammer fraudster whistleblower journalist reporter streamer
+youtuber holder worker contractor consultant veteran resident native`.split(/\s+/);
 const APPOSITION =
-	/(?<![\p{L}\p{N}_])(\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+)+),\s+(?:the\s+|a\s+|an\s+|its\s+|their\s+)?(?:former\s+|ex-|co-|chief\s+|lead\s+|alleged\s+|pseudonymous\s+|anonymous\s+)?(?:founder|co-founder|cofounder|ceo|cto|coo|cfo|developer|engineer|employee|hacker|attacker|suspect|trader|influencer|researcher|investigator|analyst|executive|spokesperson|director|owner|insider|whale|programmer|victim|defendant|lawyer|attorney|partner|manager|head)\b/giu;
-const AGE = /(?<![\p{L}\p{N}_])\p{Lu}[\p{Ll}'’-]+,\s*(?:aged\s+)?\d{1,2},/gu;
+	new RegExp(String.raw`(?<![\p{L}\p{N}_])(\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+)+),\s+(?:the\s+|a\s+|an\s+|its\s+|their\s+)?(?:former\s+|ex-|co-|chief\s+|lead\s+|alleged\s+|pseudonymous\s+|anonymous\s+)?(?:${APPOSITION_ROLES.join('|')})\b`, 'giu');
+/** Words that may describe the person in a one-name apposition ("Kiro, a retired teacher", "Sora, the 19-year-old hacker"). */
+const APPOSITION_MODIFIERS = `former ex retired elderly young old local self-described self-styled alleged suspected convicted anonymous
+pseudonymous single unemployed crypto bitcoin tech security software senior junior lead chief teenage grieving
+widowed disabled`.split(/\s+/);
+/**
+ * One name and a role with an article: "Kiro, a retiree, ...", "Sora, the hacker, ..." (case-sensitive name). The roles
+ * an organisation also takes ("Acme, a developer of wallets", "the owner of") are left to the two-name pattern.
+ */
+const ORG_ROLES = new Set(['developer', 'owner', 'partner', 'manager', 'head']);
+const APPOSITION_ONE = new RegExp(
+	String.raw`(?<![\p{L}\p{N}_])(\p{Lu}[\p{Ll}'’-]+),\s+(?:${anyOf(['the', 'a', 'an'])})\s+(?:(?:${anyOf(APPOSITION_MODIFIERS)}|\d{1,3}-${anyCase('year')}-${anyCase('old')})\s+){0,2}(?:${anyOf(APPOSITION_ROLES.filter((r) => !ORG_ROLES.has(r)))})(?![\p{L}\p{N}_])`,
+	'gu',
+);
+/** "<Name>, who ...": a relative clause about a person. */
+const WHO_AFTER = /(?<![\p{L}\p{N}_])(\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+)?),\s+who(?![\p{L}\p{N}_])/gu;
+const AGE = /(?<![\p{L}\p{N}_])\p{Lu}[\p{Ll}'’-]+(?:,\s*(?:aged\s+)?\d{1,2},|\s*\(\s*(?:aged?\s+)?\d{1,2}\s*\))/gu;
+/**
+ * Legal verbs that only a person takes: the capitalised word right before one is a name ("Lena Weiss Arrested Over AI
+ * Chatbot Breach", "Kiro was jailed"), unless it is a role, a number, a group or a nationality ("Hacker Arrested", "Two
+ * Arrested", "Ukrainian Extradited").
+ */
+const LEGAL_PERSON_VERBS = ['arrested', 'indicted', 'sentenced', 'extradited', 'convicted', 'jailed', 'detained', 'imprisoned', 'pleads', 'pleaded'];
+const AUXILIARY = String.raw`(?:${anyCase('has')}\s+${anyCase('been')}|${anyCase('had')}\s+${anyCase('been')}|${anyOf(['was', 'is', 'gets', 'got', 'been', 'being'])})`;
+const LEGAL_BEFORE = new RegExp(String.raw`(?<![\p{L}\p{N}_'’])(\p{Lu}[\p{L}'’-]*)\s+(?:${AUXILIARY}\s+)?(?:${anyOf(LEGAL_PERSON_VERBS)})(?![\p{L}\p{N}_])`, 'gu');
+/** Nationalities and groups that come before a legal verb without being a name. */
+const DEMONYMS = new Set(
+	`american americans british briton britons canadian canadians australian australians indian indians nigerian nigerians
+korean koreans chinese japanese vietnamese thai filipino filipinos indonesian indonesians malaysian malaysians
+singaporean singaporeans turkish turk turks german germans french dutch spanish spaniard spaniards italian italians
+brazilian brazilians argentine argentines mexican mexicans colombian colombians israeli israelis iranian iranians
+pakistani pakistanis bangladeshi bangladeshis polish pole poles romanian romanians bulgarian bulgarians serbian serbians
+lithuanian lithuanians latvian latvians estonian estonians belarusian belarusians ukrainian ukrainians russian russians
+kazakh kazakhs georgian georgians armenian armenians moldovan moldovans czech czechs slovak slovaks hungarian hungarians
+greek greeks swiss swede swedes swedish norwegian norwegians danish finnish irish scottish welsh emirati emiratis saudi
+saudis egyptian egyptians kenyan kenyans ghanaian ghanaians moroccan moroccans taiwanese cambodian cambodians burmese
+european europeans asian asians african africans dual duo trio pair gang ring operators operator admins admin affiliates
+affiliate insiders member several many others`.split(/\s+/),
+);
+/** Nouns that come before "loses", "says" or a legal verb in a headline without being a name. */
+const GENERIC_NOUNS = new Set(
+	`startup startups city town state county hospital school schools church charity nonprofit chatbot chatbots agent agents
+assistant assistants model models extension extensions plugin plugins skill skills deepfake deepfakes clone clones voice
+voices video videos call calls user customer client clients player players fan fans buyer buyers seller sellers merchant
+merchants retailer retailers brand brands store stores shop shops site sites website websites study survey analysis
+filing lawsuit suit complaint indictment probe audit review update couple feds`.split(/\s+/),
+);
+/**
+ * A quoted headline (isSafeQuote) also names a person when an unknown capitalised word comes right before a verb only a
+ * person takes ("Kiro Tanaka Loses $40,000", "How Kiro Lost ...", "Tanaka Charged ..."), owns a person's things
+ * ("Kiro’s Savings Gone"), stands alone in brackets or guillemets ("(Kiro)", "«Kiro»"), is shaped like a handle
+ * ("Kiberphant0m", "USDoD"), or is followed by a role between commas ("Kiro, Retired Teacher, Loses"). An organisation
+ * the allowlist does not know is refused too: that costs a plain label, never a leak.
+ */
+const PERSON_VERBS = [
+	'lose', 'loses', 'lost', 'says', 'said', 'tells', 'told', 'admits', 'admitted', 'pleads', 'pleaded', 'recounts', 'recounted', 'recalls', 'recalled', 'describes',
+	'described', 'explains', 'explained', 'reveals', 'revealed', 'confesses', 'confessed', 'charged', 'sued', 'fined', 'faces', 'faced', 'dies', 'died', 'scammed',
+	'duped', 'tricked', 'defrauded', 'robbed', 'swindled', 'conned', 'fooled', ...LEGAL_PERSON_VERBS,
+];
+const PERSON_VERB_AFTER = new RegExp(String.raw`(?<![\p{L}\p{N}_'’])(\p{Lu}[\p{L}\p{N}'’-]*)\s+(?:${AUXILIARY}\s+)?(?:${anyOf(PERSON_VERBS)})(?![\p{L}\p{N}_])`, 'gu');
+const PERSONAL_THINGS = [
+	'wallet', 'wallets', 'savings', 'account', 'accounts', 'funds', 'identity', 'voice', 'phone', 'email', 'e-mail', 'life', 'family', 'crypto', 'bitcoin', 'money', 'home',
+	'house', 'keys', 'seed', 'password', 'passwords', 'photos', 'likeness', 'face', 'son', 'daughter', 'wife', 'husband', 'mother', 'father', 'grandmother', 'grandfather',
+	'parents', 'children', 'kids', 'retirement', 'pension', 'inheritance', 'bank',
+];
+const POSSESSIVE_THINGS = new RegExp(String.raw`(?<![\p{L}\p{N}_'’])(\p{Lu}[\p{L}\p{N}-]*)['’]s\s+(?:${anyOf(PERSONAL_THINGS)})(?![\p{L}\p{N}_])`, 'gu');
+const BRACKETED_WORD = /[«‹(]\s*(\p{Lu}\p{Ll}[\p{L}\p{N}'’-]*)\s*[»›)]/gu;
+const BRACKET_LABELS = new Set('updated update video report exclusive opinion analysis podcast interview sponsored correction corrected explainer live watch'.split(' '));
+const HANDLE_SHAPE = /(?<![\p{L}\p{N}_])([\p{L}\p{N}_]*\p{L}\d+\p{L}[\p{L}\p{N}_]*|[A-Z]{2,}[a-z]+[A-Z][\p{L}\p{N}]*)(?![\p{L}\p{N}_])/gu;
+const APPOSITION_HEADLINE = new RegExp(
+	String.raw`(?<![\p{L}\p{N}_])(\p{Lu}[\p{Ll}'’-]+),\s+(?:(?:${anyOf(APPOSITION_MODIFIERS)}|\d{1,3}-${anyCase('year')}-${anyCase('old')})\s+){0,2}(?:${anyOf(APPOSITION_ROLES)})\s*,`,
+	'gu',
+);
 const PLACEHOLDER_NAME = /\[\s*(?:named person|name|redacted|person|individual|non-English text)\s*\]/gi;
 /** Chinese, Japanese or Korean script: names in it cannot be checked, so a headline with a run of it is never quoted. */
 const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]{2,}/u;
@@ -307,7 +432,6 @@ also more most new top incident incidents brief daily radar story stories video 
 signature`.split(/\s+/),
 );
 
-const escapeRe = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Short words that headline styles leave in lower case ("Tracing the North Korea Link"). */
 const SMALL_WORDS = new Set('a an the of in on at to for and or but nor by via with from as is are was be it its vs per into over after'.split(' '));
@@ -331,26 +455,61 @@ const sentenceStartAt = (text: string, index: number): boolean => {
 type Pattern = {code: string; label: string; re: RegExp; contextual?: boolean};
 const p = (code: string, label: string, re: RegExp, contextual = false): Pattern => ({code, label, re: new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`), contextual});
 
-// What an attack told an AI to do, with the AI named generically or by product (the news gate's lexicon.ts, 2026-11-25)
+// What an attack told, got or tricked an AI into doing, with the AI named generically or by product (mirrors the news
+// gate's lexicon.ts, 2026-11-25 round 3): "to <action>" after the TO verbs, "into <action>ing" after the INTO verbs, a
+// bare exfiltration verb after "had/made" ("had Claude Code upload ..."), or "it should <action>"
 /** A phrase with every letter in both cases, spaces as \s+ and either apostrophe, for use inside a case-sensitive pattern. */
 const ci = (phrase: string): string =>
 	phrase
 		.split(/\s+/)
 		.map((w) => escapeRe(w).replace(/['’]/g, "['’]").replace(/[a-z]/gi, (c) => `[${c.toLowerCase()}${c.toUpperCase()}]`))
 		.join(String.raw`\s+`);
-const INSTRUCT_VERBS = 'told|instructed|asked|ordered|directed|made|commanded|prompted';
+const TO_VERBS = `told tells tell telling instructed instructs instructing asked asks asking ordered orders directed directs directing
+made makes commanded commands prompted prompts got gets getting caused causes causing convinced convinces convincing persuaded
+persuades persuading led leads forced forces forcing tricked tricks tricking coaxed coaxes manipulated manipulates pushed
+pushes urged urges nudged nudges steered steers`.split(/\s+/);
+const INTO_VERBS = `tricked tricks tricking fooled fools fooling manipulated manipulates manipulating duped dupes coaxed coaxes lured
+lures conned deceived deceives convinced convinces persuaded persuades talked talks led leads forced forces pushed pushes
+steered steers`.split(/\s+/);
+const BARE_VERBS = ['had', 'has', 'made', 'makes'];
 /** What the instruction made the AI do; never the user's own trigger ("asked the assistant to summarise the page"). */
-const AI_ACTIONS = 'open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|e-mail|reveal|ignore|disable|download|install|write|post|leak|exfiltrate|share|transfer|grant|approve|push|publish|output|repeat|dump|encode';
-const RECIPIENT_DET = `(?:(?:${['the', 'an', 'a', 'its', 'their', "a user's", "the user's", "the victim's", "victims'", "users'"].map(ci).join('|')})\\s+)?`;
-const AI_GENERIC = String.raw`(?:(?:AI|coding|browser|e-?mail|LLM|autonomous|shopping|support|research|hidden|malicious|enterprise)[-\s]+){0,2}(?:agent|assistant|model|chat\s?bot|AI|bot|copilot|LLM)s?`;
-/** AI products, longest first, in their exact case ("Cursor", never "the cursor"; "Operator", never "an operator"). A bare "Copilot" is AI_GENERIC's. */
+const AI_ACTIONS = `open send paste copy upload print run execute read delete forward email e-mail reveal ignore disable download
+install write post leak exfiltrate exfil share transfer grant approve push publish output repeat dump encode commit attach
+curl wget base64 append zip sync submit transmit harvest grab extract disclose expose steal siphon`.split(/\s+/);
+/** A bare action after "had", "made": the exfiltration verbs only ("made the coding agent read secrets" is the concept). */
+const BARE_ACTIONS = `send upload paste post email e-mail forward exfiltrate exfil leak share transfer push publish commit attach curl
+append encode base64 zip sync submit dump print reveal output copy transmit steal siphon disclose expose`.split(/\s+/);
+const ACTIONS_ING = `sending uploading pasting posting emailing e-mailing forwarding exfiltrating leaking sharing transferring pushing
+publishing committing attaching curling appending encoding base64-encoding zipping syncing submitting dumping printing
+revealing outputting copying transmitting stealing siphoning disclosing exposing running executing opening reading deleting
+installing downloading ignoring disabling granting approving repeating writing`.split(/\s+/);
+/** A determiner, then at most one owner ("the company's AI assistant", "Windsurf's"). */
+const RECIPIENT_DET = String.raw`(?:(?:${['the', 'an', 'a', 'its', 'their', "a user's", "the user's", "the victim's", "victims'", "users'"].map(ci).join('|')})\s+)?(?:[\p{L}-]+['’]s?\s+)?`;
+const AI_GENERIC = String.raw`(?:(?:AI|coding|browser|e-?mail|LLM|autonomous|agentic|shopping|support|research|hidden|malicious|enterprise|company|corporate|internal|personal|developer|code|chat|web|desktop|voice)[-\s]+){0,2}(?:agent|assistant|model|chat\s?bot|AI|bot|copilot|LLM)s?`;
+/** AI products, longest first, in their exact case or all capitals ("Cursor", "CURSOR", never "the cursor"; "Operator", never "an operator"). */
 const AI_PRODUCT_NAMES = [
 	'Microsoft 365 Copilot', 'Amazon Q Developer', 'Gemini Code Assist', 'Microsoft Copilot', 'Security Copilot', 'Perplexity Comet', 'ChatGPT Operator', 'GitHub Copilot',
 	'Copilot Studio', 'ChatGPT Atlas', 'Claude Desktop', 'Google Gemini', 'M365 Copilot', 'Copilot Chat', 'Replit Agent', 'OpenAI Codex', 'Google Jules', 'Claude Code',
 	'Gemini CLI', 'Antigravity', 'Codex CLI', 'Amazon Q', 'AWS Kiro', 'Roo Code', 'Perplexity', 'Windsurf', 'OpenClaw', 'Operator', 'DeepSeek', 'ChatGPT',
 	'Codeium', 'Lovable', 'Mistral', 'Gemini', 'Claude', 'Cursor', 'Replit', 'Devin', 'Codex', 'Comet', 'Jules', 'Manus', 'Aider', 'Llama', 'Alexa', 'Grok', 'Kiro',
-	'Cline', 'Qwen', 'Siri',
-].map((n) => escapeRe(n).replace(/ /g, String.raw`\s+`));
+	'Cline', 'Qwen', 'Siri', 'Copilot', 'Cascade',
+]
+	.flatMap((n) => [n, n.toUpperCase()])
+	.map((n) => escapeRe(n).replace(/ /g, String.raw`\s+`));
+/** Words after a product name that still name the AI ("the Copilot coding agent", "GitHub Copilot Chat", "Windsurf's Cascade agent"). */
+const AI_TAIL = String.raw`(?:\s+(?:${['agent', 'agents', 'assistant', 'extension', 'CLI', 'IDE', 'chatbot', 'bot', 'model', 'coding', 'chat', 'browser', 'plugin', 'app', 'desktop', 'web', 'mobile'].map(ci).join('|')}|\p{Lu}[\p{L}\d-]*)){0,3}`;
+/** An apposition after the AI's name: "GitHub Copilot, the coding agent, ...". */
+const AI_APPOSITION = String.raw`(?:\s*,\s*(?:${['the', 'its', 'a', 'an'].map(ci).join('|')})\s+(?:[\p{L}-]+\s+){0,3}?(?:${['agent', 'assistant', 'chatbot', 'bot', 'model', 'extension', 'tool', 'copilot', 'AI', 'LLM'].map(ci).join('|')})s?\s*,)?`;
+const SHOULD = String.raw`(?:(?:${ci('that')}\s+)?(?:${['it', 'they'].map(ci).join('|')})\s+(?:${['should', 'must', 'would', 'could', 'needed to', 'needs to', 'need to', 'had to', 'has to', 'have to', 'was to', 'were to'].map(ci).join('|')})\s+|${ci('to')}\s+)`;
+/** The three manipulations ("... to <action>", "... into <action>ing", "had/made ... <action>") after a recipient. */
+const toldTheAgent = (recipient: string): string => {
+	const words = (list: readonly string[]): string => [...list].sort((a, b) => b.length - a.length).map(ci).join('|');
+	return [
+		String.raw`\b(?:${words(TO_VERBS)})\s+${recipient}(?:\s*(?::|["“])|\s+${SHOULD}(?:${words(AI_ACTIONS)})\b)`,
+		String.raw`\b(?:${words(INTO_VERBS)})\s+${recipient}\s+${ci('into')}\s+(?:${words(ACTIONS_ING)})\b`,
+		String.raw`\b(?:${words(BARE_VERBS)})\s+${recipient}\s+(?:${words(BARE_ACTIONS)})\b`,
+	].join('|');
+};
 
 /**
  * Quoted words that read as an instruction to an AI, whoever is quoted: an override or jailbreak anywhere in the quote,
@@ -388,9 +547,9 @@ const HOWTO: Pattern[] = [
 	// text addressed to an AI, quoted or paraphrased: a prompt-injection payload or a jailbreak recipe (AI lane)
 	p('ai-addressed', 'text addressed to an AI (an injected instruction)', /\b(?:AI|assistants?|agents?|models?|chat ?bots?|LLMs?|copilots?)\s+(?:reading|processing|summari[sz]ing|parsing|browsing)\s+(?:this|these)\b/i),
 	p('roleplay-instruction', 'a jailbreak instruction ("pretend", "act as", "you are now")', /\b(?:you are now (?:a|an|in|the|DAN|free|unrestricted|jailbroken)|pretend (?:you are|you're|to be|it (?:is|was) an? (?:AI|assistant|model|chatbot))|act as (?:an? )?(?:unrestricted|unfiltered|jailbroken|evil|DAN)\b|developer mode|forget (?:everything|all) (?:above|before)|(?:ignore|disregard) (?:its|your|their|all) (?:rules|guidelines|instructions|safeguards))/i),
-	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS})\s+${RECIPIENT_DET}${AI_GENERIC}\s*(?::|["“]|to\s+(?:${AI_ACTIONS})\b)`, 'i')),
-	// the AI named by product ("The README told Copilot to upload the env file"), in its exact case
-	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(String.raw`\b(?:${INSTRUCT_VERBS.split('|').map(ci).join('|')})\s+${RECIPIENT_DET}(?:${AI_PRODUCT_NAMES.join('|')})(?:['’]s)?(?:\s+(?:${['agent', 'assistant', 'extension', 'CLI', 'IDE', 'chatbot', 'bot', 'model'].map(ci).join('|')}))?\s*(?::|["“]|${ci('to')}\s+(?:${AI_ACTIONS.split('|').map(ci).join('|')})\b)`, 'u')),
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(toldTheAgent(`${RECIPIENT_DET}${AI_GENERIC}${AI_APPOSITION}`), 'iu')),
+	// the AI named by product ("The README got Copilot to upload the env file"), in its exact case or capitals
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', new RegExp(toldTheAgent(`${RECIPIENT_DET}(?:${AI_PRODUCT_NAMES.join('|')})(?:['’]s)?${AI_TAIL}${AI_APPOSITION}`), 'u')),
 	p('tutorial', 'tutorial or step-by-step framing', /\b(?:step[- ]by[- ]step|walkthrough|walk-through|tutorial|cheat ?sheet)\b/i, true),
 	p('here-is-how', '"here\'s how to"', /\bhere'?s (?:exactly )?how (?:to|you|anyone|they could)\b/i, true),
 	p('step-marker', 'a numbered step', /\bstep (?:one|two|three|four|five|six|\d+)\b/i, true),
@@ -492,9 +651,23 @@ export type ScanContext = {
 	allow?: NameAllow;
 	/** Skip the unknown-capitalised-word warning (fixed text such as concept lines). */
 	trusted?: boolean;
+	/** A third-party headline about to be quoted (isSafeQuote): stricter name checks, since a refusal costs only a label. */
+	headline?: boolean;
 };
 
 const finding = (rule: Rule, code: string, level: Level, where: string, message: string, match: string): Finding => ({rule, code, level, where, message, match: match.trim().slice(0, 120)});
+
+/** Words before a legal or person verb that are not a name: roles, groups, numbers, nationalities, generic nouns. */
+const notANameBeforeVerb = (word: string): boolean =>
+	ROLE_SET.has(word) ||
+	SPEAKER_NOUNS.has(word) ||
+	COMMON_CAPS.has(word) ||
+	ORG_SUFFIXES.has(word) ||
+	NOT_A_NAME.has(word) ||
+	DEMONYMS.has(word) ||
+	NUMBER_WORDS.includes(word) ||
+	GENERIC_NOUNS.has(word) ||
+	SMALL_WORDS.has(word);
 
 export const scanNames = (original: string, ctx: ScanContext): Finding[] => {
 	const out: Finding[] = [];
@@ -502,6 +675,9 @@ export const scanNames = (original: string, ctx: ScanContext): Finding[] => {
 	const text = original;
 	// the person checks read the text with allowed multi-word names blanked
 	const blank = blankPhrases(original, ctx.allow);
+	// the role, apposition and legal-verb checks blank only trusted names (the allowlist file, the show, publishers): a
+	// name added for the day ("Investor Kiro", an incident's subject read from a headline) never hides a role and a name
+	const strict = ctx.allow ? blankPhrases(original, {phrases: ctx.allow.trustedPhrases}) : original;
 	for (const m of text.matchAll(PLACEHOLDER_NAME)) add('placeholder', 'error', "the radar's redaction placeholder: a person was named in the source. Leave this text out", m[0]);
 	for (const m of text.matchAll(HANDLE)) {
 		if (ctx.allow?.handles.has(m[0].toLowerCase()) ?? OWN_HANDLES.includes(m[0].toLowerCase())) continue;
@@ -513,36 +689,72 @@ export const scanNames = (original: string, ctx: ScanContext): Finding[] => {
 		if (re.test(text)) add('blocked', 'error', "a handle or nickname on the news gate's blocked list", b);
 	}
 	for (const m of blank.matchAll(HONORIFIC)) add('title-or-role', 'error', 'a person named by title', m[0]);
-	for (const m of blank.matchAll(ROLE_BEFORE)) {
+	for (const m of strict.matchAll(ctx.headline ? ROLE_BEFORE_HEADLINE : ROLE_BEFORE)) {
 		// the role word's next capitalised word, in any case style ("Victim Kiro Loses ...", "researcher Jules finds ...")
 		const first = bareWord(m[1] ?? '');
 		// "Kiro’s Wallet" is a person's wallet, never an organisation called "Kiro Wallet"
 		const second = m[2] && !/['’]s$/.test(m[1] ?? '') ? bareWord(m[2]) : '';
 		if (!first || NOT_A_NAME.has(first) || ROLE_SET.has(first)) continue; // a verb or noun, or the next role's own match
-		if (ORG_SUFFIXES.has(first) || ORG_SUFFIXES.has(second) || knownWord(ctx.allow, first)) continue; // an organisation
-		add('title-or-role', 'error', 'a person named after their role', `${m[0]}${(m[1] ?? '').replace(/^[‘“"']+/, '')}`);
+		if (ORG_SUFFIXES.has(first) || ORG_SUFFIXES.has(second) || trustedWord(ctx.allow, first)) continue; // an organisation
+		add('title-or-role', 'error', 'a person named after their role', `${m[0]}${(m[1] ?? '').replace(/^[‘“"'«‹(]+/, '')}`);
 	}
 	// "<Name> said he ...": a speaker who refers to himself or herself is a person, even at a sentence start or in a
 	// Title Case headline, where the unknown-word check below cannot run; a product name that is also a given name
-	// ("Claude said he lost $40,000") is no exception
+	// ("Claude said he lost $40,000") is no exception. In a quoted headline "they" counts too.
+	const pronoun = ctx.headline ? PRONOUN_LATER_HEADLINE : PRONOUN_LATER;
 	for (const m of blank.matchAll(CAPITALISED)) {
 		const word = bareWord(m[0]);
 		if (COMMON_CAPS.has(word) || ORG_SUFFIXES.has(word) || SPEAKER_NOUNS.has(word) || ROLE_SET.has(word) || knownWord(ctx.allow, word)) continue;
 		const after = blank.slice(m.index + m[0].length);
-		if (SPEECH_AFTER.test(after) && PRONOUN_LATER.test(after.replace(SPEECH_AFTER, ''))) add('speaker-name', 'error', 'a person named as the speaker ("X said he ...")', m[0]);
+		if (SPEECH_AFTER.test(after) && pronoun.test(after.replace(SPEECH_AFTER, ''))) add('speaker-name', 'error', 'a person named as the speaker ("X said he ...")', m[0]);
 	}
-	for (const m of blank.matchAll(APPOSITION)) {
+	for (const m of strict.matchAll(APPOSITION)) {
 		const words = (m[1] ?? '').split(/\s+/);
-		if (words.every((w) => knownWord(ctx.allow, w.toLowerCase()) || ORG_SUFFIXES.has(w.toLowerCase()))) continue;
+		if (words.every((w) => trustedWord(ctx.allow, w.toLowerCase()) || ORG_SUFFIXES.has(w.toLowerCase()))) continue;
 		add('apposition', 'error', 'a person named with their role ("X, the founder")', m[0]);
 	}
+	for (const re of ctx.headline ? [APPOSITION_ONE, APPOSITION_HEADLINE, WHO_AFTER] : [APPOSITION_ONE, WHO_AFTER]) {
+		for (const m of strict.matchAll(re)) {
+			const words = (m[1] ?? '').split(/\s+/).map((w) => w.toLowerCase());
+			if (words.every((w) => knownWord(ctx.allow, w) || ORG_SUFFIXES.has(w) || COMMON_CAPS.has(w) || SPEAKER_NOUNS.has(w) || ROLE_SET.has(w))) continue;
+			add('apposition', 'error', 'a person named with their role ("X, a retiree", "X, who ...")', m[0]);
+		}
+	}
 	for (const m of blank.matchAll(AGE)) add('age', 'error', 'a person named with their age', m[0]);
+	// a name right before a verb only a person takes ("Lena Weiss Arrested ...", "Kiro was jailed")
+	for (const m of strict.matchAll(LEGAL_BEFORE)) {
+		const word = bareWord(m[1] ?? '');
+		if (!word || notANameBeforeVerb(word) || trustedWord(ctx.allow, word)) continue;
+		add('legal-name', 'error', 'a person named next to an arrest, charge or sentence: name officials by role, suspects never', m[0]);
+	}
 	for (const m of blank.matchAll(/(?<![\p{L}\p{N}_])(\p{Lu}\p{Ll}+)\s+(\p{Lu}[\p{Ll}'’-]+)(?![\p{L}\p{N}_])/gu)) {
 		const first = fold(m[1] ?? '');
 		const second = (m[2] ?? '').toLowerCase().replace(/['’]s$/, '');
 		if (!FIRST_NAMES.has(first) || ORG_SUFFIXES.has(second) || NOT_A_NAME.has(second)) continue;
 		if (knownWord(ctx.allow, first) && knownWord(ctx.allow, second)) continue;
 		add('first-name', 'error', 'looks like a personal name (given name + surname)', m[0]);
+	}
+	if (ctx.headline) {
+		// a quoted headline: refusing an unknown organisation costs a label, never a leak
+		for (const m of blank.matchAll(PERSON_VERB_AFTER)) {
+			const word = bareWord(m[1] ?? '');
+			if (!word || notANameBeforeVerb(word) || knownWord(ctx.allow, word)) continue;
+			add('name-verb', 'error', 'an unknown name right before a verb only a person takes ("X Loses", "X Says", "X Charged")', m[0]);
+		}
+		for (const m of strict.matchAll(POSSESSIVE_THINGS)) {
+			const word = bareWord(m[1] ?? '');
+			if (!word || notANameBeforeVerb(word) || trustedWord(ctx.allow, word)) continue;
+			add('name-possessive', 'error', "a person's savings, wallet or family, by name", m[0]);
+		}
+		for (const m of blank.matchAll(BRACKETED_WORD)) {
+			const word = bareWord(m[1] ?? '');
+			if (!word || BRACKET_LABELS.has(word) || COMMON_CAPS.has(word) || knownWord(ctx.allow, word)) continue;
+			add('bracketed-name', 'error', 'a name in brackets or guillemets', m[0]);
+		}
+		for (const m of blank.matchAll(HANDLE_SHAPE)) {
+			if (knownWord(ctx.allow, (m[1] ?? '').toLowerCase())) continue;
+			add('handle-shape', 'error', 'a word shaped like an online handle', m[0]);
+		}
 	}
 	if (!ctx.trusted) {
 		// A line or quoted headline in Title Case cannot tell names from words, so only the high-precision checks
@@ -577,9 +789,15 @@ export const scanHowTo = (text: string, ctx: ScanContext): Finding[] => {
 		const markers = s.match(SEQUENCE_MARKERS) ?? [];
 		if (markers.length >= 2 && OFFENSIVE.test(s)) out.push(finding('howto', 'sequence', 'error', ctx.where, 'a sequence of attack steps reads as instructions: give one concept-level sentence', s));
 	}
-	// quoted words (third-party headlines, a source's statement) that are an instruction to an AI: a payload, whoever wrote it
-	for (const [a, b] of quotedSpans(text)) {
-		const quote = text.slice(a + 1, b - 1).trim();
+	// quoted words (third-party headlines, a source's statement) that are an instruction to an AI: a payload, whoever wrote
+	// it, in any quotation-mark style: “…”, "…", ‘…’, '…' used as quotation marks (never an apostrophe), « » and ‹ ›
+	const quotes = [
+		...quotedSpans(text).map(([a, b]) => text.slice(a + 1, b - 1)),
+		...[...text.matchAll(/(?<![\p{L}\p{N}])'(?=[\p{L}\p{N}])((?:[^'\n]|'(?=\p{L}))+?)(?<=[\p{L}\p{N}.,!?)])'(?![\p{L}\p{N}])/gu)].map((m) => m[1] ?? ''),
+		...[...text.matchAll(/«\s*([^»\n]{2,400}?)\s*»|‹\s*([^›\n]{2,400}?)\s*›/gu)].map((m) => m[1] ?? m[2] ?? ''),
+	];
+	for (const raw of quotes) {
+		const quote = raw.trim();
 		if (quote.split(/\s+/).length >= 3 && isQuotedInstruction(quote)) out.push(finding('howto', 'ai-quoted-instruction', 'error', ctx.where, 'quotes an instruction to an AI (an injected prompt or a jailbreak): never repeat its words', quote));
 	}
 	return out;
@@ -670,10 +888,123 @@ export const quoteLine = (publisher: string, headline: string): string => `${pub
 export const isSafeQuote = (headline: string, publisher: string, allow?: NameAllow): boolean => {
 	if (!headline.trim() || /[“”"]/.test(headline)) return false; // nested quotes would hide what is quoted
 	if (CJK_RUN.test(headline)) return false; // names in Chinese, Japanese or Korean script cannot be checked
-	const ctx: ScanContext = {where: 'quote', allow: allow ? extendAllow(allow, [publisher]) : makeAllow([publisher])};
+	const ctx: ScanContext = {where: 'quote', allow: allow ? extendAllow(allow, [publisher], true) : makeAllow([publisher]), headline: true};
 	const findings = [...scanText(quoteLine(publisher, headline), ctx), ...scanNames(maskLinks(headline), ctx)];
+	// a text with no capital letter at all ("victim kiro loses ...") is read again in Title Case, where the role and
+	// verb checks can see its names
+	if (!/\p{Lu}/u.test(headline)) findings.push(...scanNames(maskLinks(headline).replace(/(?<![\p{L}\p{N}_'’])\p{Ll}/gu, (c) => c.toUpperCase()), ctx));
 	return findings.every((f) => f.level !== 'error' && f.code !== 'unknown-name');
 };
+
+/** The name checks whose findings hold a person's name in their match. */
+const PERSON_CODES = new Set(['title-or-role', 'first-name', 'apposition', 'age', 'speaker-name', 'legal-name', 'name-verb', 'name-possessive', 'bracketed-name', 'handle-shape', 'handle', 'blocked']);
+const VERB_WORDS = new Set([...PERSON_VERBS, ...LEGAL_PERSON_VERBS, 'was', 'is', 'has', 'had', 'been', 'gets', 'got', 'being', 'who']);
+
+/**
+ * The words a text's person checks flag as a name, lower case without diacritics ("Victim Kiro Loses ..." -> kiro,
+ * "Lena Weiss Arrested ..." -> lena, weiss). Read in headline mode, the strictest.
+ */
+export const personTokens = (text: string, allow?: NameAllow): Set<string> => {
+	const out = new Set<string>();
+	if (!text.trim()) return out;
+	const ctx: ScanContext = {where: 'names', allow, headline: true, trusted: true};
+	for (const f of scanNames(maskLinks(text), ctx)) {
+		if (!PERSON_CODES.has(f.code)) continue;
+		for (const raw of f.match.split(/[^\p{L}\p{N}'’-]+/u)) {
+			const word = fold(bareWord(raw.replace(/^@/, '')));
+			if (word.length < 3 || /^\d+$/.test(word)) continue;
+			if (ROLE_SET.has(word) || NOT_A_NAME.has(word) || COMMON_CAPS.has(word) || ORG_SUFFIXES.has(word) || SMALL_WORDS.has(word) || VERB_WORDS.has(word) || DEMONYMS.has(word)) continue;
+			if (APPOSITION_MODIFIERS.includes(word) || knownWord(allow, word)) continue;
+			out.add(word);
+		}
+	}
+	return out;
+};
+
+/**
+ * A subject the radar read from a headline that looks like a person: a role word and the word after it ("Trader Kruw",
+ * "Investor Kiro", "Memecoin Whale Kruw"), a given name and another word, or any other person check. Such a name is
+ * never added to the day's allow set, and the brief names its incident by type instead.
+ */
+export const looksPersonal = (name: string, allow?: NameAllow): boolean => {
+	const words = name.trim().split(/\s+/).filter(Boolean);
+	if (words.length === 0) return false;
+	// a name the allowlist file itself lists ("Trader Joe", the exchange) is an organisation
+	const parts = tokenize(name);
+	if (allow && (parts.length === 1 ? trustedWord(allow, parts[0] ?? '') : allow.trustedPhrases.includes(parts.join(' ')))) return false;
+	const lower = words.map((w) => fold(bareWord(w)));
+	for (let i = 0; i < lower.length - 1; i++) {
+		if (ROLE_SET.has(lower[i] ?? '') && !NOT_A_NAME.has(lower[i + 1] ?? '') && !ORG_SUFFIXES.has(lower[i + 1] ?? '') && !ROLE_SET.has(lower[i + 1] ?? '')) return true;
+		if (FIRST_NAMES.has(lower[i] ?? '') && !ORG_SUFFIXES.has(lower[i + 1] ?? '') && !NOT_A_NAME.has(lower[i + 1] ?? '')) return true;
+	}
+	// a single role word, or a role word as the last word ("Kiro Investor"), names no one on its own
+	return personTokens(name, allow).size > 0;
+};
+
+/**
+ * The words of a subject that may be a person ("Trader Kruw" -> Kruw, "Investor Kiro" -> Kiro): role words, common words
+ * and organisation words are left out.
+ */
+export const subjectWords = (name: string): string[] =>
+	name
+		.split(/[^\p{L}\p{N}'’-]+/u)
+		.map((w) => bareWord(w))
+		.filter((w) => w.length >= 3 && !ROLE_SET.has(w) && !NOT_A_NAME.has(w) && !COMMON_CAPS.has(w) && !ORG_SUFFIXES.has(w) && !SMALL_WORDS.has(w) && !GENERIC_NOUNS.has(w));
+
+/** The allow set with these words blocked: any text, quote or link that spells one is refused (one incident's subject). */
+export const withBlocked = (allow: NameAllow, words: readonly string[]): NameAllow => (words.length ? {...allow, blocked: [...allow.blocked, ...words]} : allow);
+
+/** Slug words that end the check of a role's next word: numbers, function and headline words. */
+const plainSlugWord = (word: string, allow?: NameAllow): boolean =>
+	/^\d/.test(word) || NOT_A_NAME.has(word) || ROLE_SET.has(word) || ORG_SUFFIXES.has(word) || COMMON_CAPS.has(word) || SMALL_WORDS.has(word) || GENERIC_NOUNS.has(word) || DEMONYMS.has(word) || knownWord(allow, word);
+
+/**
+ * Does the link's path spell a person's name? Outlets put the headline in the slug, so a name the radar missed in the
+ * title sits in the link next to it ("/victim-kiro-loses-40000-...", "/lena-weiss-arrested-...", "/claude-72-loses-...").
+ * Read as slug words: any word the headline's own person checks flag; a role word and the word after it; a given name
+ * and the word after it; a word right before an age and a loss or legal verb.
+ */
+export const slugNamesPerson = (url: string, headline = '', allow?: NameAllow): boolean => {
+	let path: string;
+	try {
+		const u = new URL(url);
+		path = `${u.pathname} ${u.search}`;
+		try {
+			path = decodeURIComponent(path);
+		} catch {
+			// keep the raw path
+		}
+	} catch {
+		return false;
+	}
+	const words = fold(path).split(/[^a-z0-9]+/).filter(Boolean);
+	if (words.length === 0) return false;
+	const flagged = personTokens(headline, allow);
+	// blocked handles and nicknames, and a withheld subject's words (withBlocked), in the link too
+	for (const b of allow?.blocked ?? []) for (const w of fold(b).split(/[^a-z0-9]+/)) if (w.length >= 3) flagged.add(w);
+	for (let i = 0; i < words.length; i++) {
+		const w = words[i] ?? '';
+		const next = words[i + 1] ?? '';
+		if (flagged.has(w)) return true;
+		if (!next) continue;
+		if ((ROLE_SET.has(w) || FIRST_NAMES.has(w)) && !plainSlugWord(next, allow)) return true;
+		if (/^[a-z]{3,}$/.test(w) && !plainSlugWord(w, allow) && /^\d{1,2}$/.test(next) && VERB_WORDS.has(words[i + 2] ?? '')) return true;
+	}
+	return false;
+};
+
+/** The outlet's address only ("https://www.example.com/"), for a link whose path names a person. */
+export const urlOrigin = (url: string): string => {
+	try {
+		const u = new URL(url);
+		return `${u.protocol}//${u.host}/`;
+	} catch {
+		return url;
+	}
+};
+
+/** The label of a link withheld because its address names a person. */
+export const WITHHELD_LINK_NOTE = "the link goes to the outlet: the article's address names a person";
 
 /** Formats findings for a CLI report, errors first. */
 export const formatFindings = (findings: readonly Finding[]): string[] =>
