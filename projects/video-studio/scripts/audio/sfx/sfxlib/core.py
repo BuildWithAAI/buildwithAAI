@@ -35,7 +35,8 @@ BIT_DEPTH = 24
 
 # Mix roles: target short-window loudness (LUFS, 200 ms window, max) at the suggested gain.
 # Narration is normalised to -14 LUFS-I (its 200 ms peaks sit about -9); the bed sits about
-# -26 LUFS-S and ducks a further 6 dB under speech. Starting values for the mix: tune by ear.
+# -26 LUFS-S and is ducked under speech by the engine's band-split duck (-2 / -12 / -4 dB below 700 Hz /
+# 700 Hz-5 kHz / above 5 kHz; docs/AUDIO.md). Starting values for the mix: tune by ear.
 GAIN_WINDOW_S = 0.2
 TRUE_PEAK_CAP_DBTP = -6.0  # the engine's bed ceiling: headroom to sum with the voice (Remotion mixes without a limiter)
 # Critic round 1 (2026-11-24): on a phone speaker (mono, 350 Hz high-pass) Zoo's voice loses 5.4 LU

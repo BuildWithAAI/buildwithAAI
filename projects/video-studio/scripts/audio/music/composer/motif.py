@@ -1,6 +1,6 @@
 """Zoo's signature motif and Badger's figure (see ../DIRECTION.md, section 2).
 
-The motif sits on the rhythm of the show's name, "ZOO and BAD-ger SHOW":
+The motif sits on the rhythm of the show's name, "Zoo and Bad-ger Show" (stressed: Zoo, Bad-, Show):
 
     degrees (minor)  1   1    5   b5   b3      D D A Ab F in D minor
     degrees (major)  1   1    5   #4   3       D D A G# F# in D major
@@ -25,7 +25,7 @@ from audiolib.core import note_number
 DEGREES = {"minor": (0, 0, 7, 6, 3), "major": (0, 0, 7, 6, 4)}
 ONSETS = (0.0, 0.75, 1.0, 1.5, 2.0)
 LENGTHS = (0.75, 0.25, 0.5, 0.5, 2.0)
-# velocity shape: ZOO firm, "and" light, BAD accented (the leap), "ger" lighter, SHOW lands
+# velocity shape: "Zoo" firm, "and" light, "Bad-" accented (the leap), "-ger" lighter, "Show" lands
 ACCENTS = (0, -16, 8, -6, 6)
 FORMS = {"full": (0, 1, 2, 3, 4), "head": (0, 1, 2), "tail": (2, 3, 4)}
 
@@ -54,7 +54,7 @@ class MotifNote:
 
 
 def notes(tonic, mode: str = "minor", form: str = "full", stretch: float = 1.0, last_dur: float | None = None) -> list:
-    """The motif as MotifNotes. `tonic` is a MIDI number or a name (the pitch of ZOO)."""
+    """The motif as MotifNotes. `tonic` is a MIDI number or a name (the pitch of the first note, "Zoo")."""
     if mode not in DEGREES:
         raise ValueError(f"mode must be one of {sorted(DEGREES)}")
     t = note_number(tonic)

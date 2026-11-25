@@ -223,7 +223,7 @@ def show_intro_sting() -> Arrangement:
     th = Theme(bpm=60.0)
     P = th.p
     t0 = STING_START
-    stretch = (STING_HIT1 - t0) / 2.0  # ZOO -> SHOW is two motif beats
+    stretch = (STING_HIT1 - t0) / 2.0  # "Zoo" -> "Show" is two motif beats
     motif.place(P["piano"], t0, "D4", vel=94, octaves=(0, 12, -12), stretch=stretch, last_dur=0.45)
     for n in P["piano"].notes:  # the piano octaves on SHOW 2 dB firmer (velocity x1.155 through the Kawai's 1.6 curve)
         if abs(n.start - STING_HIT1) < 1e-6:

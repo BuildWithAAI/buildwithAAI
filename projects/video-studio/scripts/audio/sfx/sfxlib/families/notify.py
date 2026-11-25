@@ -1,7 +1,7 @@
 """Notification sounds: the ding, success, error and the DEVELOPING pulse.
 
 Brand pitch (scripts/audio/music/DIRECTION.md): everything is in D. The ding uses the motif's
-head, 1-1-5 (D-D-A, "ZOO and BAD-"), and its confident leap D up to A; success uses only D, G
+head, 1-1-5 (D-D-A, "Zoo and Bad-"), and its confident leap D up to A; success uses only D, G
 and A (open, resolved, and consonant over every bed in the direction, major or minor); the error
 falls a semitone, E-flat to D: the shape of Badger's "side-eye" figure, used here as a dry,
 comedic "nope"; the DEVELOPING pulse is the tonic D at the show-bed tempo (90 BPM, 20 frames a
@@ -222,7 +222,7 @@ def render() -> list:
     out = [
         ding("ding_01", [("D5", 0, 0.85), ("A5", 3, 1.0)], "Notification ding: D5 then A5 a frame-locked 100 ms later (the motif's confident leap)."),
         ding("ding_02", [("A5", 0, 1.0)], "Single soft ding on A5 with a glassy octave shimmer.", shimmer=0.18),
-        ding("ding_03", [("D5", 0, 0.8), ("D5", 2, 0.6), ("A5", 3, 1.0)], "Motif-head ding: D5 D5 A5 on frames 0, 2 and 3 ('ZOO and BAD-').", tags=["motif"]),
+        ding("ding_03", [("D5", 0, 0.8), ("D5", 2, 0.6), ("A5", 3, 1.0)], "Motif-head ding: D5 D5 A5 on frames 0, 2 and 3 ('Zoo and Bad-').", tags=["motif"]),
         ding("ding_04", [("A4", 0, 0.85), ("D5", 3, 1.0)], "Warmer, lower ding: A4 up to D5."),
         success("success_01", [("A4", 0, 0.8), ("D5", 3, 1.0)], "Small, dry 'ta-da': A4 then D5 (frames 0 and 3)."),
         success("success_02", [("D5", 0, 0.75), ("A5", 2, 0.85), ("D6", 4, 1.0)], "Quick rising D5-A5-D6 on marimba: done, sorted."),

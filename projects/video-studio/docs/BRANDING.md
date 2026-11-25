@@ -119,11 +119,12 @@ After the first video, use **Import from video** to copy this layout to every la
 
 The stings ship **silent** with an empty AAC track, so they concatenate cleanly. The audio workflow supplies the jingle.
 
-- **Plug in a jingle:**
+- **Plug in a jingle.** The music package delivers one per channel (`public/audio/music/intro-sting-show.wav`, 4.0 s, and `intro-sting-zoora.wav`, 4.5 s, both -16 LUFS-I):
   ```bash
-  npx remotion render src/branding/index.ts ZooraSting out/brand/zoora-ai/sting.mp4 --props='{"jingle":"audio/zoora-ai/sting.wav"}'
+  npx remotion render src/branding/index.ts ShowSting out/brand/zoora-security/sting.mp4 --props='{"jingle":"audio/music/intro-sting-show.wav"}'
+  npx remotion render src/branding/index.ts ZooraSting out/brand/zoora-ai/sting.mp4 --props='{"jingle":"audio/music/intro-sting-zoora.wav"}'
   ```
-  `jingle` is a path under `public/`. Optional props:
+  Checked by the Wave 3 integration (2026-11-25, `docs/WAVE3.md` §3.2): both render at -16.0 LUFS-I and -2.1 / -2.3 dBTP after Remotion's AAC, and every jingle hit that shows as a sharp onset lands within half a frame of its visual beat. `jingle` is a path under `public/`. Optional props:
   - `jingleOffsetSec` (negative skips a lead-in);
   - `jingleVolume` (0-1; default 1, because the jingle should arrive mastered).
 - **Duration:** follows the jingle, clamped to 3-5 s (`calculateMetadata`). Only the final hold stretches, so the visual hits stay put.
@@ -246,4 +247,4 @@ The kit uses no other third-party asset. The kit contains no logos of exchanges,
   - They flagged two problems, both fixed. "What this channel is not: financial advice ...": the gate reads a colon as a sentence end, so the negation did not carry. Portuguese "casos reais": "reais" is also Brazil's currency.
   - The final copy has 0 hits. It also passes this kit's own copy lint (`src/branding/copy.ts`: limits, banned promises, "Zoo" casing, cryptophishing phrasing).
   - Run the gate's CLI on both `channel-copy.md` files once it lands.
-- **The stings are silent until the jingle exists.** The hook and hit points are ready.
+- **The default sting renders (`node src/branding/render.ts`) are still silent.** The jingles now exist (`public/audio/music/intro-sting-*.wav`); render with the `jingle` prop as in section 3 to get the scored stings.

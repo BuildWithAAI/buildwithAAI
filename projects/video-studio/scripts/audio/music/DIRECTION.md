@@ -14,9 +14,9 @@ What it is **not**:
 
 ## 2. The signature motif ("Zoo's motif")
 
-Five notes on the rhythm of the show's name: **"ZOO and BAD-ger SHOW"**.
+Five notes on the rhythm of the show's name, "Zoo and Badger Show", one note per syllable, with the stress on **Zoo**, **Bad**- and **Show**. (The host's name is always written "Zoo", never in capitals: owner rule.)
 
-| | ZOO | and | BAD | ger | SHOW |
+| | Zoo | and | Bad- | -ger | Show |
 | --- | --- | --- | --- | --- | --- |
 | Minor (home) | 1 | 1 | 5 | ♭5 | ♭3 |
 | In D minor | D | D | A | A♭ | F |
@@ -60,7 +60,7 @@ Every tempo has an **integer number of video frames per beat at 30 fps** (BPM = 
 
 | Family | Key | BPM | Frames/beat | Why |
 | --- | --- | --- | --- | --- |
-| Theme, 15 s, 5 s, bumpers, end screen | D minor | 100 | 18 | Confident walking pace; the motif takes 1.2 s from ZOO to SHOW, readable on a phone |
+| Theme, 15 s, 5 s, bumpers, end screen | D minor | 100 | 18 | Confident walking pace; the motif takes 1.2 s from "Zoo" to "Show", readable on a phone |
 | Show intro sting | D minor | ≈138 (motif timed to the sting's frames) | — | SHOW lands on the ampersand hit (1.00 s); Badger's figure on his look (1.93 s) |
 | Show beds (neutral, tension, light) | D dorian / D minor / F major | 90 | 20 | One tempo and one key family, so an editor can cross-fade between moods on any bar line |
 | Zoora AI story beds (curious, tension, ominous, resolve) | F lydian / D minor / D phrygian / D major | 75 | 24 | Cinematic and unhurried; the shared tempo lets beds switch on bar lines; tension (Dm) resolves to D major |

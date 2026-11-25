@@ -103,7 +103,7 @@ def build(entries: list, generated: str) -> dict:
             "suggestedGain": "suggestedGainDb = role target - lufs200Max, capped so the true peak after the gain stays at or under -6 dBTP (gainCapped); suggestedVolume = 10^(gain/20) for <Audio volume>. underSpeechTrimDb: extra trim when the sound plays while Zoo speaks (ui: -3 dB; better, move it into a gap: sfx.ts nearestGapFrame)",
             "phoneLoss": "loudness.phoneLossDb: 200 ms-window loudness lost on a phone-speaker model (mono, 350 Hz high-pass, 12 kHz low-pass, +3 dB at 3 kHz); narration loses about 5.4",
             "roles": ROLES,
-            "narration": "-14 LUFS-I (scripts/voice); beds about -26 LUFS-S, ducked 6 dB under speech (docs/AUDIO.md)",
+            "narration": "-14 LUFS-I (scripts/voice); beds about -26 LUFS-S, ducked under speech by the band-split duck: -2 / -12 / -4 dB below 700 Hz / 700 Hz-5 kHz / above 5 kHz (docs/AUDIO.md)",
         },
         "sync": "Every syncMs and event time is a multiple of 1000/30 ms (1600 samples). Place a file at frame F - syncFrame30 to land its sync point on frame F. Impacts (syncKind 'transient') start their attack within 3 ms of the file start.",
         "groups": groups,

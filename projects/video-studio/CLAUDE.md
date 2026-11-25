@@ -262,3 +262,23 @@ How to make, dub and check an episode, with the owner's review steps: **`docs/EP
 - Languages: en (master), es and pt-br (launch), hi and it (supported), zh (experimental), ja (blocked: no verified G2P), fr (excluded: no male Kokoro voice).
 - A dub is a machine translation until a native speaker reviews it and the owner records `translation: {status: "native-reviewed", reviewed: true, reviewer, date}`; never publish a render that still shows the MACHINE TRANSLATION badge. Audio tracks (`--fit-to`) need translations written to length and are refused for videos with offers or a fiction card unless the dub says them.
 - Verified end to end on 2026-11-24 from a clean `public/generated/` with `content/zoora-ai/_engine-demo` in en, es and pt-br (6 MP4s, 9 thumbnails, every suite and the typecheck): results and known limits in `docs/EPISODE_ENGINE.md` §9 and §11. Final visual QA: the Shorts pass; each episode keeps one known error (Badger's face 14 px inside the bottom margin while he looks up, §11).
+
+## Wave 3: sound, brand and growth tools (integrated 2026-11-25)
+
+Full record, checks, owner inputs and open gaps: **`docs/WAVE3.md`**. Its section 1 lists the files to listen to and look at first. **Nobody has heard the audio yet** (this environment has no audio output): treat every audio claim as measured, not heard, until the owner signs it off.
+
+| Piece | Where | Doc |
+| --- | --- | --- |
+| Audio engine: synthesis and sampling, mastering, `metrics.py`, the band-split `duck.py` | `scripts/audio/` | `docs/AUDIO.md` |
+| Music: theme (68 s, 15 s, 5 s), 2 intro stings, 6 bumpers, end-screen bed and music, 7 moods of 64 s loop beds (each with an underscore) | `scripts/audio/music/` → `public/audio/music/` | `scripts/audio/music/README.md`, `DIRECTION.md` |
+| SFX: 119 frame-locked effects | `scripts/audio/sfx/` → `public/audio/sfx/` | `scripts/audio/sfx/README.md` |
+| Audio in Remotion: `MusicBed`, `Sfx`, `Stinger`, the master step, the AudioDemo | `src/audio/` | `src/audio/README.md` |
+| Branding kit: marks, banners, avatars, watermarks, end screens, badges, stings | `src/branding/` → `public/brand/` | `docs/BRANDING.md` |
+| Visual QA, back-translation check, topic finder | `scripts/qa/`, `scripts/backtranslate/`, `scripts/topics/` | each README |
+| The Crypto Security Checklist, sponsor kit | `content/products/`, `scripts/product/` | `scripts/product/README.md`, `docs/SPONSORS.md` |
+
+- **Licences:** audio only from the sources in `docs/AUDIO_LICENSES.md` (CC0, MIT, public domain or our own synthesis; add a source there with its evidence before first use). Fonts: `docs/FONT_LICENSES.md` (OFL 1.1, from npm, never fetched at render time). No AI music services, no loops of unknown origin, no synthesized dog voice: Badger's sounds come only from the owner's recordings.
+- **Placement:** delivered audio lives in `public/audio/` (no file over 10 MB; 24-bit WAV, or 16-bit FLAC where 24-bit would exceed that); masters, stems, review reels and renders stay in `out/`.
+- **Mixing:** beds go under narration only through `MusicBed` (the per-sample band-split duck) or a bed pre-ducked by `duck.py`, never raw. Finish every delivery with `src/audio/tools/master_mix.py` (-14 LUFS-I, at most -1.5 dBTP).
+- **Stings with their jingles:** `npx remotion render src/branding/index.ts ShowSting <out.mp4> --props='{"jingle":"audio/music/intro-sting-show.wav"}'` (ZooraSting: `audio/music/intro-sting-zoora.wav`). Every measured hit lands within half a frame of its visual beat (`docs/WAVE3.md` §3.2).
+- **Not done yet:** the Episode and Show templates do not play music or SFX (their owners add the calls documented in `src/audio/README.md`); the end screens and the default sting renders are silent; the topic finder stays blocked until YouTube approves derived metrics and a key exists; the security avatar has a neck-outline defect to fix after the Badger rig round.
