@@ -167,6 +167,7 @@
     "Monkey Drainer", "Venom Drainer", "MS Drainer", "Ace Drainer", "CryptoCore", "Contagious Interview"
   ],
   "blocked": ["ZachXBT", "samczsun", "Tayvano", "CZ", "SBF"],
+  "ambiguousNames": ["Claude", "Codex"],
   "aliases": [
     ["FBI", "Federal Bureau of Investigation"],
     ["DOJ", "Department of Justice", "Justice Department", "U.S. Department of Justice", "US Department of Justice"],

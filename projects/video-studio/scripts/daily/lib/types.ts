@@ -53,6 +53,11 @@ export type RadarSource = {
 	listedReport?: boolean;
 	/** The database's own page for the listed report (never fetched). */
 	trackerUrl?: string;
+	/** The article's link spells a person's name: the radar kept only the outlet's address (url) and this key. */
+	urlWithheld?: string;
+	urlRef?: string;
+	/** A single researcher's blog: one outlet's vote, never a confirmation on its own. */
+	confirmsAlone?: boolean;
 };
 
 export type RadarFact = {text: string; sourceId: string; url: string; quote: string; field: string};
@@ -63,6 +68,11 @@ export type RadarIncident = {
 	id: string;
 	title: string;
 	protocol: string;
+	/**
+	 * The radar knows the subject (an AI product or company, an allowlisted organisation, a database record), rather
+	 * than reading it from a headline's shape. Older radar files have none: crypto incidents count as known.
+	 */
+	subjectKnown?: boolean;
 	/** crypto, ai or both (older radar files: crypto). */
 	lane?: Lane;
 	chains: string[];
@@ -150,7 +160,8 @@ export type BriefFact = {
 	kind: FactKind;
 };
 
-export type BriefIncident = {id: string; name: string; status: 'confirmed' | 'developing'; date: string; role: 'primary' | 'comparison'};
+/** nameKnown false: the radar read the name from a headline's shape (subjectKnown false); the news gate never allowlists it. */
+export type BriefIncident = {id: string; name: string; status: 'confirmed' | 'developing'; date: string; role: 'primary' | 'comparison'; nameKnown?: boolean};
 
 export type OpportunityKind = 'comparison' | 'pattern' | 'fund-flow' | 'stat';
 
@@ -341,7 +352,8 @@ export type ApprovalRecord = {
 
 export type PostApprovalResult = {
 	id: 'announcer' | 'threat-brief';
-	mode: 'local-draft' | 'hub-dry-run' | 'hub-live';
+	/** hub-failed: the hub tool exited 0 but produced nothing (no "wrote" line, no new file): it never really ran. */
+	mode: 'local-draft' | 'hub-dry-run' | 'hub-live' | 'hub-failed';
 	status: 'written' | 'failed';
 	note: string;
 	files: string[];

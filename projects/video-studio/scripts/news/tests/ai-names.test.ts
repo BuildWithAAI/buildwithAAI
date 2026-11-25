@@ -36,7 +36,7 @@ describe('R4: AI product names are not people', () => {
 });
 
 describe('R4: private individuals are still refused next to AI products', () => {
-	test('a person who shares a product word', () => assert.deepEqual(persons('Claude Dupont said the agent was hijacked.'), ['Dupont:speaker-name']));
+	test('a person who shares a product word', () => assert.deepEqual(persons('Claude Dupont said the agent was hijacked.'), ['Claude Dupont:two-word-name']));
 	test('a researcher by name', () => assert.ok(persons('Robin Sample responded on the forum about Claude Code.').includes('Robin Sample:two-word-name')));
 	test('an apposition', () => assert.ok(persons('The researcher, Avery Example, found the Copilot flaw.').some((p) => p.startsWith('Avery Example'))));
 	test('a lower-case handle after a role', () => assert.ok(persons('Security researcher examplehandle reported the ChatGPT bug.').some((p) => p.startsWith('examplehandle'))));

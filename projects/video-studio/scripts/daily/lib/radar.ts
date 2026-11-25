@@ -68,6 +68,8 @@ export const readRadarFile = (path: string, date: string, mode: RadarMode): Rada
 	if (d.runDate !== date) return {ok: false, error: `The radar file is for ${String(d.runDate)}, not ${date}.`};
 	const problems: string[] = [];
 	if (mode !== 'offline' && d.mode !== 'live') problems.push(`The radar file's mode is "${String(d.mode)}", not "live".`);
+	// the radar's own run warnings (a missing news allowlist, for one): the AI subjects it read are degraded
+	for (const w of Array.isArray(d.warnings) ? d.warnings : []) if (typeof w === 'string' && w.trim()) problems.push(`radar: ${stripInvisible(w)}`);
 	const pick = (key: 'top' | 'alsoSeen'): RadarIncident[] => {
 		const arr = Array.isArray(d[key]) ? (d[key] as unknown[]) : [];
 		const ok = arr.filter(isIncident);
@@ -92,8 +94,23 @@ export const readRadarFile = (path: string, date: string, mode: RadarMode): Rada
 	return {ok: true, file, sha256: r.sha256, problems};
 };
 
+/**
+ * Characters that render as nothing (Unicode tags, zero-width and bidi controls, variation selectors): feed text can
+ * hide instructions for an AI in them. The radar strips them; this also cleans radar files written before it did.
+ */
+const INVISIBLE = /[\p{Cf}\u034F\u115F\u1160\u17B4\u17B5\u180B-\u180F\u3164\uFFA0\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;
+export const stripInvisible = (text: string): string => text.replace(INVISIBLE, '');
+/** Every string inside a parsed radar value, without invisible characters. */
+const cleanDeep = <T>(value: T): T => {
+	if (typeof value === 'string') return stripInvisible(value) as unknown as T;
+	if (Array.isArray(value)) return value.map(cleanDeep) as unknown as T;
+	if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, cleanDeep(v)])) as T;
+	return value;
+};
+
 /** Fill optional fields so the rest of the code never meets undefined arrays. */
-const normalizeIncident = (x: RadarIncident): RadarIncident => ({
+const normalizeIncident = (raw: RadarIncident): RadarIncident => normalizeClean(cleanDeep(raw));
+const normalizeClean = (x: RadarIncident): RadarIncident => ({
 	...x,
 	lane: x.lane === 'ai' || x.lane === 'both' ? x.lane : 'crypto',
 	chains: Array.isArray(x.chains) ? x.chains.filter((c) => typeof c === 'string') : [],
@@ -111,5 +128,8 @@ const normalizeIncident = (x: RadarIncident): RadarIncident => ({
 	type: typeof x.type === 'string' ? x.type : 'other',
 	shortReady: {ready: x.shortReady.ready === true, missing: Array.isArray(x.shortReady.missing) ? x.shortReady.missing.filter((m) => typeof m === 'string') : []},
 });
+
+/** Is the incident's name one the radar knows (not read from a headline's shape)? Older files: crypto yes, AI no. */
+export const subjectKnown = (inc: RadarIncident): boolean => inc.subjectKnown === true || (inc.subjectKnown === undefined && (inc.lane ?? 'crypto') === 'crypto');
 
 export const allCandidates = (f: RadarFile): RadarIncident[] => [...f.top, ...f.alsoSeen].sort((a, b) => b.score.total - a.score.total);

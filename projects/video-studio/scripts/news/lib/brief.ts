@@ -151,7 +151,7 @@ export const briefFromRadar = (raw: Record<string, unknown>, incidentId: string 
 		used.add(id);
 		idFor.set(key, id);
 		const extra = Array.isArray(s.excerpts) ? (s.excerpts as unknown[]).filter((x): x is string => typeof x === 'string') : [];
-		outSources.push({id, url, title: s.title, publisher: s.publisher, kind: RADAR_KINDS[String(s.kind)] ?? s.kind, publishedAt: str(s.publishedUtc) ?? str(s.eventDate), excerpt: s.excerpt, excerpts: extra, tier: s.tier, hedge: s.hedge});
+		outSources.push({id, url, title: s.title, publisher: s.publisher, kind: RADAR_KINDS[String(s.kind)] ?? s.kind, publishedAt: str(s.publishedUtc) ?? str(s.eventDate), excerpt: s.excerpt, excerpts: extra, tier: s.tier, hedge: s.hedge, ...(s.listedReport === true ? {listedReport: true} : {})});
 	}
 	const facts = ((Array.isArray(inc.facts) ? inc.facts : []) as Array<Record<string, unknown>>).map((f, i) => {
 		const id = idFor.get(`${str(f.sourceId) ?? ''} ${str(f.url) ?? ''}`) ?? str(f.sourceId) ?? '';
@@ -226,6 +226,7 @@ export const normalizeBrief = (raw: unknown, opts: {incidentId?: string} = {}): 
 			excerpts,
 			...(tier ? {tier} : {}),
 			...(str(r.hedge) ? {hedge: str(r.hedge)} : {}),
+			...(r.listedReport === true ? {listedReport: true} : {}),
 		});
 	});
 	const srcIds = new Set(sources.map((s) => s.id));
@@ -244,7 +245,7 @@ export const normalizeBrief = (raw: unknown, opts: {incidentId?: string} = {}): 
 		}
 		const st = statusOf(r, problems, `incident "${id}"`);
 		if (st === undefined) w(`incident "${id}" has no status; treated as developing until the radar marks it confirmed`);
-		incidents.push({id, name: name ?? id, aliases: strList(r.aliases), developing: st ?? true, date: str(r.date)});
+		incidents.push({id, name: name ?? id, aliases: strList(r.aliases), developing: st ?? true, date: str(r.date), ...(r.nameKnown === false ? {nameKnown: false} : {})});
 	}
 
 	// facts

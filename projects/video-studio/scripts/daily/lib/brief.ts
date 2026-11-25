@@ -11,6 +11,7 @@ import type {ChannelConfig} from './channel.ts';
 import type {OppResult} from './opportunities.ts';
 import type {BriefFact, BriefIncident, BriefSource, CandidateSummary, DailyBrief, MustNotSay, Opportunity, RadarFile, RadarIncident, RadarSource, Selection, SourceKind} from './types.ts';
 import {isAiStory} from './types.ts';
+import {subjectKnown} from './radar.ts';
 import {clip, unique, usdExact} from './util.ts';
 
 export const EXCERPT_MAX = 280;
@@ -103,6 +104,8 @@ export const buildFacts = (inc: RadarIncident, idx: SourceIndex): {facts: BriefF
 		facts.push({id: `f${++n}`, text, sourceIds: [src.id], excerpts: [{sourceId: src.id, text: stored}], incidentId: inc.id, quote: f.quote, kind: 'radar-fact'});
 	}
 	idx.sources.forEach((s, i) => {
+		// a listing is another outlet's text the radar never read: a lead, never a fact the script may use
+		if (s.listedReport) return;
 		if (s.excerpt) facts.push({id: `e${i + 1}`, text: s.excerpt, sourceIds: [s.id], excerpts: [{sourceId: s.id, text: s.excerpt}], incidentId: inc.id, quote: s.excerpt, kind: 'excerpt'});
 		// the mechanism's qualifying sentence (see indexSources)
 		(s.excerpts ?? []).forEach((q, k) => facts.push({id: `q${i + 1}${k ? `-${k + 1}` : ''}`, text: q, sourceIds: [s.id], excerpts: [{sourceId: s.id, text: q}], incidentId: inc.id, quote: q, kind: 'excerpt'}));
@@ -159,14 +162,14 @@ export const mustNotSayFor = (inc: RadarIncident, idx: SourceIndex, developing: 
 		});
 	const listed = unique(idx.sources.filter((s) => s.listedReport).map((s) => s.publisher));
 	if (listed.length)
-		out.push({rule: 'listed-report', text: `${listed.join(', ')} only lists other outlets' reports (discovery only): its title and excerpt are the original outlet's words, not checked here. Never cite the listing for a claim; a claim needs a tier-A or tier-B source in this brief.`});
+		out.push({rule: 'listed-report', text: `${listed.join(', ')} only lists other outlets' reports (discovery only): its title and excerpt are the original outlet's words, not checked here. Never cite the listing, even next to another source; a claim, a figure, a name or a quote needs a tier-A or tier-B source in this brief that states it.`});
 	out.push({rule: 'price', text: 'No prices, token moves, market talk, "buy/sell/hold", returns or income claims. "Price oracle" as a mechanism name is fine.'});
 	out.push({rule: 'speculation', text: 'No "probably", "likely", "rumoured", "insiders say", "must have been", or question headlines about causes. Only what the sources confirm.'});
 	out.push({rule: 'others-material', text: "No screenshots, redrawn charts, logos or images of other people's posts or dashboards. Describe the finding and attribute it."});
 	const unreachable = idx.sources.filter((s) => s.note);
 	if (unreachable.length) out.push({rule: 'unreachable', text: 'Some sources cite posts on X or Telegram. Those were not read: never quote, paraphrase or reconstruct them.'});
 	const tierC = unique(idx.sources.filter((s) => s.tier === 'C').map((s) => s.publisher));
-	if (tierC.length) out.push({rule: 'tier-c', text: `Aggregators (${tierC.join(', ')}) never carry a claim or a figure alone; cite a tier-A or tier-B source for it.`});
+	if (tierC.length) out.push({rule: 'tier-c', text: `Aggregators (${tierC.join(', ')}) are never the only source of a figure, a name, a quote or the wording, even when co-cited: the tier-A or tier-B source you cite must state it.`});
 	if (developing) out.push({rule: 'developing', text: 'Developing story: say "This is a developing story." before the first claim, put DEVELOPING in the first scene\'s title, the video title, the Short title and the thumbnails, and set news.developing.'});
 	return out;
 };
@@ -201,7 +204,7 @@ export const buildBrief = (b: BriefInput): DailyBrief => {
 	const {facts, dropped} = buildFacts(inc, idx);
 	const developing = inc.status !== 'confirmed';
 	const sources: BriefSource[] = [...idx.sources];
-	const incidents: BriefIncident[] = [{id: inc.id, name: inc.protocol, status: inc.status, date: inc.dateUtc, role: 'primary'}];
+	const incidents: BriefIncident[] = [{id: inc.id, name: inc.protocol, status: inc.status, date: inc.dateUtc, role: 'primary', ...(subjectKnown(inc) ? {} : {nameKnown: false})}];
 	const entities = new Set<string>(b.otherProtocols.filter((p) => p && p !== inc.protocol && p !== 'Unknown subject'));
 	const opps: Opportunity[] = [];
 	for (const r of b.opportunities) {

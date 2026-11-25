@@ -125,19 +125,20 @@ describe('approve', () => {
 			touch(join(hub, 'tools', 'announcer', 'cli.ts'));
 			touch(join(hub, 'tools', 'threat-brief', 'cli.ts'));
 			const rec = () => JSON.parse(readFileSync(s.ep.approvalJson, 'utf8')) as ApprovalRecord;
-			// no credentials: both tools are told --dry-run
-			const dry = fakeExec();
+			// no credentials: both tools are told --dry-run (each prints "wrote ...", as the real tools do)
+			const wrote = (): {stdout: string} => ({stdout: '  wrote out/drafts'});
+			const dry = fakeExec({announcer: wrote, 'threat-brief': wrote});
 			await runApprove({root: s.root, dateSlug: SLUG, reply: APPROVE, by: 'owner', exec: dry.exec, now: () => NOW, env: {}});
 			assert.deepEqual(dry.calls.map((c) => c.tool), ['announcer', 'threat-brief']);
 			assert.ok(dry.calls.every((c) => c.args.includes('--dry-run')));
 			assert.deepEqual(rec().postApproval.map((p) => p.mode), ['hub-dry-run', 'hub-dry-run']);
 			// the old proposed names are not the announcer's: they count for nothing
-			const old = fakeExec();
+			const old = fakeExec({announcer: wrote, 'threat-brief': wrote});
 			await runApprove({root: s.root, dateSlug: SLUG, by: 'owner', youtubeId: 'abcDEF12345', exec: old.exec, now: () => NOW, env: {ANNOUNCER_X_TOKEN: 't', ANNOUNCER_TELEGRAM_TOKEN: 't'}});
 			assert.ok(old.calls.find((c) => c.tool === 'announcer')?.args.includes('--dry-run'));
 			// the real names and a video id: no --dry-run, only the ready platform, but still no --apply, so nothing posts
 			const realEnv = {TELEGRAM_BOT_TOKEN: 't', TELEGRAM_CHAT_ID: '@example', KIT_API_KEY: 'k'};
-			const live = fakeExec({announcer: () => ({stdout: 'DRY RUN: nothing was posted.'}), 'threat-brief': () => ({stdout: 'Kit draft skipped: KIT_API_KEY is not set.'})});
+			const live = fakeExec({announcer: () => ({stdout: 'DRY RUN: nothing was posted.\n  wrote out/x.txt'}), 'threat-brief': () => ({stdout: 'Kit draft skipped: KIT_API_KEY is not set.\n  wrote out/brief.md'})});
 			await runApprove({root: s.root, dateSlug: SLUG, by: 'owner', youtubeId: 'abcDEF12345', exec: live.exec, now: () => NOW, env: realEnv});
 			const ann = live.calls.find((c) => c.tool === 'announcer');
 			assert.ok(ann && !ann.args.includes('--dry-run') && !ann.args.includes('--apply'), 'the daily never adds --apply by itself');
@@ -146,7 +147,7 @@ describe('approve', () => {
 			assert.deepEqual(rec().postApproval.map((p) => p.mode), ['hub-dry-run', 'hub-dry-run']);
 			assert.match(rec().postApproval[0].note, /never posts by itself/);
 			// the owner's opt-in (--apply in DAILY_ANNOUNCER_CMD) and tools that report a post and a draft: hub-live
-			const optIn = fakeExec({announcer: () => ({stdout: '[telegram] posted (id 42)'}), 'threat-brief': () => ({stdout: '  created Kit broadcast draft 7 for subscribers with tag 1. It has NOT been sent or scheduled.'})});
+			const optIn = fakeExec({announcer: () => ({stdout: '[telegram] posted (id 42)\n  wrote out/x.txt'}), 'threat-brief': () => ({stdout: '  created Kit broadcast draft 7 for subscribers with tag 1. It has NOT been sent or scheduled.\n  wrote out/brief.md'})});
 			const cmd = JSON.stringify(['node', join(hub, 'tools', 'announcer', 'cli.ts'), '--input', '{input}', '--out', '{out}', '{dryRun}', '--apply']);
 			await runApprove({root: s.root, dateSlug: SLUG, by: 'owner', youtubeId: 'abcDEF12345', exec: optIn.exec, now: () => NOW, env: {...realEnv, DAILY_ANNOUNCER_CMD: cmd}});
 			assert.ok(optIn.calls.find((c) => c.tool === 'announcer')?.args.includes('--apply'));

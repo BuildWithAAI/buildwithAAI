@@ -443,6 +443,16 @@ class Redaction(unittest.TestCase):
                 self.assertEqual(safety.redact_people(text, found=found)[1], 0)
                 self.assertEqual(safety.person_tokens(found), set())
 
+    def test_a_name_after_a_legal_action_verb(self):
+        # the slug matcher depends on the title redaction: "Feds Charge <First Last> Over ..." names a suspect
+        self.assertEqual(safety.redact_people("Feds Charge Zorblax Quenfeld Over AI Deepfake Extortion Scheme")[0],
+                         "Feds Charge [named person] Over AI Deepfake Extortion Scheme")
+        self.assertEqual(safety.redact_people("Police Arrest Zorblax Quenfeld in Deepfake Case")[1], 1)
+        for text in ("Feds Charge North Korean Hackers Over Crypto Heist", "DOJ Charges Two Men Over Crypto Theft",
+                     "SEC Charges Binance Over Unregistered Offering"):
+            with self.subTest(text=text):
+                self.assertKept(text)
+
     def test_link_slugs_that_spell_a_name(self):
         self.assertTrue(safety.url_names_person("https://www.coindesk.com/markets/2026/11/24/a-wallet-linked-to-popular-"
                                                 "crypto-trader-zorblax-sold-usd2-million", {"Zorblax"}))

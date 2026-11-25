@@ -10,7 +10,7 @@
  * date is a UTC day, so a run in the Chicago evening (already tomorrow in UTC) asks the radar for the UTC date and
  * never drops what was published since 00:00 UTC.
  */
-import {existsSync} from 'node:fs';
+import {existsSync, readdirSync, realpathSync, rmSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import {buildBrief} from './brief.ts';
 import {ChannelError, loadChannel, type ChannelConfig} from './channel.ts';
@@ -20,7 +20,7 @@ import {minutes, outputTail} from './exec.ts';
 import {loadRadarHistory, loadTrackerRows, previousEpisodes, windowFor} from './history.ts';
 import {figuresComparison, fundFlowOpportunity, PREVIOUS_DAYS, radarComparison, trackerComparison, type OppResult} from './opportunities.ts';
 import {channelPaths, dayPaths, episodePaths} from './paths.ts';
-import {allCandidates, radarFilePath, readRadarFile, runRadar, type RadarMode} from './radar.ts';
+import {allCandidates, radarFilePath, readRadarFile, runRadar, subjectKnown, type RadarMode} from './radar.ts';
 import {COVERED_DAYS, dateSlugFor, selectCandidates} from './select.ts';
 import {indexSources} from './brief.ts';
 import type {DailyBrief, RadarIncident, Selection} from './types.ts';
@@ -102,13 +102,38 @@ const prepareMd = (date: string, sel: Selection, brief: DailyBrief | null, files
  * draft from here). Written every day, so a day with no video still has its email; on a video day the approve step
  * writes the episode version, which supersedes it.
  */
-export const threatBriefDraft = (o: {root: string; hubRoot: string; radarPath: string; outDir: string; exec: Exec; env: NodeJS.ProcessEnv}): ThreatBriefDraft => {
-	const cli = join(o.hubRoot, 'tools', 'threat-brief', 'cli.ts');
-	if (!existsSync(cli)) return {status: 'missing', note: 'creator-hub tools/threat-brief is not on this machine: no Threat Brief draft today.', dir: null};
-	const args = [cli, 'draft', '--radar', o.radarPath, '--out', o.outDir];
+export const threatBriefDraft = (o: {root: string; hubRoot: string; radarPath: string; outDir: string; exec: Exec; env: NodeJS.ProcessEnv; date: string; allowlist?: string; now?: () => number}): ThreatBriefDraft => {
+	const linked = join(o.hubRoot, 'tools', 'threat-brief', 'cli.ts');
+	if (!existsSync(linked)) return {status: 'missing', note: 'creator-hub tools/threat-brief is not on this machine: no Threat Brief draft today.', dir: null};
+	// the CLI's real path: through a symlinked hub or root, its entry check used to skip main() and exit 0 having
+	// written nothing
+	let cli = linked;
+	try {
+		cli = realpathSync(linked);
+	} catch {
+		// keep the linked path; the file check below still catches a run that wrote nothing
+	}
+	// an earlier run's draft is never passed off as today's
+	rmSync(o.outDir, {recursive: true, force: true});
+	// the news allowlist explicitly: a missing or broken one fails the draft instead of a note nobody reads
+	const args = [cli, 'draft', '--radar', o.radarPath, '--out', o.outDir, ...(o.allowlist ? ['--allowlist', o.allowlist] : [])];
+	const started = (o.now ?? Date.now)();
 	const r = o.exec({cmd: process.execPath, args, cwd: o.root, env: o.env, timeoutMs: minutes(2)});
-	if (r.status === 0 && !r.error) return {status: 'written', note: 'Written by creator-hub tools/threat-brief (draft, local files only).', dir: rel(o.root, o.outDir), command: [process.execPath, ...args]};
-	return {status: 'failed', note: `creator-hub tools/threat-brief draft failed (exit ${r.status ?? 'none'}): ${outputTail(r, 400)}`, dir: null, command: [process.execPath, ...args]};
+	const command = [process.execPath, ...args];
+	if (r.status === 0 && !r.error) {
+		const want = [`${o.date}.md`, `${o.date}.html`];
+		const fresh = want.filter((f) => {
+			try {
+				return statSync(join(o.outDir, f)).mtimeMs >= started - 2000;
+			} catch {
+				return false;
+			}
+		});
+		if (fresh.length === want.length) return {status: 'written', note: 'Written by creator-hub tools/threat-brief (draft, local files only).', dir: rel(o.root, o.outDir), command};
+		const found = existsSync(o.outDir) ? readdirSync(o.outDir).length : 0;
+		return {status: 'failed', note: `creator-hub tools/threat-brief exited 0 but wrote no draft (${fresh.length}/${want.length} expected files, ${found} file(s) in ${rel(o.root, o.outDir)}): nothing to send`, dir: null, command};
+	}
+	return {status: 'failed', note: `creator-hub tools/threat-brief draft failed (exit ${r.status ?? 'none'}): ${outputTail(r, 400)}`, dir: null, command};
 };
 
 export const runPrepare = (o: PrepareOptions): PrepareResult => {
@@ -154,7 +179,7 @@ export const runPrepare = (o: PrepareOptions): PrepareResult => {
 	// 1b. corrections to pin on episodes already approved, and the day's Threat Brief draft (every day, video or not)
 	const corrections = correctionCandidates({contentRoot: cp.contentRoot, correctionsPath: cp.corrections, radar: read.file, date});
 	for (const c of corrections.filter((x) => !x.recorded)) say(`${c.severity === 'correction' ? 'PIN A CORRECTION' : 'update worth pinning'} on ${c.slug}: ${c.change}`);
-	const tb = threatBriefDraft({root: o.root, hubRoot: cp.hubRoot, radarPath, outDir: join(dayPaths(o.root, date).dir, 'threat-brief'), exec: o.exec, env});
+	const tb = threatBriefDraft({root: o.root, hubRoot: cp.hubRoot, radarPath, outDir: join(dayPaths(o.root, date).dir, 'threat-brief'), exec: o.exec, env, date: radarDate, allowlist: cp.newsAllowlist});
 	if (tb.status === 'failed') say(`warning: ${tb.note}`);
 
 	// 2. history and analysis data (the tracker rows reach back 30 more days, for "up from N in the 30 days before")
@@ -221,7 +246,8 @@ export const runPrepare = (o: PrepareOptions): PrepareResult => {
 			previousEpisodes: previous.map((p) => ({slug: p.slug, incidentId: p.incidentId, approved: p.approved})),
 			notes: [...(tracker.ok ? tracker.notes : [`Tracker comparison unavailable: ${tracker.reason}`])],
 		},
-		otherProtocols: candidates.map((c) => c.protocol),
+		// only names the radar knows: a subject read from a headline's shape could be a person, so R4 checks it
+		otherProtocols: candidates.filter(subjectKnown).map((c) => c.protocol),
 		groupWords: groupWordsFrom(cp.newsAllowlist),
 		format: o.format,
 	});

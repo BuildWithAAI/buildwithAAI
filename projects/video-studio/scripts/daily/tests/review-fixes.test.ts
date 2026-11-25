@@ -4,7 +4,7 @@
  * escaping, description sources, X length, and the approval page's hardening. Every step is faked.
  */
 import {strict as assert} from 'node:assert';
-import {existsSync, readFileSync, utimesSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, utimesSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {describe, it} from 'node:test';
 import {buildFacts, indexSources, mustNotSayFor} from '../lib/brief.ts';
@@ -341,7 +341,15 @@ describe('prepare: radar date, daily Threat Brief', () => {
 			seedRadarDay(root, [fixturePhish()]); // nothing qualifies
 			const hub = episodePaths(root, SLUG).hubRoot;
 			touch(join(hub, 'tools', 'threat-brief', 'cli.ts'));
-			const fx = fakeExec();
+			// like the real tool: it writes <date>.md and <date>.html into --out
+			const fx = fakeExec({
+				'threat-brief': (req) => {
+					const out = req.args[req.args.indexOf('--out') + 1]!;
+					mkdirSync(out, {recursive: true});
+					for (const ext of ['md', 'html']) writeFileSync(join(out, `${DATE}.${ext}`), 'draft');
+					return {stdout: `  wrote ${out}/${DATE}.md`};
+				},
+			});
 			const r = runPrepare({root, radar: 'reuse', exec: fx.exec, now: () => NOW, env: {KIT_API_KEY: 'k', PATH: '/bin'}});
 			assert.equal(r.exitCode, 3);
 			const tb = fx.calls.find((c) => c.tool === 'threat-brief');

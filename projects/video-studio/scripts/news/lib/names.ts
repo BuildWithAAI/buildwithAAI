@@ -167,6 +167,8 @@ export const scanNames = (text: string, ctx: NameContext): NameScan => {
 	const entities: EntityRef[] = [];
 	const used = new Array<boolean>(toks.length).fill(false);
 	for (const k of known) {
+		// a product name that is also a personal name ("Claude", "Codex") next to a person cue is checked as a name
+		if (k.entry.ambiguous && personCueAround(toks, k.startTok, src, known)) continue;
 		for (let i = k.startTok; i < k.endTok; i++) used[i] = true;
 		if (k.entry.category === 'blocked') persons.push({text: k.text, start: k.start, end: k.end, reason: 'blocked', severity: 'error'});
 		else entities.push({text: k.text, start: k.start, end: k.end, kind: 'known', entry: k.entry, sentenceStart: starts[k.startTok]});
@@ -236,6 +238,27 @@ export const scanNames = (text: string, ctx: NameContext): NameScan => {
 		i = j;
 	}
 	return {known, persons, entities: entities.sort((a, b) => a.start - b.start)};
+};
+
+/**
+ * A person cue around the one-word known name at token i: a role, title or kinship word in the two words before it
+ * ("researcher Claude", "her sister Gemma"), an age or a role apposition after it ("Claude, 34,", "Claude, a
+ * developer,"), a speech verb followed by he/she/his/her in the same sentence ("Codex said he wrote ..."), or another
+ * capitalised word that is not a known name right next to it ("Ernest Claude", "Claude Dupont").
+ */
+const personCueAround = (toks: Tok[], i: number, src: string, known: KnownMatch[]): boolean => {
+	const t = toks[i];
+	const before = src.slice(Math.max(0, t.start - 40), t.start);
+	const prevWords = (before.match(/[\p{L}-]+\.?/gu) ?? []).slice(-2).map((x) => x.toLowerCase().replace(/\.$/, ''));
+	if (prevWords.some((x) => PERSON_CUES.has(x))) return true;
+	const after = src.slice(t.end);
+	if (APPOSITION.test(after) || AGE_AFTER.test(after)) return true;
+	if (SPEECH_AFTER.test(after) && /^[^.!?]*\b(?:he|she|his|her|him|hers|himself|herself)\b/i.test(after)) return true;
+	const isKnownAt = (j: number) => known.some((k) => j >= k.startTok && j < k.endTok);
+	const adjacent = (j: number, gap: string) => j >= 0 && j < toks.length && /^\s+$/.test(gap) && nameLike(toks[j].text) && !isKnownAt(j) && !COMMON.has(lw(toks[j].text));
+	if (i > 0 && adjacent(i - 1, src.slice(toks[i - 1].end, t.start))) return true;
+	if (i + 1 < toks.length && adjacent(i + 1, src.slice(t.end, toks[i + 1].start))) return true;
+	return false;
 };
 
 /** Title Case or ALL CAPS: at least 80% of the words capitalised (short labels may have 1-2 words). */

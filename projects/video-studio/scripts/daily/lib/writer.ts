@@ -48,15 +48,15 @@ export const KICKER = 'Threat Brief';
 
 /** AI-security types: their label, the concept diagram's starting nodes and a suggested One Fix (reviewed, defensive). */
 export const AI_STORY: Record<string, {label: string; nodes: string[]; fix: string}> = {
-	'prompt-injection': {label: 'prompt injection', nodes: ['site', 'agent', 'key'], fix: "Update the AI tool, and keep auto-run or \"don't ask again\" modes off for agents that can read your files or browse the web."},
+	'prompt-injection': {label: 'prompt injection', nodes: ['site', 'agent', 'key'], fix: 'Update the AI tool, and keep auto-run and auto-approve modes off for agents that can read your files or browse the web.'},
 	'ai-agent-exploit': {label: 'AI agent exploit', nodes: ['attacker', 'agent', 'key'], fix: 'Update the AI tool, and give agents only the files, accounts and permissions the task needs.'},
 	'malicious-ai-tool': {label: 'malicious AI tool', nodes: ['plugin', 'agent', 'key'], fix: 'Install AI extensions, plugins, skills and MCP servers only from publishers you can verify, and remove the ones you do not use.'},
 	'model-supply-chain': {label: 'AI model supply-chain attack', nodes: ['plugin', 'agent', 'site'], fix: 'Load models and packages only from publishers you trust, and pin the exact versions you checked.'},
-	'ai-data-exposure': {label: 'data exposure through an AI tool', nodes: ['agent', 'key', 'site'], fix: 'Never paste passwords, API keys or private data into an AI tool, and rotate any key that may have been exposed.'},
+	'ai-data-exposure': {label: 'data exposure through an AI tool', nodes: ['agent', 'key', 'site'], fix: 'Never paste passwords, API keys or private data into an AI tool, and change any key you already pasted into one.'},
 	'ai-assisted-attack': {label: 'AI-assisted attack', nodes: ['attacker', 'agent', 'site'], fix: 'Install security updates promptly and turn on multi-factor authentication for every account that offers it.'},
-	'deepfake-fraud': {label: 'deepfake or voice-clone fraud', nodes: ['phone', 'message', 'funds'], fix: 'If a call, video or message asks for money or a code, hang up and call back on a number you already trust, even when the voice or face looks right.'},
+	'deepfake-fraud': {label: 'deepfake or voice-clone scam', nodes: ['phone', 'message', 'funds'], fix: 'If a call, video or message asks for money or a code, hang up and call back on a number you already trust, even when the voice or face looks right.'},
 	'ai-phishing': {label: 'AI-generated phishing', nodes: ['message', 'site', 'key'], fix: 'Do not trust a message because it is well written: check the sender through a channel you already trust before you click or sign in.'},
-	'ai-washing': {label: 'AI-washing fraud', nodes: ['message', 'site', 'funds'], fix: "Treat 'AI-powered' as a sales claim until the company shows evidence, and never pay up front for a promised result."},
+	'ai-washing': {label: 'AI-washing case', nodes: ['message', 'site', 'funds'], fix: 'Treat AI claims in an ad as marketing until the company shows evidence, and never pay up front for a promised result.'},
 };
 
 /** The Rekt Meter's figures, prefilled from the brief: the first tier-A figure, and a different figure from another outlet. */
@@ -206,6 +206,13 @@ export const renderWriterMd = (b: DailyBrief, ch: ChannelConfig): string => {
 	for (const n of b.notes) out.push(`- Note: ${cell(n)}`);
 	out.push('');
 
+	const leads = b.sources.filter((s) => s.listedReport);
+	if (leads.length) {
+		out.push('## Leads only (never cite)', '');
+		out.push('An incident database lists these reports from other outlets. The radar never read them: no fact, figure, name or quote below may be used, even next to another source. Read the original report; cite it only once a radar run stores it as a tier-A or tier-B source.', '');
+		for (const s of leads) out.push(`- ${cell(s.publisher)} lists: ${cell(clip(s.title, 120))} (${cell(s.url)})`);
+		out.push('');
+	}
 	out.push('## Facts you may use, and nothing else', '');
 	out.push('Every factual sentence ends with `[src:<source id>]`. A claim must match one of these facts, and its numbers, names and quotes must be in that source\'s excerpt (shown here word for word).', '');
 	out.push('| Fact | Source id | Publisher (tier) | What it says | Stored excerpt |', '| --- | --- | --- | --- | --- |');
@@ -230,7 +237,7 @@ export const renderWriterMd = (b: DailyBrief, ch: ChannelConfig): string => {
 	out.push('## Sources', '');
 	out.push('| Source id | Publisher | Tier | Kind | Title | URL |', '| --- | --- | --- | --- | --- | --- |');
 	for (const s of b.sources) out.push(`| \`${s.id}\` | ${cell(s.publisher)} | ${s.tier} | ${s.kind} | ${cell(clip(s.title, 120))} | ${cell(s.url)} |`);
-	out.push('', 'Tier A: trackers, security firms, post-mortems. Tier B: established outlets. Tier C: aggregators (never alone).', '');
+	out.push('', 'Tier A: trackers, security firms, post-mortems. Tier B: established outlets. Tier C: aggregators: never the only source of a figure, a name, a quote or the wording, even when co-cited. Listed reports: leads only, never cited.', '');
 
 	out.push('## Reported losses (never average them)', '');
 	if (!b.reportedLosses.length)

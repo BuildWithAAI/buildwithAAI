@@ -464,6 +464,8 @@ const buildLocked = async (
 		const episode = episodeForKit({sb, channel, split, developing, incidentType: brief?.incident.type ?? null, evergreenUrl: brief?.evergreen?.url ?? null});
 		writeJson(ep.episodeJson, episode);
 		const args = [kitCli, `${CHANNEL}/${o.dateSlug}`, '--out', ep.publishOut];
+		// an earlier build's kit.json is never read as this build's (a CLI that exits 0 having written nothing)
+		rmSync(join(ep.publishOut, 'kit.json'), {force: true});
 		const r = o.exec({cmd: process.execPath, args, cwd: root, env, timeoutMs: minutes(2)});
 		const kj = readJson(join(ep.publishOut, 'kit.json'));
 		if ((r.status === 0 || r.status === 1) && kj.ok && isRecord(kj.data)) {

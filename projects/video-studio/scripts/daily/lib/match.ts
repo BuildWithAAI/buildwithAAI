@@ -6,6 +6,7 @@
  * Near-miss spellings never match on their own: "Prism" is not "Prisma Finance" and "Sonne" is not "Sonnet".
  * A port of the radar's norm_name / core_name / aliases_for / names_match (Python), kept in step with it.
  */
+import {AI_TYPES} from './types.ts';
 import {daysBetween, isDate} from './util.ts';
 
 /** Generic trailing words of a protocol name (radar textutil._GENERIC_SUFFIX). */
@@ -74,7 +75,25 @@ export const namesMatch = (a: Set<string>, b: Set<string>): boolean => {
 	return false;
 };
 
-export type IncidentRef = {id?: string | null; protocol?: string | null; date?: string | null};
+export type IncidentRef = {id?: string | null; protocol?: string | null; date?: string | null; lane?: string | null; type?: string | null};
+
+/** A crypto-only and an AI-only incident are never one incident; "both" may be either; no lane (older files) is crypto. */
+export const lanesCompatible = (a?: string | null, b?: string | null): boolean => {
+	const x = a === 'ai' || a === 'both' ? a : 'crypto';
+	const y = b === 'ai' || b === 'both' ? b : 'crypto';
+	return !((x === 'crypto' && y === 'ai') || (x === 'ai' && y === 'crypto'));
+};
+
+/** 'ai' for an AI type, 'crypto' for a specific crypto mechanism, null for one that fits either (exploit, other, none). */
+const typeFamily = (type?: string | null): 'ai' | 'crypto' | null =>
+	!type || type === 'exploit' || type === 'other' ? null : (AI_TYPES as readonly string[]).includes(type) ? 'ai' : 'crypto';
+
+/** "DeepSeek" the token rug pull is not "DeepSeek" the chatbot's data exposure, whatever the lanes say. */
+export const familiesCompatible = (a?: string | null, b?: string | null): boolean => {
+	const fa = typeFamily(a);
+	const fb = typeFamily(b);
+	return !fa || !fb || fa === fb;
+};
 
 /**
  * The same incident: the same radar id, or matching names with dates within `days` of each other. With
@@ -84,6 +103,9 @@ export type IncidentRef = {id?: string | null; protocol?: string | null; date?: 
  */
 export const sameIncident = (a: IncidentRef, b: IncidentRef, o: {days?: number; unknownDate?: 'match' | 'no-match'} = {}): boolean => {
 	if (a.id && b.id && a.id === b.id) return true;
+	// a crypto story and an AI story that share a name ("Cyber Bridge" and the "National Cyber Security Centre",
+	// "Gemini" the exchange and "Google Gemini") are two incidents
+	if (!lanesCompatible(a.lane, b.lane) || !familiesCompatible(a.type, b.type)) return false;
 	if (!a.protocol || !b.protocol || !namesMatch(aliasesFor(a.protocol), aliasesFor(b.protocol))) return false;
 	if (!isDate(a.date) || !isDate(b.date)) return (o.unknownDate ?? 'match') === 'match';
 	return Math.abs(daysBetween(a.date, b.date)) <= (o.days ?? 3);

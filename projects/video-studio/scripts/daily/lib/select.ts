@@ -37,7 +37,10 @@ export const summarize = (inc: RadarIncident, rank: number, ctx: SelectContext):
 	if (inc.status !== 'confirmed') reasons.push('developing: not confirmed by an unhedged tier-A source or two tier-B outlets');
 	if (!inc.shortReady.ready) for (const m of inc.shortReady.missing) if (m !== 'not confirmed') reasons.push(`radar short check: ${m}`);
 	const covered = ctx.previous.find(
-		(p) => p.approved && p.date !== ctx.date && sameIncident({id: p.incidentId, protocol: p.protocol ?? null, date: p.incidentDate ?? null}, {id: inc.id, protocol: inc.protocol, date: inc.dateUtc || inc.firstSeenUtc || null}),
+		(p) =>
+			p.approved &&
+			p.date !== ctx.date &&
+			sameIncident({id: p.incidentId, protocol: p.protocol ?? null, date: p.incidentDate ?? null, lane: p.lane ?? null, type: p.type ?? null}, {id: inc.id, protocol: inc.protocol, date: inc.dateUtc || inc.firstSeenUtc || null, lane: inc.lane ?? null, type: inc.type}),
 	);
 	if (covered) reasons.push(`already covered: ${covered.slug} was approved within ${COVERED_DAYS} days`);
 	const a = ctx.strongAnalysis(inc);

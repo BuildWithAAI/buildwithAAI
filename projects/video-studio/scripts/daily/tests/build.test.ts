@@ -68,7 +68,7 @@ const setup = (o: Opts = {}) => {
 		},
 	};
 	const fx = fakeExec(handlers);
-	return {...t, ep, brief, fx};
+	return {...t, ep, brief, fx, handlers};
 };
 
 const packetOf = (root: string): PacketSummary => JSON.parse(readFileSync(episodePaths(root, SLUG).packetJson, 'utf8')) as PacketSummary;
@@ -236,6 +236,24 @@ describe('approval packet (escaping and layout)', () => {
 			assert.match(html, /Pinned comment \(copy exactly\)/);
 			const md = readFileSync(s.ep.approvalMd, 'utf8');
 			assert.ok(!md.includes('<script>'), 'Markdown escapes HTML too');
+		} finally {
+			s.cleanup();
+		}
+	});
+});
+
+describe('build: the publish kit', () => {
+	it("never reads an earlier build's kit.json as this build's (a CLI that exits 0 having written nothing)", async () => {
+		const s = setup();
+		try {
+			await runBuild({root: s.root, dateSlug: SLUG, exec: s.fx.exec, now: () => NOW, env: {}});
+			assert.equal(packetOf(s.root).steps.find((x) => x.id === 'publish-kit')?.status, 'passed');
+			assert.ok(existsSync(join(s.ep.publishOut, 'kit.json')));
+			// the second build's publish kit exits 0 and writes nothing: the old kit.json must not pass for it
+			const again = fakeExec({...s.handlers, 'publish-kit': () => ({status: 0})});
+			await runBuild({root: s.root, dateSlug: SLUG, exec: again.exec, now: () => NOW, env: {}});
+			assert.notEqual(packetOf(s.root).steps.find((x) => x.id === 'publish-kit')?.status, 'passed');
+			assert.equal(existsSync(join(s.ep.publishOut, 'kit.json')), false);
 		} finally {
 			s.cleanup();
 		}

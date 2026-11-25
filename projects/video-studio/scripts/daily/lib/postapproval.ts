@@ -14,7 +14,7 @@
  * The record says "hub-live" only when the tool itself reports a post or a created draft; otherwise "hub-dry-run".
  * Only these hub calls get the posting credentials; every other step runs with them removed (util.ts scrubEnv).
  */
-import {existsSync} from 'node:fs';
+import {existsSync, readdirSync, realpathSync, statSync} from 'node:fs';
 import {join} from 'node:path';
 import {xWeightedLength} from '../../publish-kit/limits.ts';
 import {esc, link, plain, safeUrl} from './escape.ts';
@@ -140,6 +140,29 @@ export const buildThreatBrief = (p: PostInput): ThreatBrief => {
 
 export const hubToolCli = (hubRoot: string, tool: 'announcer' | 'threat-brief'): string => join(hubRoot, 'tools', tool, 'cli.ts');
 
+/** The real path of a CLI file: launched through a symlinked path, a hub CLI's entry check never ran main(). */
+const realCli = (path: string): string => {
+	try {
+		return realpathSync(path);
+	} catch {
+		return path;
+	}
+};
+
+/** name -> modification time of the files in dir. */
+const snapshot = (dir: string): Map<string, number> => {
+	const out = new Map<string, number>();
+	if (!existsSync(dir)) return out;
+	for (const name of readdirSync(dir)) {
+		try {
+			out.set(name, statSync(join(dir, name)).mtimeMs);
+		} catch {
+			// a file that vanished between the listing and the stat
+		}
+	}
+	return out;
+};
+
 const ENV_CMD = {announcer: 'DAILY_ANNOUNCER_CMD', 'threat-brief': 'DAILY_THREAT_BRIEF_CMD'} as const;
 
 /** The announcer's platforms whose credentials are all set. */
@@ -196,11 +219,25 @@ export const runPostApproval = (o: {
 		} catch (err) {
 			return {id: o.tool, mode: 'local-draft', status: 'failed', note: `${ENV_CMD[o.tool]} is not a JSON argv (${err instanceof Error ? err.message : String(err)}); local drafts only.`, files: written};
 		}
-	} else argv = [process.execPath, cli, '--input', inputPath, '--out', dir, ...(live ? [] : ['--dry-run'])];
+	} else argv = [process.execPath, realCli(cli), '--input', inputPath, '--out', dir, ...(live ? [] : ['--dry-run'])];
 	// the announcer posts only to platforms whose credentials are all set
 	if (o.tool === 'announcer' && live && !argv.includes('--targets') && ready.every((p) => p === 'x' || p === 'telegram')) argv.push('--targets', ready.join(','));
+	const before = snapshot(dir);
 	const r = o.exec({cmd: argv[0], args: argv.slice(1), cwd: o.root, env: o.env, timeoutMs: minutes(5)});
 	const ok = r.status === 0 && !r.error;
+	// a hub tool that exits 0 must have done something: a "wrote" line (both tools print one) or a new or changed file
+	const after = snapshot(dir);
+	const produced = /^\s*wrote\b/im.test(r.stdout ?? '') || [...after].some(([name, t]) => before.get(name) !== t);
+	if (ok && !produced)
+		return {
+			id: o.tool,
+			mode: 'hub-failed',
+			status: 'failed',
+			note: `creator-hub/tools/${o.tool} exited 0 but produced nothing (no "wrote" line, no new file): it did not run. The local drafts are kept; nothing was sent or drafted.`,
+			files: written,
+			command: argv,
+			exitCode: r.status,
+		};
 	const dry = argv.includes('--dry-run');
 	const applied = o.tool === 'announcer' ? argv.includes('--apply') && !dry : !dry;
 	const reported = ok && applied ? reportedLive(o.tool, r.stdout ?? '') : [];

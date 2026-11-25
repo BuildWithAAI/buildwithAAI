@@ -44,6 +44,8 @@ export const renderResearchMd = (b: DailyBrief): string => {
 	}
 	if (isAiStory(b.incident))
 		o.push('- AI story: any prompt, injected instruction, jailbreak text, payload, malicious skill or plugin, or the wording or setting that got past a safeguard, quoted or paraphrased. Name products and companies, never the researchers, employees or victims.');
+	if (b.sources.some((s) => s.listedReport))
+		o.push('- Anything taken from an incident database listing (the AI Incident Database): it lists other outlets\' reports the radar never read. Never cite it, even next to another source.');
 	if (b.status === 'developing') o.push('- Any claim about this incident before the line that says it is a developing story.');
 	o.push('');
 	return o.join('\n');

@@ -167,7 +167,17 @@ export const loadRadarHistory = (radarDir: string, from: string, to: string): Ra
  * One of our own episodes. `protocol` and `incidentDate` come from its brief, so a story is recognised even when the
  * radar's id for it changes between days (see match.ts).
  */
-export type PreviousEpisode = {slug: string; date: string; incidentId: string | null; approved: boolean; protocol?: string | null; incidentDate?: string | null};
+export type PreviousEpisode = {
+	slug: string;
+	date: string;
+	incidentId: string | null;
+	approved: boolean;
+	protocol?: string | null;
+	incidentDate?: string | null;
+	/** The brief's lane and type: a crypto episode never covers an AI incident that shares its name, or the reverse. */
+	lane?: string | null;
+	type?: string | null;
+};
 
 /** Our own episodes from `from` to `to`, from their brief.json and approval.json. */
 export const previousEpisodes = (contentRoot: string, from: string, to: string, exceptSlug?: string): PreviousEpisode[] => {
@@ -181,7 +191,9 @@ export const previousEpisodes = (contentRoot: string, from: string, to: string, 
 		const incidentId = inc && typeof inc.id === 'string' ? inc.id : null;
 		const protocol = inc && typeof inc.protocol === 'string' && inc.protocol.trim() ? inc.protocol.trim() : null;
 		const incidentDate = inc && isDate(inc.dateUtc) ? inc.dateUtc : null;
-		out.push({slug: name, date: ds.date, incidentId, approved: existsSync(join(contentRoot, name, 'approval.json')), ...(protocol ? {protocol} : {}), ...(incidentDate ? {incidentDate} : {})});
+		const lane = inc && typeof inc.lane === 'string' ? inc.lane : null;
+		const type = inc && typeof inc.type === 'string' ? inc.type : null;
+		out.push({slug: name, date: ds.date, incidentId, approved: existsSync(join(contentRoot, name, 'approval.json')), ...(protocol ? {protocol} : {}), ...(incidentDate ? {incidentDate} : {}), ...(lane ? {lane} : {}), ...(type ? {type} : {})});
 	}
 	return out;
 };

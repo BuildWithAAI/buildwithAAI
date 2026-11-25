@@ -107,13 +107,17 @@ export const kitSources = (sources: SbLite['sources']): Array<{title: string; ur
 	const out: Array<{title: string; url: string}> = [];
 	for (const s of sources) {
 		if (!/^https?:\/\//.test(s.url) || !s.title) continue;
-		let entry = {title: s.title.replace(/[<>]/g, ''), url: s.url};
+		// the radar's redaction placeholder never reaches the description
+		let entry = {title: s.title.replace(/[<>]/g, '').replace(/\[\s*named person\s*\]/gi, '(name withheld)'), url: s.url};
 		let u: URL | null = null;
 		try {
 			u = new URL(s.url);
 		} catch {
 			u = null;
 		}
+		// a link the radar withheld because it spells a person's name is only the outlet's address: say so in words
+		if (u && (u.pathname === '/' || u.pathname === '') && !u.search && !u.hash)
+			entry = {title: `${entry.title} (${u.hostname} home page: the article's own link names a person)`.slice(0, 200), url: s.url};
 		if (u && u.hostname === 'api.llama.fi' && u.pathname.replace(/\/+$/, '') === '/hacks') {
 			let rec = '';
 			try {

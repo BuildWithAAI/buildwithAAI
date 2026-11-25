@@ -92,7 +92,7 @@ describe('hub tool override', () => {
 		const {runPostApproval} = await import('../lib/postapproval.ts');
 		const {root, cleanup} = tempRoot();
 		try {
-			const fx = fakeExec();
+			const fx = fakeExec({other: () => ({stdout: '  wrote out/brief.md'})});
 			const r = runPostApproval({tool: 'threat-brief', outDir: join(root, 'out'), hubRoot: join(root, 'hub'), root, files: {'a.txt': 'x'}, input: {a: 1}, credentialEnv: ['KIT_API_KEY'], videoKnown: false, exec: fx.exec, env: {DAILY_THREAT_BRIEF_CMD: '["node","tb.ts","--in","{input}","{dryRun}","--to","{out}"]'}});
 			assert.equal(r.mode, 'hub-dry-run');
 			assert.deepEqual(fx.calls[0].args, ['tb.ts', '--in', join(root, 'out', 'threat-brief', 'input.json'), '--dry-run', '--to', join(root, 'out', 'threat-brief')]);

@@ -13,8 +13,11 @@ import {
 	AVERAGING,
 	CAUSES,
 	CLAIM_HEDGE,
+	DEFENSIVE_FRAME,
 	DEVELOPING_WORDS,
 	HOWTO,
+	INVISIBLE_ALL,
+	INVISIBLE_CHARS,
 	LOSS_WORDS,
 	MEDIA_KEYS,
 	NEGATED_CTA,
@@ -32,7 +35,7 @@ import {
 	type FigureRole,
 	type Pattern,
 } from './lexicon.ts';
-import {personFix, personMessage, type NameScan} from './names.ts';
+import {FIRST_NAMES, personFix, personMessage, type NameScan} from './names.ts';
 import {describeNum, extractNumbers, knownTickers, matchNum, speechMismatch, type DateParts, type Num} from './numbers.ts';
 import {clip, COMMON, contentStems, coverage, findAll, hasPhrase, narrowStems, norm, normalizePunct, unique} from './text.ts';
 import type {BriefFact, ClaimRecord, CorrectionsFile, CorrectionStatus, Finding, RuleId, RuleSummary, Severity, Where} from './types.ts';
@@ -161,6 +164,17 @@ const nameWords = (ctx: Ctx): Set<string> => {
 
 const tierOf = (ctx: Ctx, id: string) => ctx.briefSources.get(ctx.resolveId.get(id) ?? id)?.tier;
 const allTierC = (ctx: Ctx, ids: string[]): boolean => ids.length > 0 && ids.every((id) => tierOf(ctx, id) === 'C');
+/** An incident database's listing of another outlet's report: discovery only, never evidence. */
+const isListed = (ctx: Ctx, id: string): boolean => ctx.briefSources.get(ctx.resolveId.get(id) ?? id)?.listedReport === true;
+/**
+ * The cited ids a claim may rest on: tier-A and tier-B sources that are not listings. A tier-C or listed excerpt
+ * co-cited with them never supplies the claim's figures, names, quotes or wording. When no such id is cited, all of
+ * them (so the tier-c-only error still fires).
+ */
+const carrying = (ctx: Ctx, ids: string[]): string[] => {
+	const strong = ids.filter((id) => tierOf(ctx, id) !== 'C' && !isListed(ctx, id));
+	return strong.length ? strong : ids;
+};
 
 // =====================================================================================================================
 // R1: every [src:id] claim matches a brief fact; its numbers, names and quotes appear in the cited excerpt
@@ -197,7 +211,9 @@ const ruleR1 = (ctx: Ctx, add: Add): ClaimRecord[] => {
 		// claims
 		u.claims.forEach((c) => {
 			const ids = c.srcIds;
-			const facts = ctx.factsFor(ids);
+			// figures, names, quotes and wording come from the tier-A/B sources cited; hedges from every cited source
+			const carry = carrying(ctx, ids);
+			const facts = ctx.factsFor(carry);
 			const rec: ClaimRecord = {scene: sceneId ?? '', sentence: u.sentenceIndex ?? 0, text: c.display, sourceIds: ids, factId: null, numbers: [], entities: [], attribution: null, developing: false, ok: true};
 			records.push(rec);
 			const w: Where = {surface: 'narration', scene: sceneId, text: clip(c.display, 220)};
@@ -205,16 +221,22 @@ const ruleR1 = (ctx: Ctx, add: Add): ClaimRecord[] => {
 				rec.ok = false;
 				return; // reported once under unknown-source
 			}
+			const listed = ids.filter((id) => isListed(ctx, id));
+			if (listed.length) {
+				rec.ok = false;
+				add('R1', 'listed-report', 'error', w, `[src:${listed.join(',')}] is an incident database's listing of another outlet's report: discovery only, never evidence, even next to another source.`, 'Cite the original report the listing links to once the radar has read it (a tier-A or tier-B source), or cut the claim.');
+			}
 			if (!facts.length) {
 				rec.ok = false;
-				add('R1', 'no-brief-fact', 'error', w, `No brief fact cites [src:${ids.join(',')}], so this claim matches no selected fact.`, 'Back the claim with a source the radar selected for a fact (see brief.json), or cut the claim.');
+				add('R1', 'no-brief-fact', 'error', w, `No brief fact cites [src:${carry.join(',')}], so this claim matches no selected fact.`, 'Back the claim with a source the radar selected for a fact (see brief.json), or cut the claim.');
 				return;
 			}
-			const ev = ctx.evidence(ids);
+			const ev = ctx.evidence(carry);
+			const evAll = ctx.evidence(ids);
 			// a claim or a figure never rests on aggregators alone (tier C never counts on its own)
 			if (allTierC(ctx, ids)) {
 				rec.ok = false;
-				add('R1', 'tier-c-only', 'error', w, `Every source behind this claim is a tier-C aggregator (${ids.join(', ')}); aggregators never carry a claim or a figure alone.`, 'Cite a tier-A or tier-B source that states it (a tracker, security firm, post-mortem or established outlet), or cut the claim.', ev.excerptText);
+				add('R1', 'tier-c-only', 'error', w, `Every source behind this claim is a tier-C aggregator (${ids.join(', ')}); aggregators never carry a claim or a figure alone.`, 'Cite a tier-A or tier-B source whose own excerpt states it (a tracker, security firm, post-mortem or established outlet), or cut the claim. Adding a source that does not state it changes nothing: a tier-C excerpt is never the only source of a figure, a name, a quote or the wording.', ev.excerptText);
 			}
 			// a loss or an accusation keeps the source's qualifier ("about $1.17 billion" is not "$1.17 billion")
 			const serious = LOSS_WORDS.test(c.display) || matches(ACCUSATIONS, c.display).length > 0;
@@ -242,6 +264,10 @@ const ruleR1 = (ctx: Ctx, add: Add): ClaimRecord[] => {
 					continue;
 				}
 				rec.ok = false;
+				if (carry.length < ids.length && matchNum(n, evAll.numbers, evAll.dates).ok) {
+					add('R1', 'tier-c-only', 'error', w, `"${n.raw}" appears only in a tier-C or listed source's excerpt among [src:${ids.join(',')}]; such a source never carries a figure, even next to another source.`, 'Use a figure the tier-A or tier-B source itself states, or cut it.', evAll.excerptText);
+					continue;
+				}
 				const averaged = AVERAGING.test(u.display);
 				add(
 					'R1',
@@ -296,7 +322,7 @@ const ruleR1 = (ctx: Ctx, add: Add): ClaimRecord[] => {
 			rec.attribution = att.resolved?.name ?? null;
 			// a hedge in the source ("suspected key theft", "potential handoffs") stays a hedge in the claim, and a
 			// hedged mechanism is developing even when the incident is confirmed (R2)
-			const hedge = hedgedMatch(c.display, hedgedSpans(ev.raw), pubWords);
+			const hedge = hedgedMatch(c.display, hedgedSpans(evAll.raw), pubWords);
 			if (hedge) {
 				rec.developing = true;
 				if (!CLAIM_HEDGE.test(c.display)) {
@@ -335,7 +361,10 @@ const ruleR1 = (ctx: Ctx, add: Add): ClaimRecord[] => {
 	ctx.scenes.forEach((sc) => {
 		const su = ctx.units.filter((u) => u.scene === sc);
 		const ids = unique([...su.flatMap((u) => u.srcIds), ...(typeof sc.onScreen?.source === 'string' && ctx.sbSources.has(sc.onScreen.source) ? [sc.onScreen.source] : [])]);
-		const ev = ctx.evidence(ids);
+		// a quote must be in a tier-A/B source's own excerpt, never only in a listing's or an aggregator's
+		const ev = ctx.evidence(carrying(ctx, ids));
+		if (typeof sc.onScreen?.source === 'string' && isListed(ctx, sc.onScreen.source))
+			add('R1', 'listed-report', 'error', {surface: 'onScreen.source', scene: sc.id, text: sc.onScreen.source}, `onScreen.source "${sc.onScreen.source}" is an incident database's listing: discovery only, never a source to show.`, 'Show the original report the listing links to once the radar has read it, or a tier-A/B source.');
 		const check = (q: string, u: Unit) => {
 			const qt = q.trim().replace(/[.,!?;:]+$/, '');
 			if (qt.split(/\s+/).length < 3) return;
@@ -359,7 +388,7 @@ const ruleR1 = (ctx: Ctx, add: Add): ClaimRecord[] => {
 	for (const u of ctx.units) {
 		if (u.kind !== 'short') continue;
 		const sceneIds = u.scene ? unique(ctx.units.filter((x) => x.scene === u.scene).flatMap((x) => x.srcIds)) : ctx.citedIds;
-		const ev = ctx.evidence(sceneIds);
+		const ev = ctx.evidence(carrying(ctx, sceneIds));
 		const allowed = [...verified, ...ev.numbers, ...ownDataNumbers(ctx, u.scene?.id)];
 		for (const n of extractNumbers(u.display, {words: 'display'})) {
 			if (matchNum(n, allowed, ev.dates).ok) continue;
@@ -390,6 +419,7 @@ const ruleR1 = (ctx: Ctx, add: Add): ClaimRecord[] => {
 			if (!matchNum(usdNum, ev.numbers, ev.dates).ok)
 				add('R1', 'rekt-figure-not-in-source', 'error', where, `rekt${key === 'loss' ? '' : '.alt'}.usd = ${usdNum.raw}, which "${sid}" does not report.`, 'Use the figure exactly as that source reports it (the meter says "reported by" that outlet).', ev.excerptText);
 			if (allTierC(ctx, [sid])) add('R1', 'tier-c-only', 'error', where, `The Rekt Meter's figure rests on a tier-C aggregator ("${sid}") alone.`, 'Use a tier-A or tier-B source\'s figure on the meter.');
+			if (isListed(ctx, sid)) add('R1', 'listed-report', 'error', where, `The Rekt Meter's source "${sid}" is an incident database's listing: discovery only, never a figure.`, 'Use the figure a tier-A or tier-B source states.');
 			const shown = typeof sc.onScreen?.[key] === 'string' ? extractNumbers(String(sc.onScreen[key]), {words: 'display'}).filter((n) => n.kind === 'money') : [];
 			if (!shown.length) add('R1', 'rekt-display', 'error', where, `onScreen.${key} shows no dollar figure next to the meter.`, `Put the figure as "${sid}" writes it in onScreen.${key}.`);
 			else if (Math.abs(shown[0].value - usd) / usd > 0.005) add('R1', 'rekt-display', 'error', where, `onScreen.${key} says "${shown[0].raw}" but rekt.usd is ${usdNum.raw}.`, 'The meter label and rekt.usd must be the same reported figure.');
@@ -636,8 +666,57 @@ const ruleR4 = (ctx: Ctx, add: Add) => {
 			for (const k of scan.known)
 				if (k.entry.category === 'official' && k.entry.official && !officialOk(k.entry.official.name, k.entry.official.sourceUrl))
 					add('R4', 'official-unsupported', 'error', at(u, spoken), `"${k.text}" is an allowlisted official, but no cited law-enforcement or regulator source names them.`, `Cite the release (${k.entry.official.sourceUrl}) with [src:id] as a law-enforcement or regulator source, or use the title only ("the ${k.entry.official.role}").`);
+			const cjk = CJK_RUN.exec(t);
+			if (cjk && !shown.has(`cjk|${cjk[0]}`)) {
+				shown.add(`cjk|${cjk[0]}`);
+				add('R4', 'cjk-text', 'error', at(u, spoken), `Contains Chinese, Japanese or Korean script ("${cjk[0]}"): the gate cannot read names in it, and court and police reports name people that way.`, 'Leave it out; an English video never needs it.');
+			}
 		}
 	}
+	// the storyboard's source list ends up in the video description: its titles and links must name no one either
+	for (const s of Array.isArray(ctx.sb.sources) ? ctx.sb.sources : []) {
+		if (!s || typeof s !== 'object') continue;
+		const title = typeof s.title === 'string' ? s.title : '';
+		const where: Where = {surface: 'storyboard.sources', text: `${String(s.id ?? '')}: ${clip(title, 120)}`};
+		const scan = ctx.scan(title);
+		for (const p of scan.persons)
+			if (p.reason === 'placeholder' || p.reason === 'handle' || p.reason === 'blocked')
+				add('R4', `source-${p.reason}`, 'error', where, `A source title in storyboard.sources ${personMessage(p).replace(/^"[^"]*" /, `contains "${p.text}" `)}.`, 'Use the outlet and a neutral description, or the brief\'s withheld form of the source.');
+		if (CJK_RUN.test(title)) add('R4', 'cjk-text', 'error', where, 'A source title contains Chinese, Japanese or Korean script.', 'Use the outlet and a neutral description instead.');
+		const slug = typeof s.url === 'string' ? slugName(s.url, ctx) : null;
+		if (slug) add('R4', 'url-name', 'error', {surface: 'storyboard.sources', text: String(s.url)}, `The link's address spells what looks like a person's name ("${slug}").`, 'Use the brief\'s withheld form of this source (the outlet\'s address), as the radar writes it when a link names a person.');
+	}
+};
+
+/** Chinese, Japanese or Korean script (2+ characters in a row). */
+const CJK_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]{2,}/u;
+
+/**
+ * A given name followed by another word in a link's path ("...-crypto-trader-john-doe-says-..."), unless the pair is an
+ * allowlisted name: outlets put the people they write about in their slugs.
+ */
+const slugName = (url: string, ctx: Ctx): string | null => {
+	let path = '';
+	try {
+		const u = new URL(url);
+		path = decodeURIComponent(`${u.pathname} ${u.search}`);
+	} catch {
+		return null;
+	}
+	const words = path
+		.normalize('NFKD')
+		.replace(/\p{M}+/gu, '')
+		.toLowerCase()
+		.split(/[^a-z0-9]+/)
+		.filter(Boolean);
+	for (let i = 0; i + 1 < words.length; i++) {
+		const [a, b] = [words[i], words[i + 1]];
+		if (!FIRST_NAMES.has(a) || b.length < 2 || /^\d/.test(b) || COMMON.has(b)) continue;
+		const pair = `${a} ${b}`;
+		if ((ctx.idx.byFirst.get(a) ?? []).some((en) => en.category !== 'blocked' && en.tokens.join(' ').startsWith(pair))) continue;
+		return pair;
+	}
+	return null;
 };
 
 // =====================================================================================================================
@@ -652,6 +731,8 @@ const ruleR5 = (ctx: Ctx, add: Add) => {
 			const offensive = OFFENSIVE.test(t) || (u.scene ? OFFENSIVE.test(sceneText.get(u.scene.id) ?? '') : false);
 			for (const {p, m} of matches(HOWTO, t)) {
 				if (p.contextual && !offensive) continue;
+				// "keep auto-run and auto-approve modes off" is the defence, not the bypass
+				if (p.code === 'bypass-setting' && DEFENSIVE_FRAME.test(t.slice(Math.max(0, m.index - 60), m.index + m.text.length + 60))) continue;
 				add('R5', p.code, 'error', at(u, spoken), `Contains ${p.label}: "${clip(m.text, 60)}".`, 'Describe the mechanism at concept level ("a compromised key let attackers upgrade the contract"): no code, function names, addresses, payloads or steps.');
 			}
 			for (const m of findAll(CAMEL, t)) {
@@ -660,6 +741,20 @@ const ruleR5 = (ctx: Ctx, add: Add) => {
 			}
 		}
 	}
+	// characters that render as nothing (Unicode tags, bidi controls, zero-width characters) hide text from the owner's
+	// review: in a storyboard they can only be an injected instruction or a copy of one
+	const hidden = new Set<string>();
+	const walk = (value: unknown, path: string): void => {
+		if (typeof value === 'string') {
+			const m = INVISIBLE_CHARS.exec(value);
+			if (m && !hidden.has(path)) {
+				hidden.add(path);
+				add('R5', 'hidden-characters', 'error', {surface: path, text: clip(value.replace(INVISIBLE_ALL, '⟨hidden⟩'), 120)}, `Contains a character that renders as nothing (U+${(m[0].codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}).`, 'Delete every hidden character; retype the text if it was pasted from a source.');
+			}
+		} else if (Array.isArray(value)) value.forEach((x, i) => walk(x, `${path}[${i}]`));
+		else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) walk(v, path ? `${path}.${k}` : k);
+	};
+	walk(ctx.sb, '');
 	for (const sc of ctx.scenes) {
 		// an ordered sequence of 3 or more actions by the attacker (or done to the victim), whatever the verbs:
 		// "First, they sent ... Then ... Next ... Finally ...", "The attacker starts by ... After that ... Once ..."

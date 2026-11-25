@@ -92,6 +92,23 @@ const keyFor = (slug: string, detail: string): string => `cc-${slug}-${sha256(de
 const pickSource = (r: RadarIncident, pref: (s: RadarSource) => boolean): RadarSource | undefined =>
 	r.sources.find(pref) ?? r.sources.find((s) => (s.tier === 'A' || s.tier === 'B') && !s.tracker) ?? r.sources[0];
 
+/**
+ * The radar's incident for an episode's brief: the same id first; else the one lane-compatible name match nearest in
+ * date (never the first in rank order: a higher-ranked AI story that shares a word with a crypto episode is another
+ * incident). Two equally near matches: none, the cautious direction (never compare two different incidents).
+ */
+export const radarMatch = (bi: DailyBrief['incident'], radarIncidents: readonly RadarIncident[]): RadarIncident | null => {
+	const exact = radarIncidents.find((x) => x.id === bi.id);
+	if (exact) return exact;
+	const ref = {id: bi.id, protocol: bi.protocol, date: bi.dateUtc || null, lane: bi.lane ?? null, type: bi.type ?? null};
+	const dateOf = (x: RadarIncident) => x.dateUtc || x.firstSeenUtc || null;
+	const found = radarIncidents.filter((x) => sameIncident(ref, {id: x.id, protocol: x.protocol, date: dateOf(x), lane: x.lane ?? null, type: x.type ?? null}, {unknownDate: 'no-match'}));
+	if (found.length <= 1) return found[0] ?? null;
+	const gap = (x: RadarIncident) => Math.abs(Date.parse(`${dateOf(x)}T00:00:00Z`) - Date.parse(`${bi.dateUtc}T00:00:00Z`));
+	const sorted = [...found].sort((x, y) => gap(x) - gap(y));
+	return gap(sorted[0]!) === gap(sorted[1]!) ? null : sorted[0]!;
+};
+
 export const correctionCandidates = (o: {contentRoot: string; correctionsPath: string; radar: RadarFile; date: string; exceptSlug?: string; days?: number}): CorrectionCandidate[] => {
 	const days = o.days ?? CORRECTION_DAYS;
 	const recorded = readCorrections(o.correctionsPath);
@@ -99,7 +116,7 @@ export const correctionCandidates = (o: {contentRoot: string; correctionsPath: s
 	const out: CorrectionCandidate[] = [];
 	for (const ep of approvedEpisodes(o.contentRoot, addDays(o.date, -days), o.date, o.exceptSlug)) {
 		const bi = ep.brief.incident;
-		const r = radarIncidents.find((x) => sameIncident({id: bi.id, protocol: bi.protocol, date: bi.dateUtc || null}, {id: x.id, protocol: x.protocol, date: x.dateUtc || x.firstSeenUtc || null}, {unknownDate: 'no-match'}));
+		const r = radarMatch(bi, radarIncidents);
 		if (!r) continue;
 		const briefSources = ep.brief.sources ?? [];
 		const add = (severity: CorrectionCandidate['severity'], detail: string, change: string, src: RadarSource | undefined, draft: string) => {

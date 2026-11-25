@@ -45,7 +45,7 @@ export const FIXES: Readonly<Record<string, string>> = {
 	'ai-security': 'Give AI agents, plugins and coding tools only the access they need, install them only from publishers you can verify, and never paste passwords or keys into an AI tool.',
 	'ai-scams': 'If a call, video or message asks for money or a code, hang up and call back on a number you already trust, even when the voice or face looks right.',
 	'ai-attacks': 'Install security updates promptly and turn on multi-factor authentication for every account that offers it.',
-	'ai-washing': "Treat 'AI-powered' as a sales claim until the company shows evidence, and never pay up front for a promised result.",
+	'ai-washing': 'Treat AI claims in an ad as marketing until the company shows evidence, and never pay up front for a promised result.',
 };
 
 /** The fix when no topic fits. */

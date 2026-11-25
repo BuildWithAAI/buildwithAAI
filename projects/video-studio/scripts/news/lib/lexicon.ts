@@ -75,8 +75,21 @@ export const HOWTO: Pattern[] = [
 	p('step-marker', 'a numbered step', /\bstep (?:one|two|three|four|five|six|\d+)\b/i, true),
 	p('numbered-list', 'a numbered list', /(?:^|\n)\s*\d+[.)]\s/, true),
 	p('injection-string', 'a prompt-injection or jailbreak string', /\b(?:ignore (?:all |any )?(?:previous|prior|above|earlier|preceding) (?:instructions|prompts|messages|rules)|disregard (?:all |any )?(?:previous|prior|above) (?:instructions|rules)|(?:jailbreak|injection) (?:prompt|payload|string|template)s?|(?:DAN|do anything now) prompt|system prompt\s*[:=]|developer mode prompt)\b/i),
-	p('placeholder-code', "the radar's [code]/[address] placeholder", /\[\s*(?:code|address)\s*\]/i),
+	p('placeholder-code', "the radar's [code]/[address]/[instruction] placeholder", /\[\s*(?:code|address|instruction)\s*\]/i),
+	// the AI lane: what an attack told an AI to do, quoted or paraphrased, is a how-to (a prompt-injection payload or a
+	// jailbreak recipe), whoever said it
+	p('ai-addressed', 'text addressed to an AI (an injected instruction)', /\b(?:AI|A\.I\.|assistants?|agents?|models?|chat ?bots?|LLMs?|copilots?)\s+(?:reading|processing|summari[sz]ing|parsing|browsing|seeing)\s+(?:this|these)\b/i),
+	p('roleplay-instruction', 'a jailbreak instruction ("pretend", "you are now", "no rules")', /\b(?:you are now (?:a|an|in|the|DAN|free|unrestricted|jailbroken|uncensored)|pretend (?:you\b|that you\b|to be\b|it (?:is|was) an? (?:AI|assistant|model|chatbot|bot))|act as (?:an? )?(?:unrestricted|unfiltered|uncensored|jailbroken|evil|DAN)\b|role-?play(?:ing|ed)? as|developer mode|forget (?:everything|all) (?:above|before)|(?:ignore|disregard|override) (?:its|your|their|the|all) (?:rules|guidelines|instructions|safeguards|guardrails)|(?:an? )?(?:AI|assistant|model|chatbot|bot) with(?:out)? (?:no )?(?:rules|restrictions|limits|guardrails|filters)\b)/i),
+	p('told-the-agent', 'an instruction the attack gave the AI, repeated', /\b(?:told|instructed|asked|ordered|directed|made) the (?:agent|assistant|model|chatbot|AI|bot|copilot)\s*(?::|to (?:open|send|paste|copy|upload|print|run|execute|read|delete|forward|email|reveal|ignore|disable|download|install|write|post))|\b(?:the )?(?:hidden )?(?:text|comment|note|instruction|prompt|message|page) (?:said|read|told|asked)\s*:/i),
+	p('bypass-setting', 'the setting that got past a safeguard', /\b(?:["“]?don['’]t ask again["”]?|always allow|auto-?approv\w*|auto-?run|yolo mode|skip(?:ped|s|ping)? the (?:confirmation|approval|permission) (?:prompt|step|dialog))\b/i),
 ];
+
+/** A defensive frame around a bypass setting: the One Fix ("keep auto-run off"), not the attack. */
+export const DEFENSIVE_FRAME = /\b(?:keep|turn|switch|leave|set)\b[^.!?]{0,40}\b(?:off|disabled)\b|\b(?:disable|never (?:enable|use|turn on)|don['’]t (?:enable|use|turn on)|avoid|untick|uncheck)\b/i;
+
+/** Characters that render as nothing: format controls (tags, zero-width and bidi controls), variation selectors, fillers. */
+export const INVISIBLE_CHARS = /[\p{Cf}\u034F\u115F\u1160\u17B4\u17B5\u180B-\u180F\u3164\uFFA0\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/u;
+export const INVISIBLE_ALL = new RegExp(INVISIBLE_CHARS.source, 'gu');
 
 /** Attack verbs: a step list or sequence that uses them reads as instructions. */
 export const OFFENSIVE =

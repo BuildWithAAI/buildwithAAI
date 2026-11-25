@@ -228,6 +228,15 @@ _SPEECH = re.compile(
     r"warned|warns|claimed|claims|denied|denies|admitted|admits|pleaded|testified)\b"
 )
 _ACCORDING = re.compile(rf"\baccording to\s+({_NAME_TOKEN}\s+{_NAME_TOKEN})\b")
+# "Feds Charge X Y Over ...", "Police Arrest X Y": a name pair right after a legal action verb is the person it is taken
+# against, even in a Title Case headline (no given-name list needed)
+_LEGAL_NAME = re.compile(
+    rf"\b(?i:charge[sd]?|charging|arrest(?:s|ed|ing)?|indict(?:s|ed|ing)?|sentence[sd]?|sentencing|extradite[sd]?|"
+    rf"convict(?:s|ed)?|jail(?:s|ed)?|detain(?:s|ed)?|sanction(?:s|ed)?)\s+({_NAME_TOKEN}\s+{_NAME_TOKEN})\b"
+)
+_NUMBER_WORDS = frozenset("one two three four five six seven eight nine ten eleven twelve dozen dozens several".split())
+_DEMONYMS = frozenset("""korean chinese russian iranian american british french german indian israeli ukrainian
+vietnamese nigerian brazilian turkish canadian australian japanese singaporean spanish italian dutch polish""".split())
 _KNOWN = re.compile(
     r"(?<![A-Za-z0-9])@?(?:" + "|".join(rf"(?i:{re.escape(t)})" if len(t) > 3 else re.escape(t)
                                          for t in KNOWN_INDIVIDUAL_TOKENS) + r")(?![A-Za-z0-9])"
@@ -519,7 +528,8 @@ def _given_start(text, start, known, evidence, surname):
 _PRODUCT_ROLE_CUES = frozenset({"agent"})
 
 
-def _replace_names(pattern, text, group, need_first_name=False, single=False, found=None, products=True, known=frozenset()):
+def _replace_names(pattern, text, group, need_first_name=False, single=False, found=None, products=True, known=frozenset(),
+                   legal=False):
     """products: True (an AI product name is never a person), False (the pattern shows a person: an age), or "role"
     (only the cue "agent" can name a product: "coding agent Claude Code"; "charged ... Devin Max" is a person)."""
     out, pos, count = [], 0, 0
@@ -535,6 +545,9 @@ def _replace_names(pattern, text, group, need_first_name=False, single=False, fo
             tokens = [raw]
         else:
             tokens, _ = _clean_tokens(raw.split())
+            if legal and any(_plain(t) in _DEMONYMS or _plain(t) in _COMMON_CAPITALISED or _plain(t) in known
+                             or _plain(t) in GENERIC_PERSON_NOUNS or _plain(t) in _NUMBER_WORDS for t in tokens):
+                continue  # "Charge North Korean Hackers", "Arrest Two Men": not a name
             allow = products
             if allow == "role":
                 allow = text[match.start(0):start].strip().lower() in _PRODUCT_ROLE_CUES
@@ -688,6 +701,7 @@ def redact_people(text, known=None, found=None):
         (_AGE, {"need_first_name": strict, "products": False}),
         (_SPEECH, {"need_first_name": strict}),
         (_ACCORDING, {"need_first_name": strict}),
+        (_LEGAL_NAME, {"legal": True}),
     ):
         text, n = _replace_names(pattern, text, 1, found=local, known=known, **kwargs)
         total += n

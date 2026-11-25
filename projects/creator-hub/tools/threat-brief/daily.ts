@@ -15,6 +15,7 @@
 import {escEmail, mdText} from '../newsletter/render.ts';
 import {isYoutubeId} from '../newsletter/publish-kit.ts';
 import {dateLabel} from './brief.ts';
+import {stripInvisible} from './radar.ts';
 import {bodyRules, htmlSafety, htmlToText, markdownLinks, markdownToText} from './lint.ts';
 import {a, button, developingPill, emailCard, emailDocument, FONT, H2, ITEM, LIST, mdLink, MUTED, P, PAPER, row, SHOW_LINK_PENDING, SLATE, TEAL, TEXT, yaml} from './render.ts';
 import {extendAllow, isSafeQuote, quoteLine, scanText, type Finding, type Level, type NameAllow, type Rule} from './safety.ts';
@@ -53,7 +54,8 @@ export const DEFAULT_SHOW_NAME = 'The Zoo & Badger Show';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 // eslint-disable-next-line no-control-regex
-const clean = (value: unknown): string => (typeof value === 'string' ? value.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim() : '');
+// control characters and characters that render as nothing (Unicode tags, bidi controls: hidden instructions)
+const clean = (value: unknown): string => (typeof value === 'string' ? stripInvisible(value).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim() : '');
 const isHttps = (url: string): boolean => {
 	try {
 		const u = new URL(url);

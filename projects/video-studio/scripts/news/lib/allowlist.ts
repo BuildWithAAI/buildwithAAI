@@ -24,6 +24,12 @@ export type AllowlistFile = {
 	blocked: string[];
 	/** Optional extra ticker symbols, so "1,400 XYZ" reads as a crypto amount. */
 	tickers?: string[];
+	/**
+	 * One-word product names that are also personal names (Claude, Codex): known in plain text, but a person cue next to
+	 * one (a role word or kinship before it, an age or apposition after it, a speech verb followed by he/she, or another
+	 * capitalised word right next to it) makes the word a name again, so R4 checks it like any other.
+	 */
+	ambiguousNames?: string[];
 	aliases: string[][];
 	officials: Official[];
 };
@@ -45,7 +51,7 @@ export type AllowCategory =
 	| 'source'
 	| 'entity';
 
-export type AllowEntry = {name: string; category: AllowCategory; tokens: string[]; official?: Official};
+export type AllowEntry = {name: string; category: AllowCategory; tokens: string[]; official?: Official; ambiguous?: boolean};
 
 export type AllowIndex = {
 	entries: AllowEntry[];
@@ -106,6 +112,11 @@ export const validateAllowlist = (raw: unknown): {file: AllowlistFile | null; pr
 		}
 		(file[key] as string[]) = v.map((x: string) => x.trim());
 	}
+	if (o.ambiguousNames !== undefined) {
+		if (!Array.isArray(o.ambiguousNames) || o.ambiguousNames.some((x) => typeof x !== 'string' || !/^\p{L}[\p{L}\p{N}'’-]*$/u.test(x.trim())))
+			e('allowlist.ambiguousNames must be an array of one-word names');
+		else file.ambiguousNames = (o.ambiguousNames as string[]).map((x) => x.trim());
+	}
 	if (o.tickers !== undefined) {
 		if (!Array.isArray(o.tickers) || o.tickers.some((x) => typeof x !== 'string' || !/^\$?[A-Za-z0-9]{2,12}$/.test(x))) e('allowlist.tickers must be an array of ticker symbols');
 		else file.tickers = (o.tickers as string[]).map((x) => x.replace(/^\$/, ''));
@@ -165,6 +176,14 @@ export const buildIndex = (file: AllowlistFile, dynamic: DynamicName[] = [], ext
 		const en = entryOf(d.name, d.category);
 		if (en) entries.push(en);
 	}
+	// product names that are also personal names: known, but marked so the name scan still checks person cues
+	const ambiguous = new Set((file.ambiguousNames ?? []).map(normName));
+	for (const n of file.ambiguousNames ?? []) {
+		if (entries.some((en) => en.tokens.length === 1 && en.tokens[0] === normName(n))) continue;
+		const en = entryOf(n, 'organisation');
+		if (en) entries.push(en);
+	}
+	for (const en of entries) if (en.tokens.length === 1 && ambiguous.has(en.tokens[0]) && en.category !== 'blocked') en.ambiguous = true;
 	const byFirst = new Map<string, AllowEntry[]>();
 	for (const en of entries) {
 		const list = byFirst.get(en.tokens[0]) ?? [];

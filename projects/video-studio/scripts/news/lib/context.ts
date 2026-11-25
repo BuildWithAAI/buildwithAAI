@@ -151,6 +151,8 @@ export const buildContext = (input: BuildInput): Ctx => {
 	const dynamic: DynamicName[] = [];
 	const extraAliases: string[][] = [];
 	for (const inc of brief.incidents) {
+		// a name the radar only read from a headline's shape could be a person or a handle: never allowlisted
+		if (inc.nameKnown === false) continue;
 		dynamic.push({name: inc.name, category: 'incident'});
 		for (const a of inc.aliases) dynamic.push({name: a, category: 'incident'});
 		if (inc.aliases.length) extraAliases.push([inc.name, ...inc.aliases]);
@@ -340,7 +342,8 @@ export const standaloneScan = (allowlistRaw: unknown, briefRaw?: unknown): ((tex
 	if (briefRaw !== undefined && briefRaw !== null) {
 		const b = normalizeBrief(briefRaw).brief;
 		if (b) {
-			for (const inc of b.incidents) for (const n of [inc.name, ...inc.aliases]) dynamic.push({name: n, category: 'incident'});
+			// an incident name the radar only read from a headline's shape is never allowlisted (it could be a person)
+			for (const inc of b.incidents) if (inc.nameKnown !== false) for (const n of [inc.name, ...inc.aliases]) dynamic.push({name: n, category: 'incident'});
 			for (const s of b.sources) if (s.publisher && !/\.[a-z]{2,}$/i.test(s.publisher)) dynamic.push({name: s.publisher, category: 'source'});
 			for (const en of b.entities) if (en.kind === 'org' || en.kind === 'protocol' || en.kind === 'place') dynamic.push({name: en.name, category: 'entity'});
 		}

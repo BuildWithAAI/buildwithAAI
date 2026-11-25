@@ -82,6 +82,11 @@ export type BriefSource = {
 	tier?: 'A' | 'B' | 'C';
 	/** The hedge word the radar found in this source's title or lead ("suspected", "potential"), if any. */
 	hedge?: string;
+	/**
+	 * An incident database's listing of another outlet's report (the AI Incident Database): discovery only. The radar
+	 * never read the report, so a listing never carries a claim, a figure, a name or a quote, even next to other sources.
+	 */
+	listedReport?: boolean;
 };
 
 /** An analysis the daily brief proposes, with the figures it computed (the news gate checks own-data numbers). */
@@ -108,6 +113,11 @@ export type BriefIncident = {
 	aliases: string[];
 	developing: boolean;
 	date?: string;
+	/**
+	 * false: the radar read this name from a headline's shape (an AI story's subject that could be a person or a
+	 * handle), so it is not allowlisted for the run: R4 checks it like any other name.
+	 */
+	nameKnown?: boolean;
 };
 
 export type BriefEntity = {name: string; kind: 'org' | 'protocol' | 'person' | 'official' | 'place' | 'other'};
