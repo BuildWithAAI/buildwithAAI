@@ -5,6 +5,7 @@ import type {BadgerHead, Expression} from '../../types';
 import {Badger, LEFT_HEAD_MOUNT} from '../Badger';
 import {ViewCompositions} from './DevViews';
 import {RigCompositions} from './DevRig';
+import {ProofCompositions} from './DevProof';
 import {Head, headGeom} from '../parts/heads/Head';
 import {NeckFront} from '../parts/Neck';
 import {LEFT_RIG} from '../parts/rigLeft';
@@ -309,6 +310,7 @@ export const DevRoot: React.FC = () => (
 		/>
 		<ViewCompositions />
 		<RigCompositions />
+		<ProofCompositions />
 		<Composition id="BadgerAnim" component={Anim} durationInFrames={135} fps={30} width={1100} height={860} />
 		<Composition
 			id="BadgerWag"

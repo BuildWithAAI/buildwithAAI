@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {AVATAR, BANNER, bannerCropRect, bannerSafeRect, centred, contains, END_SCREEN, inset, STING, TEXT_LIMITS, union, WATERMARK} from '../spec.ts';
 import {contrast, hexToRgb, lightness, luminance} from '../color.ts';
 import {BRAND, ZOO_COLORS} from '../../characters/palette.ts';
-import {BACKGROUND_SHADOW, SHOW, ZOORA} from '../tokens.ts';
+import {BACKGROUND_SHADOW, CHANNEL_IDENTITY, SHOW, ZOORA} from '../tokens.ts';
 import {ACCENT_DOT_R, BOUNDS, CENTRE, CUSPS_X, NODE_R, NODES, STROKE, TRACES} from '../marks/jellyfishGeometry.ts';
 import {BADGER_HEAD, placeBox, ZOO_HEAD} from '../characterFrames.ts';
 import {
@@ -17,6 +17,7 @@ import {
 	END_SCREEN_FRAMES,
 	END_ZONES,
 	SHOW_BANNER,
+	SHOW_LOGO,
 	SHOW_STING_BEATS,
 	showBannerHeads,
 	STING_HITS,
@@ -86,6 +87,7 @@ test('colour: every text and line pairing in the kit clears WCAG AA (4.5:1 text,
 		['show logo on the slate plate', SHOW.onPlate, SHOW.plate],
 		['show "The"/"Show" (silver) on slate', SHOW.onPlateMuted, SHOW.plate],
 		['show tagline on the light set', SHOW.ink, SHOW.bg],
+		['channel name (slate) on the light set', SHOW.plate, SHOW.bg],
 		['dark badge label', BRAND.offWhite, BRAND.slate],
 		['light badge label', BRAND.nearBlack, BRAND.offWhite],
 	];
@@ -194,6 +196,36 @@ test('banners: show set keeps Badger in front of the monitor and both characters
 	const badgerAtDesk = (L.deskTop - L.badger.groundY) / L.scale;
 	assert.ok(zooAtDesk > -520 && zooAtDesk < -420, `Zoo cut at ${zooAtDesk}`);
 	assert.ok(badgerAtDesk > -266 && badgerAtDesk < -180, `Badger cut at ${badgerAtDesk}`);
+});
+
+test('banners: show logo, channel name and tagline fit the safe area with a 12 px margin', () => {
+	// Layout widths in em of each line's font size, measured in Chromium with the bundled fonts: "Zoo & Badger"
+	// (Montserrat 900, the plate's widest line), "Zoodger News" (Montserrat 800, 0.08em tracking) and the tagline lines
+	// "Crypto and AI security, explained." (Inter 800) and "What happened. How it worked. One fix." (Inter 600).
+	const EM = {main: 7.37, name: 8.68, tagline: [16.82, 19.44]} as const;
+	assert.equal(CHANNEL_IDENTITY['zoora-security'].name, 'Zoodger News', 'a new name needs a new EM.name measurement');
+	const L = SHOW_BANNER;
+	const s = L.logo.scale;
+	const plateW = (EM.main * SHOW_LOGO.main + 2 * SHOW_LOGO.padX) * s;
+	const plateH = (2 * SHOW_LOGO.padY + SHOW_LOGO.the + SHOW_LOGO.main * 1.02 + SHOW_LOGO.show + 2 * SHOW_LOGO.gap) * s;
+	const plate = {x: L.logo.x - plateW / 2, y: L.logo.y - plateH / 2, w: plateW, h: plateH};
+	// the name's line box at normal line height (1.22 em in Montserrat), centred on L.name.x
+	const nameW = EM.name * L.name.size;
+	const name = {x: L.name.x - nameW / 2, y: L.name.top, w: nameW, h: 1.22 * L.name.size};
+	const tagW = Math.max(...EM.tagline) * L.tagline.size;
+	const tagH = 2 * 1.15 * L.tagline.size + L.tagline.gap;
+	const tagline = {x: L.tagline.x - tagW / 2, y: L.tagline.y - tagH / 2, w: tagW, h: tagH};
+	const safe = inset(bannerSafeRect(), 12);
+	for (const [what, r] of [['logo plate', plate], ['channel name', name], ['tagline', tagline]] as const) {
+		assert.ok(contains(safe, r), `${what} ${JSON.stringify(r)} outside ${JSON.stringify(safe)}`);
+	}
+	// one centred column, stacked without overlap (plate, name, tagline), left of Zoo's head
+	assert.equal(L.name.x, L.logo.x);
+	assert.equal(L.tagline.x, L.logo.x);
+	assert.ok(name.y - (plate.y + plate.h) >= 12, `plate to name ${(name.y - plate.y - plate.h).toFixed(1)} px`);
+	assert.ok(tagline.y - (name.y + name.h) >= 4, `name to tagline ${(tagline.y - name.y - name.h).toFixed(1)} px`);
+	const [zoo] = showBannerHeads();
+	assert.ok(Math.max(plate.x + plate.w, tagline.x + tagline.w) < zoo.x, 'the text column stays clear of Zoo');
 });
 
 // ---------- end screen ----------

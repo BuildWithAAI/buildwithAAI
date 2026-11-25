@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from pathmap import map_path
 from spline import spline, blob
+from sealends import seal_ends
 
 HERE = os.path.dirname(__file__)
 S = 312.6 / 329.0
@@ -127,7 +128,7 @@ class View:
 
     def part(self, pid, fill, strokes, details=(), color='coat', group=None, z=None):
         self.parts.append({'id': pid, 'color': color, 'group': group,
-                           'fill': self.path(fill, True),
+                           'fill': self.path(seal_ends(fill, strokes), True),
                            'strokes': [self.path(s) for s in strokes],
                            'details': [self.path(d) for d in details]})
 
@@ -166,9 +167,13 @@ fv.part('hindBehind', [(134, 298, 'c'), (147, 301, 'c')] + hl[1:] + [(131, 446, 
 # V-notch with the spot bulging outside it); badger_turn_front.png runs the contour straight past each spot
 outL = straight_past(pts(F, 'out_L'), 339, 362, (348, 355))
 outR = straight_past(pts(F, 'out_R'), 339, 362, (348, 355))
-oLt = [p for p in outL if p[1] <= 292]
-oRt = [p for p in outR if p[1] <= 292]
-fv.part('torso', [(113, 150, 'c')] + oLt + [(104, 300, 'c'), (137, 301)] + pts(F, 'brisket')[1:-1] + [(176, 300), (212, 300, 'c')] + rev(oRt) + [(203, 150, 'c')],
+# Round 5 (R4 review minor, seal check: 96 + 23 px at the collar's two ends): the torso's outer lines began 1-2 px below
+# the collar and 4-8 px outside its ends, so the torso fill's side edges showed unstroked between collar and line. Each line
+# now starts INSIDE the collar band's end (the collar, drawn later, covers its start) and the fill's top corners sit under
+# the band, so the outline runs out from under the collar.
+oLt = [(113, 159)] + [p for p in outL if p[1] <= 292]
+oRt = [(198.5, 158)] + [p for p in outR if p[1] <= 292]
+fv.part('torso', [(114, 155, 'c')] + oLt + [(104, 300, 'c'), (137, 301)] + pts(F, 'brisket')[1:-1] + [(176, 300), (212, 300, 'c')] + rev(oRt) + [(198, 155, 'c')],
         [oLt, oRt, pts(F, 'brisket')], group='torso')
 oLb = [p for p in outL if p[1] >= 280]
 oRb = [p for p in outR if p[1] >= 280]
@@ -237,8 +242,12 @@ bodyL = pts(B, 'body_L')
 bodyR = pts(B, 'body_R')
 bLt = [p for p in bodyL if p[1] <= 262]
 bRt = [p for p in bodyR if p[1] <= 262]
-bv.part('torso', [(98, 132, 'c')] + bLt + [(84, 300), (118, 334), (160, 342), (196, 300)] + rev(bRt) + [(176, 132, 'c'), (137, 126)],
-        [bLt, bRt], [pts(B, 'inner_L'), pts(B, 'inner_R')], group='torso')
+# Round 5 (R4 review minor, seal check 75 + 5 px): between the hind legs, on either side of the tail, the torso's lower edge
+# (the groin seen from behind) showed unstroked against the background. It is outlined now; the legs and the tail, drawn
+# after the torso, hide it everywhere else.
+crotch = [(84, 300), (118, 334), (160, 342), (196, 300)]
+bv.part('torso', [(98, 132, 'c')] + bLt + crotch + rev(bRt) + [(176, 132, 'c'), (137, 126)],
+        [bLt, bRt, crotch], [pts(B, 'inner_L'), pts(B, 'inner_R')], group='torso')
 # the collar band sits in front of the top of the back
 ct = pts(B, 'collar_top')
 cb = pts(B, 'collar_bot')
@@ -312,7 +321,10 @@ bris = pts(Q, 'brisket')
 qv.part('torso', [(262, 140, 'c')] + back + [p for p in thigh if p[1] <= 330][1:] + [(130, 330, 'c'), (160, 300)] + belly
         + [(258, 302), (275, 304)] + bris + rev(chT) + [(320, 176, 'c'), (285, 160)],
         [back, belly, bris, chT], group='torso')
-nhF = pts(Q, 'nh_front')
+# Round 5 (R4 review minor, seal check 39-48 px): the near hind leg's front line began at (166, 280), 9 px below and right of
+# the belly line's start (160, 273), so the corner between belly and stifle showed the torso's and the leg's unstroked fill
+# edges. The leg's front line now starts where the belly line starts.
+nhF = [(160, 273)] + pts(Q, 'nh_front')
 pnh = pts(Q, 'paw_nh')
 qv.part('legHindNear', [(138, 262, 'c')] + thigh + pnh[1:] + rev(nhF)[1:],
         [thigh, pnh, nhF], [[(115, 458), (115, 465), (115, 472)], [(127, 460), (127, 466), (127, 472)]])

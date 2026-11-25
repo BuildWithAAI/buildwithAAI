@@ -236,8 +236,11 @@ const POCKET_L: Pt[] = [[-59.5, -409], [-56, -394], [-46, -383.4], [-33, -383.4]
  * heel-counter seam that curves from under the hem down and out to the midsole (round 3's horizontal band and heel-tab line
  * are not on the sheet). No shadow band (the sheet's heels are flat off-white).
  */
+// Repair round 5 (ZOO-S4): the inner side's bottom corner rounds like the outer heel (~5-6 u radius, as on the sheet's two
+// heels); round 4 ran the inner wall straight down to a square corner at (-23.6, -5) -> (-26, -1.75).
 const SHOE_L: Pt[] = [
-	[-73.6, -48], [-50, -47], [-27.6, -45], [-25.6, -36], [-25, -28], [-24.4, -20], [-23.8, -12], [-23.6, -5], [-26, -1.75], [-60, -1.75],
+	[-73.6, -48], [-50, -47], [-27.6, -45], [-25.6, -36], [-25, -28], [-24.4, -20], [-23.9, -13.4], [-24.2, -8], [-25.6, -4.4], [-29, -1.9],
+	[-34, -1.75], [-60, -1.75],
 	[-93, -1.9], [-96.2, -5], [-96.6, -11], [-96, -17], [-94.4, -22], [-91.8, -25.8], [-88, -28.6], [-83.4, -31.4], [-79.2, -34.8], [-76.4, -39.4], [-75.2, -43.6],
 ];
 const SHOE_SOLE_L: Pt[] = [[-100, -11], [-56.5, -10.8], [-15, -11], [-15, 2], [-100, 2]];

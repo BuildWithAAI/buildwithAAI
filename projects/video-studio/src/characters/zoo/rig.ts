@@ -318,7 +318,7 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	// Deadpan: flat straight mouth; the anatomical-left (screen-right) brow is subtly raised in its base shape.
 	neutral: {browL: B0, browR: B0, eyes: E0, mouth: 'closed', mod: MOD0, crease: 0},
 	// Small asymmetric smirk (repair round 5, decision ZOO-E5; zoo_expr_happy.png): the eyes stay as open as neutral (Prompt 1:
-	// "eyes open and alert"; the panel keeps ~94% of the neutral eye white) with only a 0.6 u lower-lid lift, and the brows rise
+	// "eyes open and alert"; the panel keeps ~94% of the neutral eye white) with only a 0.5 u lower-lid lift, and the brows rise
 	// a little. Its own closed mouth (HAPPY_MOUTH) is a thin ~33 u smile line tucked under the moustache: the screen-left corner
 	// rises ~1.5 u and the screen-right ~3 u above its lowest point (the panel: ~33 u wide, 1.5-3 u deep), with a thin lower-lip
 	// arc; the moustache ends lift 2 / 3 u without curling and the cheek stays smooth (no crease on the panel). Round 4 (ZOO-E4)
@@ -327,7 +327,7 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	happy: {
 		browL: {lift: 2.8, inner: 0, outer: 1, arch: 0.8},
 		browR: {lift: 3.4, inner: 0.4, outer: 0.6, arch: 0.8},
-		eyes: {lidTop: 0, lidBottom: 0.7, scale: 1, iris: 1},
+		eyes: {lidTop: 0, lidBottom: 0.5, scale: 1, iris: 1},
 		mouth: 'closed',
 		mouthSpec: HAPPY_MOUTH,
 		mod: {...MOD0, cornerL: 1.5, cornerR: 3, moustacheLiftR: 3, moustacheLiftL: 2},
@@ -343,13 +343,14 @@ export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 		mod: {...MOD0, cornerL: -1.3, cornerR: -1.1, wave: 0.7},
 		crease: 1,
 	},
-	// Shocked: brows high and arched, eyes wide with smaller irises, and its own open mouth (repair round 4, ZOO-E3): a gasp
-	// oval with an arched top and low corners (SHOCKED_MOUTH, mouth.ts), not the library ah squashed to 60% x 95% (rounds 1-3),
-	// which kept ah's flat top and read as an open grin.
+	// Shocked: brows high and arched, eyes wide, and its own open mouth (repair round 4, ZOO-E3): a gasp oval with an arched
+	// top and low corners (SHOCKED_MOUTH, mouth.ts), not the library ah squashed to 60% x 95% (rounds 1-3), which kept ah's flat
+	// top and read as an open grin. Repair round 5 (ZOO-M4): the irises keep their full size (iris 1; round 4: 0.72, a pin-pupil
+	// stare at ~0.36 of the eye-white span against the panel's ~0.5) and the opened lids carry the shock.
 	shocked: {
 		browL: {lift: 7.6, inner: 0.6, outer: 0, arch: 3},
 		browR: {lift: 8.2, inner: 0.6, outer: 0, arch: 3},
-		eyes: {lidTop: 4.2, lidBottom: -1.8, scale: 1.1, iris: 0.72},
+		eyes: {lidTop: 4.2, lidBottom: -1.8, scale: 1.1, iris: 1},
 		mouth: 'ah',
 		mouthSpec: SHOCKED_MOUTH,
 		mod: MOD0,

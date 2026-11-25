@@ -1,7 +1,8 @@
 /**
  * Channel-copy tools (pure): read the paste-ready blocks of content/<channel>/channel-copy.md and lint them against
  * YouTube's limits (spec.ts TEXT_LIMITS) and the house rules (CLAUDE.md: the host is "Zoo", never "ZOO"; no income,
- * return or price claims; no "buy" calls; never ask for wallet secrets).
+ * return or price claims; no "buy" calls; never ask for wallet secrets; the channel name is spelled exactly "Zoodger
+ * News", handle "@ZoodgerNews", owner 2026-11-24).
  *
  * This is a narrow copy lint for channel fields, not the general claim gate (scripts/claims), which reviews scripts.
  */
@@ -61,11 +62,15 @@ const NEGATED_ONLY: ReadonlyArray<[RegExp, string]> = [
 	[/\bbuy\b/i, '"buy" outside a negation'],
 ];
 
+/** The only spellings of channel 2's name (owner, 2026-11-24): the name with a space, and the handle (also in URLs). */
+const CHANNEL_NAME_FORMS: ReadonlySet<string> = new Set(['Zoodger News', '@ZoodgerNews']);
+
 /** `prose` = sentences a viewer reads as claims (descriptions, narration); keyword and playlist lists are topics. */
 export const lintText = (text: string, prose = true): Issue[] => {
 	const issues: Issue[] = [];
 	const t = spoken(text);
 	if (/\bZOO\b/.test(t)) issues.push({rule: 'host name is "Zoo", never "ZOO"', text: (/[^\n]*\bZOO\b[^\n]*/.exec(t) ?? [''])[0]});
+	for (const m of t.matchAll(/@?zoodger\s*news/gi)) if (!CHANNEL_NAME_FORMS.has(m[0])) issues.push({rule: 'channel name is spelled "Zoodger News" (handle "@ZoodgerNews")', text: m[0]});
 	for (const [re, rule] of BANNED) if (re.test(t)) issues.push({rule, text: (new RegExp(`[^\\n]*${re.source}[^\\n]*`, 'i').exec(t) ?? [''])[0]});
 	if (prose) {
 		for (const s of sentences(t)) {

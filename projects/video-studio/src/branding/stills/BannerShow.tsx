@@ -1,11 +1,12 @@
 /**
- * Security channel banner ("The Zoo & Badger Show"), 2560x1440 PNG. The light talk-show set: Zoo stands behind
+ * Zoodger News channel banner (show: The Zoo & Badger Show), 2560x1440 PNG. The light talk-show set: Zoo stands behind
  * the show desk and Badger sits beside him on a seat the desk hides, so both faces fit YouTube's 423 px-tall safe
  * band at a readable size. A slate studio monitor sits behind Badger's head so his white coat reads against a
  * darker shape (ART_GUIDE CV4a); Zoo keeps the light wall behind his dark clothes (CV4b).
  *
- * The channel's display name is not decided yet, so the banner carries the show's logo, not a channel name.
- * layer 'key' renders only the key content (logo, tagline, head boxes) for the QA safe-area check.
+ * The banner carries the show logo with the channel name under it (owner, 2026-11-24): channelName defaults to
+ * CHANNEL_IDENTITY ("Zoodger News"); null hides it. The name is HTML outside the <svg>, like the logo and tagline.
+ * layer 'key' renders only the key content (logo, channel name, tagline, head boxes) for the QA safe-area check.
  */
 import React from 'react';
 import {AbsoluteFill} from 'remotion';
@@ -13,14 +14,14 @@ import {FONTS} from '../../brand/fonts';
 import {Badger, ZooRig} from '../../characters';
 import {BRAND} from '../../characters/palette';
 import {JellyfishMark} from '../marks/JellyfishMark';
-import {ShowLogo} from '../marks/Lockups';
+import {ShowChannelName, ShowLogo} from '../marks/Lockups';
 import {roundedRect, ShowDesk} from '../scene/Stage';
 import {BANNER} from '../spec';
 import {SHOW_BANNER, showBannerHeads} from '../layout';
-import {SHOW} from '../tokens';
+import {CHANNEL_IDENTITY, SHOW} from '../tokens';
 import type {BannerLayer} from './BannerZoora';
 
-export type BannerShowProps = {layer?: BannerLayer; tagline?: readonly string[]};
+export type BannerShowProps = {layer?: BannerLayer; tagline?: readonly string[]; channelName?: string | null};
 
 export {SHOW_BANNER, showBannerHeads};
 
@@ -54,9 +55,9 @@ const DeskEmblem: React.FC = () => {
 	);
 };
 
-export const DEFAULT_SHOW_TAGLINE = ['Crypto and AI security news.', 'What happened. How it worked. One fix.'] as const;
+export const DEFAULT_SHOW_TAGLINE = ['Crypto and AI security, explained.', 'What happened. How it worked. One fix.'] as const;
 
-export const BannerShow: React.FC<BannerShowProps> = ({layer = 'all', tagline = DEFAULT_SHOW_TAGLINE}) => {
+export const BannerShow: React.FC<BannerShowProps> = ({layer = 'all', tagline = DEFAULT_SHOW_TAGLINE, channelName = CHANNEL_IDENTITY['zoora-security'].name}) => {
 	const L = SHOW_BANNER;
 	const key = layer === 'key';
 	const outline = 3.5 * L.scale;
@@ -82,6 +83,7 @@ export const BannerShow: React.FC<BannerShowProps> = ({layer = 'all', tagline = 
 				)}
 			</svg>
 			<ShowLogo x={L.logo.x} y={L.logo.y} scale={L.logo.scale} />
+			{channelName ? <ShowChannelName x={L.name.x} top={L.name.top} size={L.name.size} text={channelName} /> : null}
 			<div
 				style={{
 					position: 'absolute',

@@ -77,7 +77,6 @@ export const Mouth: React.FC<{shape: MouthShape; mod?: MouthMod; project?: Mouth
 		<g data-part="mouth" data-shape={shape} data-variant={override ? 'expression' : undefined}>
 			<path d={opening} fill={ZOO_COLORS.mouthInterior} />
 			<Clipped clip={opening}>
-				{spec.cavity ? <path data-part="cavity" d={smooth(spec.cavity.map(M))} fill={ZOO_COLORS.brow} /> : null}
 				{spec.tongue ? <path d={smooth(spec.tongue.map(M))} fill={ZOO_COLORS.tongue} /> : null}
 				{spec.teeth ? (
 					<>

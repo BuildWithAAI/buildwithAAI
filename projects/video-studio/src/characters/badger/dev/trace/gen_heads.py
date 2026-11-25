@@ -165,7 +165,9 @@ FRONT = {
                                 'C 263 217 272 196 278 176',
                                 SHOCK_OPEN_NF],
                     'details': [],
-                    'fills': [(SHOCK_OPEN_NF, 'mouth'), (SHOCK_TONGUE_NF, 'tongue')]},
+                    'fills': [(SHOCK_OPEN_NF, 'mouth'), (SHOCK_TONGUE_NF, 'tongue')],
+                    # round 5: this jaw line is the whole lower contour, so a side mount's jaw closure is not drawn with it
+                    'fullJaw': True},
     },
     # pale ANATOMICAL RIGHT ear (screen left in the front view): flap + pink ribbon + small spot
     'earR': {
@@ -265,7 +267,8 @@ def build_from_front(src, fFace, fSkull, fEarR, fEarL, view, eye_w=(1.0, 1.0), e
         'brows': [{'side': s, 'outer': pt(*o, fFace), 'mid': pt(*m, fFace), 'inner': pt(*i, fFace)} for (o, m, i, s) in src['brows']],
         'mouth': {k: {'strokes': [mp(d, fFace) for d in v['strokes']], 'details': [mp(d, fFace) for d in v['details']],
                       'fills': [{'d': mp(d, fFace), 'color': c} for d, c in v['fills']],
-                      **({'sideStrokes': [mp(d, fFace) for d in v['sideStrokes']]} if 'sideStrokes' in v else {})}
+                      **({'sideStrokes': [mp(d, fFace) for d in v['sideStrokes']]} if 'sideStrokes' in v else {}),
+                      **({'fullJaw': True} if v.get('fullJaw') else {})}
                   for k, v in src['mouth'].items()},
         'earsFront': front,
     }
@@ -291,7 +294,18 @@ FRONT_NEUTRAL_MOUTH = ['M 129 175 C 138 191 156 210 174.5 220 C 186 214 198 210 
                        'M 174.5 220 C 186 228 197 230.5 208 230.5 C 219 230.5 230 228 241.5 220']
 FRONT_NOSTRILS = ['M 205 173.5 C 201.5 172.8 199 175.2 199.5 178.2 C 200 180.6 203 181.6 205.5 180.2',
                   'M 216 173.5 C 219.5 172.8 222 175.2 221.5 178.2 C 221 180.6 218 181.6 215.5 180.2']
-heads['front']['skull']['fill'] = mp(FRONT_SKULL_ROUND, F)
+# Round 5 (R4 review minor, seal check): the skull fill ran 2.8 units inside the outline's centre line along both cheeks
+# (FRONT_SKULL_ROUND, rounded under the ears), so a 1-unit sliver of whatever lay behind the head showed between the outline
+# and the coat, background wherever no neck was behind it (it read as a light line inside the cheek contour on the side
+# rigs, worst with the shocked jaw: 242 px at 3.2 px/u). The fill now runs ALONG the outline from the left jaw corner over
+# the crown to the right one, and keeps the old jaw-to-chin edge below.
+# Below the jaw corners the fill follows the OUTER jaw contour (the shocked mouth's jaw line, the lowest of the
+# expressions' jaw lines): it used to tuck 3-4 units inside the neutral / worried jaw lines, which left a background sliver
+# inside the jaw on the side rigs; there the side-mount jaw closure (mountJaws) strokes this edge on the throat side and
+# the expression's own jaw line reads as the lip line inside it. In the bust and the front view the neck lies behind it.
+FRONT_JAW_EDGE = 'C 272 196 263 217 245 230 C 233 238 220 243 208 243 C 198 243 186 239 172 230 C 152 216 138 196 129 175'
+FRONT_SKULL_FILL = 'M 129 175 ' + FRONT_OUTLINE[len('M 129 175 '):] + ' ' + FRONT_JAW_EDGE + ' Z'
+heads['front']['skull']['fill'] = mp(FRONT_SKULL_FILL, F)
 heads['front']['skull']['strokes'] = [mp(FRONT_OUTLINE, F)]
 heads['front']['mouth']['neutral'] = {'strokes': [mp(d, F) for d in FRONT_NEUTRAL_MOUTH], 'details': [], 'fills': []}
 heads['front']['nose']['details'] = [mp(d, F) for d in FRONT_NOSTRILS]
@@ -947,6 +961,58 @@ PROFILE_R['jaw'] = _jaw(PROFILE_R['skull_strokes'][1], (516, 115), 0.0, (532, 10
 heads['profileLeftScreen'] = build_profile(PROFILE_L, C, 'profileLeftScreen')
 heads['profileRightScreen'] = build_profile(PROFILE_R, CRF, 'profileRightScreen')
 
+
+def _profile_r_back():
+    """Round 5 (R4 review minor, seal check: 18 px at the pale ear's root at rest, 26-49 px with the ear folded back, 11-19 px
+    in every right walk phase): between the pale ear's lower edge and the point where the right rig's neck back line leaves
+    the skull, the right profile's skull fill showed its unstroked back edge, and a folded ear (worried, judge, earsBack)
+    uncovered more of it up the back of the skull. As the left profile does since round 4 (PROFILE_L back stroke into
+    NAPE_L_J), the head now strokes its own back contour: from where the crown stroke starts under the ear, back over the
+    occiput and down the skull fill's edge to its crossing with the right rig's neck back line, then TURN_JOIN units down
+    that line (head-local; the right profile mounts on its own rig with no offset), so ear, skull and nape read as one
+    outline at any ear fold."""
+    g = heads['profileRightScreen']
+    r = _rig('rigRight.ts')
+    hm = r['neck']['headMount']
+    back = _dense(map_path(r['neck']['strokes'][0], lambda x, y: (x - hm['x'], y - hm['y'])), 80)
+    edge_src = 'M 470 35.4 C 461 35.9 451.2 41.3 443 52 C 437 62 439 76 447 84'
+    _a = _split((500, 35), (474, 35), (452, 40), (443, 52), 0.0)
+    # the crown segment from x 470 back to (443, 52), exactly on the fill's edge (de Casteljau, as _crown_under_ear)
+    seg = ((500, 35), (474, 35), (452, 40), (443, 52))
+    lo, hi = 0.0, 1.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if _bez(*seg, mid)[0] > 470:
+            lo = mid
+        else:
+            hi = mid
+    _, tail = _split(*seg, (lo + hi) / 2)
+    edge_src = ('M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f ' % (tail[0] + tail[1] + tail[2] + tail[3])
+                + 'C 437 62 439 76 447 84 C 455 96 465 108 481 116')
+    edge = _dense(mp(edge_src, CRF), 60)
+    # first crossing with the neck's back line, then TURN_JOIN units further along the skull edge
+    acc = _arclen(edge)
+    hit = None
+    for i in range(len(edge) - 1):
+        for k in range(len(back) - 1):
+            if _seg_x(edge[i], edge[i + 1], back[k], back[k + 1]):
+                hit = i
+                break
+        if hit is not None:
+            break
+    if hit is None:
+        raise SystemExit('profileRightScreen: back contour never meets the neck back line')
+    # the crossing itself, then TURN_JOIN units down the NECK's back line (drawn over it: the skull edge turns forward into
+    # the neck past the crossing and would leave an interior tick), joined with a plain corner (the nape notch)
+    X = edge[hit]
+    kb = min(range(len(back)), key=lambda k: math.hypot(back[k][0] - X[0], back[k][1] - X[1]))
+    acb = _arclen(back)
+    tail = [p for k, p in enumerate(back) if k > kb and acb[k] - acb[kb] <= TURN_JOIN]
+    head_part = _cr_path(_resample(edge[:hit + 1], 2.0))
+    g['skull']['strokes'].append(head_part + ''.join(' L %.2f %.2f' % p for p in tail))
+    return X
+
+
 # =============================================================================== LOOKING UP (round-1 repair)
 # The matching profile pitched nose-up about the head pivot, joined to the rig's own neck so every outline is closed:
 #  * the lip line ends at the commissure and ONE throat stroke runs from there onto the neck's throat line; a coat band
@@ -1315,6 +1381,372 @@ heads['upRightScreen'] = build_up(
     # the hanging pale ear shows its pink inner over the front half of the flap (badger_pose_looking_up.png)
     inner_band='M 496 42 C 490 48 485 56 481 64 C 478 71 475 78 471 83 C 466 77 464 69 466 61 C 468 52 474 45 482 40 C 488 37 493 38 496 42 Z',
     cheek='M -30 42.6 C -26 48.1 -20 51.8 -13 53.2')
+# =============================================================================== HEAD SCALE (decision BADGER-D55, round 5)
+# D55 (recorded in round 4) found the heads' sizes inconsistent with the turnaround, which controls head size relative to the
+# body (identity and anatomy; the size panel only sets the overall scale, D01). Round 5 re-measured every view against its
+# turnaround panel at the turnaround's own scale (the views' trace scale S = 312.6 / 329 units per crop px, heads placed as
+# the rigs place them), with a similarity fit of the head ink (uniform scale about the face centroid + shift, symmetric
+# chamfer cost, ears included, the collar excluded) and with landmarks:
+#  * front head vs badger_turn_front.png: best scale 0.900-0.925 by the fit (cost 2.58 -> 1.14); eye spacing 57.2 units vs
+#    49.4-51.3 (iris centres), crown-to-lower-lip 115.8 vs 101.7, skull width at the cheeks 101 vs 92 (0.87-0.91): the
+#    whole head was about 11% big, in height as much as in width, so it is scaled UNIFORMLY, not in width only;
+#  * 3/4 heads vs badger_turn_34.png: best scale 0.970-0.975 (cost nearly flat to 1.0): eye-to-nose 63.3 vs 62.5 units,
+#    crown above the eye line 45 vs 41.8;
+#  * profiles vs badger_turn_side.png (eye-aligned): best scale 1.030-1.035 with the cost flat within 0.5% of 1.0; the
+#    top and underside contours sit within 1-3 units of the panel's from 20 units behind the eye to the nose, eye-to-nose
+#    66.0 vs 67.1 units, the neck's back line within 1-2 units. The 181-vs-162 px ear-back-to-nose gap D55 measured comes
+#    from the EAR: turn_side hangs the flap 17-24 units further back from the eye than coat_right (which the profiles were
+#    traced on). A uniform x1.10 would make the face 10% too big while closing only half of that, so the profiles keep
+#    their size (the look-up heads follow them) and the ear placement is left as a recorded shape difference.
+# So the front head is scaled by HEAD_SCALE_FRONT and the 3/4 heads by HEAD_SCALE_34 (each near its own panel; the 3/4
+# heads stay 5% larger than the front head, as the turnaround draws its 3/4 head larger than its front head, rather than 7%
+# smaller than turn_34), about the head-local origin (the head pivot: on a side rig the jaw/neck junction stays put and
+# the crown comes down). The brow offsets of the expressions are scaled with them (HeadViewGeom.scale) and the bust neck
+# (FRONT_NECK_GEOM) with the front head, so every expression keeps its proportions; the turned mounts below are fitted to
+# the scaled heads.
+HEAD_SCALE_FRONT = 0.90
+HEAD_SCALE_34 = 0.95
+
+
+def _scale_pt(p, k):
+    return {'x': round(p['x'] * k, 2), 'y': round(p['y'] * k, 2)}
+
+
+def scale_head(view, k):
+    """Uniform scale of one generated head view about its origin (paths, points, eye and brow sizes, markings)."""
+    g = heads[view]
+    S_ = lambda d: map_path(d, lambda x, y: (x * k, y * k)) if d else d
+    g['skull'] = {'fill': S_(g['skull']['fill']), 'strokes': [S_(d) for d in g['skull']['strokes']],
+                  'details': [S_(d) for d in g['skull']['details']]}
+    g['shadows'] = [{**x, 'd': S_(x['d'])} for x in g['shadows']]
+    g['markings'] = [{**x, 'd': S_(x['d'])} for x in g['markings']]
+    g['nose'] = {**g['nose'], 'd': S_(g['nose']['d']), **({'details': [S_(d) for d in g['nose']['details']]} if g['nose'].get('details') else {})}
+    for key in ('philtrum', 'chin', 'bridge'):
+        if g.get(key):
+            g[key] = S_(g[key])
+    for e in g['eyes']:
+        e['c'] = _scale_pt(e['c'], k)
+        for key in ('w', 'up', 'low', 'drop', 'irisR', 'irisDX', 'irisDY'):
+            e[key] = round(e[key] * k, 2)
+    for b in g['brows']:
+        for key in ('outer', 'mid', 'inner'):
+            b[key] = _scale_pt(b[key], k)
+    for m in g['mouth'].values():
+        m['strokes'] = [S_(d) for d in m['strokes']]
+        m['details'] = [S_(d) for d in m['details']]
+        m['fills'] = [{**x, 'd': S_(x['d'])} for x in m['fills']]
+        if 'sideStrokes' in m:
+            m['sideStrokes'] = [S_(d) for d in m['sideStrokes']]
+    for e in g['earsBehind'] + g['earsFront']:
+        e['pivot'] = _scale_pt(e['pivot'], k)
+        e['fills'] = [{**x, 'd': S_(x['d'])} for x in e['fills']]
+        e['strokes'] = [S_(d) for d in e['strokes']]
+        e['details'] = [S_(d) for d in e['details']]
+    if g.get('throat'):
+        g['throat'] = {'fill': S_(g['throat']['fill']), 'stroke': S_(g['throat']['stroke'])}
+    for mid in markings:
+        if view in markings[mid]:
+            markings[mid][view] = S_(markings[mid][view])
+    g['scale'] = k
+
+
+scale_head('front', HEAD_SCALE_FRONT)
+scale_head('threeQuarterRightScreen', HEAD_SCALE_34)
+scale_head('threeQuarterLeftScreen', HEAD_SCALE_34)
+
+
+# =============================================================================== TURNED 3/4 MOUNTS (round 5)
+# R4 final review (major, filed under integration): with the 3/4-right head on the LEFT rig (the head looks back over the
+# shoulder; Preview10s f97-f189) the near jaw had no outline from the end of the near cheek stroke (TQ_NEAR_CHEEK) to the
+# start of the neck's front line: the skull fill's jaw edge met the background (seal check 322 px at 3.2 px/u, about 30
+# units of contour; 31-33 px on every proof frame of that beat at 0.88 px/u). A second leak (61 px) sat at the far dark
+# ear's root, where the hand-written D37 nape fill stopped short of the ear. The 3/4-left head on the RIGHT rig, the same
+# construction turned the other way, leaked in the same two places (389 px).
+# badger_turn_34.png runs the near contour of a 3/4 head as ONE line from under the ear down the cheek into the neck. On a
+# turned mount the neck's front line is where that contour must arrive, so each turned mount now carries, generated here
+# from the head and its own rig's neck (after any head rescale, so the joins follow the head):
+#  * jaw (HEAD-local; Head.tsx draws it only when the head is mounted on that rig): ONE cubic that leaves the near cheek
+#    stroke's end along its own tangent and lands on the rig's throat line TURN_JOIN units below the point where that line
+#    leaves the skull fill, along the throat's tangent, then follows the throat TURN_JAW_OVERLAP units further (the head
+#    draws it over the neck's own line, so a head tilt of a few degrees never opens the join; the cubic is checked to stay
+#    outside the skull and neck fills). A coat fill drawn first in the head covers the gap between this line and the
+#    fills: the line, then back inside the coat (up the throat 2 units into the neck, then the skull's jaw edge 2 units in);
+#  * nape (NECK-local; replaces the hand-written D37 napes of Badger.tsx): the crest line from under the far ear (where it
+#    is TURN_EAR_COVER inside the ear's fill) to the end of the neck's back line under the collar, arriving along that
+#    line, and a coat fill bounded by the crest, the old back line (covered, TURN_BACK_COVER past it) and, hidden under
+#    the head, the skull's far contour and the far ear (TURN_HIDE inside them), so the neck reaches up into the ear's root.
+# KEEP IN SYNC with Badger.tsx LEFT_HEAD_MOUNT.threeQuarterRightScreen and RIGHT_HEAD_MOUNT.threeQuarterLeftScreen (dx, dy).
+TURNED_MOUNTS = {'threeQuarterRightScreen': ('left', 'rigLeft.ts', -8.0, 16.0),
+                 'threeQuarterLeftScreen': ('right', 'rigRight.ts', 8.0, 16.0)}
+TURN_JOIN = 4.0
+TURN_EDGE_OUT = 0.4
+TURN_JAW_HANDLE = 0.38
+TURN_JAW_OVERLAP = 7.0
+TURN_EAR_COVER = 4.0
+TURN_BACK_COVER = 2.8
+TURN_HIDE = 4.0
+TURN_EAR_HIDE = 8.0
+
+
+def _dense(d, n=40):
+    sub = _parse(d)[0]
+    pts, p0 = [sub['start']], sub['start']
+    for c, ps in sub['segs']:
+        for k in range(1, n + 1):
+            t = k / n
+            pts.append(_bez(p0, ps[0], ps[1], ps[2], t) if c == 'C' else (p0[0] + (ps[0][0] - p0[0]) * t, p0[1] + (ps[0][1] - p0[1]) * t))
+        p0 = ps[-1]
+    return pts
+
+
+def _arclen(pts):
+    acc = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        acc.append(acc[-1] + math.hypot(b[0] - a[0], b[1] - a[1]))
+    return acc
+
+
+def _resample(pts, step):
+    """Polyline -> points every `step` units of arc length (first and last kept)."""
+    acc = _arclen(pts)
+    out, j = [], 0
+    n = max(1, int(round(acc[-1] / step)))
+    for k in range(n + 1):
+        s = acc[-1] * k / n
+        while j < len(acc) - 2 and acc[j + 1] < s:
+            j += 1
+        seg = (acc[j + 1] - acc[j]) or 1.0
+        u = (s - acc[j]) / seg
+        out.append((pts[j][0] + (pts[j + 1][0] - pts[j][0]) * u, pts[j][1] + (pts[j + 1][1] - pts[j][1]) * u))
+    return out
+
+
+def _normals(pts):
+    out = []
+    for i in range(len(pts)):
+        a, b = pts[max(0, i - 1)], pts[min(len(pts) - 1, i + 1)]
+        t = _unit((b[0] - a[0], b[1] - a[1]))
+        out.append((-t[1], t[0]))
+    return out
+
+
+def _cr_path(P, t0=None):
+    """Smooth cubic path through every point of P (Catmull-Rom); optional unit tangent t0 at the first point."""
+    out = ['M %.2f %.2f' % P[0]]
+    for i in range(len(P) - 1):
+        p0 = P[i - 1] if i else P[i]
+        p1, p2 = P[i], P[i + 1]
+        p3 = P[i + 2] if i + 2 < len(P) else p2
+        c1 = (p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6)
+        if i == 0 and t0 is not None:
+            L = math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 3
+            c1 = (p1[0] + t0[0] * L, p1[1] + t0[1] * L)
+        c2 = (p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6)
+        out.append('C %.2f %.2f %.2f %.2f %.2f %.2f' % (c1 + c2 + p2))
+    return ' '.join(out)
+
+
+def _turned_jaw(g, view, throat_hl, neck_fill_hl):
+    """Head-local jaw line + coat fill for a turned 3/4 mount (see TURNED 3/4 MOUNTS)."""
+    skull = _samples(g['skull']['fill'], 24)
+    neck = _samples(neck_fill_hl, 24)
+    cheek = _dense(g['skull']['strokes'][1], 40)
+    E = cheek[-1]
+    tE = _unit((cheek[-1][0] - cheek[-4][0], cheek[-1][1] - cheek[-4][1]))
+    tp = _dense(throat_hl, 80)
+    acc = _arclen(tp)
+    # where the throat line leaves the skull fill (its visible part starts there)
+    iX = next(i for i, p in enumerate(tp) if not _poly_inside(p, skull) and _poly_dist(p, skull) > 0.3)
+    X = tp[iX]
+    iJ = next(i for i in range(iX, len(tp)) if acc[i] - acc[iX] >= TURN_JOIN)
+    J = tp[iJ]
+    tJ = _unit((tp[iJ + 2][0] - tp[iJ - 2][0], tp[iJ + 2][1] - tp[iJ - 2][1]))
+    # ONE cubic from the cheek's end (its own tangent) onto the throat line (the throat's tangent), then the throat itself
+    dJ = math.hypot(J[0] - E[0], J[1] - E[1])
+    c1 = (E[0] + tE[0] * dJ * TURN_JAW_HANDLE, E[1] + tE[1] * dJ * TURN_JAW_HANDLE)
+    c2 = (J[0] - tJ[0] * dJ * TURN_JAW_HANDLE, J[1] - tJ[1] * dJ * TURN_JAW_HANDLE)
+    iK = next((i for i in range(iJ, len(tp)) if acc[i] - acc[iJ] >= TURN_JAW_OVERLAP), len(tp) - 1)
+    run = _resample(tp[iJ:iK + 1], 2.5)
+    stroke = 'M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f ' % (E + c1 + c2 + J) + _cr_path(run, tJ)[len('M %.2f %.2f' % run[0]):]
+    line = [_bez(E, c1, c2, J, k / 60) for k in range(61)] + run[1:]
+    # the line must stay outside the coat (skull and neck fills): an edge outside it would be a leak
+    # (on its last stretch the cubic runs onto the throat stroke itself; the right rig's neck fill bulges up to 1.9 units
+    # past its own throat stroke near the top, which the stroke's width covers)
+    worst = max([_poly_dist(p, skull) for p in line[4:] if _poly_inside(p, skull)] +
+                [_poly_dist(p, neck) for p in line[:50] if _poly_inside(p, neck)] + [0.0])
+    if worst > 1.4:
+        raise SystemExit('%s: turned jaw line runs %.2f units inside the coat' % (view, worst))
+    # fill: the line, then back INSIDE the coat: down into the neck at its end, up the throat 2 units in, then the skull's
+    # jaw edge 2 units in from the throat's exit back to the cheek's end; it covers every gap between line and coat
+    def inset(pts, poly, d):
+        out = []
+        for p, n in zip(pts, _normals(pts)):
+            q = (p[0] + n[0] * d, p[1] + n[1] * d)
+            out.append(q if _poly_inside(q, poly) else (p[0] - n[0] * d, p[1] - n[1] * d))
+        return out
+    back_throat = inset(_resample(tp[iX:iK + 1], 2.0), neck, 2.0)[::-1]
+    i_e = min(range(len(skull)), key=lambda i: math.hypot(skull[i][0] - E[0], skull[i][1] - E[1]))
+    i_x = min(range(len(skull)), key=lambda i: math.hypot(skull[i][0] - X[0], skull[i][1] - X[1]))
+    n_ = len(skull)
+    fwd = [(i_x + k) % n_ for k in range((i_e - i_x) % n_ + 1)]
+    bwd = [(i_x - k) % n_ for k in range((i_x - i_e) % n_ + 1)]
+    jaw_idx = fwd if len(fwd) <= len(bwd) else bwd
+    jaw_edge = inset([skull[i] for i in jaw_idx], skull, 2.0)
+    pts = line + back_throat + jaw_edge
+    fill = 'M ' + ' L '.join('%.2f %.2f' % p for p in pts) + ' Z'
+    return {'stroke': stroke, 'fill': fill, 'exit': X}
+
+
+def _turned_nape(g, view, ox, oy, back_nl, neck_fill_nl):
+    """Neck-local crest line + fill for a turned 3/4 mount (see TURNED 3/4 MOUNTS)."""
+    H = lambda p: (p[0] + ox, p[1] + oy)        # head-local -> neck-local
+    skull = [H(p) for p in _samples(g['skull']['fill'], 24)]
+    ear = [H(p) for p in _samples(g['earsBehind'][0]['fills'][0]['d'], 24)]
+    neck_poly = _samples(neck_fill_nl, 24)
+    back = _dense(back_nl, 80)
+    B = back[-1]
+    tB = _unit((back[-1][0] - back[-6][0], back[-1][1] - back[-6][1]))
+    side = 1.0 if B[0] > sum(p[0] for p in skull) / len(skull) else -1.0     # +1: the nape is on the +x side
+    # S: under the far ear, TURN_EAR_COVER inside its fill, on the ear's lowest part outside the skull
+    cand = [p for p in ear if not _poly_inside(p, skull) and _poly_dist(p, skull) > 3.0]
+    lowest = max(cand, key=lambda p: p[1])
+    S = None
+    for k in range(0, 200):
+        q = (lowest[0] - side * 0.0, lowest[1] - k * 0.25)
+        if _poly_inside(q, ear) and _poly_dist(q, ear) >= TURN_EAR_COVER:
+            S = q
+            break
+    if S is None:
+        raise SystemExit('%s: no nape start under the far ear' % view)
+    d = math.hypot(B[0] - S[0], B[1] - S[1])
+    c1 = (S[0] + side * 0.10 * d, S[1] + 0.36 * d)
+    c2 = (B[0] - tB[0] * 0.36 * d, B[1] - tB[1] * 0.36 * d)
+    crest = [_bez(S, c1, c2, B, k / 80) for k in range(81)]
+    # the crest must stay clear of the skull fill below the ear (a line over the face would read as a second contour)
+    clear = min((_poly_dist(p, skull) for p in crest if not _poly_inside(p, ear)), default=99.0)
+    inc = max((_poly_dist(p, skull) for p in crest if _poly_inside(p, skull) and not _poly_inside(p, ear)), default=0.0)
+    if inc > 0.0:
+        raise SystemExit('%s: nape crest runs %.2f units inside the skull fill' % (view, inc))
+    stroke = 'M %.2f %.2f C %.2f %.2f %.2f %.2f %.2f %.2f' % (S + c1 + c2 + B)
+    # fill: crest S -> B, then up the old back line (TURN_BACK_COVER on the neck's side of it), then inside the skull's
+    # far contour and the far ear (TURN_HIDE in) back to S
+    bn = _normals(back)
+    cov = []
+    for p, n in zip(back, bn):
+        q = (p[0] + n[0] * 2.0, p[1] + n[1] * 2.0)
+        s = 1.0 if _poly_inside(q, neck_poly) else -1.0
+        cov.append((p[0] + n[0] * TURN_BACK_COVER * s, p[1] + n[1] * TURN_BACK_COVER * s))
+    # keep the covered back line only while it is outside the skull (inside, the skull hides it already)
+    cov_vis = [p for p in cov if not (_poly_inside(p, skull) and _poly_dist(p, skull) > TURN_HIDE)]
+    top = cov_vis[0] if cov_vis else cov[-1]
+    # inside the skull: from where the covered line enters it, up the far contour TURN_HIDE in, into the ear
+    rim = []
+    for y in [top[1] - k * 2.0 for k in range(0, 60)]:
+        xs = [a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) for a, b in zip(skull, skull[1:] + skull[:1])
+              if (a[1] - y) * (b[1] - y) <= 0 and a[1] != b[1]]
+        if not xs:
+            break
+        xf = max(xs) if side > 0 else min(xs)          # the far contour at this height
+        p = (xf - side * TURN_HIDE, y)
+        rim.append(p)
+        if _poly_inside(p, ear) and _poly_dist(p, ear) >= TURN_EAR_HIDE and y < S[1] - 6.0:
+            break
+    # back toward S under the ear, TURN_EAR_HIDE in (the ear lifts with a sound clip and folds with earsBack)
+    U = None
+    for k in range(0, 120):
+        q = (S[0] - side * 1.0, S[1] - 4.0 - k * 0.25)
+        if _poly_inside(q, ear) and _poly_dist(q, ear) >= TURN_EAR_HIDE:
+            U = q
+            break
+    U = U or (S[0] - side * 1.0, S[1] - 6.0)
+    pts = crest + cov_vis[::-1] + rim + [U]
+    fill = 'M ' + ' L '.join('%.2f %.2f' % p for p in pts[::2] + [pts[-1]]) + ' Z'
+    return {'stroke': stroke, 'fill': fill, 'clear': clear}
+
+
+def _edge_jaw(g, view, throat_hl, neck_fill_hl, start):
+    """Head-local jaw closure for a FRONT head on a side rig (round 5): the skull fill's lower edge from `start` (a point
+    the expressions' own jaw lines already cover) down the chin to where the rig's throat line leaves the skull, then down
+    the throat TURN_JAW_OVERLAP units; smoothed (Catmull-Rom), TURN_EDGE_OUT outside the edge, plus the same coat fill."""
+    skull = _samples(g['skull']['fill'], 24)
+    neck = _samples(neck_fill_hl, 24)
+    tp = _dense(throat_hl, 80)
+    acc = _arclen(tp)
+    iX = next(i for i, p in enumerate(tp) if not _poly_inside(p, skull) and _poly_dist(p, skull) > 0.3)
+    X = tp[iX]
+    n_ = len(skull)
+    i_s = min(range(n_), key=lambda i: math.hypot(skull[i][0] - start[0], skull[i][1] - start[1]))
+    i_x = min(range(n_), key=lambda i: math.hypot(skull[i][0] - X[0], skull[i][1] - X[1]))
+    fwd = [(i_s + k) % n_ for k in range((i_x - i_s) % n_ + 1)]
+    bwd = [(i_s - k) % n_ for k in range((i_s - i_x) % n_ + 1)]
+    idx = fwd if len(fwd) <= len(bwd) else bwd
+    edge = [skull[i] for i in idx]
+    # stop the edge where it comes within reach of the throat's exit (the spline rounds into the throat from there)
+    edge = [p for p in edge if math.hypot(p[0] - X[0], p[1] - X[1]) > 4.0]
+    out = []
+    for p, n in zip(edge, _normals(edge)):
+        q = (p[0] + n[0] * 2.0, p[1] + n[1] * 2.0)
+        sgn = -1.0 if _poly_inside(q, skull) else 1.0
+        out.append((p[0] + n[0] * TURN_EDGE_OUT * sgn, p[1] + n[1] * TURN_EDGE_OUT * sgn))
+    j1 = next(i for i in range(iX, len(tp)) if acc[i] - acc[iX] >= 2.0)
+    iK = next((i for i in range(j1, len(tp)) if acc[i] - acc[iX] >= 2.0 + TURN_JAW_OVERLAP), len(tp) - 1)
+    pts = [start] + _resample(out, 3.0)[1:] + _resample(tp[j1:iK + 1], 2.5)
+    clean = [pts[0]]
+    for p in pts[1:]:
+        if math.hypot(p[0] - clean[-1][0], p[1] - clean[-1][1]) > 1.5:
+            clean.append(p)
+    stroke = _cr_path(clean)
+    line = _dense(stroke, 20)
+    worst = max([_poly_dist(p, skull) for p in line if _poly_inside(p, skull)] + [0.0])
+    if worst > 1.4:
+        raise SystemExit('%s: front jaw closure runs %.2f units inside the skull fill' % (view, worst))
+    def inset(pts_, poly, d):
+        res = []
+        for p, n in zip(pts_, _normals(pts_)):
+            q = (p[0] + n[0] * d, p[1] + n[1] * d)
+            res.append(q if _poly_inside(q, poly) else (p[0] - n[0] * d, p[1] - n[1] * d))
+        return res
+    back_throat = inset(_resample(tp[iX:iK + 1], 2.0), neck, 2.0)[::-1]
+    jaw_edge = inset([skull[i] for i in idx], skull, 2.0)[::-1]
+    poly = line + back_throat + jaw_edge
+    fill = 'M ' + ' L '.join('%.2f %.2f' % p for p in poly) + ' Z'
+    return {'stroke': stroke, 'fill': fill, 'exit': X}
+
+
+turned_report = {}
+for _view, (_rig_side, _rig_file, _dx, _dy) in TURNED_MOUNTS.items():
+    _r = _rig(_rig_file)
+    _hm = _r['neck']['headMount']
+    _ox, _oy = _hm['x'] + _dx, _hm['y'] + _dy
+    _to_head = lambda d, ox=_ox, oy=_oy: map_path(d, lambda x, y: (x - ox, y - oy))
+    _jaw_g = _turned_jaw(heads[_view], _view, _to_head(_r['neck']['strokes'][1]), _to_head(_r['neck']['fill']))
+    _nape_g = _turned_nape(heads[_view], _view, _ox, _oy, _r['neck']['strokes'][0], _r['neck']['fill'])
+    heads[_view]['mountJaws'] = [{'rig': _rig_side, 'fill': _jaw_g['fill'], 'stroke': _jaw_g['stroke']}]
+    heads[_view]['turned'] = {'rig': _rig_side, 'nape': {'fill': _nape_g['fill'], 'stroke': _nape_g['stroke']}}
+    turned_report[_view] = {'rig': _rig_side, 'throatExit': [round(v, 1) for v in _jaw_g['exit']], 'crestClear': round(_nape_g['clear'], 1)}
+print('turned mounts:', turned_report)
+
+# Round 5 (R4 review minor, seal check: 79 px at 3.2 px/u on the left rig, 82 on the right, 3-7 px per proof frame): on a
+# side rig the FRONT head's chin edge, below the point where the expressions' jaw lines turn in to the mouth corner, meets
+# the background between the jaw line and the neck's front line. Each side mount gets a jaw closure on the throat side,
+# generated from the scaled head and that rig's neck (Head.tsx draws it only on its rig, and not with a mouth whose own jaw
+# line is the whole lower contour: the shocked gasp). KEEP IN SYNC with Badger.tsx LEFT_HEAD_MOUNT.front and
+# RIGHT_HEAD_MOUNT.front (dx, dy).
+FRONT_MOUNTS = {'left': ('rigLeft.ts', -13.0, 25.0, (129.0, 175.0)), 'right': ('rigRight.ts', 13.0, 25.0, (278.0, 176.0))}
+heads['front']['mountJaws'] = []
+for _rig_side, (_rig_file, _dx, _dy, _start_nf) in FRONT_MOUNTS.items():
+    _r = _rig(_rig_file)
+    _hm = _r['neck']['headMount']
+    _ox, _oy = _hm['x'] + _dx, _hm['y'] + _dy
+    _to_head = lambda d, ox=_ox, oy=_oy: map_path(d, lambda x, y: (x - ox, y - oy))
+    _sx, _sy = F(*_start_nf)
+    _g = _edge_jaw(heads['front'], 'front/' + _rig_side, _to_head(_r['neck']['strokes'][1]), _to_head(_r['neck']['fill']),
+                   (_sx * HEAD_SCALE_FRONT, _sy * HEAD_SCALE_FRONT))
+    heads['front']['mountJaws'].append({'rig': _rig_side, 'fill': _g['fill'], 'stroke': _g['stroke']})
+    turned_report['front/' + _rig_side] = {'throatExit': [round(v, 1) for v in _g['exit']]}
+print('front mounts:', {k: v for k, v in turned_report.items() if k.startswith('front')})
+print('profile right back contour meets the neck at', [round(v, 1) for v in _profile_r_back()])
+
 for v in ('front', 'threeQuarterLeftScreen', 'threeQuarterRightScreen'):
     heads[v]['throat'] = None
 for v in heads:
@@ -1323,9 +1755,14 @@ for v in heads:
     heads[v].setdefault('chin', None)
     heads[v].setdefault('bridge', None)
     heads[v].setdefault('jaw', None)
+    heads[v].setdefault('turned', None)
+    heads[v].setdefault('mountJaws', [])
+    heads[v].setdefault('scale', 1)
 
 # =============================================================================== FRONT NECK (bust)
-FN = lin(208, 250, S_NF, S_NF)
+# D55 (round 5): the bust neck scales with the front head about the head origin in bust coordinates (NF (208, 215) =
+# (0, -19.45); the busts draw the head at translate(0 -19.5)), so the bust stays a uniformly scaled copy of the panel
+FN = compose(lin(208, 250, S_NF, S_NF), lambda x, y: (x * HEAD_SCALE_FRONT, -19.45 + (y + 19.45) * HEAD_SCALE_FRONT))
 front_neck_geom = {
     'fill': mp('M 128 170 L 280 170 C 281 200 282 230 284 252 C 300 280 318 305 330 330 L 80 330 C 92 305 108 280 124 252 C 126 230 127 200 128 170 Z', FN),
     'strokes': [mp('M 129 175 C 128 205 127 230 125 252', FN), mp('M 279 176 C 280 205 281 230 283 252', FN),

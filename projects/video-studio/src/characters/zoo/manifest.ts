@@ -79,7 +79,7 @@ export const ZOO_MANIFEST: ZooManifest = {
 	palette: {
 		keys: {...ZOO_COLORS},
 		propKeys: {...PROP_COLORS},
-		brand: ['nearBlack (outlines)', 'offWhite (sneaker soles: ZOO_COLORS.sneakerSole has the same value)', 'teal (pin, via ZOO_COLORS.pin)', 'background (dev renders only)'],
+		brand: ['nearBlack (outlines)', 'offWhite (sneaker uppers: ZOO_COLORS.sneaker is BRAND.offWhite, decision ZOO-C8)', 'teal (pin, via ZOO_COLORS.pin)', 'background (dev renders only)'],
 		line: {color: LINE.color, width: LINE.width, detailWidth: LINE.detailWidth},
 		zooLine: {
 			...ZOO_LINE,
@@ -516,7 +516,7 @@ export const ZOO_MANIFEST: ZooManifest = {
 		{
 			id: 'ZOO-M3',
 			sheet: 'zoo_mouth_ah.png: an oval with an arched top, narrowest at its top row and widest at 46-63% of its height, dark cavity and tongue; zoo_mouth_oh.png: an egg ~13 x 13 u, widest a little below the middle. Neither panel drops the chin.',
-			chosen: 'Repair round 4: "ah" re-traced (arched top ~1.5 u under the moustache, widest at 42-70% of its height, near-black cavity behind the tongue, jaw drop 1 u); "oh" re-traced as an egg ~13.4 x 13 u (jaw drop 0.6). Mouth.tsx draws an optional cavity and lip band per shape; the six-shape library and its names are unchanged.',
+			chosen: 'Repair round 4: "ah" re-traced (arched top ~1.5 u under the moustache, widest at 42-70% of its height, near-black cavity behind the tongue, jaw drop 1 u); "oh" re-traced as an egg ~13.4 x 13 u (jaw drop 0.6). Mouth.tsx draws an optional cavity and lip band per shape; the six-shape library and its names are unchanged. Round 5 (ZOO-M4) narrows "ah", drops the near-black cavity for the maroon interior and re-traces "slightlyOpen".',
 			why: 'R3 review: both shapes were flat D-shapes with the chin dropping; measured with a mouth-opening mask on the panels and the renders.',
 		},
 		{
@@ -528,7 +528,7 @@ export const ZOO_MANIFEST: ZooManifest = {
 		{
 			id: 'ZOO-E4',
 			sheet: 'zoo_expr_happy.png: a small asymmetric smirk: a wide U-smile under the moustache, the screen-right corner and moustache end lifted more, a cheek fold beside it, lower lids up.',
-			chosen: 'Repair round 4: happy has its own closed mouth (HAPPY_MOUTH: a 40 u U-smile line with a skinShadow lower-lip band), corner lifts 4 / 9 u (L / R), moustache ends lifted 4 / 8 u, the beard\'s inner edge follows the smile, a soft tapered cheek crease on the screen-right cheek and lower lids at 3.8. Legible at bust and proof scale; on the review\'s metric (|dL*| > 40 in the mouth box of the 400 px bust, against neutral) it is ~2.7x round 3.',
+			chosen: 'SUPERSEDED by ZOO-E5 (repair round 5): the round-4 happy overshot into a squint and a broad grin. Round 4 (literal values of that round): its own closed mouth (HAPPY_MOUTH: a 40 u U-smile line with a skinShadow lower-lip band), corner lifts 4 / 9 u (L / R), moustache ends lifted 4 / 8 u, the beard\'s inner edge follows the smile, a soft tapered cheek crease on the screen-right cheek and lower lids at 3.8 (upper -0.8). On the review\'s metric (|dL*| > 40 in the mouth box of the 400 px bust, against neutral) it was ~2.7x round 3.',
 			why: 'R3 review: the front smirk was illegible (the review asked for 3-4x its mouth-region difference).',
 		},
 		{
@@ -562,6 +562,30 @@ export const ZOO_MANIFEST: ZooManifest = {
 			why: 'The published pivot must be where the mouth is actually drawn (R3 review).',
 		},
 		{
+			id: 'ZOO-E5',
+			sheet: 'zoo_expr_happy.png against zoo_expr_neutral.png (0.699 u/px): the eyes stay open (eye-white area 94% / 81% of neutral per eye, the lower one the far eye foreshortened by the panel\'s head turn), the brows rise ~2-6 u, and the smile is a thin line ~33-35 u wide and 1.5-3 u deep, tucked right under a flattened moustache; no cheek crease.',
+			chosen: `Repair round 5 (supersedes ZOO-E4): eyes lidTop ${EXPRESSIONS.happy.eyes.lidTop} / lidBottom ${EXPRESSIONS.happy.eyes.lidBottom} (round 4: -0.8 / 3.8, a squint); brows lift ${EXPRESSIONS.happy.browL.lift} (screen right) / ${EXPRESSIONS.happy.browR.lift} (screen left) u with soft arches; HAPPY_MOUTH is a thin 1.9 u line ~33 u wide whose middle sits 1.4 u above the closed line, with corner lifts ${EXPRESSIONS.happy.mod.cornerL} / ${EXPRESSIONS.happy.mod.cornerR} u (L / R) and moustache lifts ${EXPRESSIONS.happy.mod.moustacheLiftL} / ${EXPRESSIONS.happy.mod.moustacheLiftR} u on the existing tip-weighted profile (no curl), a thin lower-lip arc (<= 0.8 u) in place of round 4's filled crescent, lip-patch hole 0.3 and no cheek crease. Measured (scratchpad r5/zoo, tools eyes2.py, mouthline.py, facescales.py): eye-white area happy / neutral 0.93 / 0.94 / 0.95 on the front busts at 1.43 / 1.15 / 0.88 px/u (round 4: 0.40) and 0.90 / 0.95 / 0.88 on the 3/4 busts (round 4: 0.36); the smile line is 33.7 u long (6 px/u render) and its ends sit 1.8 u (screen left) and 2.7 u (screen right) above its lowest point, also at 0.88 px/u (1.7 / 2.6 u on a x4 supersampled render; round 4: a 41 u U, 6-7 u deep); the ends tuck under the lifted moustache edge (stroke centre 0.65 / 1.1 u below it).`,
+			why: 'Prompt 1 locks "eyes open and alert, with visible irises" and a restrained "small asymmetric smirk"; the R4 review measured round 4 at 42% / 36% eye white with a broad, curled-moustache U-grin that read smug. The panel levels the moustache, which on this rig would take ~7 u of tip lift; the review caps it at 2-3 u, so the tips still droop past the smile ends (known gap).',
+		},
+		{
+			id: 'ZOO-C8',
+			sheet: 'zoo_turn_front.png: the uppers are a warm off-white (L* ~93-96 against the sheet background\'s ~89) and the sole band under the midsole line is darker (L* ~84-90). Prompt 1 locks "off-white low-top sneakers"; the palette off-white is #F4F6F8.',
+			chosen: `Repair round 5: ZOO_COLORS.sneaker = BRAND.offWhite (${ZOO_COLORS.sneaker}, L* 96.8; was #E7E9EC, L* 92.3, 0.4 from the background #E6E8EB), and the sole is drawn in the sneaker's one shadow tone: sneakerShadow = sneakerSole = ${ZOO_COLORS.sneakerShadow} (L* 87.6), the off-white's shadow tone (the value of Badger's coatShadow). Before: sneakerShadow was brand silver #C9CED6 and unused, and the sole was #F4F6F8, lighter than the upper. The midsole line (sneakerLine, ZOO-C7) still separates sole and upper. Every view reads these keys: front, back, side, 3/4 and the typing pose (its feet are the 3/4 shoes). Measured: upper L* 96.8 against the background's 91.9 (+4.9; target >= 3-4) and sole 87.6 in the dev views and in Preview10s f0.`,
+			why: 'The R4 review found the uppers at the background\'s lightness, so the shoes read grey and hollow next to Badger\'s white paws, while the sheet draws them as white as his coat over a darker sole. INT-C1 cites the old "sneakers L* 0.4" contrast; that premise no longer holds (its contact shadow is unchanged).',
+		},
+		{
+			id: 'ZOO-M4',
+			sheet: 'R4 review, mouth masks at the panel framing (0.4116 u/px): zoo_mouth_ah.png 23.5 x 16.5 u, widest at 49-62% of its height, last row 26% of the widest; zoo_mouth_slightly_open.png a symmetric lens 25.5 x 4.9 u, widest at 55%; the open mouths\' cavities are dark maroon (~(44-71, 21-34, 19-29)), not near-black; zoo_expr_shocked.png: the gasp sits ~2.9 u under the moustache and the irises fill ~0.43-0.50 of the eye-white span.',
+			chosen: 'Repair round 5: "ah" narrowed to 24.7 x 16.5 u with the rim at lineScale 1 (23.9 x 15.6 at MouthDemo\'s 0.5; round 4: 28.8 x 16.5), widest at 56-59%, its last row 33% of the widest (round 4: 40%); the near-black brow-ink cavity is gone from ah, oh and SHOCKED_MOUTH (the MouthSpec cavity field is removed), so the opening shows the maroon mouthInterior above the tongue; "slightlyOpen" re-traced as a symmetric lens, 25.9 x 4.9 u, widest at 45-64% (round 4: a D, 6.6 u tall, widest at 20-33%); SHOCKED_MOUTH 2 u lower (lip-patch hole 4 -> 6); EXPRESSIONS.shocked eyes.iris 0.72 -> 1, so the iris fills 0.50 of the eye-white span (round 4: 0.34) and the opened lids carry the shock. The rim stays near-black (LINE.color, ZOO_LINE.feature). The six-shape library, its names, the jaw anchor and amplitudeToMouth are unchanged.',
+			why: 'R4 review (minor): ah read ~20% squatter than the panel, the cavities read as black holes, slightlyOpen was a D, and the gasp sat tight under the moustache with pin-point irises. No new palette colour: mouthInterior is the panel\'s maroon family.',
+		},
+		{
+			id: 'ZOO-S4',
+			sheet: 'zoo_turn_back.png: both heels of each shoe are rounded; zoo_turn_34.png: the screen-right (far, profile) shoe shows a lace panel along the instep (an eyestay edge ~5 u under the top line with four lace marks) and a toe-cap seam from the panel\'s front end down to the midsole; zoo_turn_front.png with the near-black trousers brightened: one soft fold above each hem, rising from the inner side (~40, -71) to a peak toward the outer side (~60, -79).',
+			chosen: 'Repair round 5: back shoes: the inner bottom corner rounds over ~5 u like the outer heel (round 4: a square corner at (-23.6, -5) -> (-26, -1.75)). 3/4 far shoe: an eyestay line from the hem to the toe cap, four lace bars across the band and the toe-cap seam joined to the panel\'s front end (round 4: four dashes along the top edge); the R4 review calls it the "near" shoe, but it is the far (profile) shoe of Body34.tsx, also drawn in the typing pose. Front trousers: one tapered break crease per leg in trousersShadow (<= 2 u wide), authored on the left leg and mirrored with it (ZOO-S1).',
+			why: 'R4 review (minor); each change was checked on zoomed renders against its crop and at 0.54 / 0.88 / 1.4 px/u.',
+		},
+		{
 			id: 'INT-Z1',
 			sheet: 'zoo_turn_front.png: the relaxed thumb joins the back of the hand at the top; the thumb/index notch starts about 40% down the hand, and the finger separations run about a third of the hand length.',
 			chosen: 'Integration fix (2026-11-24): the thumb is filled without a full outline; only the tip and the lower notch are stroked (THUMB_EDGE). Finger separation lines lengthened from 7 to about 18 units.',
@@ -585,14 +609,15 @@ export const ZOO_MANIFEST: ZooManifest = {
 		'Happy has no head yaw in the front view (ZOO-E2); use view="threeQuarter" for the turned-head smile.',
 		'The point gesture timing (ease, hold, overshoot) lives in the compositions; the rig only provides the path, the loose-fist transition, the raise-only tuck (pointTuck) and POINT_LOOK. Preview10s settles at poseAmount 0.993 and lets the arm sink to 0.93 over the hold on one sine ease (INT-T2), ~7-8 px of hand travel at the proof scale.',
 		'The upper-arm lead (ZOO-P6) costs fist clearance: at PAIR_SPACING 570 the fist passes Badger\'s pale ear 1.0 px apart at f96 and 10.4 px at f187 (Zoo-only and Badger-only renders; INT-P2 asks >= 24 px). About 600 u keeps every raise and lowering frame >= 24 px (Badger\'s frames shifted); stage.ts belongs to the integrator, who re-checks. Pass pointTuck={0} while lowering (Preview10s does).',
-		'Happy (ZOO-E4) is legible at bust and proof scale, but its mouth-region difference from neutral is ~2.7x round 3, short of the review\'s 3-4x.',
+		'Happy (ZOO-E5) is deliberately restrained: open eyes, slightly raised brows and a thin smile line 1.8 / 2.7 u deep. The moustache lift is capped at 2 / 3 u (R4 review), so its tips still droop below the smile ends where the panel levels them, and at 0.88 px/u the smile is a subtle read (its mouth-box change against neutral is 298 px at |dL*| > 40 on the 400 px bust, round 4: 612); the asymmetry is ~1 u between the corners.',
 		'Point end pose: the upper arm is ~6 deg more raised than on the pose panel (ZOO-P4) and the fingertip sits ~14 u lower (h ~719 vs 733); the shoulder line keeps a small corner where the raised sleeve meets it.',
 		'Pose "typing" is authored only in 3/4 facing screen right (as on the sheet); the view prop is ignored for it (ZOO-T5). Its near forearm ends ~18 u short of the sheet\'s (cuff at x -100.6 vs ~-82), so the re-traced hands (ZOO-T8) are long from the cuff and the front tips sit ~28 u left of the sheet\'s.',
 		'Only the anatomical-left arm can point; the right arm stays at rest.',
 		'Arms in the 3/4, side and back views are static hangs (no joint rig yet); the typing arms are fixed except finger taps and breathing.',
 		'Back view: expression, mouth, blink, look and brow lift have no visible effect (no face from behind); headTilt and breathing work.',
-		'Side view: the smirk lifts the anatomical-left (far) mouth corner, so "happy" reads only through the squint and a slight near-corner lift in profile.',
+		'Side view: the smirk lifts the anatomical-left (far) mouth corner most, so "happy" reads in profile only through the brows and the near corner\'s 1.5 u lift (the profile moustache does not lift).',
 		'headTilt rotates the head about the neck pivot in every view without deforming the neck; keep it within about +-8 deg.',
-		`Brand colours used outside ZOO_COLORS: ${BRAND.nearBlack} (outline). ZOO_COLORS.sneakerSole equals ${BRAND.offWhite} (offWhite); the pin has no highlight (teal dome and tentacles cased in near-black). Props use PROP_COLORS (palette.ts).`,
+		`Brand colours used outside ZOO_COLORS: ${BRAND.nearBlack} (outline). ZOO_COLORS.sneaker is ${BRAND.offWhite} (offWhite) and its shadow tone (the sole) ${ZOO_COLORS.sneakerShadow} equals Badger's coatShadow (ZOO-C8); the pin has no highlight (teal dome and tentacles cased in near-black). Props use PROP_COLORS (palette.ts).`,
+		'The open mouths keep a near-black rim (LINE.color) where the mouth panels draw a very dark red-brown, and their maroon interior (mouthInterior) is a little lighter than the panels\' cavity (ZOO-M4); no new palette colour was added.',
 	],
 };

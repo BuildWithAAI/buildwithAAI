@@ -7,9 +7,9 @@
  */
 import React from 'react';
 import {ZOO_COLORS} from '../../palette';
-import {line, mirrorX, smooth, smoothRange, type Pt} from '../geometry';
+import {line, mirrorX, smooth, smoothRange, tapered, type Pt} from '../geometry';
 import {ZOO_LINE} from '../lines';
-import {Clipped, Outline, Shape, Stroke} from './Shape';
+import {Clipped, Outline, Shape, Stroke, useLineScale} from './Shape';
 
 /**
  * Trouser leg (path = outline centre). Repair round 4 (zoo_turn_front.png, both legs row-scanned and averaged): lean
@@ -35,6 +35,13 @@ const LEG: Pt[] = [
 const LEG_OUTLINE = {from: 1, to: LEG.length - 1} as const;
 /** The fly: one soft seam from the tee hem to the crotch, between the open overshirt panels (zoo_turn_front.png). */
 const FLY: Pt[] = [[1, -451], [1, -425], [0.7, -405], [0, -395.6]];
+/**
+ * The break crease (repair round 5, ZOO-S4; zoo_turn_front.png with the near-black trousers brightened): one soft fold just
+ * above each hem where the leg bunches on the shoe, rising from the inner side (~40, -71) to a peak toward the outer side
+ * (~60, -79) and turning down; a tapered line in trousersShadow, the trousers' one shadow tone (round 4's legs were flat at
+ * the break).
+ */
+const BREAK_CREASE: Pt[] = [[40.4, -70.6], [47, -73.6], [54.6, -77], [60.4, -78.8], [64.6, -77.6], [67.4, -74.8]];
 
 /**
  * Sneaker (path bottom at y = -1.75, so the outline's outer edge touches the ground). Repair round 4 (outline centres of
@@ -47,7 +54,7 @@ const SHOE: Pt[] = [
 	[87.2, -34], [90, -30], [94.2, -26], [100, -22], [104.6, -18], [107.4, -14], [108.8, -10], [109.4, -5.6], [108.2, -2.4], [103, -1.75],
 	[60, -1.75], [32, -1.75], [28.6, -3.4], [27.8, -8], [28.2, -16], [28.6, -26], [29.2, -34], [30, -40],
 ];
-/** The sole below the midsole line (sneakerSole). */
+/** The sole below the midsole line (sneakerSole: the sneaker's shadow tone under the off-white upper, ZOO-C8). */
 const SOLE: Pt[] = [[112, -9.4], [60, -9.2], [22, -9.4], [22, 2], [112, 2]];
 /**
  * Line art in ZOO_COLORS.sneakerLine (soft mid-grey, as on the sheet; round 3 drew them near-black, which read as a
@@ -70,11 +77,13 @@ const mirrorIf = (side: 1 | -1) => (p: Pt[]) => (side === 1 ? p : mirrorX(p));
 
 const Leg: React.FC<{side: 1 | -1}> = ({side}) => {
 	const pts = mirrorIf(side)(LEG);
+	const ls = useLineScale();
 	return (
 		<g data-part={side === 1 ? 'legL' : 'legR'}>
 			{/* Flat trousers, as on the sheet (round 3's under-hem band read as a belt and its inseam band as a thick inner
 			    line). The outline skips the centre line above the crotch, where the two legs overlap (the fly is drawn once). */}
 			<Shape d={smooth(pts)} fill={ZOO_COLORS.trousers} stroke={0} />
+			<path data-part="breakCrease" d={tapered(mirrorIf(side)(BREAK_CREASE), (t) => ZOO_LINE.detail * 0.9 * ls * Math.pow(Math.sin(Math.PI * t), 0.6))} fill={ZOO_COLORS.trousersShadow} />
 			<Outline d={smoothRange(pts, LEG_OUTLINE.from, LEG_OUTLINE.to)} />
 		</g>
 	);

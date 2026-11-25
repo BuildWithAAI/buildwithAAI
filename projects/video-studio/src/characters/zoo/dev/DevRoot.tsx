@@ -291,13 +291,39 @@ const SCALES: [number, number][] = [
 	[0.88, 1],
 	[1.4, 1],
 ];
-export const ZooScalesDev: React.FC<{view?: ZooView}> = ({view = 'front'}) => (
+export const ZooScalesDev: React.FC<{view?: ZooView; expression?: Expression}> = ({view = 'front', expression}) => (
 	<Bg>
 		<div style={{display: 'flex', alignItems: 'flex-start', gap: 20}}>
 			{SCALES.map(([k, ls]) => (
 				<svg key={k} width={428.57 * k} height={942.86 * k} viewBox={FRONT_VB}>
-					<ZooRig view={view} lineScale={ls} breathe={false} />
+					<ZooRig view={view} expression={expression} lineScale={ls} breathe={false} />
 				</svg>
+			))}
+		</div>
+	</Bg>
+);
+
+/**
+ * The four expressions at the three face framings (repair round 5): one row per expression, framed like zoo_expr_*.png
+ * (EXPR_VB) at the crop's 1.43 px/u (400 px, lineScale 1, as ZooExpressions), the ZooSheet bust (322 px = 1.15 px/u,
+ * lineScale 0.74) and the proof pair's 0.88 px/u (246 px, lineScale 1).
+ */
+const FACE_SCALES: [number, number][] = [
+	[400, 1],
+	[322, 0.74],
+	[246, 1],
+];
+export const ZooFaceScalesDev: React.FC<{view?: ZooView}> = ({view = 'front'}) => (
+	<Bg>
+		<div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
+			{EXPRS.map((e) => (
+				<div key={e} style={{display: 'flex', alignItems: 'flex-start', gap: 10}}>
+					{FACE_SCALES.map(([px, ls]) => (
+						<svg key={px} width={px} height={px} viewBox={view === 'front' ? EXPR_VB : EXPR34_VB}>
+							<ZooRig view={view} expression={e} lineScale={ls} breathe={false} />
+						</svg>
+					))}
+				</div>
 			))}
 		</div>
 	</Bg>
@@ -307,6 +333,7 @@ export const ZooDevRoot: React.FC = () => (
 	<>
 		<Composition id="ZooZoom" component={ZooZoomDev} durationInFrames={1} fps={30} width={1200} height={1200} defaultProps={{view: 'front' as ZooView, box: [70, -440, 80, 120] as [number, number, number, number], lineScale: 1}} />
 		<Composition id="ZooScales" component={ZooScalesDev} durationInFrames={1} fps={30} width={1340} height={1320} defaultProps={{view: 'front' as ZooView}} />
+		<Composition id="ZooFaceScales" component={ZooFaceScalesDev} durationInFrames={1} fps={30} width={988} height={1630} defaultProps={{view: 'front' as ZooView}} />
 		<Composition id="ZooHead" component={ZooHeadDev} durationInFrames={1} fps={30} width={1140} height={1050} defaultProps={{lineScale: 0.55}} />
 		<Composition id="ZooFront" component={ZooFrontDev} durationInFrames={1} fps={30} width={600} height={1320} />
 		<Composition id="ZooExpressions" component={ZooExpressionsDev} durationInFrames={1} fps={30} width={1600} height={400} />

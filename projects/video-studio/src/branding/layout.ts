@@ -37,8 +37,10 @@ export const ZOORA_BANNER = {
 export const BADGER_SIT_HEAD: Rect = {x: -45, y: -434, w: 188, h: 126};
 
 export const SHOW_BANNER = {
-	logo: {x: SAFE.x + 30 + 380, y: 668, scale: 1.0},
-	tagline: {x: SAFE.x + 30 + 380, y: 838, size: 36, gap: 8},
+	logo: {x: SAFE.x + 30 + 380, y: 635, scale: 0.9},
+	/** The channel's name ("Zoodger News") under the plate: centre x, top of its line box, font size (owner, 2026-11-24). */
+	name: {x: SAFE.x + 30 + 380, top: 752, size: 48},
+	tagline: {x: SAFE.x + 30 + 380, y: 864, size: 36, gap: 8},
 	scale: 0.8,
 	zoo: {x: 1612, groundY: 1271},
 	badger: {x: 1838, groundY: 1084},

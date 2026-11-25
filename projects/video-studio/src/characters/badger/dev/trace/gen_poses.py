@@ -16,6 +16,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from pathmap import map_path
 from spline import spline, blob
+from sealends import seal_ends
 
 HERE = os.path.dirname(__file__)
 
@@ -44,7 +45,7 @@ class Pose:
         return {'x': round(X, 1), 'y': round(Y, 1)}
 
     def part(self, pid, fill, strokes, details=(), color='coat', group=None):
-        self.parts.append({'id': pid, 'color': color, 'group': group, 'fill': self.path(fill, True),
+        self.parts.append({'id': pid, 'color': color, 'group': group, 'fill': self.path(seal_ends(fill, strokes), True),
                            'strokes': [self.path(s) for s in strokes], 'details': [self.path(d) for d in details]})
 
     def spot(self, sid, side, part, shape, desc, ref=None):
@@ -67,7 +68,10 @@ K = 0.97 / 1.196  # coat_right spot size (CR px) -> sit panel px
 sp = Pose('sit', 1.196, 209, 370, 'badger_pose_sitting.png')
 P = lambda k: [tuple(p) for p in T[k]]
 tail = P('tail')
-sp.part('tail', tail + [(126, 352), (118, 340)], [tail], [P('tail_fold')], group='tail')
+# Round 5 (R4 review minor, seal check): the tail's line ended at (127, 362) beside the hind paw while its fill ran on up to
+# (126, 352), so the tail's root edge showed unstroked between paw and haunch; the line now runs on up under the haunch
+# (drawn later, it hides the end).
+sp.part('tail', tail + [(126, 352), (118, 340)], [tail + [(126, 352), (123, 345)]], [P('tail_fold')], group='tail')
 chest = P('chest')
 nfr = P('nf_right')
 nfl = P('nf_left')
@@ -76,7 +80,11 @@ chest_lo = cut(chest, ymin=262)
 # 6 px below the collar, leaving the silhouette unoutlined between them)
 chest = [(269.5, 137)] + chest
 ffp = P('ffpaw')
-sp.part('legFrontFar', [(252, 222, 'c')] + nfr[3:] + ffp[1:] + rev(chest_lo)[1:], [chest_lo, ffp])
+# Round 5 (R4 review minor, seal check: 78-114 px at the front paws): the far leg's fill ran from the near leg's edge to the
+# far paw's START, round the paw and then from the paw's END (behind the near paw) straight up to the chest, crossing
+# itself, so a pocket of background showed between the near paw and the far paw's outline. The fill now goes down the near
+# leg's edge, under the near paw to the far paw's end, round the paw backwards to its start and up the chest line.
+sp.part('legFrontFar', [(252, 222, 'c')] + nfr[3:] + [(256, 352)] + rev(ffp) + rev(chest_lo)[1:], [chest_lo, ffp])
 hn = P('haunch')
 sp.part('farSide', [(190, 250, 'c'), (204, 252)] + cut(nfl, ymin=255) + [(214, 346, 'c'), (176, 346, 'c')] + rev(cut(hn, ymin=280)),
         [], [P('far_hind')], color='coatShadow')
@@ -87,9 +95,15 @@ chest_up = cut(chest, ymax=270)
 # unstroked edge (23-30% of it hidden, a flat top). The corner now sits at (241, 266), just under the end of the torso's
 # chest stroke (y 268): the far leg's own fill and its chest-line stroke carry the outline below it, as before, and the
 # near leg (drawn after the torso) still covers its side of the corner.
-sp.part('torso', [(203, 124, 'c')] + back + [(128, 352), (152, 346), (172, 330), (184, 300), (186, 280), (191, 258), (204, 248), (226, 256), (241, 266)]
-        + rev(chest_up) + [(240, 138, 'c')], [back, chest_up], group='torso')
-sp.part('haunch', hn + [(132, 352), (112, 338), (110, 300), (124, 274)], [hn])
+# Round 5 (R4 review minor, seal check 85 px at the collar's back end): the back line began 12 px below the collar's lower
+# back corner, so the torso fill's corner edge showed between them; it now starts under the collar band (which hides it).
+back_s = [(201.5, 124.5)] + back
+sp.part('torso', [(203, 124, 'c')] + back_s + [(128, 352), (152, 346), (172, 330), (184, 300), (186, 280), (191, 258), (204, 248), (226, 256), (241, 266)]
+        + rev(chest_up) + [(240, 138, 'c')], [back_s, chest_up], group='torso')
+# Round 5 (R4 review minor, seal check 133 px): the haunch's line stopped at (151, 346) and its fill ran on to (132, 352),
+# so a triangle of unstroked haunch showed between the hind paw and the tail; the line now follows the fill past that
+# corner to the tail's line.
+sp.part('haunch', hn + [(132, 352), (124, 346.4), (112, 338), (110, 300), (124, 274)], [hn + [(132, 352), (124, 346.4)]])
 hp = P('hpaw')
 sp.part('pawHindNear', hp, [hp + [hp[0]]], [[(196, 358), (196, 363), (196, 368)], [(205, 359), (205, 364), (205, 368)]])
 nfp = P('nfpaw')

@@ -65,9 +65,14 @@ export const ZOO_COLORS = {
 	tee: '#1A1A1D',
 	trousers: '#202022',
 	trousersShadow: '#141416',
-	sneaker: '#E7E9EC',
-	sneakerShadow: '#C9CED6',
-	sneakerSole: '#F4F6F8',
+	// Decision ZOO-C8 (Zoo repair round 5, 2026-11-25): the uppers are the palette off-white (Prompt 1: "off-white low-top
+	// sneakers"), L* 96.8 against the background's 91.9; v1-round 4 used #E7E9EC (L* 92.3, 0.4 from the background), so the
+	// shoes read as hollow. The sheet's sole band is darker than its upper (L* ~84-90 under an L* ~93-96 upper on
+	// zoo_turn_front.png), so the sole is drawn in the sneaker's ONE shadow tone: #D9DCE0, the off-white's shadow tone
+	// (Badger's coatShadow), not brand silver (#C9CED6, L* 82.6, before round 5) and no longer the off-white itself.
+	sneaker: BRAND.offWhite,
+	sneakerShadow: '#D9DCE0',
+	sneakerSole: '#D9DCE0',
 	// Added 2026-11-24 (Zoo repair round 4, decision ZOO-C7): the sneakers' seam, lace and midsole LINE colour. The sheet
 	// draws them as soft mid-grey lines (cores ~#99948F on zoo_turn_front.png), not near-black. A line colour, not a shadow
 	// tone (sneakerShadow stays the one shadow tone), in the sneaker's cool grey family.

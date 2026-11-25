@@ -38,13 +38,16 @@ export const STRONG_PHRASES = [
 export const AGGRESSIVE_WORDS = ['whatsapp', 'telegram', 'signal app', 'viber', 'wechat', 'giveaway', 'airdrop', 'hacker', 'mrs', 'mentor', 'broker', 'bit.ly', 'tinyurl'];
 
 /**
- * The safety line, worded like the hub page and the publish kit's pinned-comment.txt. YouTube allows one
- * pinned comment per video, and the publish kit's pinned comment (disclosure, hub links, this safety line)
- * is the one to pin, so this text is for videos without a publish kit or for a channel post.
+ * The safety line, worded like the hub page and the publish kit's pinned-comment.txt, once for each of the
+ * owner's two channels. YouTube allows one pinned comment per video, and the publish kit's pinned comment
+ * (disclosure, hub links, this safety line) is the one to pin, so these lines are for videos without a publish
+ * kit or for a channel post: pin the one that names the video's channel.
  */
-export const PINNED_COMMENT =
-	'Zoora AI will never DM you first, ask for your seed phrase, ask you to connect a wallet, or ask for payment in comments or DMs. ' +
-	'Replies that do are impersonators: please report them.';
+export const PINNED_COMMENTS = ['Zoora AI', 'Zoodger News'].map(
+	(channel) =>
+		`${channel} will never DM you first, ask for your seed phrase, ask you to connect a wallet, or ask for payment in comments or DMs. ` +
+		'Replies that do are impersonators: please report them.',
+);
 
 export const blockedWordsGuide = (): string =>
 	[
@@ -65,8 +68,9 @@ export const blockedWordsGuide = (): string =>
 		'4. Hidden users: add impersonator accounts listed under "Accounts to consider hiding" in the guard report.',
 		'   Their future comments are hidden from everyone else.',
 		'5. Pin the publish kit\'s pinned-comment.txt under every video. YouTube allows one pinned comment, and that',
-		'   one already carries the disclosure, the hub links and the safety line. For a video without a kit, pin this:',
-		`   "${PINNED_COMMENT}"`,
+		'   one already carries the disclosure, the hub links and the safety line. For a video without a kit, pin the',
+		'   line that names its channel:',
+		...PINNED_COMMENTS.map((line) => `   "${line}"`),
 		'6. Check Comments > "Held for review" regularly. YouTube Help says held comments are kept for up to 60 days.',
 		'7. After each upload, run the dry run: npm run guard (it changes nothing and writes a report).',
 		'',

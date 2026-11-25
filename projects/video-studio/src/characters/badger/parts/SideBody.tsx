@@ -37,7 +37,8 @@ export type SideRig = {
  * Where a replaceable head sits on a side rig's neck: neck rotation (SVG deg about the neck base), head pivot offset from the
  * neck's head mount and extra head rotation. `nape` (optional, neck-local): for a head turned back over the shoulder, a
  * replacement for the top of the neck's back line plus the fill between the two, so the crest of the neck runs from behind
- * the far ear past the muzzle instead of meeting the face's far contour (round-2 repair, decision BADGER-D37).
+ * the far ear past the muzzle instead of meeting the face's far contour (round-2 repair, decision BADGER-D37). Since round 5
+ * the turned 3/4 heads carry generated napes for their own rig (HeadViewGeom.turned), used when a mount gives none.
  */
 export type HeadMount = {
 	readonly neck: number;
@@ -168,7 +169,12 @@ export const SideBody: React.FC<{
 	const uid = useUid(uidPrefix);
 	const M = R.mounts;
 	// a look-up head brings its own look-up neck for its own rig (round 4: nape fillet, one concave throat)
-	const neckUp = headGeom(head).neckUp;
+	const hg = headGeom(head);
+	const neckUp = hg.neckUp;
+	const rigSide: 'left' | 'right' = dir === -1 ? 'left' : 'right';
+	// round 5: a 3/4 head turned back over the shoulder brings its own generated nape for this rig (gen_heads.py, TURNED 3/4
+	// MOUNTS); a mount's explicit `nape` still wins
+	const nape = hm.nape ?? (hg.turned && hg.turned.rig === rigSide ? hg.turned.nape : undefined);
 	const ownNeckUp = neckUp && neckUp.rig === (dir === -1 ? 'left' : 'right') ? neckUp : null;
 	const neckGeom: SideRig['neck'] = ownNeckUp ? {...R.neck, fill: ownNeckUp.fill, strokes: ownNeckUp.strokes, details: []} : R.neck;
 	// ...and its part above the collar again in front of the torso (the turned neck exposes the torso's back-stroke start)
@@ -206,7 +212,7 @@ export const SideBody: React.FC<{
 			<Tail geom={R.tail} mount={M.tail} wag={wag} bend={bend} uid={uid} />
 			<g transform={neckT}>
 				<NeckSide geom={neckGeom} uid={uid} spots={spots.neck} />
-				{hm.nape ? <NapeSide nape={hm.nape} /> : null}
+				{nape ? <NapeSide nape={nape} /> : null}
 			</g>
 			{/* the near thigh's and near upper foreleg's top edges, under the torso: outlined only where a swing pushes them out
 			    past the rump or the chest (D35) */}
@@ -233,7 +239,7 @@ export const SideBody: React.FC<{
 			</g>
 			<g transform={headT}>
 				{/* mounted: the head sits on a side neck, so silhouette edges the front neck would cover are closed (round 4) */}
-				<Head view={head} state={headState} mounted />
+				<Head view={head} state={headState} mounted rig={rigSide} />
 			</g>
 		</g>
 	);

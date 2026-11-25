@@ -54,6 +54,24 @@ describe('newsletter CLI', () => {
 		assert.match(readFileSync(join(dir, 'drafts', 'fake-support-dm.md'), 'utf8'), /^---\nsubject: /);
 	});
 
+	it('draft names the kit channel unless --brand or BRAND_NAME is given', async () => {
+		const kit = writeKit('security.json', (k) => {
+			k.channel = 'zoora-security';
+			k.slug = 'security-episode';
+		});
+		const footer = (out: string): string => /subscribed to (.*?) emails/.exec(readFileSync(join(dir, out, 'security-episode.md'), 'utf8'))?.[1] ?? '';
+		const byChannel = await run(['draft', kit, '--offers', OFFERS, '--out', 'brand-channel']);
+		assert.equal(byChannel.code, 0, byChannel.err);
+		assert.equal(footer('brand-channel'), 'Zoodger News');
+		assert.equal((await run(['draft', kit, '--offers', OFFERS, '--out', 'brand-env'], {env: {BRAND_NAME: 'Zoora AI'}})).code, 0);
+		assert.equal(footer('brand-env'), 'Zoora AI');
+		assert.equal((await run(['draft', kit, '--offers', OFFERS, '--out', 'brand-flag', '--brand', 'Test Brand'], {env: {BRAND_NAME: 'Zoora AI'}})).code, 0);
+		assert.equal(footer('brand-flag'), 'Test Brand');
+		const blank = await run(['draft', kit, '--offers', OFFERS, '--out', 'brand-blank'], {env: {BRAND_NAME: ' '}});
+		assert.equal(blank.code, 2);
+		assert.match(blank.err, /--brand must be 1-60 characters/);
+	});
+
 	it('draft fails the lint on an income claim and writes nothing', async () => {
 		const kit = writeKit('claim.json', (k) => {
 			k.slug = 'claim-episode';

@@ -61,7 +61,8 @@ Optional companions:
 
 - `content/<channel>/<slug>/captions.json`: Remotion `Caption[]` (`text` with its leading space, `startMs`,
   `endMs`, `timestampMs`, `confidence`, optional `pageBreakAfter`).
-- `content/<channel>/channel.json`: `displayName` and `handle`, used in the safety line and "Full episode on YouTube".
+- `content/<channel>/channel.json`: `displayName` and `handle`, used in the safety line, "Full episode on YouTube" and
+  the checklist's "switch to <channel> before uploading" step.
 - `public/generated/<channel>/<slug>/<lang>/timeline.json`: the voice step's measured scene times. When it
   covers every scene, it replaces the `episode.json` durations. Mock (silent-preview) timelines are ignored.
 

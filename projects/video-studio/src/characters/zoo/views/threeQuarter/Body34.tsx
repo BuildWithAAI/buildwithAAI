@@ -265,20 +265,23 @@ const SHOE_FAR: Pt[] = [
 	[101.6, -22.6], [103.4, -14], [101.8, -6], [97, -1.75], [60, -1.75], [-14, -1.75], [-19.6, -3.4], [-21, -12], [-20.2, -20], [-18.8, -28], [-17.4, -36], [-16.4, -43],
 ];
 const SHOE_FAR_SOLE: Pt[] = [[-26, -12.6], [30, -12], [108, -12.6], [108, 2], [-26, 2]];
-/** Far sneaker line art (repair round 4, zoo_turn_34.png): the midsole line, the laces as four short dashes down the instep
- * (the sheet's row of lace marks along the eyestay) and the toe-cap seam curving down to the midsole (round 3: near-black
- * dashes on a plain upper). */
+/** Far sneaker line art (zoo_turn_34.png): the midsole line; the lace panel seen from the side, i.e. its eyestay edge running
+ * ~5 u under the instep from the hem to the toe cap with four lace bars across the band; and the toe-cap seam, which drops
+ * from the panel's front end to the midsole (repair round 5, ZOO-S4; round 4 had only four dashes along the top edge and a
+ * loose seam, so the screen-right shoe read plainer than the other, R4 review). */
 const SHOE_FAR_LINES: Pt[][] = [
 	[[-24, -12.8], [30, -12.2], [106, -12.8]], // midsole
-	[[39.4, -50.8], [43.4, -48.8]], // laces
-	[[46.4, -47.4], [50.4, -45.4]],
-	[[53.4, -44], [57.4, -42.2]],
-	[[60.4, -40.6], [64.4, -38.8]],
-	[[74, -33.4], [69.8, -26.4], [66.2, -19.6], [64.4, -12.8]], // toe-cap seam
+	[[31.4, -51.6], [44, -47.2], [56.6, -41.4], [69.6, -35.8]], // eyestay: the lace panel's lower edge
+	[[39, -48.8], [41.6, -52.2]], // lace bars across the panel
+	[[47.6, -45.4], [50.4, -48.6]],
+	[[56.2, -41.4], [59.2, -44.6]],
+	[[64.6, -37.8], [67.6, -40.8]],
+	[[69.6, -35.8], [67.8, -27.6], [65.6, -20], [64.2, -12.8]], // toe-cap seam
 ];
 
-/** A 3/4 sneaker: off-white upper, lighter sole, soft grey line art clipped to the shoe (the first line is the midsole,
- * drawn a little heavier), near-black silhouette on top. No shadow band (repair round 4: the sheet's uppers are flat). */
+/** A 3/4 sneaker: off-white upper, the sole in the sneaker's shadow tone (ZOO-C8), soft grey line art clipped to the shoe
+ * (the first line is the midsole, drawn a little heavier), near-black silhouette on top. No shadow band on the upper
+ * (repair round 4: the sheet's uppers are flat). */
 export const Sneaker: React.FC<{outline: Pt[]; sole: Pt[]; lines: Pt[][]; name: string}> = ({outline, sole, lines, name}) => {
 	const d = smooth(outline);
 	return (

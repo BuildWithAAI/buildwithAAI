@@ -6,7 +6,7 @@
  *   import {SeriesBadge, ShowLogo, ZooraSting} from '../branding/kit';
  */
 export {JellyfishMark, FULL_DRAW, markScaleFor, type JellyfishDraw, type JellyfishMarkProps} from './marks/JellyfishMark';
-export {ZooraLockup, ShowLogo, type ZooraLockupProps, type ShowLogoProps} from './marks/Lockups';
+export {ZooraLockup, ShowLogo, ShowChannelName, type ZooraLockupProps, type ShowLogoProps, type ShowChannelNameProps} from './marks/Lockups';
 export {SeriesBadge, type BadgeTone, type SeriesBadgeProps} from './marks/SeriesBadge';
 export {Icon, type IconName} from './marks/icons';
 export {ZooraSting, type ZooraStingProps} from './stings/ZooraSting';

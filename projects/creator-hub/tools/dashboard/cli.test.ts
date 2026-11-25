@@ -156,6 +156,21 @@ describe('dashboard CLI', () => {
 		assert.match(badConfig.err, /columns.revenue is required/);
 	});
 
+	it('names the channel on the page: Zoodger News for zoora-security, unless --brand or BRAND_NAME is set', async () => {
+		const kits = join(dir, 'no-kits');
+		mkdirSync(kits, {recursive: true});
+		const title = (out: string): string => /<title>(.*?) revenue dashboard<\/title>/.exec(readFileSync(join(dir, out, 'index.html'), 'utf8'))?.[1] ?? '';
+		const own = await run(['--channel', 'zoora-security', '--kits', kits, '--out', 'security', '--force']);
+		assert.equal(own.code, 0, own.err);
+		assert.equal(title('security'), 'Zoodger News');
+		assert.match(readFileSync(join(dir, 'security', 'recommendations.md'), 'utf8'), /^# What to double down on: Zoodger News \(zoora-security\)/);
+		const env = {DATA_DIR: join(dir, 'no-data'), BRAND_NAME: 'Zoora AI'};
+		assert.equal((await run(['--channel', 'zoora-security', '--kits', kits, '--out', 'security-env'], {env})).code, 0);
+		assert.equal(title('security-env'), 'Zoora AI');
+		assert.equal((await run(['--channel', 'zoora-security', '--kits', kits, '--brand', 'Test Brand', '--out', 'security-flag'], {env})).code, 0);
+		assert.equal(title('security-flag'), 'Test Brand');
+	});
+
 	it('rejects bad options with exit 2 and the usage text', async () => {
 		const cases: [string[], RegExp][] = [
 			[['--hub-db', 'a', '--hub-csv', 'b'], /Use --hub-db or --hub-csv, not both/],

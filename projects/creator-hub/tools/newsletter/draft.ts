@@ -44,11 +44,15 @@ export type DraftOptions = {
 	registry: OfferRegistry | null; // null: no registry found, so every offer is left out
 	hubOrigin?: string | null; // base for relative hubUrl values, e.g. https://go.zoora.ai
 	youtubeId?: string | null; // overrides kit.youtubeVideoId (e.g. the video went live after the kit was made)
-	brandName?: string;
+	brandName?: string; // default: the kit channel's own name (brandFor)
 	now?: Date;
 };
 
 export const DEFAULT_BRAND = 'Zoora AI';
+/** Channels with a name of their own. Every other channel's emails carry DEFAULT_BRAND. */
+const CHANNEL_BRANDS: ReadonlyMap<string, string> = new Map([['zoora-security', 'Zoodger News']]);
+/** The brand for a kit's channel when neither --brand nor BRAND_NAME is given. */
+export const brandFor = (channel: string): string => CHANNEL_BRANDS.get(channel) ?? DEFAULT_BRAND;
 const GENERIC_CHAPTER = /^(?:intro(?:duction)?|cold open|opening|outro|credits|end ?screen|ending|subscribe|thanks for watching)$/i;
 const MAX_TAKEAWAYS = 10;
 /** Failed publish-kit checks that block the email: claims, any disclosure check, restricted offers. */
@@ -101,7 +105,7 @@ export const buildDraft = (kit: NewsletterKit, options: DraftOptions): {draft: N
 	const error = (where: string, message: string): void => void issues.push({level: 'error', where, message});
 	const warn = (where: string, message: string): void => void issues.push({level: 'warning', where, message});
 	const now = options.now ?? new Date();
-	const brandName = options.brandName ?? DEFAULT_BRAND;
+	const brandName = options.brandName ?? brandFor(kit.channel);
 	const {registry} = options;
 
 	const youtubeId = options.youtubeId ?? kit.youtubeVideoId;

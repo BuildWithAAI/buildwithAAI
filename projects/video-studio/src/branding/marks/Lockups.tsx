@@ -3,6 +3,7 @@
  *
  *  - <ZooraLockup/>: the jellyfish mark beside the "Zoora AI" wordmark and an optional tagline (silver on black).
  *  - <ShowLogo/>: "The Zoo & Badger Show" on a slate plate, the ampersand in teal.
+ *  - <ShowChannelName/>: the channel's name ("Zoodger News") on one line under that plate, in slate.
  *
  * The host's name is always title case "Zoo", never "ZOO" (owner rule, CLAUDE.md), so nothing here uses
  * text-transform: uppercase. Every size scales from one `scale` number so a lockup keeps its proportions everywhere.
@@ -153,3 +154,36 @@ export const ShowLogo: React.FC<ShowLogoProps> = ({x, y, scale = 1, anchor = 'ce
 		</div>
 	);
 };
+
+export type ShowChannelNameProps = {
+	/** Centre of the line and the top of its line box (px). */
+	x: number;
+	top: number;
+	/** Font size (px). */
+	size: number;
+	text: string;
+};
+
+/**
+ * The channel's name under the show logo (CHANNEL_IDENTITY in tokens.ts): Montserrat 800, 0.08em tracking, slate, one
+ * line, never uppercased. One style for every place that draws it: the channel banner and the show set's desk logo.
+ */
+export const ShowChannelName: React.FC<ShowChannelNameProps> = ({x, top, size, text}) => (
+	<div
+		data-part="channelName"
+		style={{
+			position: 'absolute',
+			left: x,
+			top,
+			transform: 'translateX(-50%)',
+			fontFamily: FONTS.heading,
+			fontWeight: 800,
+			fontSize: size,
+			letterSpacing: '0.08em',
+			color: SHOW.plate,
+			whiteSpace: 'nowrap',
+		}}
+	>
+		{text}
+	</div>
+);

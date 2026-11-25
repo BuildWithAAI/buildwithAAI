@@ -136,7 +136,13 @@ torso = seg(torso_fill, [back + hidden + stifle + belly + under_leg + rev(chest)
 # ---------------------------------------------------------------- neck + collar + tag
 nb = pts('neck_back')                       # ear base -> collar
 nt = pts('neck_throat')                     # jaw -> collar
-neck_fill = nb + [(392, 146, 'c'), (412, 176), (450, 196), (466, 192, 'c')] + rev(nt) + [(497, 100), (482, 84), (462, 72)]
+# Round 5 (R4 review, seal check): the closed fill spline smoothed THROUGH the ends of the back and throat lines (its
+# tangents there came from the neighbouring fill points), so near the jaw the fill bulged up to 1.9 units past the throat
+# stroke (an unoutlined coat edge beside the line under every head but the right profile: 10-82 px at 3.2 px/u, R stand
+# with the 3/4 and front heads). The line ends are corners in the fill, so its edge runs exactly along both strokes.
+_corner = lambda p: (p[0], p[1], 'c')
+neck_fill = ([_corner(nb[0])] + nb[1:-1] + [_corner(nb[-1])] + [(392, 146, 'c'), (412, 176), (450, 196), (466, 192, 'c')]
+             + [_corner(nt[-1])] + rev(nt)[1:-1] + [_corner(nt[0])] + [(497, 100), (482, 84), (462, 72)])
 collar = T['collar']
 collar_pts = [tuple(p) for p in collar]
 # lower half of the band: bottom edge + a line 45% of the way up

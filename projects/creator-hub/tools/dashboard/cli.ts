@@ -26,6 +26,8 @@ import {fetchVideoReport, resolveAccessToken, YouTubeApiError} from './youtube-a
 const PROJECT_DIR = fileURLToPath(new URL('../../', import.meta.url));
 export const DEFAULT_BRAND = 'Zoora AI';
 export const DEFAULT_CHANNEL = 'zoora-ai';
+/** Channels with a name of their own, used when neither --brand nor BRAND_NAME is given. Others get DEFAULT_BRAND. */
+const CHANNEL_BRANDS: ReadonlyMap<string, string> = new Map([['zoora-security', 'Zoodger News']]);
 const API_DEFAULT_FROM = '2020-01-01';
 
 export const USAGE = `Usage: npm run dashboard -- [options]
@@ -48,7 +50,8 @@ Inputs (all optional; the dashboard uses whatever it gets):
 
 Output:
   --channel <slug>           the channel of this run (default: ${DEFAULT_CHANNEL})
-  --brand <name>             brand name on the page (default: BRAND_NAME or "${DEFAULT_BRAND}")
+  --brand <name>             brand name on the page (default: BRAND_NAME, else the channel's name:
+                             "${CHANNEL_BRANDS.get('zoora-security')}" for zoora-security, "${DEFAULT_BRAND}" for any other channel)
   --out <dir>                output folder (default: out/dashboard)
   --force                    write recommendations.md now instead of at the next 10 videos
 
@@ -141,7 +144,7 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 	if (from && to && from > to) return usageError('--from must not be after --to.');
 	const channel = values.channel ?? DEFAULT_CHANNEL;
 	if (!/^[a-z0-9-]{2,40}$/.test(channel)) return usageError('--channel must be a slug such as zoora-ai (2-40 characters: a-z, 0-9, "-").');
-	const brandName = (values.brand ?? deps.env.BRAND_NAME ?? DEFAULT_BRAND).trim();
+	const brandName = (values.brand ?? deps.env.BRAND_NAME ?? CHANNEL_BRANDS.get(channel) ?? DEFAULT_BRAND).trim();
 	if (!brandName || brandName.length > 60) return usageError('--brand must be 1-60 characters.');
 	if (values['hub-db'] && values['hub-csv']) return usageError('Use --hub-db or --hub-csv, not both.');
 	if (values['api-revenue'] && !values.api) return usageError('--api-revenue needs --api.');

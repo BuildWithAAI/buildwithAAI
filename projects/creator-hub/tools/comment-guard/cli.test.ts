@@ -81,6 +81,9 @@ describe('guard blocked-words and help', () => {
 		assert.match(out, /hold potentially inappropriate comments/i);
 		assert.match(out, /Block links/);
 		assert.match(out, /Hidden users/);
+		for (const channel of ['Zoora AI', 'Zoodger News']) {
+			assert.match(out, new RegExp(`\\n {3}"${channel} will never DM you first, ask for your seed phrase`), `pinned comment for ${channel}`);
+		}
 		assert.equal(google.requests.length, 0);
 	});
 
