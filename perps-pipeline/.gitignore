@@ -4,8 +4,8 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-data/
-state/
+/data/
+/state/
 reports/
 *.egg-info/
 
@@ -25,12 +25,12 @@ htmlcov/
 coverage.xml
 .cache/
 cache/
-data/
-state/
-runs/
-logs/
-out/
-backups/
+/data/
+/state/
+/runs/
+/logs/
+/out/
+/backups/
 screenshots/
 node_modules/
 *.db
@@ -39,7 +39,7 @@ node_modules/
 *.sqlite3
 *.sqlite-*
 *.sqlite3-*
-*.jsonl
+/data/**/*.jsonl
 .env
 .env.*
 !.env.example
