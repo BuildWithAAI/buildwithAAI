@@ -1,6 +1,6 @@
 # The Zoo & Badger Show (Remotion format, channel 2 `zoora-security`)
 
-A flat 2D talk-show / podcast set for the crypto + AI security channel: Zoo hosts at the desk with a podcast mic,
+A flat 2D talk-show / podcast set for Zoodger News (crypto + AI security): Zoo hosts at the desk with a podcast mic,
 Badger (nonverbal) sits beside him on his own chair, and his reactions land after Zoo's lines as the punchlines.
 Binding rules: `docs/PROJECT_INSTRUCTIONS.md`, `docs/ART_GUIDE.md`, CLAUDE.md "Channel 2". Built 2026-11-24.
 
@@ -37,8 +37,9 @@ command to run.
 
 - `channel`: `zoora-security` (or `_dev`). Other channels are refused: this format is for the security channel.
 - `captions`: burned-in captions; default on for `ShowShort`, off for `ShowEpisode` (YouTube carries subtitles).
-- `channelName`: the channel's display name, one small line under the show logo. **Not decided yet** (CLAUDE.md), so
-  it is a prop; `null` (default) shows only "The Zoo & Badger Show".
+- `channelName`: the channel's name, "Zoodger News", on one line under the show logo (Montserrat 800, slate, 36 x logo
+  scale). If omitted, zoora-security gets the channel's name; `null` hides it (the _dev default). It is a proper name
+  and never translated.
 
 ## Storyboard contract (a news storyboard plus optional show fields)
 

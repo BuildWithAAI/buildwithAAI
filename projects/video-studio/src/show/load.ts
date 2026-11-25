@@ -59,7 +59,7 @@ export type ShowProps = {
 	shortId?: string;
 	/** Burned-in captions. Default: on for ShowShort, off for ShowEpisode (YouTube carries the subtitles). */
 	captions?: boolean;
-	/** The channel's display name under the show logo. Not decided yet (CLAUDE.md), so it is a prop; null hides it. */
+	/** The channel's name under the show logo: "Zoodger News" (owner, 2026-11-24). Omitted: the channel's name for zoora-security, none for _dev (channel.ts). null hides it. A proper name: never localized. */
 	channelName?: string | null;
 	timelineOverride?: Timeline | null;
 	/** Filled by calculateMetadata; never pass it yourself. */

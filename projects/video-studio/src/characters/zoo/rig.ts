@@ -317,20 +317,21 @@ export const MOD0: MouthMod = {cornerL: 0, cornerR: 0, openScale: 1, widthScale:
 export const EXPRESSIONS: Record<Expression, ExpressionSpec> = {
 	// Deadpan: flat straight mouth; the anatomical-left (screen-right) brow is subtly raised in its base shape.
 	neutral: {browL: B0, browR: B0, eyes: E0, mouth: 'closed', mod: MOD0, crease: 0},
-	// Small asymmetric smirk (repair round 4, decision ZOO-E4; zoo_expr_happy.png): its own closed-mouth drawing, a wide U-smile
-	// line with a soft lower-lip band (HAPPY_MOUTH), the screen-right corner lifting ~9 u and the left ~4, the moustache ends
-	// rising (screen right 8 u, left 4) so the smile shows under them, a short smile crease on the screen-right cheek, and the
-	// lower lids up with the upper lids slightly down (a smile squint). Rounds 1-3 only nudged the flat closed line's corners
-	// (3.2-4.5 / 6.4) under an almost unchanged moustache, which read as neutral or tired at bust size (ZOO-E2: no head yaw).
+	// Small asymmetric smirk (repair round 5, decision ZOO-E5; zoo_expr_happy.png): the eyes stay as open as neutral (Prompt 1:
+	// "eyes open and alert"; the panel keeps ~94% of the neutral eye white) with only a 0.6 u lower-lid lift, and the brows rise
+	// a little. Its own closed mouth (HAPPY_MOUTH) is a thin ~33 u smile line tucked under the moustache: the screen-left corner
+	// rises ~1.5 u and the screen-right ~3 u above its lowest point (the panel: ~33 u wide, 1.5-3 u deep), with a thin lower-lip
+	// arc; the moustache ends lift 2 / 3 u without curling and the cheek stays smooth (no crease on the panel). Round 4 (ZOO-E4)
+	// squinted the eyes to slits (lids -0.8 / 3.8) and drew a 40 u U-grin (corners 4 / 9 u, moustache tips 4 / 8 u, a shaded lip
+	// crescent and a cheek crease), which read as a smug grin; rounds 1-3 were illegible (ZOO-E2: no head yaw).
 	happy: {
-		browL: {lift: 2.6, inner: 0, outer: 0.4, arch: 0.6},
-		browR: {lift: 2.2, inner: 0.4, outer: 0, arch: 0.4},
-		eyes: {lidTop: -0.8, lidBottom: 3.8, scale: 1, iris: 1},
+		browL: {lift: 2.8, inner: 0, outer: 1, arch: 0.8},
+		browR: {lift: 3.4, inner: 0.4, outer: 0.6, arch: 0.8},
+		eyes: {lidTop: 0, lidBottom: 0.7, scale: 1, iris: 1},
 		mouth: 'closed',
 		mouthSpec: HAPPY_MOUTH,
-		mod: {...MOD0, cornerL: 4, cornerR: 9, moustacheLiftR: 8, moustacheLiftL: 4},
+		mod: {...MOD0, cornerL: 1.5, cornerR: 3, moustacheLiftR: 3, moustacheLiftL: 2},
 		crease: 0,
-		cheek: 1,
 	},
 	// Worried (zoo_expr_worried.png): both inner ends rise ~6-7.5 u with a sharp upturn (curl), the screen-right brow's
 	// arch inverts (~-4 u at its middle), the tails rise ~1.5-2 u; inner-to-tail drop >= 11 u. Mouth slightly down.

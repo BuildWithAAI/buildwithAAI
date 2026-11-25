@@ -25,12 +25,34 @@ type OneProps = {
 	tailWag: number;
 	/** Line weight multiplier (BadgerExtraProps.lineScale); 1 = LINE widths. */
 	lineScale?: number;
+	/** Optional acting controls (round 5: seal checks of the proof's head states). */
+	headTilt?: number;
+	neckTurn?: number;
+	blink?: number;
+	judge?: number;
+	earsBack?: number;
+	lookX?: number;
+	lookY?: number;
+	mouthOpen?: number;
 };
 
-const One: React.FC<OneProps> = ({view, pose, head, scale, ox, oy, walkPhase, expression, tailWag, lineScale}) => (
+const One: React.FC<OneProps> = ({view, pose, head, scale, ox, oy, walkPhase, expression, tailWag, lineScale, ...acting}) => (
 	<AbsoluteFill style={{background: BG}}>
 		<svg width="100%" height="100%" viewBox="0 0 1100 860">
-			<Badger x={ox} y={oy} scale={scale} view={view} pose={pose} head={head} walkPhase={walkPhase} expression={expression} tailWag={tailWag} breathe={false} lineScale={lineScale} />
+			<Badger
+				x={ox}
+				y={oy}
+				scale={scale}
+				view={view}
+				pose={pose}
+				head={head}
+				walkPhase={walkPhase}
+				expression={expression}
+				tailWag={tailWag}
+				breathe={false}
+				lineScale={lineScale}
+				{...acting}
+			/>
 		</svg>
 	</AbsoluteFill>
 );

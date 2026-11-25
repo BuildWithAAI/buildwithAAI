@@ -12,7 +12,8 @@
     "retentionWhy": "Developer Policies III.E.4: API Data fetched with an API key may be kept no longer than 30 calendar days. Every run deletes cache entries and out/topics reports older than this; the value can be lowered, never raised."
   },
   "ownChannels": [
-    {"id": "UCjNibXSaZqeXSD36V6dyIVQ", "name": "Zoora AI (content/zoora-ai/CHANNEL.md)"}
+    {"id": "UCjNibXSaZqeXSD36V6dyIVQ", "name": "Zoora AI (content/zoora-ai/CHANNEL.md)"},
+    {"id": "UCOo2HSb3SYyN66YFiiiO1ZA", "name": "Zoodger News (content/zoora-security/channel.json)"}
   ],
   "excludeChannelIds": [],
   "window": {

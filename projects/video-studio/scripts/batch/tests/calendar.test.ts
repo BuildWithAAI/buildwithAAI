@@ -25,7 +25,7 @@ test('the calendar covers 4 weeks from 2026-11-30 for both channels, marked as a
 	for (const w of ['2026-W49', '2026-W50', '2026-W51', '2026-W52']) assert.match(md, new RegExp(`\\(\`${w}\`\\)`));
 	assert.match(md, /\| Mon 30 Nov \| 11:00 \| 17:00 \| Zoora AI \| `ai1` \| POV story \| POV: You become a top caller on Pump\.fun \|/);
 	assert.match(md, /\| Thu 3 Dec \| 11:00 \| 17:00 \| Zoora AI \| `ai2` \| POV story \| POV: You created an autonomous AI trading agent hedge fund \|/);
-	assert.match(md, /\| Tue 1 Dec \| 13:00 \| 19:00 \| The Zoo & Badger Show \| `sec1` \| Explainer \| How wallet drainers work, and how to spot one \|/);
+	assert.match(md, /\| Tue 1 Dec \| 13:00 \| 19:00 \| Zoodger News \| `sec1` \| Explainer \| How wallet drainers work, and how to spot one \|/);
 	assert.equal((md.match(/\*\*Shorts map:\*\* `ai1` → `ai1-s1` \(Mon\), `ai1-s2` \(Tue\), `ai1-s3` \(Wed\) · `ai2` → `ai2-s1` \(Thu\), `ai2-s2` \(Fri\), `ai2-s3` \(Sat\), `ai2-s4` \(Sun\)/g) ?? []).length, 4);
 	assert.equal((md.match(/\| en, es, pt-br \|/g) ?? []).length, 44, '11 items a week, every one with Spanish and Portuguese dubs');
 	assert.match(md, /Thu 24 Dec is Christmas Eve; Fri 25 Dec is Christmas Day\. Keep, move or skip those slots\./);
@@ -37,8 +37,8 @@ test('the calendar covers 4 weeks from 2026-11-30 for both channels, marked as a
 
 test('every week keeps a reserved row for the news round-up, and the pilot\'s format conflict goes to the owner', () => {
 	const md = render();
-	assert.equal((md.match(/\| Day TBD \(owner\) \| TBD \| TBD \| The Zoo & Badger Show \| reserved \| Weekly round-up \(news, made in-week\) \| Made in-week, not by the batch \|/g) ?? []).length, 4, 'one reserved round-up row per week');
-	assert.match(md, /- The day and time of The Zoo & Badger Show's weekly round-up: every week above keeps a reserved row for it\./);
+	assert.equal((md.match(/\| Day TBD \(owner\) \| TBD \| TBD \| Zoodger News \| reserved \| Weekly round-up \(news, made in-week\) \| Made in-week, not by the batch \|/g) ?? []).length, 4, 'one reserved round-up row per week');
+	assert.match(md, /- The day and time of the Zoodger News weekly round-up: every week above keeps a reserved row for it\./);
 	assert.match(md, /\*\*Pilot:\*\* `ai1` is the pilot\. CLAUDE\.md \(Status, Phase 2\) defines the pilot as a 60–90 s video with 1 Short/);
 	assert.equal((md.match(/\*\*Pilot:\*\*/g) ?? []).length, 1, 'only the idea whose role is the pilot');
 	assert.match(md, /- The pilot's format \(`pumpfun-top-caller`\): CLAUDE\.md's Phase 2 is a 60–90 s pilot with 1 Short/);

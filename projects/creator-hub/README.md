@@ -1,6 +1,7 @@
 # Creator hub
 
-Business tools for the Zoora AI YouTube channel (@ZooraTechnologies) and the planned crypto-security news channel:
+Business tools for the Zoora AI YouTube channel (@ZooraTechnologies) and the crypto and AI security news channel
+Zoodger News (@ZoodgerNews):
 
 - a tracked link hub with automatic disclosures and region rules;
 - a video-service order page;
@@ -142,10 +143,10 @@ Other folders under `tools/` come from separate workflows, for example:
 
 Each has its own README.
 
-**Second channel.** The comment guard (`auth --account news`), the dashboard (`--channel`), the publish kit and
-the uploader already handle a second channel. One hub can serve both channels' links. Run a second instance
-(another Fly app with its own `BRAND_NAME` and hostname) only if the news channel needs its own branded link
-page.
+**Second channel (Zoodger News).** The comment guard (`auth --account news`), the dashboard (`--channel`), the
+publish kit and the uploader already handle a second channel. One hub can serve both channels' links. Run a second
+instance (another Fly app with its own `BRAND_NAME` and hostname) only if the news channel needs its own branded
+link page.
 
 ## How it fits together
 

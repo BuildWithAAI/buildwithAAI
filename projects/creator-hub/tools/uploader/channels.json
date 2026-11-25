@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Upload settings per channel slug (tools/uploader). Not secret. categoryId is an owner decision: run 'node tools/uploader/cli.ts categories' to list YouTube's. youtubeChannelId is REQUIRED before any upload: copy the channel id that 'auth' prints; every approval names it, so approve again after setting it. Playlists null = no playlist step.",
+  "note": "Upload settings per channel slug (tools/uploader). Not secret. categoryId is an owner decision: run 'node tools/uploader/cli.ts categories' to list YouTube's. youtubeChannelId is REQUIRED before any upload: copy the channel id that 'auth' prints; every approval names it, so approve again after setting it. zoora-security is pinned to Zoodger News (@ZoodgerNews), the channel id the owner verified on its live YouTube page on 2026-11-24. Playlists null = no playlist step.",
   "dailyLimits": {"defaultUnits": 10000, "uploadCalls": 100},
   "maxUnitsPerRun": 3000,
   "minLeadMinutes": 60,
@@ -13,7 +13,7 @@
       "playlists": {"long": null, "short": null}
     },
     "zoora-security": {
-      "youtubeChannelId": null,
+      "youtubeChannelId": "UCOo2HSb3SYyN66YFiiiO1ZA",
       "categoryId": null,
       "defaultLanguage": "en",
       "playlists": {"long": null, "short": null}

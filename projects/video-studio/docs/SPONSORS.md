@@ -1,7 +1,6 @@
 # Sponsors: media kit, packages, vetting and disclosures
 
-Version 1, 2026-11-24. For both channels: Zoora AI and the security channel (The Zoo & Badger Show; the channel's
-display name is still to be chosen).
+Version 1, 2026-11-24. For both channels: Zoora AI and Zoodger News (@ZoodgerNews; its show is The Zoo & Badger Show).
 
 What this file gives you:
 

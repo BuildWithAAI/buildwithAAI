@@ -335,10 +335,11 @@
       "tier": "A",
       "lane": "ai",
       "role": "research",
+      "confirmsAlone": false,
       "enabled": true,
       "minRefetchMinutes": 120,
       "fixture": "embracethered-blog.xml",
-      "terms": "A security researcher's blog (Hugo RSS listing every post; the radar reads 200 at most): primary AI-agent exploit and prompt-injection research, usually published once the vendor has fixed the issue. Low volume. robots.txt: Allow / for *. Headline, link and summary (at most 280 characters), attributed to Embrace The Red, never to a person. Concept-level labels only: no payload, prompt or step is ever stored or repeated."
+      "terms": "A security researcher's blog (Hugo RSS listing every post; the radar reads 200 at most): primary AI-agent exploit and prompt-injection research, usually published once the vendor has fixed the issue. Low volume. One researcher's blog, so confirmsAlone is false: a post is one outlet's vote and never confirms an incident by itself (talk recordings, paper write-ups and commentary are AI-security topics, not incident reports). robots.txt: Allow / for *. Headline, link and summary (at most 280 characters), attributed to Embrace The Red, never to a person. Concept-level labels only: no payload, prompt or step is ever stored or repeated."
     },
     {
       "id": "bleepingcomputer",
@@ -484,7 +485,7 @@
       "minRefetchMinutes": 120,
       "fixture": "aiid.xml",
       "dropCategories": true,
-      "terms": "The Responsible AI Collaborative's incident database (Gatsby RSS, the 100 newest reports; about a third are AI security). Each item is a report from ANOTHER outlet: its link is the original article, and its description ends with the database's citation link (incidentdatabase.ai/cite/<incident>#<report>), which the radar keeps as the report's incident reference (reports with the same one are grouped) and never fetches. Discovery only, like Web3 is Going Just Great: tier C, never confirms, and every fact must come from the original report it links. robots.txt answered 404 on 2026-11-24 (no rules). Its dates are when a report was added, so freshness uses the earliest date the text states."
+      "terms": "The Responsible AI Collaborative's incident database (Gatsby RSS, the 100 newest reports; about a third are AI security). Each item is a report from ANOTHER outlet: its link is the original article, and its description ends with the database's citation link (incidentdatabase.ai/cite/<incident>#<report>), which the radar keeps as the report's incident reference (reports with the same one are grouped) and never fetches. Discovery only, like Web3 is Going Just Great: tier C, never confirms, and every fact must come from the original report it links. robots.txt answered 404 on 2026-11-24 (no rules). Its dates are when a report was ADDED, never when the outlet published it: the radar keeps them as listedUtc, dates a report only by the date in its original link or the earliest date its text states, never counts a listing as a publisher or as coverage, and an incident only listed so far is a lead (listedOnly), never a candidate."
     }
   ]
 }

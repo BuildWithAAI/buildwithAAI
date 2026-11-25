@@ -568,7 +568,7 @@ Where an official page could not be opened directly when we checked it, we confi
 
 **No sponsors.** No company paid for, reviewed or sponsored this checklist, and it contains no affiliate links. Companies named in it are cited as sources or as incidents, not recommended.
 
-**Corrections.** Spotted something out of date? Tell us on the show's channel, and we'll fix it in the next version. Each version is listed below.
+**Corrections.** Spotted something out of date? Tell us on Zoodger News (youtube.com/@ZoodgerNews), the show's YouTube channel, and we'll fix it in the next version. Each version is listed below.
 
 ## Version history
 

@@ -13,7 +13,9 @@ import {FPS, resolveShow, type ShowProps} from './load';
 import {FRAME} from './layout/shots';
 import type {Format} from './types';
 
-export const SHOW_DEFAULTS: ShowProps = {channel: '_dev', slug: 'zoo-badger-demo', lang: 'en', channelName: null};
+// No channelName: Remotion spreads these defaults under every render's input props, so a null here would hide the
+// name on zoora-security renders that omit it. Omitted, _dev still gets none (channel.ts).
+export const SHOW_DEFAULTS: ShowProps = {channel: '_dev', slug: 'zoo-badger-demo', lang: 'en'};
 
 const calc =
 	(format: Format): CalculateMetadataFunction<ShowProps> =>

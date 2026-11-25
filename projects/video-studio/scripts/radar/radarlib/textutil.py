@@ -16,15 +16,32 @@ from html.parser import HTMLParser
 EXCERPT_MAX = 280
 ELLIPSIS = "…"
 
-_ZERO_WIDTH = dict.fromkeys(map(ord, "​‌‍⁠﻿­"), None)
 _WS = re.compile(r"\s+")
+# Invisible characters that are not format controls (Cf) but render as nothing: variation selectors, the combining
+# grapheme joiner and the Hangul and Mongolian fillers. Unicode tag characters (U+E0000-E007F, "ASCII smuggling"),
+# zero-width and bidi controls are all category Cf.
+_INVISIBLE_EXTRA = frozenset(
+    [0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x3164, 0xFFA0]
+    + list(range(0x180B, 0x1810)) + list(range(0xFE00, 0xFE10)) + list(range(0xE0100, 0xE01F0))
+)
+
+
+def strip_invisible(text):
+    """(text, removed): without characters that render as nothing. Feed text can hide instructions for an AI in them
+    ("ASCII smuggling" with Unicode tag characters), so none ever reaches a brief, a writer or an email."""
+    if not text:
+        return text or "", 0
+    text = str(text)
+    kept = [ch for ch in text if not (unicodedata.category(ch) == "Cf" or ord(ch) in _INVISIBLE_EXTRA)]
+    return "".join(kept), len(text) - len(kept)
 
 
 def clean_ws(text):
-    """NFC-normalise, drop zero-width characters and collapse whitespace."""
+    """NFC-normalise, drop invisible characters (format controls, tags, variation selectors) and collapse
+    whitespace."""
     if not text:
         return ""
-    text = unicodedata.normalize("NFC", str(text)).translate(_ZERO_WIDTH)
+    text, _ = strip_invisible(unicodedata.normalize("NFC", str(text)))
     text = text.replace(" ", " ")
     return _WS.sub(" ", text).strip()
 
@@ -195,6 +212,15 @@ _MULT = {
 # "$" alone is USD; "NT$", "HK$", "A$", "C$" and "R$" are other currencies and never a USD figure
 MONEY_RE = re.compile(
     r"(?:US\$|USD\s?\$?|(?<![A-Za-z])\$)\s?(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
+    r"(?:\s?(trillion|billion|million|thousand|bn|tn|mln|mn|b|m|k)\b)?",
+    re.IGNORECASE,
+)
+
+
+# Every dollar-like amount, whatever the currency ("$1.6B", "HK$1.6 Billion", "NT$900 million", "A$10m"): only for
+# hiding amounts before a headline's subject is read, never for a USD figure (MONEY_RE)
+ANY_DOLLAR_RE = re.compile(
+    r"(?:\b[A-Za-z]{1,3}\$|USD\s?\$?|\$)\s?(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)"
     r"(?:\s?(trillion|billion|million|thousand|bn|tn|mln|mn|b|m|k)\b)?",
     re.IGNORECASE,
 )

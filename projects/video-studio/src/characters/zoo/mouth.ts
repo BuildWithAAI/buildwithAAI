@@ -122,17 +122,20 @@ export const SHOCKED_MOUTH: MouthSpec = {
 };
 
 /**
- * The happy expression's own closed mouth (repair round 4, decision ZOO-E4; zoo_expr_happy.png): a wide U-smile line under the
- * moustache with a soft lower-lip band below it, instead of the flat closed line with its corners nudged up. The expression's
- * modifiers then make it the locked "small asymmetric smirk" (the screen-right corner and moustache end lift more). Used only
- * when the expression is happy and no explicit mouth is passed; the lip-sync library is unchanged.
+ * The happy expression's own closed mouth (repair round 5, decision ZOO-E5; zoo_expr_happy.png at 0.699 u/px): a thin smile
+ * line ~33 u wide tucked just under the moustache, ~0.6 u higher than the closed line and almost flat before the expression's
+ * corner lifts (it falls 0.6 u toward the screen right, so the larger right lift still leaves the line <= 3 u deep). With
+ * EXPRESSIONS.happy's corners (1.5 / 3 u) it is the locked "small asymmetric smirk": its ends sit ~1.8 u (screen left) and
+ * ~2.7 u (screen right) above its lowest point, ~1.5-2 u under the lifted moustache edge. A thin lower-lip arc (<= 0.8 u, in
+ * skinShadow) sits ~2.6 u under its middle. Used only when the expression is happy and no explicit mouth is passed; the
+ * lip-sync library is unchanged. Round 4 (ZOO-E4) drew a 40 u U-line dipping 3.4 u with a filled lip crescent up to 4 u thick.
  */
 export const HAPPY_MOUTH: MouthSpec = {
 	kind: 'line',
-	line: [[-20, -0.2], [-14, 1.8], [-6, 3.1], [3, 3.2], [11, 2.2], [20, -0.2]],
-	width: 2.4,
-	band: [[-16.6, 1.6], [-9, 4], [0, 4.8], [9, 4], [16.6, 1.6], [10, 6.6], [0, 8.6], [-10, 6.6]],
-	hole: 0.6,
+	line: [[-15.6, -0.9], [-8, -0.62], [0, -0.6], [8, -0.5], [15.9, -0.3]],
+	width: 1.9,
+	band: [[-8.6, 1.75, 'c'], [-4, 2.05], [1, 2.15], [6, 1.95], [9.8, 1.5, 'c'], [6, 2.55], [1, 2.85], [-4, 2.7]],
+	hole: 0.3,
 	jaw: 0,
 };
 

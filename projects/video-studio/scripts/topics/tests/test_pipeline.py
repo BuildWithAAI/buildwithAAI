@@ -111,7 +111,7 @@ class EndToEnd(unittest.TestCase):
             self.assertTrue(top["why"])
             self.assertGreater(len(i["pitch"]["angle"]), 40)
             self.assertTrue(i["facts"])
-            self.assertIn(i["fit"]["channelName"], ("Zoora AI", "The Zoo & Badger Show"))
+            self.assertIn(i["fit"]["channelName"], ("Zoora AI", "Zoodger News"))
             self.assertIn(top["url"], md)
             self.assertIn(i["pitch"]["angle"], md)
         for heading in ("**Original video (YouTube):**", "**Why it is an outlier:**", "**Our original angle:**", "**Facts to verify before scripting:**", "**Channel fit:**"):

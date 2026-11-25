@@ -38,7 +38,7 @@ Zoora AI is made by Zoora Technologies.
 Optional lines to add later (each is a promise, so add it only when it is true):
 
 - An upload schedule, once it has held for a month ("New stories every ...").
-- The sister channel, once it exists: "Crypto and AI security news: [CHANNEL NAME TBD]".
+- The sister channel, which now exists: "Crypto and AI security news: Zoodger News (https://www.youtube.com/@ZoodgerNews)". It stays optional. If it goes into the description, keep that block at 1,000 characters or fewer.
 
 ## Channel keywords
 

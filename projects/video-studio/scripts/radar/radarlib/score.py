@@ -8,7 +8,8 @@ with a reason string. Total is out of 100.
                  (<= 24 h -> 1, then linear to 0 at 96 h). Newsletter round-ups
                  never make an incident look fresh.
   sources    20  independent publishers weighted by tier (A 1.0, B 0.6, C 0.25),
-                 saturating at 2.5. Round-ups do not count.
+                 saturating at 2.5. Round-ups and listed reports (an incident
+                 database's listing of another outlet's article) do not count.
   novelty    15  new in the fresh window (1.0); recent incident with new
                  coverage (0.6); follow-up to an older incident (0.4); already in
                  a radar run of the last 14 days with new items (0.5) or without
@@ -69,7 +70,11 @@ HARM_CUES = (
         r"abused|breached|compromised|stole|hijacked|targeted|deployed)|(?:breached|compromised|hacked|penetrated|"
         r"hit|targeted)\s+(?:\w+\s+){0,3}?(?:organi[sz]ations|companies|servers|systems|firms|victims|targets|"
         r"universities|agencies|users)|(?:was|were|been) (?:breached|hacked|compromised|penetrated)|campaigns?|"
-        r"intrusions?|cyber[- ]?attacks?|stole|stolen|exfiltrated|defrauded|indicted|charged)\b", re.IGNORECASE)),
+        r"intrusions?|cyber[- ]?attacks?|stole|stolen|exfiltrated|defrauded|indicted|charged|"
+        # passive voice: "a compromised key ... was used by threat actors to access ..."
+        r"(?:was|were|been|being|is|are)\s+(?:\w+\s+)?(?:used|exploited|abused|hijacked|weaponi[sz]ed|leveraged|accessed)"
+        r"\s+by\s+(?:\w+\s+){0,2}?(?:attackers?|hackers?|threat actors?|criminals?|cybercriminals?|scammers?|gangs?|"
+        r"fraudsters?))\b", re.IGNORECASE)),
     ("users or data affected", 0.3, re.compile(
         r"\b(?:\d[\d,.]*\s*(?:million|thousand|k)?\s+(?:distinct\s+|valid\s+|exposed\s+)?(?:users?|customers?|"
         r"people|victims?|organi[sz]ations|companies|repositories|repos|accounts|records|secrets|credentials|keys|"
@@ -79,7 +84,10 @@ HARM_CUES = (
         r"accounts)\b[^.;]{0,40}?\b(?:were|was|are|is|been|being)\s+(?:exposed|leaked|stolen|spilled|exfiltrated|"
         r"accessed|compromised)|(?:exposed|exposing|leaked|stole|stolen|exfiltrated|spilled|spilling)\s+(?:\w+\s+){0,3}?"
         r"(?:data|information|details|records|secrets|credentials|keys|prompts|chats?|conversations|names|addresses|"
-        r"emails?)|exposing|leaked)\b", re.IGNORECASE)),
+        r"emails?)|exposing|leaked|"
+        # a completed access, never an attempt ("gained access to OpenAI API keys", not "attempt to access data")
+        r"(?:gained|obtained)\s+(?:unauthori[sz]ed\s+)?access\s+to\s+(?:\w+\s+){0,3}?(?:data|information|secrets|"
+        r"credentials|keys|tokens|accounts|records|emails?|files))\b", re.IGNORECASE)),
     ("a fix, advisory or takedown shipped", 0.25, re.compile(
         r"\b(?:patch(?:ed|es)?|fix(?:ed|es)?|hotfix|mitigat(?:ed|ion|ions)|advisory|cve-\d{4}-\d+|security update|"
         r"revok(?:ed|es)|rotat(?:ed|es)|removed|took down|taken down|pulled|disabled|dropped|drops|banned|blocked|"
@@ -107,7 +115,8 @@ def harm_factor(incident, members):
             if not _first_unnegated(pattern, text):
                 continue
             value = HARM_TIER.get(m.tier, 0.4) * (0.5 if m.hedge else 1.0)
-            publishers.add(m.publisher)
+            if not m.listed:
+                publishers.add(m.publisher)  # a listing repeats another outlet's report: never a second publisher
             if value > best:
                 best, who = value, f"{m.publisher}, tier {m.tier}{', hedged' if m.hedge else ''}"
         if best:
@@ -135,10 +144,13 @@ def recency_factor(members, run_date):
 
 
 def sources_factor(members):
-    publishers = {}
+    publishers, listed = {}, set()
     for m in members:
         if m.roundup:
             continue  # a weekly round-up repeats other outlets' reports; it is not a source of its own
+        if m.listed:
+            listed.add(m.publisher)  # an incident database's listing of another outlet's report: discovery only
+            continue
         weight = TIER_WEIGHT[m.tier]
         if weight > publishers.get(m.publisher, (0, None))[0]:
             publishers[m.publisher] = (weight, m.tier)
@@ -147,7 +159,10 @@ def sources_factor(members):
     for publisher, (_, tier) in sorted(publishers.items()):
         by_tier.setdefault(tier, []).append(publisher)
     parts = [f"{tier}x{len(names)} ({', '.join(names)})" for tier, names in sorted(by_tier.items())]
-    return _clamp(total / 2.5), f"{len(publishers)} independent publisher(s): " + "; ".join(parts)
+    reason = f"{len(publishers)} independent publisher(s): " + "; ".join(parts)
+    if listed:
+        reason += ("; " if parts else "") + "listed only by " + ", ".join(sorted(listed)) + " (discovery only)"
+    return _clamp(total / 2.5), reason
 
 
 def novelty_factor(incident, previous, run_date, window_start, type_counts):
@@ -155,7 +170,7 @@ def novelty_factor(incident, previous, run_date, window_start, type_counts):
     others = type_counts.get(incident["type"], 0)
     pattern = f"; {others} other {incident['type']} incident(s) in the 14 days before {run_date}"
     if previous:
-        urls = {s["url"] for s in incident["sources"]}
+        urls = {s.get("urlRef") or s.get("url") for s in incident["sources"]}
         new = urls - previous["urls"]
         where = "top 5" if previous["top"] else "also seen"
         if new:
@@ -263,7 +278,17 @@ def sourcing_bar(incident, score_doc):
     missing = []
     if incident["status"] != "confirmed":
         missing.append("not confirmed")
-    publishers = {s.get("publisher") for s in incident["sources"] if not s.get("roundup")}
+    # independent publishers: never a round-up or an incident database's listing of another outlet's report (a
+    # listing is discovery only and never carries a claim), and one article counts once
+    publishers, urls = set(), set()
+    for s in incident["sources"]:
+        if s.get("roundup") or s.get("listedReport"):
+            continue
+        key = (s.get("urlRef") or s.get("url") or "").rstrip("/").lower()
+        if key and key in urls:
+            continue
+        urls.add(key)
+        publishers.add(s.get("publisher"))
     if len(publishers) < 2:
         missing.append("fewer than 2 independent sources")
     if not incident.get("mechanismKnown"):

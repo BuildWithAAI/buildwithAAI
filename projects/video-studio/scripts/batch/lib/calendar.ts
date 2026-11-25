@@ -123,9 +123,8 @@ export const renderCalendar = (c: CalendarInput): string => {
 		'- The publish days and times above.',
 		`- Long-form lengths (proposed: ${[...new Set(lengths)].join('; ')}).`,
 		'- The YouTube category for each channel (`categoryId` in creator-hub/tools/uploader/channels.json): approve is refused until it is set.',
-		"- The security channel's display name (TBD; the show name stands in).",
 		'- Who reviews the Spanish and Brazilian Portuguese dubs natively before their tracks go up.',
-		...config.channels.flatMap((ch) => (ch.reserved ?? []).filter((r) => !r.day).map((r) => `- The day and time of ${cell(ch.name)}'s ${cell(r.label.replace(/\s*\(.*\)$/, '').toLowerCase())}: every week above keeps a reserved row for it. ${cell(r.note)}`)),
+		...config.channels.flatMap((ch) => (ch.reserved ?? []).filter((r) => !r.day).map((r) => `- The day and time of the ${cell(ch.name)} ${cell(r.label.replace(/\s*\(.*\)$/, '').toLowerCase())}: every week above keeps a reserved row for it. ${cell(r.note)}`)),
 		...c.backlogs.flatMap((b) =>
 			b.ideas
 				.filter((i) => /^pilot\b/i.test(i.role ?? '') && i.status === 'idea')

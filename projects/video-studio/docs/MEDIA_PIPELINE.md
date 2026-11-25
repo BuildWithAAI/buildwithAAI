@@ -2,9 +2,9 @@
 
 How one idea becomes a fact-checked script, a voiced and rendered video in English, Spanish and Brazilian Portuguese,
 a private scheduled upload, six or more extra assets and the announcements, and how the viewers' retention then feeds
-back into the templates. It covers both channels: **Zoora AI** (`zoora-ai`: POV stories and explainers) and **The Zoo &
-Badger Show** (`zoora-security`: crypto and AI security news). Zoo hosts and talks, voiced by Kokoro `im_nicola` in
-every language; Badger is his nonverbal dog co-host.
+back into the templates. It covers both channels: **Zoora AI** (`zoora-ai`: POV stories and explainers) and
+**Zoodger News** (`zoora-security`: crypto and AI security news, home of The Zoo & Badger Show). Zoo hosts and talks,
+voiced by Kokoro `im_nicola` in every language; Badger is his nonverbal dog co-host.
 
 Written 2026-11-24 from the tools as committed on `claude/youtube-video-pipeline-dcfqfr`. This page holds the order,
 the exact commands, who has to act, and what is still missing. Each step links the doc that owns its details.
@@ -44,7 +44,7 @@ captions, and the six assets of step 9.
 
 | | Daily news Short | Weekly batch |
 | --- | --- | --- |
-| Channels | The Zoo & Badger Show | Zoora AI (2 long POV episodes, a Short every day); the show (explainer Tue, Scam of the Week Sat) |
+| Channels | Zoodger News (The Zoo & Badger Show) | Zoora AI (2 long POV episodes, a Short every day); Zoodger News, the show (explainer Tue, Scam of the Week Sat) |
 | Driver | `node scripts/daily/run.ts` ([DAILY_BRIEF.md](DAILY_BRIEF.md)) | `node scripts/batch/cli.ts` ([WEEKLY_BATCH.md](WEEKLY_BATCH.md)) |
 | Render | `src/show/index.ts` `ShowShort` | Zoora AI: `src/episode/index.ts` `Episode`, `EpisodeShort`; the show: `src/show/index.ts` `ShowEpisode` |
 | Review | one packet a day, `APPROVE <date-slug>` (about 5 minutes) | one page a week, `APPROVE <week> all #<page code>` |
@@ -403,9 +403,10 @@ in a cloud session. Never in files, flags, chat or this repository. The tools' o
       refresh tokens that expire after 7 days.
 - [ ] A Desktop-app OAuth client; keep its JSON outside this repository.
 - [ ] `node tools/uploader/cli.ts auth --channel zoora-ai --client-secrets <file>`, then `--channel zoora-security`.
-- [ ] In `creator-hub/tools/uploader/channels.json`, for both channels: `youtubeChannelId` (printed by `auth`; uploads
-      refuse until it is pinned) and `categoryId` (`node tools/uploader/cli.ts categories`; weekly approvals refuse
-      until it is set). Playlists are optional.
+- [ ] In `creator-hub/tools/uploader/channels.json`: `youtubeChannelId` for `zoora-ai` (printed by `auth`; uploads
+      refuse until it is pinned; `zoora-security` is already pinned to Zoodger News, UCOo2HSb3SYyN66YFiiiO1ZA), and
+      `categoryId` for both channels (`node tools/uploader/cli.ts categories`; weekly approvals refuse until it is
+      set). Playlists are optional.
 - [ ] A verified channel (custom thumbnails) and Advanced features (dub tracks).
 - [ ] One private test upload of a short test render without `--publish-at`: check privacy, audience, altered content,
       language, thumbnail and captions in Studio; run the same upload with another `--state-dir` (it must stop with
@@ -416,7 +417,7 @@ in a cloud session. Never in files, flags, chat or this repository. The tools' o
 - [ ] Accept YouTube's derived-metrics amendment (YouTube API Services audit and quota extension form, "Analytics &
       Reporting"), then `node tools/retention/cli.ts policy --derived-metrics accepted --date YYYY-MM-DD`.
 - [ ] Enable the YouTube Analytics API, set the consent screen to In production, and run `node tools/retention/cli.ts
-      auth --client-secrets <file>` (`--account security` for the second channel).
+      auth --client-secrets <file>` (`--account security` for Zoodger News).
 - [ ] Topic finder (optional): its own Google Cloud project, a restricted API key as `YOUTUBE_API_KEY`, and the same
       amendment for that project.
 
@@ -459,7 +460,7 @@ in a cloud session. Never in files, flags, chat or this repository. The tools' o
       and the hub deploy with its `config/offers.json`.
 - [ ] Owner-approved Spanish and Portuguese disclosures (`offerDisclosures`, `disclosureTranslations` in
       `scripts/assets/config/channels.json`) and native reviews of the dubs.
-- [ ] The security channel's display name.
+- [x] The security channel's name: Zoodger News, @ZoodgerNews (UCOo2HSb3SYyN66YFiiiO1ZA), owner 2026-11-24.
 
 ## Status on 2026-11-24
 

@@ -2,7 +2,8 @@
 
 Rules enforced here:
   * one User-Agent for every request (see DEFAULT_USER_AGENT and README);
-  * at most one request per second per host (more if robots.txt sets Crawl-delay);
+  * at most one request per second per host, or the full Crawl-delay robots.txt sets; a host whose Crawl-delay is
+    above MAX_CRAWL_DELAY (120 s) is not crawled at all (the radar never shortens a site's delay);
   * robots.txt is fetched once per host per day and obeyed (RFC 9309; 4xx means
     "no rules", 5xx or unreachable means "do not crawl this run");
   * conditional GETs (ETag / Last-Modified) and a per-source TTL, so repeated runs
@@ -34,6 +35,8 @@ from . import robots as robots_mod
 from .textutil import iso_z, parse_iso
 
 DEFAULT_USER_AGENT = "NewsRadar/0.1"
+# the longest robots.txt Crawl-delay the radar waits for; a host asking for more is skipped, never crawled faster
+MAX_CRAWL_DELAY = 120.0
 PRODUCT_TOKEN_DEFAULT = "NewsRadar"
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 REDIRECT_STATUSES = {301, 302, 303, 307, 308}
@@ -300,8 +303,13 @@ class RobotsCache:
         else:
             rules = robots_mod.Robots.disallow_all()
         delay = rules.crawl_delay(self.product)
-        if delay:
-            self.client.host_delay[host] = min(delay, 30.0)
+        if delay and delay > MAX_CRAWL_DELAY:
+            # never shorten a site's Crawl-delay: a host that asks for more than the radar can wait is not crawled
+            rules = robots_mod.Robots.disallow_all()
+            record = dict(record, note=f"robots.txt Crawl-delay {delay:g} s is above the radar's {MAX_CRAWL_DELAY:g} s "
+                                       "ceiling: not crawling this host")
+        elif delay:
+            self.client.host_delay[host] = delay
         result = (rules, record)
         self.memory[host] = result
         return result

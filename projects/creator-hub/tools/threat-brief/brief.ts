@@ -118,28 +118,54 @@ const TYPE_LABEL: Record<string, string> = {
 	'model-supply-chain': 'AI model supply-chain attack',
 	'ai-data-exposure': 'data exposure through an AI tool',
 	'ai-assisted-attack': 'AI-assisted attack',
-	'deepfake-fraud': 'deepfake or voice-clone fraud',
+	// the radar's labels say "fraud", an accusation the brief only prints with a named source: shown as these instead
+	'deepfake-fraud': 'deepfake or voice-clone scam',
 	'ai-phishing': 'AI-generated phishing',
-	'ai-washing': 'AI-washing fraud',
+	'ai-washing': 'AI-washing case',
 };
+/** The radar's own type labels in incident titles that read as an unattributed accusation, and the brief's wording. */
+const RADAR_TITLE_LABELS: readonly [RegExp, string][] = [
+	[/\bdeepfake or voice-clone fraud\b/g, 'deepfake or voice-clone scam'],
+	[/\bAI-washing fraud\b/g, 'AI-washing case'],
+];
 
 const inLane = (incident: RadarIncident, lane: 'crypto' | 'ai'): boolean => incident.lane === lane || incident.lane === 'both';
 
 /**
+ * An incident a reader can be pointed to: at least one tier-A or tier-B source that is not an incident database's
+ * listing of another outlet's report. Tier C and listings never carry a story alone (the radar's and the news gate's
+ * rule), so only such an incident may take a forced place.
+ */
+export const standsAlone = (incident: RadarIncident): boolean => incident.sources.some((s) => s.tier !== 'C' && !s.listed);
+
+/**
  * The incidents the brief shows: the radar's order (top, then also seen), but when the radar has incidents in both
- * lanes and the first `count` miss one lane, the last place goes to that lane's best incident, so an AI-security
- * story never disappears behind crypto ones (or the other way round). Each incident still keeps its own status.
+ * lanes and the first `count` miss one lane, the last place goes to that lane's best incident that stands alone
+ * (standsAlone), so an AI-security story never disappears behind crypto ones (or the other way round), while an
+ * incident only an aggregator or a listing reports never displaces a better-sourced one. Each incident keeps its own
+ * status.
  */
 export const pickIncidents = (pool: readonly RadarIncident[], count: number): RadarIncident[] => {
 	const picked = pool.slice(0, count);
 	if (count < 2) return picked;
 	for (const lane of ['ai', 'crypto'] as const) {
 		if (picked.some((i) => inLane(i, lane))) continue;
-		const best = pool.find((i) => inLane(i, lane));
+		const best = pool.find((i) => inLane(i, lane) && standsAlone(i));
 		// only one lane can be missing, so the last place never holds the other lane's only incident
 		if (best) picked[picked.length - 1] = best;
 	}
 	return pool.filter((i) => picked.includes(i));
+};
+
+/**
+ * Which picked incident is not one of the radar's first `count` (the lane-balance swap), and its lane: the preview
+ * and intro then say so instead of calling every incident "the top N".
+ */
+export const laneSwap = (pool: readonly RadarIncident[], picked: readonly RadarIncident[], count: number): {added: RadarIncident; lane: 'ai' | 'crypto'; inTop: number} | null => {
+	const added = picked.find((i) => pool.indexOf(i) >= count);
+	if (!added) return null;
+	const lane = (['ai', 'crypto'] as const).find((l) => inLane(added, l) && !pool.slice(0, count).some((i) => inLane(i, l))) ?? (added.lane === 'crypto' ? 'crypto' : 'ai');
+	return {added, lane, inTop: picked.filter((i) => pool.indexOf(i) < count).length};
 };
 
 export const joinAnd = (items: readonly string[]): string =>
@@ -267,9 +293,10 @@ export const DEVELOPING_LINE = 'Developing: no primary source, and no two indepe
  */
 const statusOf = (incident: RadarIncident, hedges: readonly BriefHedge[]): {status: Status; line: string} => {
 	const hedged = new Set(hedges.map((h) => h.publisher));
-	const unhedged = (tier: Tier): string[] => [...new Set(incident.sources.filter((s) => s.tier === tier && !hedged.has(s.publisher)).map((s) => s.publisher))];
-	const tierA = unhedged('A');
-	const tierB = unhedged('B');
+	const counted = incident.sources.filter((s) => !s.listed && !hedged.has(s.publisher));
+	// a single researcher's blog (confirmsAlone false) is one outlet's vote, like a tier-B outlet, never a primary
+	const tierA = [...new Set(counted.filter((s) => s.tier === 'A' && s.confirmsAlone).map((s) => s.publisher))];
+	const tierB = [...new Set(counted.filter((s) => s.tier === 'B' || (s.tier === 'A' && !s.confirmsAlone)).map((s) => s.publisher))];
 	const confirmers = tierA.length > 0 ? tierA : tierB.length >= 2 ? tierB : [];
 	const tail = hedgeSentence(hedges);
 	if (incident.status === 'confirmed' && confirmers.length > 0) {
@@ -285,6 +312,11 @@ const lossesOf = (incident: RadarIncident, radar: Radar, notes: string[]): {loss
 		.map(({l}) => l);
 	const losses: BriefLoss[] = [];
 	for (const l of rows) {
+		if (incident.sources.some((s) => s.listed && s.id === l.by && s.url === l.url)) {
+			// a listing repeats another outlet's report, which the radar never read: never a figure it reported
+			notes.push(`${incident.id}: a figure from a listed report (${l.by}) was left out: read the original report`);
+			continue;
+		}
 		if (!isHttps(l.url)) {
 			notes.push(`${incident.id}: a figure from ${l.by} was left out because its link is not https`);
 			continue;
@@ -380,7 +412,9 @@ const howItWorked = (incident: RadarIncident, allow: NameAllow): BriefHow => {
 const ROUNDUP = /\/newsletters?\/|\band more\b/i;
 
 const sourcesOf = (incident: RadarIncident, allow: NameAllow): BriefLink[] => {
-	const usable = incident.sources.filter((s) => isHttps(s.url) && !ROUNDUP.test(s.url) && !ROUNDUP.test(s.title));
+	// listings are discovery only: their title is another outlet's headline and their link that outlet's article, so
+	// crediting either to the database would misattribute it
+	const usable = incident.sources.filter((s) => !s.listed && isHttps(s.url) && !ROUNDUP.test(s.url) && !ROUNDUP.test(s.title));
 	const byPublisher = new Map<string, RadarSource>();
 	const better = (a: RadarSource, b: RadarSource): boolean => {
 		if (TIER_RANK[a.tier] !== TIER_RANK[b.tier]) return TIER_RANK[a.tier] < TIER_RANK[b.tier];
@@ -398,6 +432,8 @@ const sourcesOf = (incident: RadarIncident, allow: NameAllow): BriefLink[] => {
 	return order.slice(0, MAX_SOURCES).map((s) => {
 		const day = shortDay(s.publishedUtc);
 		const plainLabel = `${s.publisher} ${KIND_LABEL[s.kind] ?? 'article'}${day ? `, ${day}` : ''}`;
+		// the article's link spells a person's name: only the outlet's address is kept, so the label says so
+		if (s.urlWithheld) return {text: `${plainLabel} (the link goes to the outlet: the article's address names a person)`, url: s.url};
 		if (s.title && s.title.toLowerCase().startsWith(s.publisher.toLowerCase()) && !hasErrors(scanText(s.title, {where: 'source', allow}))) return {text: s.title, url: s.url};
 		return {text: s.title && isSafeQuote(s.title, s.publisher, allow) ? quoteLine(s.publisher, s.title) : plainLabel, url: s.url};
 	});
@@ -417,15 +453,32 @@ const dateOf = (incident: RadarIncident): BriefIncident['date'] => {
 		const m = /^(.{2,60}?) dates it (\d{4}-\d{2}-\d{2})\.$/.exec(f.text);
 		if (m?.[1] && m[2] && f.quote === m[2] && tierOf(f.url) !== 'C') return {day: m[2], label: `When (per ${m[1]})`};
 	}
+	// never a listing's date (when a database added another outlet's report) or a tier-C aggregator's timestamp
 	const days = incident.sources
-		.filter((s) => s.url.startsWith('https://') && s.publishedUtc)
+		.filter((s) => s.url.startsWith('https://') && s.publishedUtc && !s.listed && s.tier !== 'C')
 		.map((s) => shortDay(s.publishedUtc))
 		.filter((d): d is string => d !== null)
 		.sort();
 	return days[0] ? {day: days[0], label: 'First reported'} : null;
 };
 
-const incidentName = (incident: RadarIncident): string => incident.title.replace(/\s*\(developing\)\s*$/i, '').trim();
+/**
+ * How the brief names an incident: the radar's title without "(developing)" and with the brief's type wording. An
+ * AI-lane incident whose subject the radar only read from a headline's shape (subjectKnown false) is named by its type
+ * and its first outlet instead: that word could be a person or a handle, so it never reaches the email or the
+ * subject line.
+ */
+const incidentName = (incident: RadarIncident): string => {
+	if (!incident.subjectKnown && incident.lane !== 'crypto') {
+		const outlet = incident.sources.find((s) => !s.listed)?.publisher ?? incident.sources[0]?.publisher ?? 'the radar';
+		return `${TYPE_LABEL[incident.type] ?? 'AI-security incident'}, reported by ${outlet}`;
+	}
+	let name = incident.title.replace(/\s*\(developing\)\s*$/i, '').trim();
+	for (const [re, label] of RADAR_TITLE_LABELS) name = name.replace(re, label);
+	return name;
+};
+const shortName = (incident: RadarIncident): string =>
+	!incident.subjectKnown && incident.lane !== 'crypto' ? (TYPE_LABEL[incident.type] ?? 'AI-security incident') : incident.protocol;
 
 // ---------------------------------------------------------------------------------------------
 // Corrections from the radar ("Changed since the <date> radar")
@@ -457,18 +510,32 @@ export const buildBrief = (radar: Radar, options: BuildOptions): BuildResult => 
 	const brandName = (options.brandName ?? DEFAULT_BRAND).trim() || DEFAULT_BRAND;
 	const count = Math.min(MAX_COUNT, Math.max(1, Math.floor(options.count ?? DEFAULT_COUNT)));
 
-	// names the brief may use: everything the radar reports on today
+	// names the brief may use: everything the radar reports on today, except a subject read only from a headline's
+	// shape (it could be a person or a handle) and incidents only an incident database lists (leads, never stories)
 	const pool: RadarIncident[] = [];
-	for (const incident of [...radar.top, ...radar.alsoSeen]) if (!pool.some((x) => x.id === incident.id)) pool.push(incident);
-	const alsoKnownAs = pool.flatMap((i) => i.notes.flatMap((n) => /^Also reported as: (.+)\.$/.exec(n)?.[1]?.split(/,\s*/) ?? []));
+	for (const incident of [...radar.top, ...radar.alsoSeen]) {
+		if (pool.some((x) => x.id === incident.id)) continue;
+		if (incident.sources.every((s) => s.listed)) {
+			notes.push(`${incident.id}: only an incident database lists it (discovery only), so the brief leaves it out`);
+			continue;
+		}
+		pool.push(incident);
+	}
+	const known = pool.filter((i) => i.subjectKnown || i.lane === 'crypto');
+	const alsoKnownAs = known.flatMap((i) => i.notes.flatMap((n) => /^Also reported as: (.+)\.$/.exec(n)?.[1]?.split(/,\s*/) ?? []));
 	const allow = extendAllow(options.allow, [
-		...pool.flatMap((i) => [i.protocol, incidentName(i), ...i.chains, ...i.sources.map((s) => s.publisher)]),
+		...known.flatMap((i) => [i.protocol, incidentName(i)]),
+		...pool.flatMap((i) => [...i.chains, ...i.sources.map((s) => s.publisher)]),
 		...alsoKnownAs,
 		...Object.values(radar.sourceNames),
 		brandName,
 	]);
 
-	const incidents: BriefIncident[] = pickIncidents(pool, count).map((incident) => {
+	const picked = pickIncidents(pool, count);
+	const swap = laneSwap(pool, picked, count);
+	const laneLabel = swap?.lane === 'ai' ? 'AI-security' : 'crypto-security';
+	if (swap) notes.push(`${swap.added.id}: #${pool.indexOf(swap.added) + 1} on the radar, shown as the radar's top ${laneLabel} incident in place of #${count}`);
+	const incidents: BriefIncident[] = picked.map((incident) => {
 		const {losses, note} = lossesOf(incident, radar, notes);
 		const how = howItWorked(incident, allow);
 		const sources = sourcesOf(incident, allow);
@@ -484,7 +551,7 @@ export const buildBrief = (radar: Radar, options: BuildOptions): BuildResult => 
 		return {
 			id: incident.id,
 			name: incidentName(incident),
-			protocol: incident.protocol,
+			protocol: shortName(incident),
 			status: status.status,
 			radarStatus: incident.status,
 			hedges,
@@ -529,11 +596,18 @@ export const buildBrief = (radar: Radar, options: BuildOptions): BuildResult => 
 	let subject = `Threat Brief, ${dateLabel(radar.runDate, false)}: ${shortNames.join(', ') || 'no new incidents'}`;
 	if (subject.length > 90) subject = `Threat Brief, ${dateLabel(radar.runDate, false)}: ${incidents.length} incidents`;
 	if (developingCount > 0) subject += ` (${developingCount} developing)`;
-	const preview = incidents.length > 0 ? `The top ${incidents.length} security incidents on our radar, who reported what, and Zoo's One Fix.` : "No new incidents on our radar today, and Zoo's One Fix.";
+	// after a lane swap the last incident is the radar's best of the other lane, not one of its top N: say so
+	const topWords = (n: number): string => (n === 1 ? 'The top incident' : `The top ${n} incidents`);
+	const preview =
+		incidents.length === 0
+			? "No new incidents on our radar today, and Zoo's One Fix."
+			: swap
+				? `${topWords(swap.inTop)} on our radar plus the top ${laneLabel} story, who reported what, and Zoo's One Fix.`
+				: `The top ${incidents.length} security incidents on our radar, who reported what, and Zoo's One Fix.`;
 	const intro =
-		incidents.length > 0
-			? `The top ${incidents.length} incidents on our news radar for ${dateLabel(radar.runDate)}. Every figure is credited to the source that reported it. When sources disagree, we list each one and never average them.`
-			: `Our news radar found no new incident for ${dateLabel(radar.runDate)}.`;
+		incidents.length === 0
+			? `Our news radar found no new incident for ${dateLabel(radar.runDate)}.`
+			: `${swap ? `${topWords(swap.inTop)} on our news radar for ${dateLabel(radar.runDate)}, plus the radar's top ${laneLabel} incident.` : `The top ${incidents.length} incidents on our news radar for ${dateLabel(radar.runDate)}.`} Every figure is credited to the source that reported it. When sources disagree, we list each one and never average them.`;
 
 	const brief: ThreatBrief = {
 		date: radar.runDate,

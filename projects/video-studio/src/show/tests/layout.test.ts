@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {checkSegment, checkShot, faces, overlap} from '../layout/checks.ts';
-import {FRAME, outlinePx, shotFor, shotNames} from '../layout/shots.ts';
+import {FRAME, outlinePx, shotFor, shotNames, SHOT_DEFS, type ShotDef} from '../layout/shots.ts';
 import {BADGER_HEAD, STAGE, ZOO_HEAD} from '../layout/stage.ts';
 import {CAPTION_BAND, END_ZONES, SEGMENT_BOXES} from '../layout/boxes.ts';
 import {BASE_SHOT} from '../perf/plan.ts';
@@ -37,6 +37,41 @@ test('the cold-open kicker never covers the ON AIR sign (review 2026-11-24: vert
 		card.h = h;
 	}
 	assert.deepEqual(checkShot('vertical', 'two'), []);
+	assert.deepEqual(checkShot('landscape', 'wide'), []);
+});
+
+test('the logo plate and the channel name stay inside title-safe (2026-11-24: the landscape name line fell off the frame)', () => {
+	const wide = SHOT_DEFS.landscape.wide as ShotDef;
+	const at = {...wide.at};
+	const logo = {...STAGE.landscape.logo};
+	try {
+		// the geometry before the relayout (wide at.y 440, logo y -318, scale 0.62) must be caught, at rest and pushed in
+		wide.at.y = 440;
+		Object.assign(STAGE.landscape.logo, {y: -318, scale: 0.62});
+		const found = checkShot('landscape', 'wide');
+		assert.ok(found.some((x) => /the channel name leaves the safe area:/.test(x)), found.join('\n'));
+		assert.ok(found.some((x) => /the channel name leaves the safe area \(pushed in\)/.test(x)), found.join('\n'));
+		// and a name under 24 px on screen
+		Object.assign(wide.at, at);
+		Object.assign(STAGE.landscape.logo, logo, {scale: 0.5});
+		assert.deepEqual(checkShot('landscape', 'wide'), ['landscape/wide: the channel name is 20.7 px on screen (at least 24)']);
+	} finally {
+		Object.assign(wide.at, at);
+		Object.assign(STAGE.landscape.logo, logo);
+	}
+	assert.deepEqual(checkShot('landscape', 'wide'), []);
+	assert.deepEqual(checkShot('vertical', 'two'), []);
+});
+
+test('the ON AIR sign stays clear of the header row when the wide shot pushes in', () => {
+	const sign = {...STAGE.landscape.onAir};
+	try {
+		// where the sign hung before the wide shot moved up 30 px: clear at rest, under the DEVELOPING badge pushed in
+		STAGE.landscape.onAir.y = -1000;
+		assert.deepEqual(checkShot('landscape', 'wide'), ['landscape/wide: the ON AIR sign is under the header row (pushed in)']);
+	} finally {
+		Object.assign(STAGE.landscape.onAir, sign);
+	}
 	assert.deepEqual(checkShot('landscape', 'wide'), []);
 });
 

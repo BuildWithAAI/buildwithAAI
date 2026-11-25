@@ -17,6 +17,7 @@ most) as its own field, with the mechanism status.
 """
 
 import datetime as dt
+import html
 import json
 import re
 import urllib.parse
@@ -30,7 +31,9 @@ from .textutil import (
     parse_any_date, parse_iso, parse_rfc822, truncate,
 )
 
-PARSER_VERSION = "2026-11-24.3"
+# 2026-11-25.1: invisible characters stripped (and counted), origins read from the summary and the title separately,
+# AI Incident Database listing dates kept apart from publication dates
+PARSER_VERSION = "2026-11-25.1"
 MAX_ITEMS = 200
 
 
@@ -45,17 +48,31 @@ def first_sentence(text, limit=200):
     return truncate(sentence, limit)
 
 
-def _qualify(item, full_text, publisher=""):
+def _qualify(item, full_text, publisher="", parts=None):
     """Adds the mechanism status and qualifying sentence read from the full text, and the organisation the item
-    relays (its origin), to a parsed item."""
+    relays (its origin), to a parsed item. parts: the texts to read the origin from, one at a time (the summary, then
+    the title), so a name never runs from a headline into the summary."""
     status, sentence = mechanism_qualifier(full_text)
     if status:
         item["mechanismStatus"] = status
         item["qualifier"] = truncate(sentence, EXCERPT_MAX)
-    origin = origin_of(full_text, publisher)
-    if origin:
-        item["origin"] = origin
+    for text in parts or (full_text,):
+        origin = origin_of(text, publisher)
+        if origin:
+            item["origin"] = origin
+            break
     return item
+
+
+# Characters that hide text from a reader: Unicode tag characters ("ASCII smuggling") and bidi controls. clean_ws drops
+# them (and every other invisible character); a feed that carries them gets a warning, because hidden text in a feed
+# is an attempt to instruct an AI that reads it.
+_HIDING = re.compile("[\U000E0000-\U000E007F\u202A-\u202E\u2066-\u2069]")
+
+
+def hidden_characters(*fragments):
+    """How many hiding characters the raw fragments carry (entities decoded)."""
+    return sum(len(_HIDING.findall(html.unescape(f or ""))) for f in fragments)
 
 
 def clean_url(url, base=None):
@@ -235,8 +252,10 @@ def _elem_text(elem):
 _SPONSORED_BYLINE = re.compile(r"\b(?:sponsored|partner content|brought to you by|paid (?:post|content)|advertorial)\b", re.IGNORECASE)
 # WordPress feeds end every summary with "The post <title> appeared first on <site>." (opt-in per source: stripFeedFooter)
 _FEED_FOOTER = re.compile(r"\s*The post\s.{1,400}?\sappeared first on\s[^.]{1,80}?\s?\.?\s*(?:…)?\s*$", re.DOTALL)
-# a byline check is skipped when most of a feed has no author line at all (the feed changed, not every post is a release)
-BYLINE_MIN_SHARE = 0.2
+# a byline check is skipped when most of a feed (more than half) has no author line at all: the feed changed, not every
+# post is a release. Above a fifth without one, the check still runs but says how many items it drops.
+BYLINE_MIN_SHARE = 0.5
+BYLINE_WARN_SHARE = 0.2
 
 
 def _byline_text(entry):
@@ -263,11 +282,12 @@ def parse_feed(body, source, ctx, on_summary=None):
     entries = [e for e in root.iter() if _local(e.tag) in ("item", "entry")]
     if not entries and root_name != "feed" and _child(root, "channel") is None:
         raise ParseError("no channel or entries")
-    items, warnings, skipped = [], [], 0
+    items, warnings, skipped, hidden_items = [], [], 0, 0
     base = source.get("siteUrl") or source["url"]
     for entry in entries[:MAX_ITEMS]:
         try:
-            title = html_to_text(_elem_text(_child(entry, "title")))
+            raw_title = _elem_text(_child(entry, "title"))
+            title = html_to_text(raw_title)
             link = None
             for link_el in _children(entry, "link"):
                 href = link_el.get("href")
@@ -294,10 +314,13 @@ def parse_feed(body, source, ctx, on_summary=None):
                     if published:
                         break
             summary_el = _child(entry, "description", "summary")
-            summary = html_to_text(_elem_text(summary_el))
+            raw_summary = _elem_text(summary_el)
+            summary = html_to_text(raw_summary)
             if not summary:
                 content_el = _child(entry, "encoded", "content")
-                summary = html_to_text(_elem_text(content_el))
+                raw_summary = _elem_text(content_el)
+                summary = html_to_text(raw_summary)
+            hidden = hidden_characters(raw_title, raw_summary)
             if source.get("stripFeedFooter"):
                 summary = _FEED_FOOTER.sub("", summary).strip()
             extra = {}
@@ -319,7 +342,10 @@ def parse_feed(body, source, ctx, on_summary=None):
                 "excerpt": truncate(summary, EXCERPT_MAX),
                 "lead": first_sentence(summary) if summary else "",
                 "categories": categories[:12],
-            }, f"{title}. {summary}", source.get("publisher") or source.get("name") or "")
+            }, f"{title}. {summary}", source.get("publisher") or source.get("name") or "", parts=(summary, title))
+            if hidden:
+                item["hiddenCharacters"] = hidden
+                hidden_items += 1
             byline = _byline_text(entry)
             if byline and _SPONSORED_BYLINE.search(byline):
                 item["sponsored"] = True
@@ -332,6 +358,8 @@ def parse_feed(body, source, ctx, on_summary=None):
             warnings.append(f"entry skipped: {type(err).__name__}")
     if skipped:
         warnings.append(f"{skipped} entr(y/ies) without title or link skipped")
+    if hidden_items:
+        warnings.append(f"hidden characters removed from {hidden_items} item(s) (possible prompt injection)")
     if source.get("bylineRequired") and items:
         with_byline = sum(1 for it in items if it.get("byline"))
         if with_byline < BYLINE_MIN_SHARE * len(items):
@@ -339,6 +367,9 @@ def parse_feed(body, source, ctx, on_summary=None):
             for it in items:
                 it.pop("byline", None)
             warnings.append(f"byline check skipped: only {with_byline} of {len(items)} items have an author line")
+        elif len(items) - with_byline > BYLINE_WARN_SHARE * len(items):
+            warnings.append(f"byline check: {len(items) - with_byline} of {len(items)} items have no author line and are "
+                            "excluded as wire press releases")
     return items, warnings
 
 
@@ -348,6 +379,23 @@ def parse_feed(body, source, ctx, on_summary=None):
 # "(report_number: <n>)" while the report is not yet attached to an incident
 _AIID_CITE = re.compile(r"\s*(?:\.\.\.|…)?\s*\((https://incidentdatabase\.ai/cite/(\d{1,7})(?:#\d{1,9})?)\)\s*$")
 _AIID_REPORT_NO = re.compile(r"\s*(?:\.\.\.|…)?\s*\(report_number:\s*\d{1,9}\)\s*$")
+# a publication date in the original report's URL path: /2026/10/28/ or 2026-10-28
+_URL_DATE = re.compile(r"(?<!\d)(20\d{2})(?:/(\d{2})/(\d{2})(?=/|$)|-(\d{2})-(\d{2})(?!\d))")
+
+
+def url_date(url, not_after=None):
+    """The date a URL's path states (/2026/10/28/, 2026-10-28), or None."""
+    path = urllib.parse.urlsplit(url or "").path
+    for match in _URL_DATE.finditer(path):
+        year = int(match.group(1))
+        month, day = (match.group(2), match.group(3)) if match.group(2) else (match.group(4), match.group(5))
+        try:
+            value = dt.datetime(year, int(month), int(day), tzinfo=dt.timezone.utc)
+        except ValueError:
+            continue
+        if not_after is None or value <= not_after:
+            return value
+    return None
 
 
 def parse_aiid_feed(body, source, ctx):
@@ -372,6 +420,11 @@ def parse_aiid_feed(body, source, ctx):
     items, warnings = parse_feed(body, source, ctx, on_summary=on_summary)
     for item in items:
         item["listedReport"] = True  # the title and excerpt are the original outlet's, listed by the database
+        # the feed's date is when the database ADDED the report, never when the outlet published it: kept apart as
+        # listedUtc; the publication date is only the one the original link's path states, else unknown
+        listed = parse_iso(item.get("publishedUtc")) if item.get("publishedUtc") else None
+        item["listedUtc"] = item.get("publishedUtc")
+        item["publishedUtc"] = iso_z(url_date(item.get("url"), listed))
     return items, warnings
 
 

@@ -41,7 +41,9 @@ import {
 
 const PROJECT_DIR = fileURLToPath(new URL('../../', import.meta.url));
 /** Used when no channel is authorised yet (e.g. "scan --input"). The saved account's title and handle are added. */
-const DEFAULT_NAMES = ['Zoora AI', 'ZooraTechnologies'];
+const DEFAULT_NAMES = ['Zoora AI', 'ZooraTechnologies', 'Zoodger News', 'ZoodgerNews'];
+/** The owner's two channels, Zoodger News and Zoora AI: always trusted, so one channel's replies under the other's videos are never taken for impersonators. */
+const DEFAULT_TRUSTED = ['UCOo2HSb3SYyN66YFiiiO1ZA', 'UCjNibXSaZqeXSD36V6dyIVQ'];
 const DEFAULT_MAX_QUOTA = 1000;
 const DEFAULT_MAX_THREADS = 300;
 const HOLD_BATCH = 50;
@@ -70,7 +72,8 @@ Options
                            impersonators.
   --account <key>          Which saved channel to use when config/youtube-oauth.json holds more than one.
   --channel-name <name>    Extra name to protect from impersonation (repeatable).
-  --trust <channel id>     Channel whose comments are never flagged, e.g. your second channel (repeatable).
+  --trust <channel id>     Channel whose comments are never flagged, e.g. a moderator (repeatable). Your two channels,
+                           Zoora AI and Zoodger News, are always trusted.
   --own-handle <handle>    A handle or link you own, e.g. your Telegram bot (repeatable).
   --client-secrets <file>  auth: the "Desktop app" OAuth client JSON from Google Cloud Console.
   --oauth-file <file>      Credentials file (default config/youtube-oauth.json, or YOUTUBE_OAUTH_FILE). Inside the repository it must be gitignored.
@@ -153,7 +156,7 @@ const chooseAccount = (ctx: Context): {key: string; account: SavedAccount; file:
 const identityFor = (ctx: Context): Identity => {
 	const accounts = Object.values(ctx.file?.accounts ?? {});
 	const configured = [...accounts.flatMap((a) => [a.title, a.handle ?? '']), ...(ctx.values['channel-name'] ?? []), ...csv(ctx.deps.env.GUARD_CHANNEL_NAMES)];
-	const trusted = [...(ctx.values.trust ?? []), ...csv(ctx.deps.env.GUARD_TRUSTED_CHANNELS)];
+	const trusted = [...DEFAULT_TRUSTED, ...(ctx.values.trust ?? []), ...csv(ctx.deps.env.GUARD_TRUSTED_CHANNELS)];
 	for (const id of trusted) if (!CHANNEL_ID.test(id)) throw new UsageError(`"${id}" is not a YouTube channel id (UC followed by 22 characters).`);
 	return {
 		channelIds: accounts.map((a) => a.channelId),

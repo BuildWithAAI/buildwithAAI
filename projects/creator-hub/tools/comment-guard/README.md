@@ -48,10 +48,13 @@ Run from `projects/creator-hub`:
 4. `npm run guard`, then read the Markdown report. If it looks right, run
    `npm run guard -- apply --confirm --from-report latest`.
 
-**Second channel** (the planned security-news channel): run `npm run guard -- auth --account news` and sign
-in as that channel. The file then holds both. Use `--account news` (or `--account zooratechnologies`) on
+**Second channel** (Zoodger News, @ZoodgerNews, channel ID UCOo2HSb3SYyN66YFiiiO1ZA): run
+`npm run guard -- auth --account news` and sign in as that channel. Without `--account`, the key defaults to
+the handle, `zoodgernews`. The file then holds both. Use `--account news` (or `--account zooratechnologies`) on
 every command. All saved channels count as "you": their comments are never flagged, and all their names
-are protected against impersonation.
+are protected against impersonation. The owner's two channels are built in too: the Zoora AI and Zoodger News
+channel ids are always trusted, and both names and handles are always protected, so one channel's replies under
+the other's videos are never flagged, even before both are saved.
 
 ## Options and environment
 

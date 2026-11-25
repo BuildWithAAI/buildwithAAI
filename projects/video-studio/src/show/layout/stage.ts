@@ -49,9 +49,11 @@ export const STAGE: Record<Format, StageSpec> = {
 		badgerChair: {x: 483 - 150, y: -900, w: 300, h: 390, r: 70},
 		zooMic: {x: -178, base: DESK_TOP, height: 150, tilt: 22, size: 1},
 		badgerMic: {x: 483 + 160, base: DESK_TOP, height: 104, tilt: -20, size: 0.82},
-		// above Badger's chair, below the header row: one head width clear of Zoo's face (ART_GUIDE CV4c)
-		onAir: {x: 640, y: -1000, h: 66},
-		logo: {x: 240, y: -318, scale: 0.62},
+		// above Badger's chair, below the header row (pushed in too): one head width clear of Zoo's face (ART_GUIDE CV4c)
+		onAir: {x: 640, y: -990, h: 66},
+		// on the desk front, under the name plates: the plate and the channel-name line under it stay inside title-safe
+		// with the wide shot's push-in (shots.ts wide, checks.ts)
+		logo: {x: 240, y: -357, scale: 0.6},
 		panels: [
 			{x: -330, y: -1400, w: 660, h: 900, tone: 'light'},
 			{x: -1110, y: -1400, w: 330, h: 900, tone: 'silver'},
@@ -105,6 +107,30 @@ export const logoRect = (format: Format): Rect => {
 	const h = (2 * SHOW_LOGO.padY + SHOW_LOGO.the + SHOW_LOGO.main * 1.02 + SHOW_LOGO.show + 2 * SHOW_LOGO.gap) * scale;
 	const w = 700 * scale;
 	return {x: x - w / 2, y: y - h / 2, w, h};
+};
+
+/**
+ * The channel-name line under the logo plate, as set/LogoPlate.tsx draws it (stage units at logo scale 1): its top is
+ * `gap` below the plate; Montserrat 800 at `size`, a `line` x size tall box (normal line height) and `em` x size wide
+ * ("Zoodger News" with 0.08em tracking, measured).
+ */
+export const LOGO_NAME = {gap: 14, size: 36, line: 1.22, em: 8.68} as const;
+
+/** The channel-name line's rect in stage units, centred under the plate. */
+export const logoNameRect = (format: Format): Rect => {
+	const {x, scale} = STAGE[format].logo;
+	const plate = logoRect(format);
+	const size = LOGO_NAME.size * scale;
+	const w = LOGO_NAME.em * size;
+	return {x: x - w / 2, y: plate.y + plate.h + LOGO_NAME.gap * scale, w, h: LOGO_NAME.line * size};
+};
+
+/** The logo plate and the channel-name line together (stage units): the block layout/checks.ts keeps in title-safe. */
+export const logoBlockRect = (format: Format): Rect => {
+	const p = logoRect(format);
+	const n = logoNameRect(format);
+	const x = Math.min(p.x, n.x);
+	return {x, y: p.y, w: Math.max(p.x + p.w, n.x + n.w) - x, h: n.y + n.h - p.y};
 };
 
 export const onAirRect = (format: Format): Rect => {

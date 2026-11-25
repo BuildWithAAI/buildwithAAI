@@ -395,13 +395,26 @@ class OfflineAiLane(unittest.TestCase):
         self.assertTrue(all(i in self.incidents for i in self.doc["laneTop"]["ai"]))
 
     def test_listed_reports_are_discovery_only(self):
-        claude = self.incidents["2026-11-23-claude-code"]
-        self.assertEqual({s["id"] for s in claude["sources"]}, {"aiid"})
-        self.assertEqual(claude["status"], "developing", "tier C never confirms")
-        self.assertTrue(all(s["listedReport"] and s["trackerUrl"].startswith("https://incidentdatabase.ai/cite/")
-                            for s in claude["sources"]))
-        self.assertTrue(any("discovery only" in n for n in claude["notes"]))
-        self.assertTrue(all(f["text"].startswith("AI Incident Database lists a report") for f in claude["facts"]))
+        # an incident only the AI Incident Database lists is a lead, never a candidate: its listing date (when the
+        # database added the reports) is not coverage, so it never looks fresh
+        self.assertFalse([i for i in self.incidents if i.endswith("-claude-code")])
+        leads = {e["protocol"]: e for e in self.doc["listedOnly"]}
+        claude = leads["Claude Code"]
+        self.assertEqual(self.doc["counts"]["listedOnly"], len(self.doc["listedOnly"]))
+        self.assertEqual(claude["incidentRefs"], ["aiid:1846"])
+        self.assertEqual(claude["listedUtc"], "2026-11-23")
+        self.assertTrue(claude["dateNote"].startswith("listed by AI Incident Database on 2026-11-23"))
+        self.assertNotIn("first coverage", claude["dateNote"])
+        # the report the AI rules alone would drop is read as its accepted sibling's incident (same reference), and its
+        # text dates the story earlier than the listing
+        self.assertEqual(len(claude["sources"]), 3)
+        self.assertEqual(claude["dateUtc"], "2026-11-07")
+        for src in claude["sources"]:
+            self.assertTrue(src["listedReport"] and src["trackerUrl"].startswith("https://incidentdatabase.ai/cite/"))
+            self.assertIsNone(src["publishedUtc"], "a listing date is never a publication date")
+            self.assertEqual(src["listedUtc"], "2026-11-23T00:00:00Z")
+        md = open(self.md_path, encoding="utf-8").read()
+        self.assertIn("## Listed by an incident database only (leads, never candidates)", md)
 
     def test_ai_items_never_join_crypto_seeds(self):
         # "National Cyber Security Centre" in an AI story is not the Cyber Bridge hack

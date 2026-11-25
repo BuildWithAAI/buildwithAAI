@@ -108,20 +108,20 @@
       "footprints": {
         "zooFront": {"cx": -1, "rx": 121, "ry": 16},
         "zooThreeQuarter": {"cx": -3, "rx": 118, "ry": 16},
-        "zooSide": {"cx": 4, "rx": 90, "ry": 16},
-        "zooBack": {"cx": 2, "rx": 112, "ry": 16},
-        "zooTyping": {"cx": 8, "rx": 365, "ry": 16},
+        "zooSide": {"cx": 2, "rx": 87, "ry": 16},
+        "zooBack": {"cx": 0, "rx": 109, "ry": 16},
+        "zooTyping": {"cx": 10, "rx": 363, "ry": 16},
         "badgerLeft": {"cx": -1, "rx": 198, "ry": 15},
         "badgerFront": {"cx": 1, "rx": 79, "ry": 15},
-        "badgerThreeQuarter": {"cx": -3, "rx": 124, "ry": 15},
+        "badgerThreeQuarter": {"cx": -4, "rx": 119, "ry": 15},
         "badgerRight": {"cx": -14, "rx": 187, "ry": 15},
         "badgerBack": {"cx": 2, "rx": 91, "ry": 15},
-        "badgerSitRight": {"cx": -49, "rx": 161, "ry": 15},
-        "badgerSitLeft": {"cx": 47, "rx": 161, "ry": 15},
-        "badgerLieRight": {"cx": -28, "rx": 282, "ry": 15},
-        "badgerLieLeft": {"cx": 26, "rx": 282, "ry": 15},
-        "badgerWalkRight": {"cx": 19, "rx": 287, "ry": 15},
-        "badgerLookUpRight": {"cx": -14, "rx": 190, "ry": 15}
+        "badgerSitRight": {"cx": -46, "rx": 157, "ry": 15},
+        "badgerSitLeft": {"cx": 45, "rx": 157, "ry": 15},
+        "badgerLieRight": {"cx": -26, "rx": 279, "ry": 15},
+        "badgerLieLeft": {"cx": 25, "rx": 279, "ry": 15},
+        "badgerWalkRight": {"cx": 21, "rx": 282, "ry": 15},
+        "badgerLookUpRight": {"cx": -14, "rx": 186, "ry": 15}
       }
     },
     "lineWeights": {
@@ -1490,8 +1490,8 @@
       "character": "badger",
       "id": "INT-A2",
       "sheet": "Prompt 2: Badger looks toward the gesture with a small head turn, looks up at Zoo, then gives a restrained judging reaction. Prompt 1: emotion through brows, folded ears, head angle and tail; eyes open between natural blinks.",
-      "chosen": "Every head replacement in the proof happens with Badger's eyes closed, and the two big turns go through held in-betweens. The turn to the 3/4 head under a blink (f97). The look-up (round 4): the eyes and neck lead (f183-188), then, eyes closed, a front-head breakdown held 3 frames (f190-192) rolling toward Zoo, then threeQuarterLeftScreen held 2 frames with its nose lifting (f193-194), then upLeftScreen (f195): a four-drawing turn (3/4 right, front, 3/4 left, profile up) instead of round 3's front-to-profile jump; the blink holds until that frame. The judging look: on the up head the neck eases down over 6 frames (f234-240, to -12 deg; round 3: -8) while a slow blink closes (f236), then threeQuarterLeftScreen holds 3 frames (f241-243, lifting from where the lowered up head left the skull), then the front head (f244); the eyes open on Zoo, the judge brows, ears 0.42 and the ~8 deg tilt follow, with one slow push-in (1.00 -> 1.04, f196-299, ART_GUIDE MO13) anchored on his eyes. Neck and tilt at each swap keep the skull where the old head left it, measured on Badger-only renders (centroids of the skull's top 70 px of coat / the head's top 120 px): f190 (+0.9, +5.9) / (+2.4, +4.3) px, f193 (+2.1, +4.5) / (-1.4, +5.1), f195 (-0.4, -1.4) / (+2.0, -3.5), f241 (+3.1, +1.0) / (-1.2, +1.2), f244 (-3.2, -3.3) / (+0.1, -3.2). Idle life in 0-3 s: one blink and one ear flick.",
-      "why": "The round-2 review found the judge swap popping in one frame from the profile pitched up at Zoo to a level frontal head (the nose moved half a head length and the ears changed from one hanging profile ear to two frontal ears), and the look-up going 3/4-right, front, up-left in three frames. Lowering the up head first and passing through held in-betweens turns both into readable head turns: the skull stays within 6 px at every replacement and the face features (nose 38-68 px per replacement, ears) move around it under closed eyes, as in a drawn turn. The judging look stays on the front head because there the lids and brows read (on the pitched profile each cue moved only 2-7 px)."
+      "chosen": "Every head replacement in the proof happens with Badger's eyes closed, and the two big turns go through held in-betweens. The turn to the 3/4 head under a blink (f97). The look-up (round 4): the eyes and neck lead (f183-188), then, eyes closed, a front-head breakdown held 3 frames (f190-192) rolling toward Zoo, then threeQuarterLeftScreen held 2 frames with its nose lifting (f193-194), then upLeftScreen (f195): a four-drawing turn (3/4 right, front, 3/4 left, profile up) instead of round 3's front-to-profile jump; the blink holds until that frame. The judging look: on the up head the neck eases down over 6 frames (f234-240, to -12 deg; round 3: -8) while a slow blink closes (f236), then threeQuarterLeftScreen holds 3 frames (f241-243, lifting from where the lowered up head left the skull), then the front head (f244); the eyes open on Zoo, the judge brows, ears 0.42 and the ~8 deg tilt follow, with one slow push-in (1.00 -> 1.04, f196-299, ART_GUIDE MO13) anchored on his eyes. Neck and tilt at each swap keep the skull where the old head left it, measured on Badger-only renders (centroids of the skull's top 70 px of coat / the head's top 120 px): f190 (+0.7, +5.3) / (+2.4, +4.3) px, f193 (+2.1, +4.5) / (-1.4, +5.1), f195 (-0.4, -1.4) / (+2.0, -3.5), f241 (+3.2, +1.0) / (-1.2, +1.2), f244 (-3.2, -3.3) / (+0.1, -3.2). Idle life in 0-3 s: one blink and one ear flick.",
+      "why": "The round-2 review found the judge swap popping in one frame from the profile pitched up at Zoo to a level frontal head (the nose moved half a head length and the ears changed from one hanging profile ear to two frontal ears), and the look-up going 3/4-right, front, up-left in three frames. Lowering the up head first and passing through held in-betweens turns both into readable head turns: the skull stays within 6 px at every replacement and the face features (the nose 38-69 px per replacement, the ears) move around it under closed eyes, as in a drawn turn. The judging look stays on the front head because there the lids and brows read (on the pitched profile each cue moved only 2-7 px)."
     },
     {
       "character": "badger",

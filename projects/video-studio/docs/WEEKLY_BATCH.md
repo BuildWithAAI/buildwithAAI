@@ -1,8 +1,9 @@
 # Weekly batch production (`scripts/batch`)
 
 One production session a week makes every evergreen piece for both channels: Zoora AI's two POV episodes and the
-Shorts cut from them, and The Zoo & Badger Show's explainer and Scam of the Week. One page holds the owner's review
-of all of it. Only the daily news (the Threat Brief, `scripts/daily`) stays daily, at about 5 minutes of review a day.
+Shorts cut from them, and, on Zoodger News, The Zoo & Badger Show's explainer and Scam of the Week. One page holds the
+owner's review of all of it. Only the daily news (the Threat Brief, `scripts/daily`) stays daily, at about 5 minutes
+of review a day.
 
 Built 2026-11-24. **The schedule is a proposal pending the owner's approval**: slot days and times, cadence, lengths
 and the order of topics. Nothing here uploads, publishes, posts or pushes. Every upload needs the owner's explicit
@@ -76,10 +77,10 @@ or becomes unverified.
   the latest episode of the same week published before it: Monday to Wednesday from Monday's episode (3 Shorts),
   Thursday to Sunday from Thursday's (4). The owner's cadence is "2 long story episodes a week" (CLAUDE.md), so the
   backlog puts the POV stories first; an explainer appears only when it is pinned to a week or the stories run out.
-- **The Zoo & Badger Show:** an evergreen explainer (Tuesday 13:00) and a Scam of the Week (Saturday 13:00). No
-  Shorts from the batch: the daily Threat Brief is the channel's Short. Once an explainer is published, its URL goes
-  into `content/zoora-security/channel.json` `evergreen.<topic>.url` (the daily workflow's file), and every news
-  Short on that topic links it.
+- **Zoodger News** (The Zoo & Badger Show): an evergreen explainer (Tuesday 13:00) and a Scam of the Week (Saturday
+  13:00). No Shorts from the batch: the daily Threat Brief is the channel's Short. Once an explainer is published, its
+  URL goes into `content/zoora-security/channel.json` `evergreen.<topic>.url` (the daily workflow's file), and every
+  news Short on that topic links it.
 - **Order:** ideas fill slots in priority order; a slot takes only the formats it lists; an idea pinned to a week
   (`"week": "2026-W50"`) takes that week first; published and dropped ideas are never placed again unless pinned.
   Weeks are filled in order from the start week (`startWeek`), so a later week never takes an earlier week's idea and

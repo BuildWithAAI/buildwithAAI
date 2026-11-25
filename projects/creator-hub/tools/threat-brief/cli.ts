@@ -11,10 +11,10 @@
  * Kit draft only under the owner's daily content approval for that exact episode.
  * Exit codes: 0 ok, 1 problems found (nothing written, or the Kit draft was not created), 2 usage error.
  */
-import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {extname, isAbsolute, relative, resolve} from 'node:path';
-import {fileURLToPath, pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
 import {approvalLine, checkApproval, DAILY_APPROVAL_KIND, dailyApprovalPath} from '../announcer/approval.ts';
 import {clearance, LedgerError, ledgerKey, newEntry, putEntry, readLedger, withLedgerLock} from '../announcer/ledger.ts';
@@ -546,6 +546,20 @@ export const main = async (argv: string[], overrides: Partial<CliDeps> = {}): Pr
 	return 2;
 };
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+/**
+ * Is this module the process's entry point? Real paths are compared: a launch through a symlinked path (a symlinked
+ * checkout, macOS's /tmp, a DAILY_*_CMD naming a link) gives process.argv[1] the link while import.meta.url is the
+ * real file, and a plain URL comparison then skipped main() and exited 0 having written nothing.
+ */
+export const isEntryPoint = (argv1: string | undefined, moduleUrl: string): boolean => {
+	if (!argv1) return false;
+	try {
+		return realpathSync(resolve(argv1)) === realpathSync(fileURLToPath(moduleUrl));
+	} catch {
+		return false;
+	}
+};
+
+if (isEntryPoint(process.argv[1], import.meta.url)) {
 	process.exitCode = await main(process.argv.slice(2));
 }

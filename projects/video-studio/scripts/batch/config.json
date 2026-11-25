@@ -62,7 +62,7 @@
     },
     {
       "channel": "zoora-security",
-      "name": "The Zoo & Badger Show",
+      "name": "Zoodger News",
       "prefix": "sec",
       "backlog": "content/zoora-security/backlog.json",
       "cadenceSource": "CLAUDE.md, Channel 2: evergreen explainers that every news video links to; the daily news stays in scripts/daily.",

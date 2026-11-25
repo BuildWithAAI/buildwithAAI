@@ -77,6 +77,7 @@ describe('glossary and budgets', () => {
 		for (const t of ['Zoo', 'Badger', 'Pump.fun', 'Bubblemaps', '$DEMO', 'SOL', 'go.zoora.ai/check']) assert.ok(g.includes(t), t);
 		assert.ok(!g.includes('ZOO'), 'only terms that occur');
 		assert.deepEqual(termsIn(buildGlossary(['Badger看着图表']), 'Badger看着图表').map((t) => t.term), ['Badger'], 'Latin terms inside CJK text');
+		assert.deepEqual(buildGlossary(['Subscribe to Zoodger News.']).map((t) => t.term), ['Zoodger News'], 'the channel 2 name; "Zoo" never fires inside "Zoodger"');
 	});
 	test('the budget table matches the engine layout (src/episode/layout/specs.ts)', () => {
 		const same = (key: string, f: 'landscape' | 'vertical', spec: {box: {w: number; h: number}; minSize: number; lineHeight: number} | null | undefined, wPad = 0) => {

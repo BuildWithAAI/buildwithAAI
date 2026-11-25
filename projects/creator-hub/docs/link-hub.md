@@ -67,7 +67,7 @@ out links with an empty `subid=`). The rest of the registry URL is kept byte for
 | `FORM_ACTION_ORIGINS` | Extra https origins that forms may post or redirect to, e.g. the site of Kit's thank-you page |
 | `CONTACT_EMAIL` | Public contact shown on pages. Required in production |
 | `OPERATOR_NAME` | The person or business that runs the site, named on `/privacy` (default: `BRAND_NAME`) |
-| `BRAND_NAME` | Default `Zoora AI`. A second channel can run its own instance |
+| `BRAND_NAME` | Default `Zoora AI`. A second channel (Zoodger News) can run its own instance |
 | `TRUST_PROXY` | `none` (default), `cloudflare` or `header` |
 | `GEO_HEADER`, `IP_HEADER` | Header mode: the country header and/or the client-IP header |
 | `PROXY_SECRET`, `PROXY_SECRET_HEADER` | Shared secret the proxy adds (default header `X-Origin-Secret`). Required in production whenever the country comes from a header |

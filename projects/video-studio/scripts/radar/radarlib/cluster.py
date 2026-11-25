@@ -59,7 +59,8 @@ class Mention:
         "institutional", "follow_up", "incident", "security", "redactions", "record",
         "reference_url", "key", "relevance_reason", "surfaces", "tracker", "origin", "new_incident",
         "user_side", "mech_status", "qualifier", "month_bound", "possible", "retraction", "roundup",
-        "lane", "ref", "listed",
+        "lane", "ref", "listed", "listed_at", "ai_subject", "subject_known", "url_public", "url_ref",
+        "reference_withheld", "hidden",
     )
 
     def __init__(self, **kw):
@@ -69,8 +70,8 @@ class Mention:
 
 def _valid_alias(alias):
     alias = alias.strip()
-    if not alias or alias in ALIAS_STOP:
-        return False
+    if not alias or alias in ALIAS_STOP or not re.search(r"[^\W\d_]", alias):
+        return False  # a bare number ("2", "57") never names an incident
     return len(alias) >= 3 or any(ch.isdigit() for ch in alias)
 
 
@@ -202,10 +203,11 @@ _MONTHS = {m: i for i, m in enumerate(("january", "february", "march", "april", 
 
 
 def _origin(title, excerpt, source, item, people=None):
-    """Who an outlet's item relays (the parser reads it from the full text; else the stored text): an organisation,
-    never a person (nor a name the run has seen used for one)."""
+    """Who an outlet's item relays (the parser reads it from the full text; else the stored excerpt, then the title,
+    one at a time): an organisation, never a person (nor a name the run has seen used for one)."""
     people = people or safety.People()
-    for origin in (item.get("origin"), classify.origin_of(f"{title}. {excerpt}", source.get("publisher") or source["name"])):
+    publisher = source.get("publisher") or source["name"]
+    for origin in (item.get("origin"), classify.origin_of(excerpt, publisher), classify.origin_of(title, publisher)):
         if (origin and "named person" not in origin and not safety.redact_people(origin.title())[1]
                 and not people.mentioned(origin) and not people.mentioned(origin.title())):
             return origin
@@ -241,7 +243,7 @@ def alias_hit(surfaces, title, excerpt):
     multi-word names, which are distinctive on their own."""
     best = 0
     for surface in surfaces:
-        if len(surface) < 4 and not any(ch.isdigit() for ch in surface):
+        if not re.search(r"[^\W\d_]", surface) or (len(surface) < 4 and not any(ch.isdigit() for ch in surface)):
             continue
         flags = re.IGNORECASE if " " in surface.strip() else 0
         pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(surface)}(?![A-Za-z0-9])", flags)
@@ -254,7 +256,60 @@ def alias_hit(surfaces, title, excerpt):
 
 # ---------------------------------------------------------------- mentions
 
-def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_history=False):
+_CJK = re.compile("[぀-ヿ㐀-鿿가-힯]")
+
+
+def _item_when(item):
+    """An item's own date for the name-learning window: its publication, else the date an incident database listed it,
+    else the incident date it carries; None when it has none."""
+    for key in ("publishedUtc", "listedUtc"):
+        if item.get(key):
+            value = parse_iso(item[key])
+            if value:
+                return value
+    if item.get("eventDate"):
+        try:
+            return day_start(dt.date.fromisoformat(item["eventDate"]))
+        except ValueError:
+            return None
+    return None
+
+
+def _assess_all(source_results, sources_by_id):
+    """{(sid, index): assessment} for every item, plus siblings an incident database files under the same incident
+    as an accepted report (an AI Incident Database report the AI rules alone would drop): such a sibling is read as
+    the accepted report's incident, unless its text is in a script the redactor cannot read (CJK) or is a sensitive
+    story."""
+    found = {}
+    for sid, result in source_results.items():
+        source = sources_by_id.get(sid) or {}
+        items = result.get("items", [])
+        for index, item in enumerate(items):
+            found[(sid, index)] = classify.assess(item, source)
+        if not source.get("tracker"):
+            continue
+        accepted = {}
+        for index, item in enumerate(items):
+            ref = item.get("incidentRef")
+            if isinstance(ref, str) and found[(sid, index)]["security"] and found[(sid, index)]["lane"] in ("ai", "both"):
+                accepted.setdefault(ref, found[(sid, index)])
+        for index, item in enumerate(items):
+            ref = item.get("incidentRef")
+            sibling = accepted.get(ref) if isinstance(ref, str) else None
+            got = found[(sid, index)]
+            if sibling is None or got["security"] or classify._exclusion(item, source):
+                continue
+            text = f"{item.get('title') or ''} {item.get('excerpt') or ''}"
+            if _CJK.search(text) or not got["reason"].startswith(("no AI context", "AI context but no AI-security")):
+                continue
+            found[(sid, index)] = {
+                "security": True, "incident": sibling["incident"], "lane": "ai", "aiVote": sibling["aiVote"],
+                "reason": f"filed by {source.get('publisher') or source.get('name') or sid} under {ref} with an accepted report",
+            }
+    return found
+
+
+def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_history=False, max_age_days=120):
     """Returns (mentions, counts) where counts[sid] = {'relevant': n, 'incident': n, 'excluded': n}."""
     mentions, counts = [], {}
     # organisations seen in this run (incident-database record names, source names): a lone "<Org> said" is not a
@@ -267,26 +322,44 @@ def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_
             record = item.get("record") or {}
             if item.get("kind") == "structured" and record.get("name"):
                 known.update(w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9]+", str(record["name"])))
+    assessed = _assess_all(source_results, sources_by_id)
     # names seen used for a person anywhere in the run (a role word before, a personal pronoun after, a pseudonym
     # cue) are redacted everywhere and never become a subject: "Crypto trader X says his wallet was hacked" makes
-    # "Was X hacked?" and "X-linked wallet" personal too, although neither has a cue of its own
-    found = []
-    for result in source_results.values():
-        for item in result.get("items", []):
+    # "Was X hacked?" and "X-linked wallet" personal too, although neither has a cue of its own. Only items from the
+    # last max_age_days teach names (a feed's years-old backlog cannot), and crypto items use the names of the crypto
+    # sources and of the crypto items of general outlets only: an AI or general security feed's other items never
+    # rename a crypto story.
+    oldest = day_start(run_date) - dt.timedelta(days=max_age_days)
+    found_all, found_crypto = [], []
+    for sid, result in source_results.items():
+        source = sources_by_id.get(sid) or {}
+        source_lane = source.get("lane") or "crypto"
+        for index, item in enumerate(result.get("items", [])):
+            when = _item_when(item)
+            if when is not None and when < oldest:
+                continue
+            got = []
             for field in ("title", "excerpt", "lead", "qualifier"):
-                safety.redact_people(item.get(field) or "", known, found=found)
-    people = safety.People(safety.person_tokens(found, known))
+                safety.redact_people(item.get(field) or "", known, found=got)
+            found_all.extend(got)
+            assessment = assessed[(sid, index)]
+            if source_lane == "crypto" or (assessment["security"] and assessment["lane"] in ("crypto", "both")):
+                found_crypto.extend(got)
+    not_people = classify.not_people_names() | {p.lower() for p in classify.AI_PRODUCTS}
+    people_all = safety.People(safety.person_tokens(found_all, known, not_people))
+    people_crypto = safety.People(safety.person_tokens(found_crypto, known, not_people))
     # organisations the run knows by their full names (source names and publishers), for AI subjects
     orgs = {n.lower() for s in sources_by_id.values() for n in (s.get("name"), s.get("publisher")) if n}
     for sid, result in source_results.items():
         source = sources_by_id[sid]
         stats = counts.setdefault(sid, {"relevant": 0, "incident": 0, "excluded": 0})
-        for item in result.get("items", []):
-            found_lane = classify.assess(item, source)
+        for index, item in enumerate(result.get("items", [])):
+            found_lane = assessed[(sid, index)]
             if not found_lane["security"]:
                 stats["excluded"] += 1
                 continue
             incident, why = found_lane["incident"], found_lane["reason"]
+            people = people_crypto if found_lane["lane"] == "crypto" else people_all
             mention = _mention(item, source, run_date, seen_keys or set(), has_history, incident, why, known, people,
                                lane=found_lane["lane"], ai_vote=found_lane["aiVote"], orgs=orgs)
             if mention is None:
@@ -302,12 +375,15 @@ def build_mentions(source_results, sources_by_id, run_date, seen_keys=None, has_
 def _mention(item, source, run_date, seen_keys, has_history, incident, why, known=frozenset(), people=None,
              lane="crypto", ai_vote=None, orgs=frozenset()):
     published = parse_iso(item.get("publishedUtc")) if item.get("publishedUtc") else None
+    listed = bool(item.get("listedReport"))
+    listed_at = parse_iso(item.get("listedUtc")) if listed and item.get("listedUtc") else None
     end_of_run = day_start(run_date) + dt.timedelta(days=1)
-    if published and published >= end_of_run:
-        return None  # published after the run date: not part of this run
+    if (published and published >= end_of_run) or (listed_at and listed_at >= end_of_run):
+        return None  # published (or listed) after the run date: not part of this run
     people = people or safety.People()
-    title, t_flags = safety.sanitize(item.get("title") or "", known, people)
-    excerpt, e_flags = safety.sanitize(item.get("excerpt") or "", known, people)
+    item_names = []  # the names this item's own text had redacted (its link may spell them)
+    title, t_flags = safety.sanitize(item.get("title") or "", known, people, found=item_names)
+    excerpt, e_flags = safety.sanitize(item.get("excerpt") or "", known, people, found=item_names)
     lead, _ = safety.sanitize(item.get("lead") or "", known, people)
     raw_text = f"{item.get('title') or ''} {item.get('excerpt') or ''}"
     text = f"{title} {excerpt}"
@@ -318,11 +394,12 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         event_date = dt.date.fromisoformat(item["eventDate"])
         event_kind = "structured"
     elif kind in ("news", "blog", "postmortem"):
-        ref = (published or end_of_run).date()
+        ref_day = (published or listed_at or end_of_run).date()
         # dates of follow-up events ("transfers resumed by Oct. 28") are not the attack's date
-        found = _event_dates(raw_text, ref)
+        found = _event_dates(raw_text, ref_day)
         if found:
-            event_date, event_kind = max(found), "text"
+            # a listed report (another outlet's text) dates its incident by the EARLIEST date it states
+            event_date, event_kind = (min(found) if listed else max(found)), "text"
     if event_date and event_date > run_date:
         return None
     tier = source["tier"]
@@ -330,13 +407,17 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         fresh = day_start(event_date)
         if has_history and item.get("key") not in seen_keys and (run_date - event_date).days <= 7:
             fresh = day_start(run_date)  # surfaced since the last radar run
+    elif listed:
+        # a database listing date is never coverage: the original link's date, else the earliest date its text
+        # states; the listing date only orders and groups listed reports (freshest_member never uses a listed report)
+        fresh = published or (day_start(event_date) if event_date else None) or listed_at
     elif tier == "C" and event_date and published:
         fresh = min(published, day_start(event_date))
     else:
         fresh = published or (day_start(event_date) if event_date else None)
     if fresh is None:
         return None
-    subject, method = None, None
+    subject, method, ai_subject = None, None, False
     if kind == "structured":
         subject, method = record.get("name"), "structured"
     elif kind == "postmortem" and item.get("subject"):
@@ -348,10 +429,11 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         if lane in ("ai", "both") and not subject:
             # AI incidents are about products and companies; a name that could be a person is never used
             subject, method = classify.extract_ai_subject(item.get("title") or "", exclude=own, known=set(known) | set(orgs))
+            ai_subject = bool(subject)
     if subject:
         redacted_subject, n = safety.redact_people(subject, known)
         if n or people.mentioned(subject):
-            subject, method = None, None
+            subject, method, ai_subject = None, None, False
     lead_for_names = (item.get("lead") or "") if kind == "structured" else ""
     aliases = aliases_for(subject, lead_for_names) if subject else set()
     surfaces = surfaces_for(subject, lead_for_names) if subject else set()
@@ -360,8 +442,9 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
     amounts = []
     if kind == "structured" and record and record.get("amount"):
         amounts.append((float(record["amount"]), f"reported loss {format_usd_exact(record['amount'])}", "excerpt"))
-    else:
-        # a headline's figure for THIS incident only: "..., months after a $1 million exploit" is another incident
+    elif not listed:
+        # a headline's figure for THIS incident only: "..., months after a $1 million exploit" is another incident.
+        # A listed report's figures are another outlet's text the radar did not read: never a reported loss.
         for value, quote in classify.title_amounts(title):
             amounts.append((value, quote, "title"))
         # Excerpt figures only from tier A/B, and not from sentences about other or
@@ -405,27 +488,40 @@ def _mention(item, source, run_date, seen_keys, has_history, incident, why, know
         mech_status = "unknown"
         qualifier = qualifier or f"attack method: {record.get('method')}"
     full_text = f"{title}. {excerpt}. {lead}. {qualifier or ''}"
+    # a link whose path spells a name this item or the run redacted ("...-trader-x-says-...") is withheld: the outlet's
+    # address only, and a stable key in its place (the full link stays in the gitignored cache)
+    url = item.get("url")
+    names = set(people.tokens) | {name for name, _ in item_names}
+    url_public, url_ref = url, None
+    if url and safety.url_names_person(url, names):
+        url_public, url_ref = safety.url_origin(url), safety.url_ref(url)
+    reference_url = item.get("referenceUrl")
+    reference_withheld = bool(reference_url and safety.url_names_person(reference_url, names))
     return Mention(
         source=source, item=item, sid=source["id"], name=source["name"], tier=tier,
         publisher=source.get("publisher") or source["name"], kind=kind, title=title,
-        excerpt=excerpt, lead=lead, url=item.get("url"), published=published,
+        excerpt=excerpt, lead=lead, url=url, published=published,
         event_date=event_date, event_kind=event_kind, fresh=fresh, subject=subject,
         subject_method=method, aliases=aliases, surfaces=surfaces, amounts=amounts, chains=chains, type_vote=vote,
         hedge=safety.strong_hedge(hedge_text), legal=safety.legal_terms(text),
         price=safety.price_talk(text), retail=classify.retail_cues(text),
         institutional=classify.institutional_cues(text), follow_up=classify.follow_up(text),
         incident=incident, security=True,
-        redactions={"names": t_flags["names"] + e_flags["names"], "code": t_flags["code"] + e_flags["code"]},
-        record=record, reference_url=item.get("referenceUrl"), key=item.get("key"),
+        redactions={"names": t_flags["names"] + e_flags["names"], "code": t_flags["code"] + e_flags["code"],
+                    "instructions": t_flags["instructions"] + e_flags["instructions"]},
+        record=record, reference_url=None if reference_withheld else reference_url, key=item.get("key"),
         relevance_reason=why, tracker=bool(source.get("tracker")),
         origin=_origin(title, excerpt, source, item, people) if tier in ("B", "C") else None,
         new_incident=bool(NEW_INCIDENT_RE.search(f"{title} {lead}")),
         user_side=classify.user_side(full_text), mech_status=mech_status, qualifier=qualifier,
-        month_bound=_month_bound(raw_text, (published or end_of_run).date()) if kind != "structured" else None,
+        month_bound=_month_bound(raw_text, (published or listed_at or end_of_run).date()) if kind != "structured" else None,
         possible=classify.includes_possible_losses(f"{title}. {excerpt}"),
         retraction=bool(RETRACT_RE.search(f"{title}. {excerpt}")),
         roundup=bool(ROUNDUP_RE.search(item.get("url") or "") or ROUNDUP_RE.search(title)),
-        lane=lane or "crypto", ref=ref, listed=bool(item.get("listedReport")),
+        lane=lane or "crypto", ref=ref, listed=listed, listed_at=listed_at, ai_subject=ai_subject,
+        subject_known=classify.subject_known(subject, method) if subject else False,
+        url_public=url_public, url_ref=url_ref, reference_withheld=reference_withheld,
+        hidden=int(item.get("hiddenCharacters") or 0),
     )
 
 
@@ -539,13 +635,14 @@ def cluster_mentions(mentions):
 
     news = [m for m in leftovers if m.incident and m.subject]
     rest = [m for m in leftovers if not (m.incident and m.subject)]
-    # complete linkage: an item joins a cluster only when it matches EVERY member (name and date), so items a few
-    # days apart can never chain two incidents a week apart into one
+    # complete linkage: an item joins a cluster only when it matches EVERY member (name, date and lane), so items a
+    # few days apart can never chain two incidents a week apart into one, and a crypto story never merges with an AI
+    # story that shares a name ("Gemini" the exchange, "Google Gemini" the model)
     news_clusters = []
     for m in sorted(news, key=lambda x: (_item_date(x), x.url or "")):
         target = None
         for members in news_clusters:
-            if all(_same_name(m, x) and _news_dates_close(m, x) for x in members) and not (
+            if all(_same_name(m, x) and _news_dates_close(m, x) and lanes_compatible(m.lane, x.lane) for x in members) and not (
                     m.new_incident and min(_item_date(x) for x in members) < _item_date(m) - dt.timedelta(days=1)):
                 target = members
                 break
@@ -555,16 +652,22 @@ def cluster_mentions(mentions):
             target.append(m)
     # Items without a confident subject join a news cluster when one of its names
     # is in their title or excerpt and the dates are close; otherwise they stay
-    # unclustered ("also seen").
+    # unclustered ("also seen"). An AI item joins only by the incident database's
+    # reference, or with the product in its TITLE and the same issue as every member:
+    # a product named in passing in an excerpt is not the same incident.
     unclustered = []
     for m in rest:
         best, best_key = None, None
         for index, members in enumerate(news_clusters):
             surfaces = set().union(*(x.surfaces for x in members))
             hit = alias_hit(surfaces, m.title, m.excerpt)
-            if m.ref and any(x.ref == m.ref for x in members):
+            same_ref = bool(m.ref and any(x.ref == m.ref for x in members))
+            if same_ref:
                 hit = max(hit, 2)  # the incident database files both reports under one incident
-            if not hit or not all(_news_dates_close(m, x) for x in members):
+            elif m.lane == "ai" or any(_ai_item(x) for x in members):
+                if hit < 2 or not all(_same_issue(m, x, names=False) for x in members):
+                    continue
+            if not hit or not all(_news_dates_close(m, x) and lanes_compatible(m.lane, x.lane) for x in members):
                 continue
             key = (hit, len(members))
             if best_key is None or key > best_key:
@@ -576,8 +679,66 @@ def cluster_mentions(mentions):
     return seeds + news_clusters, unclustered
 
 
+def lanes_compatible(a, b):
+    """A crypto-only item and an AI-only item are never one incident; an item in both lanes may join either."""
+    return {a or "crypto", b or "crypto"} != {"crypto", "ai"}
+
+
+def _ai_item(m):
+    """An item in the AI lane, or one whose subject is an AI product or company the AI rules chose."""
+    return m.lane == "ai" or bool(m.ai_subject)
+
+
+_CVE = re.compile(r"\bCVE-\d{4}-\d{3,7}\b", re.IGNORECASE)
+# words that name a mechanism or the story's kind, not the issue: two Claude Code posts that both say "prompt
+# injection" are not the same finding
+_ISSUE_GENERIC = frozenset("""
+prompt prompts injection injections inject injected flaw flaws vulnerability vulnerabilities vulnerable bug bugs
+exfiltration exfiltrate exfiltrated data leak leaks leaked leaking secret secrets attack attacks attacker attackers
+hacker hackers hack hacked hacking exploit exploits exploited exploiting agent agents agentic coding user users
+security researcher researchers research report reports reported says said issue issues patch patched patches fixed
+fixes fix remote code execution malicious could allows allow allowed after with from into over their this that
+through about more than what when which have been were your steal steals stole stolen expose exposed exposes
+exposing access model models tool tools chat chatbot chatbots update warns warn threat actors actor campaign
+campaigns cyber cyberattack breach breached million thousand customers information credentials keys tokens files
+hijack hijacked hijacks risk risks attempt attempts invisible hidden instructions malware abuse abused abuses
+used uses using via new first today week reveals revealed found finds discloses disclosed claims claimed
+""".split())
+
+
+def _issue_words(m):
+    alias_words = {w for a in (m.aliases or ()) for w in a.split()}
+    words = re.findall(r"[a-z0-9]+", safety.fold(m.title or ""))
+    return {w for w in words if len(w) >= 4 and not w.isdigit() and w not in _ISSUE_GENERIC and w not in alias_words
+            and w not in classify._AI_GENERIC and w not in classify._STOPWORDS}
+
+
+def _same_issue(a, b, names=True):
+    """Two AI items report the same finding, not only the same product: the incident database files them under one
+    incident, they share a CVE, or two different publishers give the same AI type and share a distinctive headline
+    word beyond the product's name and the mechanism's. Two posts of one publisher about one product are two
+    findings unless a reference or a CVE ties them."""
+    if a.ref and a.ref == b.ref:
+        return True
+    cves_a = {c.upper() for c in _CVE.findall(f"{a.title} {a.excerpt}")}
+    if cves_a and cves_a & {c.upper() for c in _CVE.findall(f"{b.title} {b.excerpt}")}:
+        return True
+    if names and not names_match(a.aliases, b.aliases):
+        return False
+    if (a.publisher or a.sid) == (b.publisher or b.sid):
+        return False
+    vote_a = a.type_vote[0] if a.type_vote else None
+    vote_b = b.type_vote[0] if b.type_vote else None
+    if not vote_a or vote_a != vote_b:
+        return False
+    return bool(_issue_words(a) & _issue_words(b))
+
+
 def _same_name(a, b):
-    """Two news items name the same subject, or an incident database files them under one incident."""
+    """Two news items name the same subject, or an incident database files them under one incident. For AI items a
+    product's name alone is not enough: they must report the same issue (_same_issue)."""
+    if _ai_item(a) or _ai_item(b):
+        return _same_issue(a, b)
     return names_match(a.aliases, b.aliases) or bool(a.ref and a.ref == b.ref)
 
 
@@ -615,8 +776,20 @@ def _date_score(m, seed_date):
 
 
 def _news_dates_close(a, b):
+    if a.ref and a.ref == b.ref:
+        return True  # the incident database files both reports under one incident, whatever their dates
     if a.event_kind == "text" and b.event_kind == "text" and a.event_date and b.event_date:
         return abs((a.event_date - b.event_date).days) <= 3
+    if a.listed != b.listed:
+        # a listing date is when an incident database added another outlet's report: an upper bound, not coverage
+        listed, other = (a, b) if a.listed else (b, a)
+        when = (other.published or other.fresh).date()
+        if listed.published:
+            return abs((listed.published.date() - when).days) <= 4
+        if listed.event_kind == "text" and listed.event_date:
+            return abs((when - listed.event_date).days) <= 3
+        bound = (listed.listed_at or listed.fresh).date()
+        return bound - dt.timedelta(days=21) <= when <= bound + dt.timedelta(days=4)
     pa = (a.published or a.fresh).date()
     pb = (b.published or b.fresh).date()
     return abs((pa - pb).days) <= 4
@@ -687,50 +860,96 @@ def incident_lane(members):
 class Carried:
     """A source a previous live radar run saw for this incident that has since dropped out of its feed. It still
     counts for the status: a feed rotating is not a retraction."""
-    __slots__ = ("sid", "url", "tier", "publisher", "hedge", "tracker", "origin", "retraction", "roundup", "entry", "losses")
+    __slots__ = ("sid", "url", "tier", "publisher", "hedge", "tracker", "origin", "retraction", "roundup", "entry", "losses",
+                 "listed")
 
     def __init__(self, **kw):
         for slot in self.__slots__:
             setattr(self, slot, kw.get(slot))
 
 
-def _status(members, carried=(), aliases=()):
+# words that do not tell two origins apart ("GitGuardian" and "the GitGuardian team" are one origin)
+_ORIGIN_GENERIC = frozenset("""the a an of and research report reports team labs lab blog post firm company group security inc
+corp ltd llc co said says found new""".split())
+
+
+def _origin_key(origin):
+    words = re.findall(r"[a-z0-9]+(?:\.[a-z0-9]+)*", (origin or "").lower())
+    return frozenset(w for w in words if w not in _ORIGIN_GENERIC and len(w) >= 3)
+
+
+def _count_origins(voters):
+    """How many independent origins the outlets relay: two origins are one when they share a distinctive word
+    ("gitguardian" and "github gitguardian"); an outlet that relays no one is its own origin."""
+    groups = []  # [set(words), [sids]]
+    for key, sid in voters:
+        merged = None
+        for group in groups:
+            if key and group[0] and key & group[0]:
+                if merged is None:
+                    group[0] |= key
+                    group[1].append(sid)
+                    merged = group
+                else:
+                    merged[0] |= group[0]
+                    merged[1].extend(group[1])
+                    group[0], group[1] = set(), []
+        if merged is None:
+            groups.append([set(key), [sid]])
+    return [g[1] for g in groups if g[1]]
+
+
+def _solo_ok(m, no_solo=frozenset()):
+    """A source that may confirm an incident alone (tier A). A single researcher's blog ("confirmsAlone": false) is
+    one outlet's vote, never a primary statement."""
+    if m.sid in no_solo:
+        return False
+    source = getattr(m, "source", None) or {}
+    return source.get("confirmsAlone", True) is not False
+
+
+def _status(members, carried=(), aliases=(), no_solo=frozenset()):
     """Confirmed needs a primary statement (the project's own report, a post-mortem, a security firm's research or a
-    law-enforcement release: an unhedged tier-A source that is not an incident database), or two unhedged tier-B
-    outlets that do not relay the same origin. Incident databases (DefiLlama, SlowMist) seed, date and size an
-    incident but never confirm it alone. Tier C never counts."""
+    law-enforcement release: an unhedged tier-A source that is not an incident database, nor a single researcher's
+    blog), or two unhedged outlets (tier B, or a researcher's blog) that do not relay the same origin. Incident
+    databases (DefiLlama, SlowMist) seed, date and size an incident but never confirm it alone. Tier C never
+    counts."""
     pool = [m for m in list(members) + list(carried) if not getattr(m, "roundup", False)]
     walked_back = sorted({m.sid for m in pool if getattr(m, "retraction", False) and m.tier in ("A", "B")})
     if walked_back:
         return "developing", ("developing: " + ", ".join(walked_back) + " walks the report back (a denial, a retraction "
                               "or a false alarm); recheck every claim before any coverage")
-    primary = sorted({m.sid for m in pool if m.tier == "A" and not m.tracker and not m.hedge})
+    primary = sorted({m.sid for m in pool if m.tier == "A" and not m.tracker and not m.hedge and _solo_ok(m, no_solo)})
     if primary:
         return "confirmed", "confirmed: unhedged primary statement, post-mortem or security-firm research: " + ", ".join(primary)
     own = {a for a in aliases if a}
     relayed = sorted({m.sid for m in pool if m.tier == "B" and not m.hedge and m.origin and (m.origin in own or any(
         re.search(rf"(?<![a-z0-9]){re.escape(a)}(?![a-z0-9])", m.origin) for a in own))})
-    # one vote per outlet (two articles from one outlet are one source), keyed by what the outlet relays
+    # one vote per outlet (two articles from one outlet are one source), keyed by what the outlet relays; a
+    # researcher's blog that may not confirm alone votes like an outlet
+    voting = [m for m in pool if not m.hedge and (m.tier == "B" or (m.tier == "A" and not m.tracker and not _solo_ok(m, no_solo)))]
     per_outlet = {}
-    for m in pool:
-        if m.tier == "B" and not m.hedge:
-            per_outlet.setdefault((m.publisher or m.sid or "").lower(), m)
-    origins = {}
-    for publisher, m in per_outlet.items():
-        origins.setdefault(m.origin or publisher, m.sid)
+    for m in voting:
+        per_outlet.setdefault((m.publisher or m.sid or "").lower(), m)
+    groups = _count_origins([(_origin_key(m.origin) if m.origin else frozenset({f"outlet:{publisher}"}), m.sid)
+                             for publisher, m in per_outlet.items()])
+    origins = {min(g): g for g in groups}
     if relayed:
         return "confirmed", "confirmed: the project's own statement, relayed unhedged by " + ", ".join(relayed)
     if len(origins) >= 2:
-        return "confirmed", "confirmed: 2+ unhedged tier-B outlets with different origins: " + ", ".join(sorted(origins.values()))
+        kind = "tier-B outlets" if all(m.tier == "B" for m in per_outlet.values()) else "outlets"
+        return "confirmed", f"confirmed: 2+ unhedged {kind} with different origins: " + ", ".join(sorted(origins))
     parts = []
     hedged = sorted({f"{m.sid} ('{m.hedge}')" for m in pool if m.hedge and m.tier in ("A", "B")})
     trackers = sorted({m.sid for m in pool if m.tracker})
-    b_unhedged = [m for m in pool if m.tier == "B" and not m.hedge]
+    b_unhedged = list(per_outlet.values())
     if len(b_unhedged) >= 2 and len(origins) < 2:
         shared = sorted({m.origin for m in b_unhedged if m.origin})
-        parts.append("the unhedged tier-B outlets relay one origin" + (f" ({', '.join(shared)})" if shared else ""))
+        parts.append("the unhedged outlets relay one origin" + (f" ({', '.join(shared)})" if shared else ""))
     elif origins:
-        parts.append(f"only {len(origins)} unhedged tier-B outlet ({', '.join(sorted(origins.values()))})")
+        solo = sorted({m.sid for m in b_unhedged if m.tier == "A"})
+        what = "a researcher's blog that never confirms alone" if solo and len(per_outlet) == 1 else "unhedged tier-B outlet"
+        parts.append(f"only 1 {what} ({', '.join(sorted(origins))})")
     else:
         parts.append("no unhedged primary statement or tier-B outlet")
     if trackers:
@@ -756,10 +975,23 @@ def _mechanism(members, kind, generic):
     return "stated", None
 
 
+def _url_fields(m):
+    """The link as written in the brief: the article's URL, or, when its path spells a redacted name, only the
+    outlet's address with a stable key (urlRef) in its place."""
+    if m.url_ref:
+        return {"url": m.url_public, "urlWithheld": "names a person", "urlRef": m.url_ref}
+    return {"url": m.url}
+
+
+def url_key(entry):
+    """The identity of a source or figure entry across runs: its urlRef when the link is withheld, else its URL."""
+    return entry.get("urlRef") or entry.get("url")
+
+
 def _source_entry(m):
     entry = {
         "id": m.sid,
-        "url": m.url,
+        **_url_fields(m),
         "title": m.title,
         "excerpt": m.excerpt,
         "publishedUtc": m.item.get("publishedUtc"),
@@ -767,6 +999,14 @@ def _source_entry(m):
         "publisher": m.publisher,
         "kind": m.kind,
     }
+    if m.listed and m.item.get("listedUtc"):
+        entry["listedUtc"] = m.item.get("listedUtc")
+    if (m.source or {}).get("confirmsAlone") is False:
+        entry["confirmsAlone"] = False
+    if m.hidden:
+        entry["hiddenCharacters"] = m.hidden
+    if m.reference_withheld:
+        entry["referenceNote"] = "the source cites a link that names a person; withheld"
     if m.tracker:
         entry["tracker"] = True
     if m.event_date:
@@ -797,8 +1037,8 @@ def _source_entry(m):
             entry["trackerUrl"] = m.item["trackerUrl"]
         entry["listedNote"] = (f"listed by {m.publisher}; the link is the original report, which the radar did not "
                                "read: take facts from it, never from the listing")
-    if m.redactions["names"] or m.redactions["code"]:
-        entry["redacted"] = dict(m.redactions)
+    if m.redactions["names"] or m.redactions["code"] or m.redactions.get("instructions"):
+        entry["redacted"] = {k: v for k, v in m.redactions.items() if v or k in ("names", "code")}
     return entry
 
 
@@ -806,9 +1046,16 @@ def _fact(text, m, quote, field):
     return {"text": text, "sourceId": m.sid, "url": m.url, "quote": quote, "field": field}
 
 
+def _fact_order(m):
+    """Tier first; within a tier, structured records first, tier A in first-report order, and tier B/C news newest
+    first, so a general outlet's older article never pushes the latest coverage out of the capped list."""
+    newest_first = m.tier != "A" and m.kind != "structured"
+    return (TIER_RANK[m.tier], m.kind != "structured", -m.fresh.timestamp() if newest_first else m.fresh.timestamp())
+
+
 def build_facts(members, limit=14):
     facts = []
-    ordered = sorted(members, key=lambda m: (TIER_RANK[m.tier], m.kind != "structured", m.fresh))
+    ordered = sorted(members, key=_fact_order)
     for m in ordered:
         if m.kind == "structured" and m.source["parser"] == "defillama_hacks":
             rec = m.record
@@ -836,7 +1083,7 @@ def build_facts(members, limit=14):
             facts.append(_fact(f"{m.name} dates it {m.event_date.isoformat()}.", m, m.event_date.isoformat(), "excerpt"))
         elif m.listed:
             # an incident database's listing of another outlet's report: it says that the report exists, nothing more
-            when = (m.published or m.fresh).date().isoformat()
+            when = (m.listed_at or m.fresh).date().isoformat()
             facts.append(_fact(f"{m.name} lists a report (discovery only), {when}:", m, m.title, "title"))
             continue
         else:
@@ -855,14 +1102,25 @@ def build_facts(members, limit=14):
         member = next(x for x in members if x.url == fact["url"] and x.sid == fact["sourceId"])
         haystack = member.title if fact["field"] == "title" else member.qualifier if fact["field"] == "qualifier" else member.excerpt
         if fact["quote"] and haystack and fact["quote"] in haystack and not safety.check_generated(fact["text"].split(":")[0]):
-            if fact not in verified:
-                verified.append(fact)
+            public = dict(fact, **_url_fields(member))
+            if public not in verified:
+                verified.append(public)
     return verified[:limit]
 
 
 def _date_parts(members):
     """(dateUtc or None, firstSeen, note). The incident date comes from a database record or a date the text gives
-    for the attack; when sources only give their own publication dates the incident date is not stated."""
+    for the attack; when sources only give their own publication dates the incident date is not stated. A listed
+    report (an incident database's listing of another outlet's article) never dates first coverage: an incident only
+    listed so far has no first-seen date, and its note says when it was listed."""
+    read = [m for m in members if not m.listed]
+    if not read:
+        text_dates = [m.event_date for m in members if m.event_kind == "text"]
+        listed_on = min((m.listed_at or m.fresh).date() for m in members)
+        who = ", ".join(sorted({m.publisher for m in members}))
+        note = f"listed by {who} on {listed_on.isoformat()}; the original reports' dates were not read"
+        return (min(text_dates) if text_dates else None), None, note
+    members = read
     structured_dates = [m.event_date for m in members if m.event_kind == "structured"]
     text_dates = [m.event_date for m in members if m.event_kind == "text"]
     first_seen = min((m.published or m.fresh).date() for m in members)
@@ -878,7 +1136,9 @@ def _date_parts(members):
     return None, first_seen, note
 
 
-def build_incident(members, run_date, carried=(), previous_id=None):
+def build_incident(members, run_date, carried=(), previous_id=None, no_solo=frozenset()):
+    """no_solo: ids of sources that never confirm an incident alone ("confirmsAlone": false in sources.json; carried
+    sources follow the same rule)."""
     members = sorted(members, key=lambda m: (TIER_RANK[m.tier], m.fresh))
     name, other_names = _display_name(members)
     if not name:
@@ -896,29 +1156,29 @@ def build_incident(members, run_date, carried=(), previous_id=None):
     losses = []
     for m in members:
         for value, quote, field in m.amounts:
-            entry = {"amountUsd": value, "by": m.sid, "url": m.url, "quote": quote, "field": field, "tier": m.tier}
+            entry = {"amountUsd": value, "by": m.sid, **_url_fields(m), "quote": quote, "field": field, "tier": m.tier}
             qual = classify.qualifier_of(quote)
             if qual:
                 entry["qualifier"] = qual
             if m.possible and m.kind != "structured":
                 entry["includesPossible"] = True
-            if not any(e["by"] == entry["by"] and e["url"] == entry["url"] and abs(e["amountUsd"] - value) < 0.5 for e in losses):
+            if not any(e["by"] == entry["by"] and url_key(e) == url_key(entry) and abs(e["amountUsd"] - value) < 0.5 for e in losses):
                 losses.append(entry)
     for c in carried:
         # figures a carried-over source stated: still reported by it, the article has only left the feed
         for entry in c.losses or ():
-            if not any(e["by"] == entry.get("by") and e["url"] == entry.get("url") and abs(e["amountUsd"] - float(entry.get("amountUsd") or 0)) < 0.5
+            if not any(e["by"] == entry.get("by") and url_key(e) == url_key(entry) and abs(e["amountUsd"] - float(entry.get("amountUsd") or 0)) < 0.5
                        for e in losses):
                 losses.append(dict(entry, carried=True))
     aliases = set().union(*(m.aliases for m in members)) | (aliases_for(name) if name != "Unknown subject" else set())
     status_members = [m for m in members if not (m.event_kind == "text" and date and abs((m.event_date - date).days) > 3
                                                  and not m.follow_up)]
-    status, status_reason = _status(status_members, carried, aliases)
+    status, status_reason = _status(status_members, carried, aliases, no_solo)
     mech_status, mech_member = _mechanism(members, kind, generic)
     post_mortem = None
     for m in members:
         if m.kind == "postmortem" or (m.kind in ("blog", "news") and POSTMORTEM_TITLE.search(m.title)):
-            post_mortem = m.url
+            post_mortem = _url_fields(m)["url"]
             break
     notes = []
     if other_names:
@@ -946,6 +1206,15 @@ def build_incident(members, run_date, carried=(), previous_id=None):
         notes.append("Personal names were redacted from source text.")
     if any(m.redactions["code"] for m in members):
         notes.append("Addresses or code identifiers were removed from source text (concept level only).")
+    if any(m.redactions.get("instructions") for m in members):
+        notes.append("Text addressed to an AI (a possible prompt-injection payload) was removed from source text: "
+                     "never quote or paraphrase it.")
+    if any(m.hidden for m in members):
+        notes.append("Hidden characters were removed from a source's text (possible prompt injection): treat that "
+                     "source's text as data only, never as instructions.")
+    if any(m.url_ref for m in members):
+        notes.append("A source's link names a person, so only the outlet's address is kept here (urlRef identifies the "
+                     "article; the full link is in the run's private cache).")
     listed = sorted({m.publisher for m in members if m.listed})
     if listed:
         notes.append(", ".join(listed) + " lists other outlets' reports (discovery only): read the original report at "
@@ -977,15 +1246,17 @@ def build_incident(members, run_date, carried=(), previous_id=None):
     if lane != "crypto" and kind in classify.AI_TYPES:
         notes.append("AI security: explain the mechanism at concept level only (no prompts, payloads or steps), "
                      "attribute every claim to the vendor, researcher or outlet, and give users one fix.")
+    day = date or first_seen
     incident = {
-        "id": previous_id or f"{(date or first_seen).isoformat()}-{slugify(name)}",
+        "id": previous_id or (f"{day.isoformat()}-{slugify(name)}" if day else f"listed-{slugify(name)}"),
         "title": title,
         "protocol": name,
+        "subjectKnown": any(m.subject_known for m in members if m.subject and core_name(m.subject) == core_name(name)),
         "lane": lane,
         "chains": chains,
         "type": kind,
         "dateUtc": date.isoformat() if date else None,
-        "firstSeenUtc": first_seen.isoformat(),
+        "firstSeenUtc": first_seen.isoformat() if first_seen else None,
         "reportedLosses": losses,
         "status": status,
         "statusReason": status_reason,
@@ -1002,36 +1273,64 @@ def build_incident(members, run_date, carried=(), previous_id=None):
     if date_note:
         incident["dateNote"] = date_note
     if mech_member is not None:
-        incident["mechanismNote"] = {"sourceId": mech_member.sid, "url": mech_member.url, "publisher": mech_member.publisher,
-                                     "status": mech_status, "text": mech_member.qualifier}
+        incident["mechanismNote"] = {"sourceId": mech_member.sid, **_url_fields(mech_member),
+                                     "publisher": mech_member.publisher, "status": mech_status, "text": mech_member.qualifier}
     if carried:
         incident["carriedSources"] = sorted({c.url for c in carried if c.url})
     return incident
 
 
 def unclustered_entry(m):
-    return {
+    entry = {
         "sourceId": m.sid,
         "lane": m.lane or "crypto",
         "tier": m.tier,
         "title": m.title,
-        "url": m.url,
+        **_url_fields(m),
         "publishedUtc": m.item.get("publishedUtc"),
         "excerpt": m.excerpt,
         "reason": ("no confident subject in the headline" if m.incident else "security topic, not an incident report"),
     }
+    if m.listed:
+        entry["listedReport"] = True
+        if m.item.get("listedUtc"):
+            entry["listedUtc"] = m.item.get("listedUtc")
+    return entry
+
+
+def listed_entry(incident, members):
+    """An incident only an incident database lists so far (every member a listed report): a lead for the owner, never
+    a candidate. Its listing date is when the database added the reports, not when they were published."""
+    listed = max((m.listed_at or m.fresh) for m in members)
+    return {
+        "id": incident["id"],
+        "title": incident["title"],
+        "protocol": incident["protocol"],
+        "lane": incident["lane"],
+        "type": incident["type"],
+        "incidentRefs": sorted({m.ref for m in members if m.ref}),
+        "listedUtc": listed.date().isoformat(),
+        "dateUtc": incident["dateUtc"],
+        "dateNote": incident.get("dateNote"),
+        "sources": incident["sources"],
+        "reason": ("listed by an incident database only: a lead, never a candidate; read each original report before "
+                   "using any fact, and cite that outlet"),
+    }
 
 
 def freshest_member(members):
-    """The freshest tier-A/B member that is not a newsletter round-up (then tier C, then anything): aggregator
-    timestamps and weekly round-ups alone never make an old incident look new."""
-    pool = ([m for m in members if m.tier in ("A", "B") and not m.roundup]
-            or [m for m in members if not m.roundup] or list(members))
-    return max(pool, key=lambda m: m.fresh)
+    """The freshest tier-A/B member that is not a newsletter round-up (then tier C, then anything), never a listed
+    report: aggregator timestamps, an incident database's listing dates and weekly round-ups never make an old
+    incident look new. None when the incident is only listed so far."""
+    read = [m for m in members if not m.listed]
+    pool = ([m for m in read if m.tier in ("A", "B") and not m.roundup]
+            or [m for m in read if not m.roundup] or read)
+    return max(pool, key=lambda m: m.fresh) if pool else None
 
 
 def freshest(members):
-    return freshest_member(members).fresh
+    latest = freshest_member(members)
+    return latest.fresh if latest else None
 
 
 def clean_join(parts):

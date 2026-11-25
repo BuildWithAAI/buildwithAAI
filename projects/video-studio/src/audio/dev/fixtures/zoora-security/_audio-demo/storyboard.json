@@ -1,0 +1,14 @@
+{
+	"version": 1,
+	"channel": "zoora-security",
+	"slug": "_audio-demo",
+	"lang": "en",
+	"sourceLang": "en",
+	"title": "Audio integration demo (internal; never published)",
+	"fiction": false,
+	"scenes": [
+		{"id": "s01", "type": "talk", "narration": "Welcome back. Today's scam has three red flags, and one easy fix."},
+		{"id": "s02", "type": "talk", "narration": "Here's the fix. Slow down, type the address yourself, and check it twice."}
+	],
+	"sources": []
+}

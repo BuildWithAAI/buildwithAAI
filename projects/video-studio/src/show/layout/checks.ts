@@ -5,11 +5,13 @@
  *    Short, Badger's face also stays left of the action buttons.
  *  - Text (cards, source lines, the header row, captions) never covers an on-camera face, and keeps one head width
  *    clear of Zoo's face (CV4c: the face reads through its own features).
+ *  - The logo plate and the channel-name line under it stay inside the safe area (push-in included), the name at
+ *    least 24 px (SL10), clear of the cold-open kicker, the ON AIR sign, the name plates and the faces.
  */
 import type {Format, ShowSegment} from '../types.ts';
 import type {Box} from '../diagram/layout.ts';
 import {FRAME, outlinePx, pushRect, rectToScreen, SAFE, SHORTS_BUTTONS, shotFor, type Shot, type ShotName} from './shots.ts';
-import {logoRect, onAirRect, stageHeads} from './stage.ts';
+import {LOGO_NAME, logoBlockRect, onAirRect, STAGE, stageHeads} from './stage.ts';
 import {CAPTION_BAND, headerSlots, SEGMENT_BOXES} from './boxes.ts';
 import {SEGMENT_SPECS} from '../segments.ts';
 
@@ -29,6 +31,9 @@ export const overlap = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x
 export const grow = (b: Box, d: number): Box => ({x: b.x - d, y: b.y - d, w: b.w + 2 * d, h: b.h + 2 * d});
 export const inside = (b: Box, s: {left: number; right: number; top: number; bottom: number}): boolean => b.x >= s.left && b.y >= s.top && b.x + b.w <= s.right && b.y + b.h <= s.bottom;
 
+/** ART_GUIDE SL10: on-screen text at least 24 px. */
+export const MIN_TEXT_PX = 24;
+
 export const checkShot = (format: Format, name: ShotName): string[] => {
 	const out: string[] = [];
 	if (name === 'none') return out;
@@ -43,19 +48,36 @@ export const checkShot = (format: Format, name: ShotName): string[] => {
 			{x: h.tag.x, y: h.tag.y, w: Math.min(h.tag.maxW, 420), h: 60},
 			{x: h.badge.right - 360, y: h.badge.y, w: 360, h: 84},
 		];
-		for (const b of header) if (overlap(sign, b)) out.push(`${format}/${name}: the ON AIR sign is under the header row`);
 		// the cold open (a two-shot with the wall dressing) may carry a kicker card: the sign stays fully visible below
-		// or beside it and clear of the wall logo, at rest and pushed in
+		// or beside it and clear of the logo plate and the channel name under it; all of this at rest and pushed in
 		const kicker = SEGMENT_BOXES[format].coldOpen.card;
-		const logo = shot.dressing.logo ? rectToScreen(shot, logoRect(format)) : null;
+		const logo = shot.dressing.logo ? rectToScreen(shot, logoBlockRect(format)) : null;
 		for (const k of [1, shot.push]) {
 			const s = pushRect(shot, sign, k);
 			const at = k > 1 ? ' (pushed in)' : '';
+			for (const b of header) if (overlap(s, b)) out.push(`${format}/${name}: the ON AIR sign is under the header row${at}`);
 			if (kicker && overlap(grow(s, 8), kicker)) out.push(`${format}/${name}: the cold-open kicker card covers the ON AIR sign${at}`);
-			if (logo && overlap(grow(s, 8), pushRect(shot, logo, k))) out.push(`${format}/${name}: the ON AIR sign touches the logo plate${at}`);
+			if (logo && overlap(grow(s, 8), pushRect(shot, logo, k))) out.push(`${format}/${name}: the ON AIR sign touches the logo plate or the channel name${at}`);
 		}
 		for (const f of faces(format, shot)) if (f.who === 'zoo' && overlap(grow(f.box, f.box.w), sign)) out.push(`${format}/${name}: the ON AIR sign is inside Zoo's face clear zone`);
 		if (!inside(sign, {left: 0, right: FRAME[format].width, top: 0, bottom: FRAME[format].height})) out.push(`${format}/${name}: the ON AIR sign leaves the frame`);
+	}
+	if (shot.dressing.logo) {
+		// the logo plate and the channel-name line under it (set/LogoPlate.tsx), drawn whenever a name is given
+		const block = rectToScreen(shot, logoBlockRect(format));
+		const px = LOGO_NAME.size * STAGE[format].logo.scale * shot.S;
+		if (px < MIN_TEXT_PX) out.push(`${format}/${name}: the channel name is ${px.toFixed(1)} px on screen (at least ${MIN_TEXT_PX})`);
+		const kicker = SEGMENT_BOXES[format].coldOpen.card;
+		for (const k of [1, shot.push]) {
+			const b = pushRect(shot, block, k);
+			const at = k > 1 ? ' (pushed in)' : '';
+			if (!inside(b, SAFE[format])) out.push(`${format}/${name}: the logo plate or the channel name leaves the safe area${at}: ${JSON.stringify(b)}`);
+			if (kicker && overlap(b, kicker)) out.push(`${format}/${name}: the cold-open kicker card covers the logo plate or the channel name${at}`);
+		}
+		// name plates and faces move with the set, so one check at rest covers the push-in too
+		const plates = STAGE[format].nameplates;
+		if (plates) for (const who of shot.cast) if (overlap(block, rectToScreen(shot, plates[who]))) out.push(`${format}/${name}: the logo plate or the channel name touches ${who}'s name plate`);
+		for (const f of faces(format, shot)) if (overlap(block, f.box)) out.push(`${format}/${name}: the logo plate or the channel name covers ${f.who}'s face`);
 	}
 	for (const k of [1, shot.push]) {
 		for (const f of faces(format, shot, k)) {

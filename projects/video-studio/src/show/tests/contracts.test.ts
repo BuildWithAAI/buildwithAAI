@@ -6,6 +6,8 @@ import {citedSourceIds, formatAsOf, formatDate, HOST_PUBLISHERS, hostOf, publish
 import {conceptProblems} from '../concept.ts';
 import {segmentOf, SEGMENT_SPECS, onScreenStrings} from '../segments.ts';
 import {EN_SHOW_UI, showLabel} from '../ui.ts';
+import {resolveChannelName} from '../channel.ts';
+import {CHANNEL_IDENTITY} from '../../branding/tokens.ts';
 import {HOST_PUBLISHERS as GATE_HOSTS} from '../../../scripts/news/lib/brief.ts';
 import {SHOW_SEGMENTS, type ShowScene} from '../types.ts';
 import {fixture} from './helpers.ts';
@@ -116,4 +118,13 @@ test('ui: English defaults keep "Zoo" title case; other languages must bring the
 	assert.ok(!Object.values(EN_SHOW_UI).some((v) => v.includes('ZOO')), 'never upper-case the host name');
 	assert.equal(showLabel({lang: 'es', showUi: {oneFix: 'El arreglo de Zoo'}}, 'oneFix'), 'El arreglo de Zoo');
 	assert.throws(() => showLabel({lang: 'es'}, 'oneFix'), /showUi\.oneFix is required/);
+});
+
+test('channel name: omitted, zoora-security shows its own name and _dev none; an explicit value wins (null hides it)', () => {
+	assert.equal(CHANNEL_IDENTITY['zoora-security'].name, 'Zoodger News');
+	assert.equal(resolveChannelName({channel: 'zoora-security'}), 'Zoodger News');
+	assert.equal(resolveChannelName({channel: 'zoora-security', channelName: null}), null);
+	assert.equal(resolveChannelName({channel: 'zoora-security', channelName: 'Zoodger News'}), 'Zoodger News');
+	assert.equal(resolveChannelName({channel: '_dev'}), null);
+	assert.equal(resolveChannelName({channel: '_dev', channelName: 'Zoodger News'}), 'Zoodger News');
 });

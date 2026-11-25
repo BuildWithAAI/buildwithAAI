@@ -11,7 +11,7 @@ from . import text
 
 FORMAT_PREFIX = {"explainer": "explainer", "scam-of-the-week": "sotw", "pov-story": "pov"}
 FORMAT_LABEL = {"explainer": "explainer", "scam-of-the-week": "Scam of the Week", "pov-story": "POV story"}
-CHANNEL_NAMES = {"zoora-ai": "Zoora AI", "zoora-security": "The Zoo & Badger Show"}
+CHANNEL_NAMES = {"zoora-ai": "Zoora AI", "zoora-security": "Zoodger News"}
 LANG_NAMES = {"en": "English", "es": "Spanish", "pt": "Portuguese"}
 TITLE_MAX_JACCARD = 0.5
 TITLE_MAX_RUN = 3  # a run of 4+ shared content words fails

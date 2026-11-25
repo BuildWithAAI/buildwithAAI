@@ -28,8 +28,8 @@
   },
   "channels": {
     "zoora-security": {
-      "displayName": "The Zoo & Badger Show",
-      "youtubeChannelUrl": null,
+      "displayName": "Zoodger News",
+      "youtubeChannelUrl": "https://www.youtube.com/@ZoodgerNews",
       "hashtags": {
         "en": [
           "CryptoSecurity",

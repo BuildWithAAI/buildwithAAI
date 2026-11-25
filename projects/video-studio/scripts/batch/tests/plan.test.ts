@@ -107,7 +107,7 @@ test('the WRITER packet carries the slots, the exact Short ids, the facts, the r
 	assert.equal(episode.madeForKids.value, false);
 
 	const sec = ws.read('out/batch/2026-W49/sec1/WRITER.md');
-	assert.match(sec, /an Evergreen explainer for The Zoo & Badger Show/);
+	assert.match(sec, /an Evergreen explainer for Zoodger News/);
 	assert.match(sec, /\*\*Shorts:\*\* none planned/);
 	assert.match(sec, /does not exist yet\.\*\* Write it before the script/);
 	const show = JSON.parse(/```json\n([\s\S]*?)\n```/.exec(sec)?.[1] ?? '{}') as {fiction: boolean; scenes: Array<{segment?: string}>; shorts?: unknown};

@@ -35,7 +35,7 @@
     "Consensys Diligence", "Sigma Prime", "Runtime Verification", "Certora", "ChainSecurity", "Kudelski Security",
     "Ackee Blockchain", "Neodyme", "Sec3", "Asymmetric Research", "Chaos Labs", "Gauntlet", "LlamaRisk", "Chainabuse",
     "T3 Financial Crime Unit", "T3 FCU", "Beacon Network",
-    "GitGuardian", "Apiiro", "Radware", "Token Security", "Cisco Talos", "Talos", "Microsoft AI Red Team",
+    "GitGuardian", "Apiiro", "Radware", "Token Security", "Cisco Talos", "Talos Intelligence", "Microsoft AI Red Team",
     "AI Red Team", "Zscaler", "F-Secure", "Noma Security", "Pillar Security", "Prompt Security", "Legit Security",
     "Aim Security", "Straiker", "Cato Networks", "Palo Alto Networks Unit 42"
   ],
@@ -72,12 +72,12 @@
     "Paradigm", "Pantera", "Polychain", "Multicoin", "Dragonfly", "Electric Capital", "Binance Labs", "YZi Labs",
     "Coinbase Ventures", "Pump.fun",
     "OpenRouter", "LiteLLM", "Codex", "OpenAI Codex", "Codex CLI", "Gemini CLI", "Gemini Code Assist",
-    "Google Gemini", "Google Jules", "Antigravity", "Google Antigravity", "Amazon Q", "Amazon Q Developer", "Kiro",
+    "Google Gemini", "Google Jules", "Antigravity", "Google Antigravity", "Amazon Q", "Amazon Q Developer", "Kiro IDE",
     "AWS Kiro", "Amazon Bedrock", "Azure OpenAI", "Azure AI Foundry", "Vertex AI", "Copilot Studio", "Copilot Chat",
     "Microsoft 365 Copilot", "M365 Copilot", "Security Copilot", "Visual Studio Copilot", "Claude Desktop",
     "Claude Opus", "Claude Sonnet", "Claude Haiku", "ChatGPT Atlas", "ChatGPT Operator", "OpenAI Sora",
-    "Perplexity Comet", "OpenClaw", "Clawdbot", "Moltbot", "Cline", "Roo Code", "LangGraph", "Fireworks AI",
-    "Together AI", "Cohere", "Gemma", "Veo", "Manus AI", "Epoch AI", "Trajectory Labs", "123 Reg",
+    "Perplexity Comet", "OpenClaw", "Clawdbot", "Moltbot", "Cline extension", "Roo Code", "LangGraph", "Fireworks AI",
+    "Together AI", "Cohere", "Google Gemma", "Gemma model", "Gemma models", "Google Veo", "Manus AI", "Epoch AI", "Trajectory Labs", "123 Reg",
     "Hugging Face Hub", "Docker Hub"
   ],
   "protocols": [

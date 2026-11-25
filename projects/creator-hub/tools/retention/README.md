@@ -40,7 +40,7 @@ YouTube.
    ```sh
    cd projects/creator-hub
    node tools/retention/cli.ts auth --client-secrets ~/Downloads/client_secret_XXXX.json
-   # a second channel: add --account security
+   # Zoodger News (zoora-security): add --account security and sign in as @ZoodgerNews
    ```
    It asks for two **read-only** scopes, `yt-analytics.readonly` and `youtube.readonly`, and saves the tokens to
    `data/retention/oauth.json` (gitignored, mode 600). It refuses to write tokens anywhere git would track, and warns

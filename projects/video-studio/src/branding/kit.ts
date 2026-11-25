@@ -16,6 +16,6 @@ export {EndScreen, type EndScreenProps} from './stills/EndScreen';
 export {WatermarkArt} from './stills/Watermark';
 export {ContactShadow, ShowDesk} from './scene/Stage';
 export {SERIES, SERIES_IDS, type Series, type SeriesId} from './series';
-export {BACKGROUND_SHADOW, CHANNEL_KEYS, OUTLINE, RADIUS, SHOW, ZOORA, type ChannelKey} from './tokens';
+export {BACKGROUND_SHADOW, CHANNEL_IDENTITY, CHANNEL_KEYS, OUTLINE, RADIUS, SHOW, ZOORA, type ChannelKey} from './tokens';
 export {BADGE, END_LABELS, END_ZONES, SHOW_STING_BEATS, STING_HITS, ZOORA_STING_BEATS} from './layout';
 export {AVATAR, BANNER, END_SCREEN, STING, TEXT_LIMITS, THUMBNAIL, WATERMARK} from './spec';

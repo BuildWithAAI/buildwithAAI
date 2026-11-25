@@ -1,30 +1,25 @@
-# Crypto + AI security channel: channel copy (description, keywords, playlists, trailer)
+# Zoodger News (crypto + AI security): channel copy (description, keywords, playlists, trailer)
 
-Working slug `zoora-security`. Channel display name: **[CHANNEL NAME TBD]** (the owner decides). The show itself is "The Zoo & Badger Show" (CLAUDE.md, owner rules 2026-11-24), and the banner, avatar, watermark, sting and badges carry the show's name, not a channel name. They stay valid whatever the channel is called.
+Working slug `zoora-security`. Channel name: **Zoodger News** (handle @ZoodgerNews, https://www.youtube.com/@ZoodgerNews, channel ID UCOo2HSb3SYyN66YFiiiO1ZA; owner, 2026-11-24, checked on the live page). The show itself stays "The Zoo & Badger Show" (CLAUDE.md, owner rules 2026-11-24). The avatar, watermark, sting and badges carry the show's look; the banner carries the show logo with the channel name under it (re-render pending, see `docs/BRANDING.md`).
 
 Written 2026-11-24 for the channel branding kit. The paste-ready fields are in the fenced blocks marked `id=...`. Tests read those blocks and check them against YouTube's limits and the house rules (`src/branding/tests/copy.test.ts`). Where each field goes in YouTube Studio is in `docs/BRANDING.md`.
 
-## Channel name options (owner decides)
+## Channel name (decided)
 
-| Option | Length | Notes |
-| --- | --- | --- |
-| The Zoo & Badger Show | 21 | Recommended. It matches every asset in the kit, says "show", and the host's name is already in it. |
-| Zoo & Badger | 12 | Shorter; reads well under the avatar. Loses "show". |
-| Zoo & Badger Security | 21 | Says the topic, but the scope also covers AI, and "security" in a name can read like a company or a service. |
+**Zoodger News** (@ZoodgerNews), decided by the owner on 2026-11-24 and live on YouTube. It is 12 characters, within the Data API's 30-character channel title limit (`brandingSettings.channel.title`).
 
-Before choosing:
-- Check the handle's availability in Studio. It could not be checked from this session.
-- The Data API caps the channel title at 30 characters (`brandingSettings.channel.title`).
-- Avoid anything close to an existing security outlet's name. YouTube's impersonation policy covers names that are visually or phonetically similar (answer/2801947; `docs/research/platform-facts-2026-11-23.md`).
+For any future rename: avoid anything close to an existing security outlet's name. YouTube's impersonation policy covers names that are visually or phonetically similar (answer/2801947; `docs/research/platform-facts-2026-11-23.md`).
 
 ## Profile fields
 
 | Field | Value |
 | --- | --- |
-| Name | [CHANNEL NAME TBD] |
-| Handle | [HANDLE TBD] (pick it with the name) |
+| Name | Zoodger News |
+| Handle | @ZoodgerNews |
+| Channel ID | UCOo2HSb3SYyN66YFiiiO1ZA |
+| URL | https://www.youtube.com/@ZoodgerNews |
 | Banner, picture, watermark | `public/brand/zoora-security/` (see `docs/BRANDING.md`) |
-| Banner tagline | Crypto and AI security news. / What happened. How it worked. One fix. |
+| Banner tagline | Crypto and AI security, explained. / What happened. How it worked. One fix. |
 | Links | Owner to confirm. Owned domains only; no URL shorteners (CLAUDE.md "LINKS") |
 | Contact email | A business address for tips and corrections (optional) |
 
@@ -74,6 +69,7 @@ voice clone scams
 cybersecurity news
 scam awareness
 Zoo and Badger
+Zoodger News
 ```
 
 ## Playlists

@@ -1,4 +1,4 @@
-# Channel branding kit: Zoora AI and the security channel
+# Channel branding kit: Zoora AI and Zoodger News
 
 Built 2026-11-24. Everything is drawn in code from the approved character rigs (`src/characters`, unchanged) and the binding palette. It uses no stock art, no AI-generated imagery and no third-party marks.
 
@@ -18,14 +18,14 @@ Built 2026-11-24. Everything is drawn in code from the approved character rigs (
 | `out/brand/<channel>/sting-4s.mp4` (not committed; re-render) | 4.0 s, 1920x1080, 30 fps, silent AAC track | Episode intros |
 | `out/brand/<channel>/endscreen-20s.mp4` (not committed) | 20.0 s moving hold | The last 20 s of the trailer and of hand-edited videos |
 
-`<channel>` is `zoora-ai` or `zoora-security` (the security channel's working slug).
+`<channel>` is `zoora-ai` or `zoora-security` (Zoodger News's working slug).
 
 The badges per channel:
 
 | Channel | Badges |
 | --- | --- |
 | Zoora AI | `pov` |
-| Security channel | `rekt-meter`, `red-flag` (Badger's Red Flag), `one-fix` (Zoo's One Fix), `scam-of-the-week`, `what-we-know`, `developing`, `weekly-roundup` |
+| Zoodger News | `rekt-meter`, `red-flag` (Badger's Red Flag), `one-fix` (Zoo's One Fix), `scam-of-the-week`, `what-we-know`, `developing`, `weekly-roundup` |
 
 Alternates (for comparison only, in `out/brand/alt/`):
 - the security avatar on teal;
@@ -62,7 +62,7 @@ Do this per channel, signed in to the right channel (studio.youtube.com, channel
    - Watermarks do not show on videos set as made for kids.
 4. **Name and handle.**
    - Zoora AI: unchanged.
-   - Security channel: pick the name from the options in `content/zoora-security/channel-copy.md`. A name can be changed twice in 14 days, and a change removes a verification badge.
+   - Zoodger News: the name is **Zoodger News** (exact spelling, with a space) and the handle **@ZoodgerNews** (owner, 2026-11-24; live at https://www.youtube.com/@ZoodgerNews, channel ID UCOo2HSb3SYyN66YFiiiO1ZA). Check that Studio shows exactly this; there is nothing to pick. A name can be changed twice in 14 days, and a change removes a verification badge.
 5. **Description.** Paste the `description` block from the channel's `channel-copy.md`. For Zoora AI this replaces the old forex "trading robot" text. That must happen before the first upload.
 6. **Links and contact.** Add only domains the owner controls (up to 14 links; the first shows next to Subscribe). Contact email is optional.
 7. Click **Publish**.
@@ -75,7 +75,7 @@ Do this per channel, signed in to the right channel (studio.youtube.com, channel
 9. **Advanced settings.** Audience: **No, set this channel as not made for kids** (CLAUDE.md default; animated characters are a child-directed factor, so declare it).
 10. **Upload defaults** (Settings > Upload defaults), suggested:
 
-    | Field | Zoora AI | Security channel |
+    | Field | Zoora AI | Zoodger News |
     | --- | --- | --- |
     | Category | Film & Animation | Science & Technology |
     | Altered or synthetic content | No | No |
@@ -232,7 +232,7 @@ The kit uses no other third-party asset. The kit contains no logos of exchanges,
 - **Security avatar.** Badger's head on silver is the default.
   - Teal is more striking, but it turns the "sparingly used" accent into a large mass, so it is kept only as an alternate (`out/brand/alt/zoora-security-avatar-teal-800.png`).
   - Slate was rejected: it hides Badger's dark ear, an identity marker.
-- **Security channel name.** It is not decided. The kit carries the show's name, so nothing needs re-rendering when the name is chosen. Options with notes are in `content/zoora-security/channel-copy.md`.
+- **Channel name (owner, 2026-11-24).** Zoodger News, @ZoodgerNews. The banner carries it under the show logo: once `src/branding/stills/BannerShow.tsx` draws the name, re-render `banner-2560x1440.png` (`--only=zoora-security/banner`) and run the QA. The avatar, watermark, sting and badges keep the show's look and need no re-render.
 - **Jellyfish on the show.** The show banner carries the Zoora jellyfish as a small network bug, on the studio monitor and on the desk emblem. Remove the `JellyfishMark` uses in `src/branding/stills/BannerShow.tsx` if the security channel should stand apart from Zoora.
 
 ### Limits (stated plainly)

@@ -1,6 +1,6 @@
 # Auto-announcer (Telegram and X)
 
-Step 4 of the channel pipeline (video-studio `CLAUDE.md`, "Channel 2"): once an episode is approved, rendered and public, this tool posts one announcement per platform from the episode's publish kit (`kit.json`, the `PublishKit` contract in `src/types.ts`). It serves both channels, Zoora AI and the security show.
+Step 4 of the channel pipeline (video-studio `CLAUDE.md`, "Channel 2"): once an episode is approved, rendered and public, this tool posts one announcement per platform from the episode's publish kit (`kit.json`, the `PublishKit` contract in `src/types.ts`). It serves both channels, Zoora AI and Zoodger News (The Zoo & Badger Show). Both post through the same credentials, one `TELEGRAM_CHAT_ID` and one X account (see "Credentials"); separate Zoodger News accounts are the owner's decision.
 
 **It is a dry run unless you pass `--apply`.** The dry run prints exactly what each platform would receive: the endpoint, the request body, the text, its length against the limit, the ledger state and the approval state. Nothing is posted and the ledger is not touched.
 

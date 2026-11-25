@@ -64,7 +64,12 @@ committed fiber copy the way React's `findCurrentFiberUsingSlowPath` does). Then
   rotation; ancestor CSS/SVG filters and blend modes; whether the `data-character` group was rendered by the
   canonical component (a scene-drawn stand-in is caught); requested vs rendered view; Badger's `data-spot` ids
   against the frozen per-view lists in `src/characters/manifest.v1.json` (the left-facing sit and lie against their own
-  LEFT coat-map lists `sitLeft` / `lieLeft`, not the right-facing poses' lists).
+  LEFT coat-map lists `sitLeft` / `lieLeft`, not the right-facing poses' lists). Each marking may be drawn once, except
+  the redraws the manifest records in `markings.badger.redrawn` (decision INT-Q2): a look-up head on its own side rig
+  draws its neck part again above the collar in front of the torso (BADGER-D51), so `upLeftScreen` on the left rig may
+  carry `L-NECK` twice and `upRightScreen` on the right rig `R-NECK` twice. A third copy, any other repeated id, or the
+  same repeat on another head or rig is still an error (`lib/manifest.ts` `allowedMarkingDraws`, unit tests in
+  `tests/checks.test.ts`).
 - **Provisional drawings (`model-provisional`, always a warning, never an error):** a Badger instance whose drawn view
   and pose (`data-view` / `data-pose`, else its props) is on `BADGER_PROVISIONAL_POSES`: today the left-facing sit and
   lie (decision BADGER-D23, awaiting the owner's OK: their silhouette is the right-facing pose mirrored). Fine for

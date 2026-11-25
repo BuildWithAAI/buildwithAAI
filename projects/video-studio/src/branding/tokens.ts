@@ -21,7 +21,7 @@ export const ZOORA = {
 	plate: BRAND.slate,
 } as const;
 
-/** The Zoo & Badger Show (crypto + AI security channel): the light talk-show set with slate plates. */
+/** The Zoo & Badger Show (the show on Zoodger News, crypto + AI security): the light talk-show set with slate plates. */
 export const SHOW = {
 	bg: BRAND.background,
 	bgShadow: BACKGROUND_SHADOW,
@@ -40,3 +40,11 @@ export const RADIUS = {s: 4, m: 8, l: 16} as const;
 
 export type ChannelKey = 'zoora-ai' | 'zoora-security';
 export const CHANNEL_KEYS: readonly ChannelKey[] = ['zoora-ai', 'zoora-security'];
+/**
+ * Channel 2's identity (owner, 2026-11-24): the channel is "Zoodger News"; the show on it stays "The Zoo & Badger Show".
+ * One exact spelling for everything that draws the name. A TypeScript constant, not a JSON import, because Node runs
+ * the tests directly. content/zoora-security/channel.json stays the source for scripts.
+ */
+export const CHANNEL_IDENTITY = {
+	'zoora-security': {name: 'Zoodger News', handle: '@ZoodgerNews', youtubeChannelId: 'UCOo2HSb3SYyN66YFiiiO1ZA', url: 'https://www.youtube.com/@ZoodgerNews', showName: 'The Zoo & Badger Show'},
+} as const;

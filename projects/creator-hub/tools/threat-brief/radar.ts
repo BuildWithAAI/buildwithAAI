@@ -23,6 +23,15 @@ export type RadarSource = {
 	hedge: string | null;
 	/** The radar's stored excerpt (at most EXCERPT_MAX characters), used to find hedges the radar missed. */
 	excerpt: string;
+	/**
+	 * An incident database's listing of another outlet's report (the AI Incident Database): discovery only. Its date
+	 * is when the database added it, its title is the original outlet's, and it never carries a claim or a figure.
+	 */
+	listed: boolean;
+	/** A single researcher's blog: one outlet's vote, never a confirmation on its own (sources.json "confirmsAlone"). */
+	confirmsAlone: boolean;
+	/** The article's link spells a person's name, so the radar kept only the outlet's address. */
+	urlWithheld: boolean;
 };
 
 export type RadarLoss = {amountUsd: number; by: string; url: string; quote: string; tier: Tier};
@@ -35,6 +44,11 @@ export type RadarIncident = {
 	id: string;
 	title: string;
 	protocol: string;
+	/**
+	 * The radar knows the subject (an AI product or company, an allowlisted organisation, a database record) rather
+	 * than reading it from a headline's shape. Older radar files: crypto incidents count as known, as before.
+	 */
+	subjectKnown: boolean;
 	lane: Lane;
 	chains: string[];
 	type: string;
@@ -70,7 +84,14 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const EXCERPT_MAX = 300;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-const str = (value: unknown): string => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '');
+/**
+ * Characters that render as nothing: format controls (Unicode tag characters used for "ASCII smuggling", zero-width
+ * and bidi controls), variation selectors and invisible fillers. Feed text can hide instructions for an AI in them,
+ * so none reaches the email, even from a radar file written before the radar stripped them.
+ */
+const INVISIBLE = /[\p{Cf}\u034F\u115F\u1160\u17B4\u17B5\u180B-\u180F\u3164\uFFA0\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu;
+export const stripInvisible = (text: string): string => text.replace(INVISIBLE, '');
+const str = (value: unknown): string => (typeof value === 'string' ? stripInvisible(value).replace(/\s+/g, ' ').trim() : '');
 const strList = (value: unknown): string[] => (Array.isArray(value) ? value.map(str).filter(Boolean) : []);
 const tier = (value: unknown): Tier | null => (value === 'A' || value === 'B' || value === 'C' ? value : null);
 
@@ -101,6 +122,9 @@ const readSource = (raw: unknown): RadarSource | null => {
 		kind: str(raw.kind) || 'news',
 		hedge: str(raw.hedge) || null,
 		excerpt: str(raw.excerpt).slice(0, EXCERPT_MAX),
+		listed: raw.listedReport === true,
+		confirmsAlone: raw.confirmsAlone !== false,
+		urlWithheld: typeof raw.urlWithheld === 'string' && raw.urlWithheld.length > 0,
 	};
 };
 
@@ -144,11 +168,13 @@ const readIncident = (raw: unknown, where: string, warnings: string[]): RadarInc
 		facts.push({text: str(fact.text), sourceId: str(fact.sourceId), url, quote: str(fact.quote), field: str(fact.field)});
 	}
 	const score = isRecord(raw.score) && typeof raw.score.total === 'number' ? raw.score.total : null;
+	const lane: Lane = raw.lane === 'ai' || raw.lane === 'both' ? raw.lane : 'crypto';
 	return {
 		id,
 		title,
 		protocol,
-		lane: raw.lane === 'ai' || raw.lane === 'both' ? raw.lane : 'crypto',
+		subjectKnown: raw.subjectKnown === true || (raw.subjectKnown === undefined && lane === 'crypto'),
+		lane,
 		chains: strList(raw.chains),
 		type: str(raw.type) || 'other',
 		dateUtc: DATE.test(str(raw.dateUtc)) ? str(raw.dateUtc) : '',

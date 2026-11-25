@@ -100,8 +100,9 @@ real upload" below).
    It also asks for `youtube.upload`.
 
    The tokens are saved to `tools/uploader/.local/oauth.json`, which is owner-only (0600) and gitignored. The command
-   prints the channel id it signed in to. Run `auth --channel zoora-security` for the second channel.
-   `auth --channel <slug> --revoke` signs a channel out.
+   prints the channel id it signed in to. Run `auth --channel zoora-security` for the second channel, Zoodger News
+   (@ZoodgerNews): pick it in Google's channel picker. channels.json already pins UCOo2HSb3SYyN66YFiiiO1ZA, so
+   `auth` refuses a wrong pick. `auth --channel <slug> --revoke` signs a channel out.
 
    Keep the downloaded client JSON **outside** this repository: it is public. `client_secret*.json` and
    `*.apps.googleusercontent.com.json` are gitignored in this folder, and `auth` warns when the file you pass sits
@@ -109,8 +110,10 @@ real upload" below).
 5. **`channels.json`** (committed; no secrets). For each channel set:
    - `categoryId`: required, an owner decision. `node tools/uploader/cli.ts categories` lists YouTube's (1 quota
      unit). Common ones are 28 Science & Technology, 27 Education, 24 Entertainment and 1 Film & Animation.
-   - `youtubeChannelId`: **required before any upload**. Copy the channel id that `auth` printed. It pins the slug to
-     that channel, so a wrong sign-in can never upload, and every approval names it (approve again after pinning).
+   - `youtubeChannelId`: **required before any upload**. `zoora-security` is already pinned to
+     UCOo2HSb3SYyN66YFiiiO1ZA, the Zoodger News channel id the owner verified on 2026-11-24. For `zoora-ai`, copy the
+     channel id that `auth` printed. It pins the slug to that channel, so a wrong sign-in can never upload, and every
+     approval names it (approve again after pinning).
    - `playlists.long` and `playlists.short`: playlist ids, or null for no playlist step.
 6. **Channel features.**
    - Custom thumbnails need a verified channel (phone verification; YouTube Help 72431). If it isn't verified,

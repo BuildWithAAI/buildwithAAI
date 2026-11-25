@@ -133,6 +133,27 @@ describe('guard scan (dry run, the default)', () => {
 		assert.equal(code, 2);
 		assert.match(err, /guard -- auth/);
 	});
+
+	it('protects both channel names and trusts both owner channels by default', async () => {
+		const input = join(project, 'owner-channels.json');
+		writeFileSync(
+			input,
+			JSON.stringify([
+				{id: 'impostor01', authorName: 'Zoodger News Support', authorChannelId: 'UCsyntheticIMPOSTOR00001', text: 'Great breakdown.'},
+				{id: 'impostor02', authorName: '@ZoodgerNews_official', authorChannelId: 'UCsyntheticIMPOSTOR00002', text: 'Nice episode.'},
+				{id: 'realnews01', authorName: 'Zoodger News', authorChannelId: 'UCOo2HSb3SYyN66YFiiiO1ZA', text: 'Thanks for watching.'},
+				{id: 'realzoora1', authorName: 'Zoora AI', authorChannelId: 'UCjNibXSaZqeXSD36V6dyIVQ', text: 'Good one.'},
+			]),
+		);
+		const {code, out} = await run(['scan', '--input', input], {fetch: noNetwork});
+		assert.equal(code, 0, out);
+		const [report] = reports('scan');
+		assert.deepEqual(holdIds(report), ['impostor01', 'impostor02']);
+		for (const id of ['impostor01', 'impostor02']) {
+			assert.ok(report.items.find((i) => i.commentId === id)?.reasons.some((r) => r.rule === 'impersonation-exact'), `${id} is held as an impersonator`);
+		}
+		assert.equal(report.totals.allow, 2, 'the real Zoodger News and Zoora AI channels need no --trust');
+	});
 });
 
 describe('guard apply', () => {

@@ -7,10 +7,10 @@
  *           the panel, blinks (f22) and flicks his ears (f68-76).
  *   3-6 s   Zoo points to screen right: eyes lead (f84-89), wind-up (f85-90), swing f90-106 timed along the hand's arc
  *           (gesture.ts, decision INT-T1), a 1-2 deg settle (f106-113), then a moving hold (f113-181, decision INT-T2):
- *           the raised arm sinks ~0.06 poseAmount on one slow ease (the hand drops ~8 px) and Zoo gives one small nod
+ *           the raised arm sinks ~0.08 poseAmount on one slow ease (the hand drops ~8 px) and Zoo gives one small nod
  *           toward the point with a blink (f124-142). The anticipation tuck is passed only on the raise (INT-T3); the rig's
  *           upper-arm lead (ZOO-P6) keeps the elbow out at least 0.3 x the forearm's swing on the way up and down, so no
- *           frame carries the forearm level with the elbow at the waist (25-27 deg out at the level crossings f98-99 and
+ *           frame carries the forearm level with the elbow at the waist (25-29 deg out at the level crossings f98-99 and
  *           f186). Badger's eyes follow the hand (f89-94) and close as the fist passes over his head; his head is
  *           replaced by threeQuarterRightScreen at f97 under that blink, then his neck and gaze rise along the point
  *           (f99-112). After Zoo's nod he answers with a small curious head tilt (f140-180) and one blink (f158).
@@ -385,8 +385,8 @@ export const badgerTrack = (f: number): BadgerState => {
 		return {head: 'threeQuarterLeftScreen', pose: 'stand', blink, headTilt, neckTurn, judge: 0, earsBack: 0, lookX: -0.6, lookY: -0.6};
 	}
 	if (f < J.toThreeQuarter) {
-		// Looking up at Zoo: the up head starts low, where the in-between left the face, and the neck eases up as the
-		// eyes open. After the beat the neck eases back down (the nose comes down toward level) as the slow blink closes.
+		// Looking up at Zoo: the up head starts where the in-between left the skull, and the neck eases up as the eyes
+		// open. After the beat the neck eases back down (the nose comes down toward level) as the slow blink closes.
 		const neckTurn =
 			f < J.neckDown[0]
 				? track(

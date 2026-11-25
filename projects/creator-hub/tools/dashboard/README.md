@@ -148,6 +148,8 @@ counts as a Short, because Shorts can be up to 3 minutes). A guessed format is r
 
 One run covers one channel (`--channel`, default `zoora-ai`). `videos.csv` rows and kits for another
 channel are left out. Run the second channel separately, with `--channel <slug> --out out/dashboard/<slug>`.
+For Zoodger News: `--channel zoora-security --brand "Zoodger News" --out out/dashboard/zoora-security`. Without
+`--brand`, the page and the recommendations carry `BRAND_NAME` or "Zoora AI", whatever the channel.
 
 ## How the numbers are worked out
 

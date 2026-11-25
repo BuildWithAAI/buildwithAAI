@@ -44,7 +44,7 @@ export const SHORTS_BUTTONS = {x: 950, y: 960} as const;
 
 export const SHOT_DEFS: Record<Format, Partial<Record<ShotName, ShotDef>>> = {
 	landscape: {
-		wide: {S: 1.15, anchor: 'pair', at: {x: 960, y: 440}, cast: ['zoo', 'badger'], push: 1.03, dressing: {logo: true, onAir: true}},
+		wide: {S: 1.15, anchor: 'pair', at: {x: 960, y: 410}, cast: ['zoo', 'badger'], push: 1.03, dressing: {logo: true, onAir: true}},
 		zooR: {S: 1.5, anchor: 'zoo', at: {x: 1385, y: 300}, cast: ['zoo'], push: 1.03, dressing: {logo: false, onAir: false}},
 		zooL: {S: 1.5, anchor: 'zoo', at: {x: 430, y: 300}, cast: ['zoo'], push: 1.03, dressing: {logo: false, onAir: false}},
 		badgerR: {S: 1.7, anchor: 'badger', at: {x: 1395, y: 470}, cast: ['badger'], push: 1, dressing: {logo: false, onAir: false}},

@@ -13,6 +13,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {AbsoluteFill, Html5Audio, Sequence, spring, staticFile, useCurrentFrame, useDelayRender, useVideoConfig} from 'remotion';
 import type {ShowSegment} from './types';
 import type {ResolvedShow, ShowProps} from './load';
+import {resolveChannelName} from './channel';
 import {episodeSpans, shortSpans, type ShowSpan, type TransitionKind} from './timing';
 import {planShow} from './perf/plan';
 import {loadLangFonts} from '../episode/i18n/fonts';
@@ -139,5 +140,5 @@ export const ShowView: React.FC<ShowProps> = (props) => {
 	}, [ready, handle, continueRender]);
 	if (!r) throw new Error('Show: props.resolved is missing (calculateMetadata did not run)');
 	if (!ready) return <AbsoluteFill style={{backgroundColor: G.bg}} />;
-	return <ShowBody r={r} channelName={props.channelName ?? null} />;
+	return <ShowBody r={r} channelName={resolveChannelName(props)} />;
 };

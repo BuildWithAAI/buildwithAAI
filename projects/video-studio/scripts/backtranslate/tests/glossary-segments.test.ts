@@ -32,6 +32,11 @@ describe('glossary', () => {
 		assert.match(f[0].message, /fix the source first/);
 		assert.deepEqual(codes('Zoo', 'Zoo'), []);
 	});
+	test('the channel 2 name stays as written; "Zoo" does not fire inside "Zoodger"', () => {
+		assert.deepEqual(codes('Subscribe to Zoodger News.', 'Suscríbete a Zoodger News.'), []);
+		assert.deepEqual(codes('Subscribe to Zoodger News.', 'Suscríbete a Noticias Zoodger.'), ['high:glossary-wrong-rendering']);
+		assert.deepEqual(codes('Subscribe to Zoodger News.', 'Inscreva-se no Notícias Zoodger.', 'pt-br'), ['high:glossary-wrong-rendering']);
+	});
 	test('a bad glossary file is refused with its position', () => {
 		assert.throws(() => parseGlossary({terms: [{id: 'x', en: 'y', status: 'approved'}]}, 'g.json'), /terms\[0\] \(x\): give dnt/);
 		assert.throws(() => parseGlossary({terms: [{id: 'x', en: 'y', dnt: true, status: 'maybe'}]}, 'g.json'), GlossaryError);

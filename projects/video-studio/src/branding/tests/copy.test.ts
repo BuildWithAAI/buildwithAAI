@@ -62,10 +62,13 @@ test('copy (zoora-ai): the new description drops every forex-robot promise from 
 	assert.match(d, /fictional composites/);
 });
 
-test('copy (zoora-security): no channel name is invented; the show name and the rules are stated', () => {
+test('copy (zoora-security): the channel name and handle are recorded; the show name and the rules are stated', () => {
 	const md = read('zoora-security');
 	const b = parseBlocks(md);
-	assert.match(md, /\[CHANNEL NAME TBD\]/, 'the doc keeps the placeholder');
+	assert.match(md, /Zoodger News/);
+	assert.match(md, /@ZoodgerNews/);
+	assert.doesNotMatch(md, /\[(CHANNEL NAME|HANDLE) TBD\]/);
+	assert.match(md, /The Zoo & Badger Show/);
 	assert.match(b.description, /confirmed facts only/i);
 	assert.match(b.description, /never ask for your seed phrase/i);
 	assert.match(b.description, /pin the correction/i);
