@@ -44,25 +44,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.1,
+    "integratedLufs": -25.9,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.8,
-    "lraLu": 2.0,
-    "truePeakDbtp": -8.4
+    "shortTermMaxLufs": -23.9,
+    "lraLu": 3.4,
+    "truePeakDbtp": -7.8
   },
   "spectrum": {
-    "slopeDbPerOct": -5.99,
-    "harshnessDb": -8.91,
-    "mudDb": 1.9,
-    "boxinessDb": -0.05,
-    "voicePocketDb": -2.36,
-    "centroidHz": 261.0
+    "slopeDbPerOct": -5.97,
+    "harshnessDb": -7.8,
+    "mudDb": 1.42,
+    "boxinessDb": -4.79,
+    "voicePocketDb": -2.29,
+    "centroidHz": 237.0
   },
   "voice": {
-    "index": 0.7943,
-    "ssnIndex": 0.6886,
-    "indexMinusSsn": 0.1057,
-    "broadbandIndex": 0.7379,
+    "index": 0.7909,
+    "ssnIndex": 0.683,
+    "indexMinusSsn": 0.1079,
+    "broadbandIndex": 0.731,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -73,33 +73,64 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 15.24,
-    "snr1to4kMedianDb": 17.39,
-    "framesUnder3dB": 0.1232,
+    "voiceOverBedLu": 14.71,
+    "snr1to4kMedianDb": 17.21,
+    "framesUnder3dB": 0.1321,
     "narrowestBand": {
-      "hz": 800,
-      "snrDb": 13.9
+      "hz": 1000,
+      "snrDb": 17.9
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/zoora-security/2026-11-24-binance/en/narration.wav",
+      "sha256": "976f84bd9883a42a"
+    },
+    "worstNarration": "2026-11-24-binance/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.7909,
+        "indexMinusSsn": 0.1079,
+        "broadbandIndex": 0.731,
+        "snr1to4kMedianDb": 17.21,
+        "framesUnder3dB": 0.1321
+      },
+      "_engine-demo/es": {
+        "index": 0.8018,
+        "indexMinusSsn": 0.1104,
+        "broadbandIndex": 0.7406,
+        "snr1to4kMedianDb": 17.29,
+        "framesUnder3dB": 0.1075
+      },
+      "engine-demo/en": {
+        "index": 0.8131,
+        "indexMinusSsn": 0.1272,
+        "broadbandIndex": 0.7548,
+        "snr1to4kMedianDb": 18.3,
+        "framesUnder3dB": 0.1176
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.7937,
+        "indexMinusSsn": 0.1183,
+        "broadbandIndex": 0.7343,
+        "snr1to4kMedianDb": 17.5,
+        "framesUnder3dB": 0.1282
+      }
     }
   },
   "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
-    "warnings": 1,
-    "failed": [
-      "loop.levelStepDb"
-    ]
+    "warnings": 0,
+    "failed": []
   },
   "file": "audio/music/bed-story-tension-underscore.flac",
   "format": "flac-16bit",
-  "bytes": 4373780,
+  "bytes": 4594635,
   "description": "A celli ostinato doubled an octave up by violas, a ticking woodblock and low piano octaves; the pulse, violas tremolo and the motif's tail (vibes, violins) from bar 8; high violins, tom rolls and a swell from bar 16. Underscore: the motif statements and lead lines are muted.",
   "usage": "The UNDERSCORE: the same bed with the motif and lead lines muted, for use under narration. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -109,6 +140,6 @@
     "pulse",
     "VCSL woodblock, toms, bass drum, cymbal swell"
   ],
-  "selfReview": "The tension story bed without the motif fragments, for use under speech. See bed-story-tension.",
+  "selfReview": "The tension story bed without the motif fragments, for use under speech. See bed-story-tension. Critic round 2 (2026-11-24): Voice index 0.791-0.813 (worst show en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo -3.0 dB. The celli ostinato an octave up (G3-F4, out of Zoo's F0 range) and no viola double.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

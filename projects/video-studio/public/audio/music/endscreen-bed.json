@@ -82,25 +82,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.1,
+    "integratedLufs": -26.0,
     "shortTermMedianLufs": -26.0,
     "shortTermMaxLufs": -25.5,
     "lraLu": 0.6,
-    "truePeakDbtp": -6.9
+    "truePeakDbtp": -7.2
   },
   "spectrum": {
-    "slopeDbPerOct": -5.03,
-    "harshnessDb": -8.5,
-    "mudDb": 2.61,
-    "boxinessDb": -1.11,
-    "voicePocketDb": -10.22,
-    "centroidHz": 1324.0
+    "slopeDbPerOct": -5.4,
+    "harshnessDb": -8.86,
+    "mudDb": 2.76,
+    "boxinessDb": -1.9,
+    "voicePocketDb": -9.3,
+    "centroidHz": 813.0
   },
   "voice": {
-    "index": 0.826,
-    "ssnIndex": 0.6918,
-    "indexMinusSsn": 0.1342,
-    "broadbandIndex": 0.7909,
+    "index": 0.8428,
+    "ssnIndex": 0.6846,
+    "indexMinusSsn": 0.1582,
+    "broadbandIndex": 0.817,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -111,27 +111,62 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 15.38,
-    "snr1to4kMedianDb": 22.57,
-    "framesUnder3dB": 0.0784,
+    "voiceOverBedLu": 14.68,
+    "snr1to4kMedianDb": 25.27,
+    "framesUnder3dB": 0.0721,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 15.3
+      "snrDb": 17.5
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/_dev/zoo-badger-demo/en/narration.wav",
+      "sha256": "67b91e1f7bd25eed"
+    },
+    "worstNarration": "zoo-badger-demo/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.8449,
+        "indexMinusSsn": 0.1596,
+        "broadbandIndex": 0.8191,
+        "snr1to4kMedianDb": 25.24,
+        "framesUnder3dB": 0.0682
+      },
+      "_engine-demo/es": {
+        "index": 0.8518,
+        "indexMinusSsn": 0.1579,
+        "broadbandIndex": 0.8258,
+        "snr1to4kMedianDb": 25.34,
+        "framesUnder3dB": 0.0571
+      },
+      "engine-demo/en": {
+        "index": 0.8492,
+        "indexMinusSsn": 0.1631,
+        "broadbandIndex": 0.8224,
+        "snr1to4kMedianDb": 25.58,
+        "framesUnder3dB": 0.0579
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.8428,
+        "indexMinusSsn": 0.1582,
+        "broadbandIndex": 0.817,
+        "snr1to4kMedianDb": 25.27,
+        "framesUnder3dB": 0.0721
+      }
     }
   },
   "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
-    "warnings": 0,
-    "failed": []
+    "warnings": 1,
+    "failed": [
+      "noise.humDb"
+    ]
   },
   "file": "audio/music/endscreen-bed.wav",
   "format": "wav-24bit",
@@ -146,6 +181,6 @@
     "pulse",
     "VSCO 2 celli"
   ],
-  "selfReview": "Six bars of light groove, a turnaround, then the motif lands on D minor at 18.0 s and rings out to exactly 20.0 s, at bed level (-26 LUFS-S) for Zoo's call to action. Critic round 1 (2026-11-24): it was the worst bed under his voice (band-audibility index 0.67-0.69, under speech-shaped noise at 0.76). The vibes now rest until the bar-7 motif, the hats and pulse came down (-10 and -15 dB, the pulse an octave up), the bass is the dark finger-plucked one, the bus dips 1.25 and 2 kHz and takes 2.5 dB off below 150 Hz, and the kick's beater is quieter. With the band-split duck the index is 0.83 (speech-shaped noise at the same loudness: 0.69), the 1-4 kHz median SNR 22.6 dB and 8 % of speech frames under 3 dB there (28-29 % before); on the phone model it loses 5.3 LU, about what Zoo loses. With nobody speaking use `endscreen-music` (-18 LUFS-I).",
+  "selfReview": "Six bars of light groove, a turnaround, then the motif lands on D minor at 18.0 s and rings out to exactly 20.0 s, at bed level (-26 LUFS-S) for Zoo's call to action. Critic round 1 (2026-11-24): it was the worst bed under his voice (band-audibility index 0.67-0.69, under speech-shaped noise at 0.76). The vibes now rest until the bar-7 motif, the hats and pulse came down (-10 and -15 dB, the pulse an octave up), the bass is the dark finger-plucked one, the bus dips 1.25 and 2 kHz and takes 2.5 dB off below 150 Hz, and the kick's beater is quieter. With the band-split duck the index is 0.83 (speech-shaped noise at the same loudness: 0.69), the 1-4 kHz median SNR 22.6 dB and 8 % of speech frames under 3 dB there (28-29 % before); on the phone model it loses 5.3 LU, about what Zoo loses. With nobody speaking use `endscreen-music` (-18 LUFS-I). Critic round 2 (2026-11-24): Voice index 0.843-0.852 (worst zoo-badger en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo -0.5 dB.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

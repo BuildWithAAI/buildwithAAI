@@ -83,25 +83,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.0,
+    "integratedLufs": -25.9,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.8,
-    "lraLu": 1.9,
-    "truePeakDbtp": -8.9
+    "shortTermMaxLufs": -24.5,
+    "lraLu": 2.3,
+    "truePeakDbtp": -8.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.99,
-    "harshnessDb": -8.69,
-    "mudDb": 1.69,
-    "boxinessDb": 0.25,
-    "voicePocketDb": -1.96,
-    "centroidHz": 266.0
+    "slopeDbPerOct": -5.91,
+    "harshnessDb": -7.28,
+    "mudDb": 0.23,
+    "boxinessDb": -3.18,
+    "voicePocketDb": -1.01,
+    "centroidHz": 236.0
   },
   "voice": {
-    "index": 0.7897,
-    "ssnIndex": 0.6872,
-    "indexMinusSsn": 0.1025,
-    "broadbandIndex": 0.7335,
+    "index": 0.7824,
+    "ssnIndex": 0.683,
+    "indexMinusSsn": 0.0994,
+    "broadbandIndex": 0.7225,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -112,19 +112,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 15.18,
-    "snr1to4kMedianDb": 17.75,
-    "framesUnder3dB": 0.1251,
+    "voiceOverBedLu": 14.72,
+    "snr1to4kMedianDb": 16.39,
+    "framesUnder3dB": 0.1441,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 12.7
+      "snrDb": 15.2
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/zoora-security/2026-11-24-binance/en/narration.wav",
+      "sha256": "976f84bd9883a42a"
+    },
+    "worstNarration": "2026-11-24-binance/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.7824,
+        "indexMinusSsn": 0.0994,
+        "broadbandIndex": 0.7225,
+        "snr1to4kMedianDb": 16.39,
+        "framesUnder3dB": 0.1441
+      },
+      "_engine-demo/es": {
+        "index": 0.797,
+        "indexMinusSsn": 0.1052,
+        "broadbandIndex": 0.736,
+        "snr1to4kMedianDb": 16.63,
+        "framesUnder3dB": 0.1132
+      },
+      "engine-demo/en": {
+        "index": 0.8033,
+        "indexMinusSsn": 0.1193,
+        "broadbandIndex": 0.7455,
+        "snr1to4kMedianDb": 17.65,
+        "framesUnder3dB": 0.1289
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.7861,
+        "indexMinusSsn": 0.1091,
+        "broadbandIndex": 0.7266,
+        "snr1to4kMedianDb": 16.83,
+        "framesUnder3dB": 0.1419
+      }
     }
   },
   "aac": null,
@@ -133,12 +166,12 @@
     "failures": 0,
     "warnings": 1,
     "failed": [
-      "loop.levelStepDb"
+      "spectrum.voicePocketDb"
     ]
   },
   "file": "audio/music/bed-story-tension.flac",
   "format": "flac-16bit",
-  "bytes": 4412099,
+  "bytes": 4457278,
   "description": "A celli ostinato doubled an octave up by violas, a ticking woodblock and low piano octaves; the pulse, violas tremolo and the motif's tail (vibes, violins) from bar 8; high violins, tom rolls and a swell from bar 16.",
   "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -148,6 +181,6 @@
     "pulse",
     "VCSL woodblock, toms, bass drum, cymbal swell"
   ],
-  "selfReview": "A celli ostinato with phrygian Eb neighbours, a woodblock clock and the motif's fragments on vibes and violins. Critic round 1 (2026-11-24): for phone presence violas (VSCO 2, fast bowing) double the ostinato an octave up, the woodblock is softer, and the motif left the low piano and celli. Phone loss 6.6-6.7 LU (7.9 before; Zoo 5.4). The trade-off: the upper layer adds 1-4 kHz onsets, so its index under Zoo with the band-split duck is 0.79 (0.83 for the first build with the same duck), still above the 0.75 gate and speech-shaped noise (0.69). The -underscore version mutes the motif and lead lines; use it under speech.",
+  "selfReview": "A celli ostinato with phrygian Eb neighbours, a woodblock clock and the motif's fragments on vibes and violins. Critic round 1 (2026-11-24): for phone presence violas (VSCO 2, fast bowing) double the ostinato an octave up, the woodblock is softer, and the motif left the low piano and celli. Phone loss 6.6-6.7 LU (7.9 before; Zoo 5.4). The trade-off: the upper layer adds 1-4 kHz onsets, so its index under Zoo with the band-split duck is 0.79 (0.83 for the first build with the same duck), still above the 0.75 gate and speech-shaped noise (0.69). The -underscore version mutes the motif and lead lines; use it under speech. Critic round 2 (2026-11-24): Voice index 0.782-0.803 (worst show en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo -2.4 dB. Piano drones D1 -0.6 c, D2 +0.1 c (critic: -15 to -32 c); bus PK(700, -4.5) and PK(500, -2).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

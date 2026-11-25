@@ -408,6 +408,28 @@ class MixAutomationTests(unittest.TestCase):
         off = render.ride_gain([(0.0, 0.0), (1.0, -6.0)], 2 * SR, offset=SR)
         self.assertAlmostEqual(20 * np.log10(off[SR]), 0.0, places=6)  # sample `offset` is time 0
 
+    def test_track_ride_damps_the_channel_and_its_send(self):
+        """Track.ride (critic round 2: the Zoora jingle's bass drum and cymbal rang past its end): a
+        post-fader gain curve on the channel, applied before its reverb send."""
+        from composer.cues import zoora
+
+        n = 2 * SR
+        tone = np.vstack([np.sin(2 * np.pi * 220 * np.arange(n) / SR)] * 2) * 0.1
+        s = Score(bpm=120)
+        tr = render.Track("x", tone, fader_db=0.0, stage_lufs=None, sends={"plate": 0.0}, ride=[(0.5, 0.0), (1.0, -40.0)])
+        arr = render.Arrangement("t", s, 2.0, [tr], preset="sting", glue=None, reverbs={"plate": render.Reverb("plate")})
+        _, _, post = render.mix(arr, {"x": tone})
+
+        def rms_db(a, t0, t1):
+            return 10 * np.log10(np.mean(a[:, int(t0 * SR): int(t1 * SR)] ** 2))
+
+        self.assertAlmostEqual(rms_db(post["x"], 1.2, 1.8) - rms_db(post["x"], 0.1, 0.4), -40.0, delta=0.2)
+        self.assertLess(rms_db(post["reverb_plate"], 1.6, 1.9), rms_db(post["reverb_plate"], 0.3, 0.45) - 25.0)
+        sting = {t.name: t for t in zoora.zoora_intro_sting().tracks}
+        for name in ("bdrum", "cymbals"):
+            self.assertEqual(sting[name].ride, list(zoora.ZOORA_DAMP), name)
+        self.assertLess(zoora.ZOORA_DAMP[-1][0], zoora.ZOORA_STING_SEC - 0.3)  # damped before the final fade
+
     def test_theme_full_ride_and_badger_peak_control(self):
         from composer.cues import theme
 
@@ -831,10 +853,12 @@ class RegistryTests(unittest.TestCase):
             self.assertEqual(self.arrangements[cid].target_lufs, theme.THEME_LUFS, cid)
         win = {c["id"]: c for c in targets.music_targets()["profiles"]["standalone"]["checks"]}["loudness.integrated"]
         self.assertEqual((win["min"], win["max"]), (targets.STANDALONE_LUFS - 0.5, targets.STANDALONE_LUFS + 0.5))
-        # the red-flag bumper's cross-stick track carries its deadpan click too: 2 dB under the theme's
+        # the red-flag bumper's cross-stick track carries its deadpan click too: 4 dB under the theme's, and
+        # its bus takes the low mids out (critic round 2: limiter 6 dB, mud 0.3 dB under the fail line)
         rf = {t.name: t for t in self.arrangements["bumper-red-flag"].tracks}
-        self.assertEqual(rf["badger_xstick"].fader_db, theme.BADGER_XSTICK_DB - 2.0)
-        self.assertTrue(callable(show_cues.red_flag))
+        self.assertEqual(rf["badger_xstick"].fader_db, theme.BADGER_XSTICK_DB - 4.0)
+        for band in show_cues.RED_FLAG_BUS:
+            self.assertIn(band, self.arrangements["bumper-red-flag"].bus_eq)
 
     def test_badger_has_a_mid_register_double_and_his_own_cross_stick(self):
         for cid in ("theme-full", "theme-15s", "theme-5s", "intro-sting-show", "bumper-red-flag"):

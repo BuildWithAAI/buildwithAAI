@@ -86,6 +86,9 @@ def rekt_meter() -> Arrangement:
     return _arr("bumper-rekt-meter", th, 3.2 / 1.0, fade=0.5, faders={"brass": -9.0, "violas_fast": -6.0})
 
 
+RED_FLAG_BUS = (C.PK(320, -4.5, 0.7), C.HS(5000, 1.5))
+
+
 def red_flag() -> Arrangement:
     th = Theme()
     P = th.p
@@ -98,10 +101,15 @@ def red_flag() -> Arrangement:
     # a beat and a half of deadpan, then Badger
     th.badger(0, 2.5, vel=104)
     P["piano"].note("D2", 3.5, 1.0, 64)
-    # the cross-stick track 2 dB under the theme's here: with the click on it, it drove the master limiter
-    # to 3.1 dB on Badger's notes (critic round 2 accepts <= 3); at -2 dB it is 2.3 dB and Badger stays
-    # 1.5 dB under the motif on the phone model (measured)
-    return _arr("bumper-red-flag", th, 3.2, fade=0.7, faders={"badger_xstick": BADGER_XSTICK_DB - 2.0})
+    # Critic round 2: the master limiter worked 6.0 dB here (accept <= 3) and the mud read 2.7 dB, 0.3 under
+    # the sting fail line. With the shared Badger fixes the limiter took 3.1 dB on his notes and the
+    # cue, darker at both ends (no kick under him, a darker bass and cross-stick), read 4.7 dB of mud.
+    # So the cross-stick track (which carries the deadpan click too) sits 4 dB under the theme's and
+    # the bus takes 4.5 dB out around 320 Hz with 1.5 dB more air: limiter 2.75 dB, mud 2.3 dB, Badger
+    # 1.9 dB under the motif on the phone model (measured; RED_FLAG_BUS)
+    arr = _arr("bumper-red-flag", th, 3.2, fade=0.7, faders={"badger_xstick": BADGER_XSTICK_DB - 4.0})
+    arr.bus_eq = [*arr.bus_eq, *RED_FLAG_BUS]
+    return arr
 
 
 def one_fix() -> Arrangement:

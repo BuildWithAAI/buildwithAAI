@@ -13,23 +13,23 @@
   "durationSec": 3.4,
   "durationSamples": 163200,
   "sampleRate": 48000,
-  "downbeatSec": 0.0,
-  "downbeatFrame30": 0,
+  "downbeatSec": 0.066667,
+  "downbeatFrame30": 2,
   "loop": null,
   "hits": [
     {
-      "sec": 0.0,
-      "frame30": 0,
+      "sec": 0.067,
+      "frame30": 2,
       "what": "rewind swell"
     },
     {
-      "sec": 0.9,
-      "frame30": 27,
+      "sec": 0.967,
+      "frame30": 29,
       "what": "motif backwards: F"
     },
     {
-      "sec": 2.1,
-      "frame30": 63,
+      "sec": 2.167,
+      "frame30": 65,
       "what": "D: resolved"
     }
   ],
@@ -55,25 +55,25 @@
   },
   "loudness": {
     "profile": "sting",
-    "integratedLufs": -16.0,
-    "shortTermMedianLufs": -16.4,
-    "shortTermMaxLufs": -16.4,
+    "integratedLufs": -16.2,
+    "shortTermMedianLufs": -16.6,
+    "shortTermMaxLufs": -16.6,
     "lraLu": 0.0,
-    "truePeakDbtp": -3.2
+    "truePeakDbtp": -3.6
   },
   "spectrum": {
-    "slopeDbPerOct": -6.67,
-    "harshnessDb": -11.96,
-    "mudDb": -0.6,
-    "boxinessDb": 0.7,
-    "voicePocketDb": 1.81,
-    "centroidHz": 370.0
+    "slopeDbPerOct": -6.64,
+    "harshnessDb": -11.45,
+    "mudDb": -2.3,
+    "boxinessDb": -0.6,
+    "voicePocketDb": 2.18,
+    "centroidHz": 348.0
   },
   "voice": null,
   "aac": {
     "truePeak128k": -3.4,
-    "truePeak128kMedian": -3.4,
-    "encodes": 5
+    "truePeak128kMedian": -3.5,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -85,7 +85,7 @@
   "format": "wav-24bit",
   "bytes": 979244,
   "description": "Segment bumper for Correction, built from Zoo's motif (3.4 s).",
-  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "usage": "Cut on the downbeat at the segment change: the file starts with two frames of silence, so start it at downbeatStartFrame(cue, cutFrame) (2 frames early). The music is finished before the file ends. -16 LUFS-I.",
   "instruments": [
     "VCSL Kawai piano",
     "VCSL vibraphone",
@@ -95,6 +95,6 @@
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "Sober: a reversed piano swell (the rewind) runs straight into the motif played backwards, resolving to D minor. Critic round 1 (2026-11-24): the bus cut moved to 650 Hz (-4.5 dB) and the rewind is narrower (width 0.7): boxiness 0.7 dB (3.4 before), mono loss 1.0 dB and a windowed correlation minimum of +0.20 (1.5 dB and -0.05 before). It is still normalised to the same -16 LUFS-I as the other bumpers (the critic's optional -17 was not applied: the set stays level-matched); it loses 5.5 LU on the phone model, about what Zoo's voice loses.",
+  "selfReview": "Sober: a reversed piano swell (the rewind) runs straight into the motif played backwards, resolving to D minor. Critic round 1 (2026-11-24): the bus cut moved to 650 Hz (-4.5 dB) and the rewind is narrower (width 0.7): boxiness 0.7 dB (3.4 before), mono loss 1.0 dB and a windowed correlation minimum of +0.20 (1.5 dB and -0.05 before). It is still normalised to the same -16 LUFS-I as the other bumpers (the critic's optional -17 was not applied: the set stays level-matched); it loses 5.5 LU on the phone model, about what Zoo's voice loses. Critic round 2 (2026-11-24): release-ready; re-rendered with the shared fixes (measured tuning, the decaying FingerBass, one kick tuning, the band compressors, the -1.5 dBTP sting ceiling). Master limiter 0.00 dB at most; -3.4 dBTP after AAC 128k (worst of ten), -3.7 dBTP after Opus 128k.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

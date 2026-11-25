@@ -236,25 +236,25 @@
   },
   "loudness": {
     "profile": "standalone",
-    "integratedLufs": -14.1,
-    "shortTermMedianLufs": -14.3,
-    "shortTermMaxLufs": -12.4,
+    "integratedLufs": -16.1,
+    "shortTermMedianLufs": -16.3,
+    "shortTermMaxLufs": -14.5,
     "lraLu": 3.5,
     "truePeakDbtp": -2.5
   },
   "spectrum": {
-    "slopeDbPerOct": -4.88,
-    "harshnessDb": -5.66,
-    "mudDb": 1.05,
-    "boxinessDb": -0.63,
-    "voicePocketDb": -1.97,
-    "centroidHz": 601.0
+    "slopeDbPerOct": -5.16,
+    "harshnessDb": -5.6,
+    "mudDb": 0.31,
+    "boxinessDb": -0.65,
+    "voicePocketDb": -0.63,
+    "centroidHz": 465.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -1.8,
-    "truePeak128kMedian": -1.8,
-    "encodes": 5
+    "truePeak128k": -1.6,
+    "truePeak128kMedian": -1.85,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -276,6 +276,6 @@
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "The same bars, recut. Critic round 1 (2026-11-24): the motif is stated twice (the intro and the coda) and the band's first bar answers on vibes instead of a third statement. Badger sits 1.8 dB under the motif on full range and 2.4 dB on the phone model (2.6 and 4.4 before). The kick on the landing is 8.7 dB under the mix (5.1 before). -2.2 dBTP ceiling and 2 dB less air above 9 kHz: -1.8 dBTP after AAC 128 kb/s, the worst of five encodes (one encode of the -2.0 dBTP master had read -0.6).",
+  "selfReview": "The same bars, recut. Critic round 1 (2026-11-24): the motif is stated twice (the intro and the coda) and the band's first bar answers on vibes instead of a third statement. Badger sits 1.8 dB under the motif on full range and 2.4 dB on the phone model (2.6 and 4.4 before). The kick on the landing is 8.7 dB under the mix (5.1 before). -2.2 dBTP ceiling and 2 dB less air above 9 kHz: -1.8 dBTP after AAC 128 kb/s, the worst of five encodes (one encode of the -2.0 dBTP master had read -0.6). Critic round 2 (2026-11-24): -16 LUFS-I; limiter 3.15 dB max, over 1 dB 6.3 % of the time (critic: 9.91 dB, 28.9 %); Badger -2.4 dB against the motif (phone model -2.8 dB). Piano D2 +0.0 c, D1 -0.5 c (-17.2, -11.8). -1.6 dBTP after AAC 128k (worst of ten).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -130,6 +130,10 @@ class Track:
     # GM (soundfont) sources: correct each key's measured intonation with MIDI Tuning Standard messages
     # (composer/gmtune.py; critic round 2: the VSCO 2 pizzicato is up to 30 cents off per key)
     tune: bool = True
+    # (seconds, dB) breakpoints applied to the channel's output after the fader, before its sends (so its
+    # reverb follows): e.g. a hand damp on a one-shot drum or cymbal that would ring past the cue's end.
+    # Linear in dB between points, held beyond the ends; ignored on loops.
+    ride: list = field(default_factory=list)
 
 
 @dataclass
@@ -403,6 +407,8 @@ def mix(arr: Arrangement, stems: dict):
         strips.append((tr, Strip(tr.name, a, fader_db=tr.fader_db, pan=tr.pan, eq=tr.eq, comp=safe(tr.comp), sat=tr.sat, inserts=tr.inserts,
                                  width=tr.width, bass_mono_hz=tr.bass_mono_hz, send_db=None, stage_lufs=tr.stage_lufs)))
     for (tr, _), (out, rep) in zip(strips, _process_strips(engine, [st for _, st in strips])):
+        if tr.ride and not arr.loop:
+            out = out * ride_gain(tr.ride, N)[None, :]
         for rv, db in tr.sends.items():
             if rv not in sends:
                 raise KeyError(f"track {tr.name!r} sends to unknown reverb {rv!r}")

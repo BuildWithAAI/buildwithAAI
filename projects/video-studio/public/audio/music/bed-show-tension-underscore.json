@@ -46,23 +46,23 @@
     "profile": "bed",
     "integratedLufs": -26.0,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -25.1,
-    "lraLu": 1.3,
+    "shortTermMaxLufs": -24.7,
+    "lraLu": 1.5,
     "truePeakDbtp": -6.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.32,
-    "harshnessDb": -8.38,
-    "mudDb": 0.14,
-    "boxinessDb": -2.05,
-    "voicePocketDb": -8.18,
-    "centroidHz": 679.0
+    "slopeDbPerOct": -5.33,
+    "harshnessDb": -7.12,
+    "mudDb": -0.82,
+    "boxinessDb": -5.72,
+    "voicePocketDb": -7.43,
+    "centroidHz": 670.0
   },
   "voice": {
-    "index": 0.7797,
-    "ssnIndex": 0.6875,
-    "indexMinusSsn": 0.0922,
-    "broadbandIndex": 0.7338,
+    "index": 0.7911,
+    "ssnIndex": 0.683,
+    "indexMinusSsn": 0.1081,
+    "broadbandIndex": 0.7431,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -73,19 +73,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 15.19,
-    "snr1to4kMedianDb": 19.2,
-    "framesUnder3dB": 0.0966,
+    "voiceOverBedLu": 14.61,
+    "snr1to4kMedianDb": 19.38,
+    "framesUnder3dB": 0.1069,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 11.5
+      "snrDb": 16.0
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/_dev/zoo-badger-demo/en/narration.wav",
+      "sha256": "67b91e1f7bd25eed"
+    },
+    "worstNarration": "zoo-badger-demo/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.7947,
+        "indexMinusSsn": 0.1115,
+        "broadbandIndex": 0.7471,
+        "snr1to4kMedianDb": 19.29,
+        "framesUnder3dB": 0.0991
+      },
+      "_engine-demo/es": {
+        "index": 0.8071,
+        "indexMinusSsn": 0.115,
+        "broadbandIndex": 0.7593,
+        "snr1to4kMedianDb": 19.57,
+        "framesUnder3dB": 0.083
+      },
+      "engine-demo/en": {
+        "index": 0.8121,
+        "indexMinusSsn": 0.1292,
+        "broadbandIndex": 0.7676,
+        "snr1to4kMedianDb": 20.57,
+        "framesUnder3dB": 0.0817
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.7911,
+        "indexMinusSsn": 0.1081,
+        "broadbandIndex": 0.7431,
+        "snr1to4kMedianDb": 19.38,
+        "framesUnder3dB": 0.1069
+      }
     }
   },
   "aac": null,
@@ -101,7 +134,7 @@
   },
   "file": "audio/music/bed-show-tension-underscore.flac",
   "format": "flac-16bit",
-  "bytes": 6189731,
+  "bytes": 6230955,
   "description": "A muted 3-3-2 pulse, low strings with an E-flat neighbour, a half-time kit with ticking hats; the motif slow on soft vibes at D5 every 8 bars. Underscore: the motif statements and lead lines are muted.",
   "usage": "The UNDERSCORE: the same bed with the motif and lead lines muted, for use under narration. Loops seamlessly (sample 0 to the end). -26 LUFS-S with a voice pocket at 1.25-2 kHz: duck it under Zoo's narration with scripts/audio/duck.py (the band-split duck, its default). Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
   "instruments": [
@@ -113,6 +146,6 @@
     "VCSL drums",
     "FM tine piano"
   ],
-  "selfReview": "The tension show bed without the vibes motif, for use under speech. See bed-show-tension.",
+  "selfReview": "The tension show bed without the vibes motif, for use under speech. See bed-show-tension. Critic round 2 (2026-11-24): Voice index 0.791-0.812 (worst zoo-badger en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo -1.7 dB.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -73,25 +73,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.0,
+    "integratedLufs": -25.9,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.8,
-    "lraLu": 1.9,
-    "truePeakDbtp": -10.5
+    "shortTermMaxLufs": -24.7,
+    "lraLu": 2.0,
+    "truePeakDbtp": -8.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.19,
-    "harshnessDb": -10.55,
-    "mudDb": -0.42,
-    "boxinessDb": 1.22,
-    "voicePocketDb": -8.05,
-    "centroidHz": 256.0
+    "slopeDbPerOct": -5.17,
+    "harshnessDb": -10.41,
+    "mudDb": -0.58,
+    "boxinessDb": 0.93,
+    "voicePocketDb": -7.88,
+    "centroidHz": 255.0
   },
   "voice": {
-    "index": 0.8387,
-    "ssnIndex": 0.6884,
-    "indexMinusSsn": 0.1503,
-    "broadbandIndex": 0.8058,
+    "index": 0.8057,
+    "ssnIndex": 0.6835,
+    "indexMinusSsn": 0.1222,
+    "broadbandIndex": 0.7675,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -102,19 +102,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 15.24,
-    "snr1to4kMedianDb": 19.85,
-    "framesUnder3dB": 0.0966,
+    "voiceOverBedLu": 14.63,
+    "snr1to4kMedianDb": 17.77,
+    "framesUnder3dB": 0.1351,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 11.6
+      "snrDb": 11.5
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/_dev/zoo-badger-demo/en/narration.wav",
+      "sha256": "67b91e1f7bd25eed"
+    },
+    "worstNarration": "zoo-badger-demo/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.8146,
+        "indexMinusSsn": 0.128,
+        "broadbandIndex": 0.777,
+        "snr1to4kMedianDb": 17.84,
+        "framesUnder3dB": 0.1226
+      },
+      "_engine-demo/es": {
+        "index": 0.8254,
+        "indexMinusSsn": 0.1287,
+        "broadbandIndex": 0.7872,
+        "snr1to4kMedianDb": 17.9,
+        "framesUnder3dB": 0.1001
+      },
+      "engine-demo/en": {
+        "index": 0.8389,
+        "indexMinusSsn": 0.1517,
+        "broadbandIndex": 0.8058,
+        "snr1to4kMedianDb": 19.52,
+        "framesUnder3dB": 0.0948
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.8057,
+        "indexMinusSsn": 0.1222,
+        "broadbandIndex": 0.7675,
+        "snr1to4kMedianDb": 17.77,
+        "framesUnder3dB": 0.1351
+      }
     }
   },
   "aac": null,
@@ -128,7 +161,7 @@
   },
   "file": "audio/music/bed-story-ominous.flac",
   "format": "flac-16bit",
-  "bytes": 5371272,
+  "bytes": 5307039,
   "description": "Bass drones through the loop seam, a muted frame-drum heartbeat with a skin click, low piano octaves with the tritone, a soft bowed-vibes drone and dissonances, the motif four times slower on piano at D4/D5.",
   "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -140,6 +173,6 @@
     "VCSL frame drum, bass drum, cymbal swell",
     "skin click (our synthesis)"
   ],
-  "selfReview": "Drones, a frame-drum heartbeat, low piano octaves with the D-Ab tritone, bowed-vibes dissonances and the motif four times slower on piano, now at D4/D5 (it was D3/D2, inside Zoo's F0 range). Critic round 1 (2026-11-24): it lost 9.2 LU on the phone model, so the drones and heartbeat vanished there. A soft bowed-vibes D4/A4 drone, saturated tremolo basses and a 600-900 Hz skin click on each heartbeat carry it into a phone's range; the parts a phone cannot play came down (the concert bass drum, toms, the lowest piano) and the bus takes 3 dB off below 150 Hz. Phone loss now 5.7-6.0 LU (the critic's target: 6 or less). The bar-16 drones ring through the loop seam, so nothing re-attacks at bar 0: the restart is now 1.5 LU softer than the bar before it (it was the loop's largest step, +3.3 LU in 400 ms windows). It is the most uncomfortable bed by design. The -underscore version mutes the motif and lead lines; use it under speech.",
+  "selfReview": "Drones, a frame-drum heartbeat, low piano octaves with the D-Ab tritone, bowed-vibes dissonances and the motif four times slower on piano, now at D4/D5 (it was D3/D2, inside Zoo's F0 range). Critic round 1 (2026-11-24): it lost 9.2 LU on the phone model, so the drones and heartbeat vanished there. A soft bowed-vibes D4/A4 drone, saturated tremolo basses and a 600-900 Hz skin click on each heartbeat carry it into a phone's range; the parts a phone cannot play came down (the concert bass drum, toms, the lowest piano) and the bus takes 3 dB off below 150 Hz. Phone loss now 5.7-6.0 LU (the critic's target: 6 or less). The bar-16 drones ring through the loop seam, so nothing re-attacks at bar 0: the restart is now 1.5 LU softer than the bar before it (it was the loop's largest step, +3.3 LU in 400 ms windows). It is the most uncomfortable bed by design. The -underscore version mutes the motif and lead lines; use it under speech. Critic round 2 (2026-11-24): Voice index 0.806-0.839 (worst zoo-badger en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo -0.1 dB.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -44,25 +44,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.1,
+    "integratedLufs": -26.0,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.8,
-    "lraLu": 2.3,
-    "truePeakDbtp": -10.8
+    "shortTermMaxLufs": -24.5,
+    "lraLu": 2.0,
+    "truePeakDbtp": -9.2
   },
   "spectrum": {
-    "slopeDbPerOct": -5.24,
-    "harshnessDb": -10.56,
-    "mudDb": -0.94,
-    "boxinessDb": 0.23,
-    "voicePocketDb": -7.99,
-    "centroidHz": 238.0
+    "slopeDbPerOct": -5.18,
+    "harshnessDb": -10.35,
+    "mudDb": -1.34,
+    "boxinessDb": -0.15,
+    "voicePocketDb": -7.56,
+    "centroidHz": 239.0
   },
   "voice": {
-    "index": 0.8456,
-    "ssnIndex": 0.687,
-    "indexMinusSsn": 0.1586,
-    "broadbandIndex": 0.8145,
+    "index": 0.8035,
+    "ssnIndex": 0.6837,
+    "indexMinusSsn": 0.1198,
+    "broadbandIndex": 0.7641,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -73,19 +73,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 15.17,
-    "snr1to4kMedianDb": 20.11,
-    "framesUnder3dB": 0.0943,
+    "voiceOverBedLu": 14.65,
+    "snr1to4kMedianDb": 17.31,
+    "framesUnder3dB": 0.1405,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 12.7
+      "snrDb": 12.1
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/_dev/zoo-badger-demo/en/narration.wav",
+      "sha256": "67b91e1f7bd25eed"
+    },
+    "worstNarration": "zoo-badger-demo/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.8127,
+        "indexMinusSsn": 0.1279,
+        "broadbandIndex": 0.7747,
+        "snr1to4kMedianDb": 17.29,
+        "framesUnder3dB": 0.1283
+      },
+      "_engine-demo/es": {
+        "index": 0.8231,
+        "indexMinusSsn": 0.1273,
+        "broadbandIndex": 0.7843,
+        "snr1to4kMedianDb": 17.55,
+        "framesUnder3dB": 0.1029
+      },
+      "engine-demo/en": {
+        "index": 0.8396,
+        "indexMinusSsn": 0.154,
+        "broadbandIndex": 0.8065,
+        "snr1to4kMedianDb": 19.34,
+        "framesUnder3dB": 0.0948
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.8035,
+        "indexMinusSsn": 0.1198,
+        "broadbandIndex": 0.7641,
+        "snr1to4kMedianDb": 17.31,
+        "framesUnder3dB": 0.1405
+      }
     }
   },
   "aac": null,
@@ -99,7 +132,7 @@
   },
   "file": "audio/music/bed-story-ominous-underscore.flac",
   "format": "flac-16bit",
-  "bytes": 5250672,
+  "bytes": 5265987,
   "description": "Bass drones through the loop seam, a muted frame-drum heartbeat with a skin click, low piano octaves with the tritone, a soft bowed-vibes drone and dissonances, the motif four times slower on piano at D4/D5. Underscore: the motif statements and lead lines are muted.",
   "usage": "The UNDERSCORE: the same bed with the motif and lead lines muted, for use under narration. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -111,6 +144,6 @@
     "VCSL frame drum, bass drum, cymbal swell",
     "skin click (our synthesis)"
   ],
-  "selfReview": "The ominous story bed without the slow piano motif, for use under speech. See bed-story-ominous.",
+  "selfReview": "The ominous story bed without the slow piano motif, for use under speech. See bed-story-ominous. Critic round 2 (2026-11-24): Voice index 0.803-0.840 (worst zoo-badger en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo -0.2 dB.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

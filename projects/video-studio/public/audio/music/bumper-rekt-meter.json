@@ -13,28 +13,28 @@
   "durationSec": 3.2,
   "durationSamples": 153600,
   "sampleRate": 48000,
-  "downbeatSec": 0.0,
-  "downbeatFrame30": 0,
+  "downbeatSec": 0.066667,
+  "downbeatFrame30": 2,
   "loop": null,
   "hits": [
     {
-      "sec": 0.0,
-      "frame30": 0,
+      "sec": 0.067,
+      "frame30": 2,
       "what": "meter starts filling"
     },
     {
-      "sec": 1.2,
-      "frame30": 36,
+      "sec": 1.267,
+      "frame30": 38,
       "what": "A: the fall begins"
     },
     {
-      "sec": 1.5,
-      "frame30": 45,
+      "sec": 1.567,
+      "frame30": 47,
       "what": "A-flat"
     },
     {
-      "sec": 1.8,
-      "frame30": 54,
+      "sec": 1.867,
+      "frame30": 56,
       "what": "F lands (crash)"
     }
   ],
@@ -82,25 +82,25 @@
   },
   "loudness": {
     "profile": "sting",
-    "integratedLufs": -16.1,
-    "shortTermMedianLufs": -16.2,
-    "shortTermMaxLufs": -16.1,
+    "integratedLufs": -16.2,
+    "shortTermMedianLufs": -16.3,
+    "shortTermMaxLufs": -16.2,
     "lraLu": 20.1,
-    "truePeakDbtp": -1.3
+    "truePeakDbtp": -1.8
   },
   "spectrum": {
-    "slopeDbPerOct": -4.54,
-    "harshnessDb": -4.24,
-    "mudDb": 1.63,
-    "boxinessDb": -0.55,
-    "voicePocketDb": -0.99,
-    "centroidHz": 697.0
+    "slopeDbPerOct": -4.59,
+    "harshnessDb": -4.3,
+    "mudDb": 0.9,
+    "boxinessDb": -0.94,
+    "voicePocketDb": -0.68,
+    "centroidHz": 709.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -1.1,
-    "truePeak128kMedian": -1.1,
-    "encodes": 5
+    "truePeak128k": -1.5,
+    "truePeak128kMedian": -1.65,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -114,7 +114,7 @@
   "format": "wav-24bit",
   "bytes": 921644,
   "description": "Segment bumper for Headline / Rekt Meter, built from Zoo's motif (3.2 s).",
-  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "usage": "Cut on the downbeat at the segment change: the file starts with two frames of silence, so start it at downbeatStartFrame(cue, cutFrame) (2 frames early). The music is finished before the file ends. -16 LUFS-I.",
   "instruments": [
     "VCSL Kawai piano",
     "VCSL vibraphone",
@@ -124,6 +124,6 @@
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "The meter fills (taps, rising pizzicato and air), then the motif's tail A, Ab, F falls with band stabs and a crash. Critic round 1 (2026-11-24): the synth brass came down to -9 dB and VSCO 2 violas (fast bowing) double the stabs at -6 dB; on the landing the brass now sits 16.8 dB under the mix (8.4 before), the violas carry the stab (10 dB under the mix, 5.9 dB on the phone model) and the kick is 13.1 dB under (4.6 before). The 1.2 s fill may feel rushed at 100 BPM; that needs an ear.",
+  "selfReview": "The meter fills (taps, rising pizzicato and air), then the motif's tail A, Ab, F falls with band stabs and a crash. Critic round 1 (2026-11-24): the synth brass came down to -9 dB and VSCO 2 violas (fast bowing) double the stabs at -6 dB; on the landing the brass now sits 16.8 dB under the mix (8.4 before), the violas carry the stab (10 dB under the mix, 5.9 dB on the phone model) and the kick is 13.1 dB under (4.6 before). The 1.2 s fill may feel rushed at 100 BPM; that needs an ear. Critic round 2 (2026-11-24): release-ready; re-rendered with the shared fixes (measured tuning, the decaying FingerBass, one kick tuning, the band compressors, the -1.5 dBTP sting ceiling). Master limiter 2.90 dB at most; -1.5 dBTP after AAC 128k (worst of ten), -1.6 dBTP after Opus 128k.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

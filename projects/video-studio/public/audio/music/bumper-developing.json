@@ -13,23 +13,23 @@
   "durationSec": 3.4,
   "durationSamples": 163200,
   "sampleRate": 48000,
-  "downbeatSec": 0.0,
-  "downbeatFrame30": 0,
+  "downbeatSec": 0.066667,
+  "downbeatFrame30": 2,
   "loop": null,
   "hits": [
     {
-      "sec": 0.0,
-      "frame30": 0,
+      "sec": 0.067,
+      "frame30": 2,
       "what": "ticker starts"
     },
     {
-      "sec": 1.8,
-      "frame30": 54,
+      "sec": 1.867,
+      "frame30": 56,
       "what": "motif head"
     },
     {
-      "sec": 2.4,
-      "frame30": 72,
+      "sec": 2.467,
+      "frame30": 74,
       "what": "Dsus4(add9), unresolved (crash)"
     }
   ],
@@ -67,23 +67,23 @@
     "profile": "sting",
     "integratedLufs": -16.1,
     "shortTermMedianLufs": -16.0,
-    "shortTermMaxLufs": -15.8,
+    "shortTermMaxLufs": -15.9,
     "lraLu": 0.4,
-    "truePeakDbtp": -1.3
+    "truePeakDbtp": -1.8
   },
   "spectrum": {
-    "slopeDbPerOct": -4.5,
-    "harshnessDb": -6.08,
-    "mudDb": -3.31,
-    "boxinessDb": -5.13,
-    "voicePocketDb": -4.67,
-    "centroidHz": 1138.0
+    "slopeDbPerOct": -5.05,
+    "harshnessDb": -6.38,
+    "mudDb": -3.66,
+    "boxinessDb": -4.37,
+    "voicePocketDb": -2.2,
+    "centroidHz": 609.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -1.1,
-    "truePeak128kMedian": -1.2,
-    "encodes": 5
+    "truePeak128k": -2.2,
+    "truePeak128kMedian": -2.3,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -97,7 +97,7 @@
   "format": "wav-24bit",
   "bytes": 979244,
   "description": "Segment bumper for DEVELOPING, built from Zoo's motif (3.4 s).",
-  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "usage": "Cut on the downbeat at the segment change: the file starts with two frames of silence, so start it at downbeatStartFrame(cue, cutFrame) (2 frames early). The music is finished before the file ends. -16 LUFS-I.",
   "instruments": [
     "VCSL Kawai piano",
     "VCSL vibraphone",
@@ -107,6 +107,6 @@
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "A news alert, not an alarm: three beats of rising 16th ticker (pulse and hats) under a tremolo swell; the motif head then lands on Dsus4(add9) and stays open. Critic round 1 (2026-11-24): the piano left the ticker (one Kawai sample per note repeated twelve times read as a machine gun) and the brass is 3 dB lower. No sirens, no risers to white noise.",
+  "selfReview": "A news alert, not an alarm: three beats of rising 16th ticker (pulse and hats) under a tremolo swell; the motif head then lands on Dsus4(add9) and stays open. Critic round 1 (2026-11-24): the piano left the ticker (one Kawai sample per note repeated twelve times read as a machine gun) and the brass is 3 dB lower. No sirens, no risers to white noise. Critic round 2 (2026-11-24): release-ready; re-rendered with the shared fixes (measured tuning, the decaying FingerBass, one kick tuning, the band compressors, the -1.5 dBTP sting ceiling). Master limiter 1.64 dB at most; -2.2 dBTP after AAC 128k (worst of ten), -1.4 dBTP after Opus 128k.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

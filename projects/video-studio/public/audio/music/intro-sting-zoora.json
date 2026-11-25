@@ -10,8 +10,8 @@
   "timeSignature": "4/4",
   "framesPerBeat30": 18.0,
   "bars": null,
-  "durationSec": 4.0,
-  "durationSamples": 192000,
+  "durationSec": 4.5,
+  "durationSamples": 216000,
   "sampleRate": 48000,
   "downbeatSec": 0.0,
   "downbeatFrame30": 0,
@@ -94,24 +94,24 @@
   "loudness": {
     "profile": "sting",
     "integratedLufs": -16.0,
-    "shortTermMedianLufs": -15.7,
-    "shortTermMaxLufs": -15.5,
-    "lraLu": 0.7,
-    "truePeakDbtp": -2.7
+    "shortTermMedianLufs": -16.25,
+    "shortTermMaxLufs": -15.9,
+    "lraLu": 1.2,
+    "truePeakDbtp": -2.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.19,
-    "harshnessDb": -9.71,
-    "mudDb": -2.08,
-    "boxinessDb": 1.35,
-    "voicePocketDb": -2.5,
-    "centroidHz": 782.0
+    "slopeDbPerOct": -3.99,
+    "harshnessDb": -8.67,
+    "mudDb": -3.33,
+    "boxinessDb": 1.17,
+    "voicePocketDb": -1.88,
+    "centroidHz": 828.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -2.6,
-    "truePeak128kMedian": -2.6,
-    "encodes": 5
+    "truePeak128k": -2.2,
+    "truePeak128kMedian": -2.2,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -123,7 +123,7 @@
   },
   "file": "audio/music/intro-sting-zoora.wav",
   "format": "wav-24bit",
-  "bytes": 1152044,
+  "bytes": 1296044,
   "description": "The jingle for src/branding ZooraSting: a harp and string shimmer, the lydian motif on vibes and harp landing on the logo hit, two notes under the wordmark and tag line; fades out by 4.0 s with the picture.",
   "usage": "npx remotion render src/branding/index.ts ZooraSting out/brand/zoora-ai/sting.mp4 --props='{\"jingle\":\"audio/music/intro-sting-zoora.wav\"}'",
   "instruments": [
@@ -133,6 +133,6 @@
     "VSCO 2 strings",
     "VCSL bass drum, cymbal, glockenspiel"
   ],
-  "selfReview": "A harp and string shimmer rises from frame 6, and the lydian motif lands on the logo hit (frame 54) with an F-add9 bloom; two notes sit under the wordmark and tag (frames 70 and 78). Critic round 1 (2026-11-24): the MuseScore celesta (weak sample credit, a late tag note) is gone: hard-mallet vibraphone doubled by the harp carries the motif, over the soft vibes. The hit labels now use Zoora wording. It loses 2.0 LU on the phone model. Listen for whether the reversed piano bloom reads as intended or as a swoosh.",
+  "selfReview": "A harp and string shimmer rises from frame 6, and the lydian motif lands on the logo hit (frame 54) with an F-add9 bloom; two notes sit under the wordmark and tag (frames 70 and 78). Critic round 1 (2026-11-24): the MuseScore celesta (weak sample credit, a late tag note) is gone: hard-mallet vibraphone doubled by the harp carries the motif, over the soft vibes. The hit labels now use Zoora wording. It loses 2.0 LU on the phone model. Listen for whether the reversed piano bloom reads as intended or as a swoosh. Critic round 2 (2026-11-24): Harp +0.2 c median (n 15, 0 beyond 10 c) against hard vibes 0.0 c median (n 7, 0 beyond 10 c) (critic: harp -5.7 to -8.4 c, 3.4-5.1 Hz beating); harp width 0.3: its stem's L/R correlation 0.95, mono loss -0.5 dB (critic: up to 3.7 dB on A5 and F6). 4.5 s long, the bloom released by 3.3 s and the bass drum and cymbal damped from 3.2 s: at 4.2 s the cue is down to -52.7 dBFS RMS, the hall tail of the tag notes (the drum and cymbal rang at -39 and -43 dBFS there before), and the final 0.3 s fade takes the rest (last 50 ms peak -59.9 dBFS). It is not yet a fully natural decay to -60 dBFS. Frame 70 (C6, 12 velocity firmer, the critic's fix): +0.8 dB at 0.9-1.6 kHz (critic: -1.4; +20 velocity measured only +1.4, because the logo hit still rings in that band); frame 78: +5.3 dB. -2.2 dBTP after AAC 128k (worst of ten).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

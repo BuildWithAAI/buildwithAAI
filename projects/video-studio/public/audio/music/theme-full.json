@@ -489,25 +489,25 @@
   },
   "loudness": {
     "profile": "standalone",
-    "integratedLufs": -14.0,
-    "shortTermMedianLufs": -14.0,
-    "shortTermMaxLufs": -11.9,
-    "lraLu": 4.8,
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -16.6,
+    "shortTermMaxLufs": -13.1,
+    "lraLu": 7.0,
     "truePeakDbtp": -2.5
   },
   "spectrum": {
-    "slopeDbPerOct": -4.96,
-    "harshnessDb": -6.12,
-    "mudDb": 1.2,
-    "boxinessDb": -1.19,
-    "voicePocketDb": -2.7,
-    "centroidHz": 730.0
+    "slopeDbPerOct": -5.29,
+    "harshnessDb": -6.43,
+    "mudDb": 0.98,
+    "boxinessDb": -1.3,
+    "voicePocketDb": -1.03,
+    "centroidHz": 525.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -1.2,
-    "truePeak128kMedian": -1.2,
-    "encodes": 5
+    "truePeak128k": -1.9,
+    "truePeak128kMedian": -1.95,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -517,7 +517,7 @@
   },
   "file": "audio/music/theme-full.flac",
   "format": "flac-16bit",
-  "bytes": 8355305,
+  "bytes": 7820033,
   "description": "The full theme: intro, A, B, A', coda; Zoo's motif in every section and Badger's figure as the bookends.",
   "usage": "Cold opens, trailers, the channel trailer's music, end of season. -14 LUFS-I: plays on its own, not under narration.",
   "instruments": [
@@ -534,6 +534,6 @@
     "brass stab",
     "muted guitar model"
   ],
-  "selfReview": "The strongest piece: intro, A, B, A' and coda with Zoo's motif in every section and Badger's figure as the bookends. Critic round 1 (2026-11-24): the arc now measures A -14.1, B -16.2 and A' -12.5 LUFS (B 2.1 LU under A, A' 1.6 LU over it; it measured B louder than A before). B lost its snare and hats (cross-stick and shaker only) and came down in the arrangement; A' gained a sustained pad and violas, more brass and claps; the glue compresses less, and a bus ride of a dB or less finishes what the master limiter flattens. The bass is our finger-plucked string, dark (it was clavinet-bright), the kick is short and tuned to the bass under it, the muted guitar is low-passed at 2.5 kHz and 6 dB down, and Badger's figure has a cross-stick and an octave-up celli double, with his transients shaved so the limiter stops pulling the band down on his notes: his button now sits 1.8 dB under the coda motif on full range and 2.9 dB on the phone model (2.8 and 4.5 before). Mastered with a -2.2 dBTP ceiling and 2 dB less air above 9 kHz: -1.2 dBTP after AAC 128 kb/s, the worst of five encodes (-0.3 before). Risks a producer may hear, unverified by ear: the FM tine piano and synth brass are our own synthesis; the stop-time bar before B is meant as a band stop.",
+  "selfReview": "The strongest piece: intro, A, B, A' and coda with Zoo's motif in every section and Badger's figure as the bookends. Critic round 1 (2026-11-24): the arc now measures A -14.1, B -16.2 and A' -12.5 LUFS (B 2.1 LU under A, A' 1.6 LU over it; it measured B louder than A before). B lost its snare and hats (cross-stick and shaker only) and came down in the arrangement; A' gained a sustained pad and violas, more brass and claps; the glue compresses less, and a bus ride of a dB or less finishes what the master limiter flattens. The bass is our finger-plucked string, dark (it was clavinet-bright), the kick is short and tuned to the bass under it, the muted guitar is low-passed at 2.5 kHz and 6 dB down, and Badger's figure has a cross-stick and an octave-up celli double, with his transients shaved so the limiter stops pulling the band down on his notes: his button now sits 1.8 dB under the coda motif on full range and 2.9 dB on the phone model (2.8 and 4.5 before). Mastered with a -2.2 dBTP ceiling and 2 dB less air above 9 kHz: -1.2 dBTP after AAC 128 kb/s, the worst of five encodes (-0.3 before). Risks a producer may hear, unverified by ear: the FM tine piano and synth brass are our own synthesis; the stop-time bar before B is meant as a band stop. Critic round 2 (2026-11-24): -16 LUFS-I; limiter 3.70 dB max, over 1 dB 1.5 % of the time (critic: 8.29 dB, 24.0 %); Badger -1.8 dB against the motif (phone model -2.9 dB) (acceptance -3). Kick: one tuning (52 Hz) for all 79 hits: their spectral peaks over the first 100 ms span 71.8-72.5 Hz, 0.18 semitones (critic: 61-75 Hz, 3.6 semitones). Piano D1 -0.7 c, D2 +0.1 c (-14.9, -17.0); the FingerBass 0.0 c median. A' lifts into its last phrase: bars 1-4 -13.9, bars 5-7 -13.2, the turnaround bar -15.7 LUFS (short-term range over A' 2.1 LU; it sat within \u00b10.5 LU for 19 s). Arc: intro -17.7, A -16.7, B -19.4, A' -13.8, coda -15.3 LUFS. -1.9 dBTP after AAC 128k (worst of ten).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -63,6 +63,7 @@ def aac_true_peak_stats(wav, bitrate: str = AAC_BITRATE, variants: int = AAC_VAR
                 v = Path(d) / f"v{k}.wav"
                 sf.write(str(v), y, sr, subtype=f"PCM_{bits}")
                 vals.append(_encode_peak(exe, v, bitrate))
+                v.unlink()  # one copy on disk at a time (a 68 s 24-bit master is 20 MB)
     ok = [v for v in vals if v is not None]
     if not ok:
         return None

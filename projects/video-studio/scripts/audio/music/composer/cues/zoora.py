@@ -422,6 +422,8 @@ ZOORA_HIT = 54 / 30.0  # src/branding ZooraSting: the nodes pop, the teal accent
 ZOORA_WORD = 70 / 30.0  # the wordmark draws (frame 70)
 ZOORA_TAG = 78 / 30.0  # the tag line (frame 78)
 ZOORA_STING_SEC = 4.5  # the jingle's length (the sting's duration follows it, 3-5 s)
+# the hand damp on the bass drum and cymbal: (seconds, dB), 45 dB down over 0.9 s from 3.2 s
+ZOORA_DAMP = ((3.2, 0.0), (4.1, -45.0))
 
 
 def zoora_intro_sting() -> Arrangement:
@@ -474,6 +476,13 @@ def zoora_intro_sting() -> Arrangement:
 
     # the harp at width 0.3 (critic round 2: its A5 and F6 samples are decorrelated, 0.09 and 0.03 L/R
     # correlation, and lost up to 3.7 dB in mono)
-    return Arrangement("intro-sting-zoora", st.s, ZOORA_STING_SEC, st.tracks({"vibes_hard": -5.0, "vibes": -8.0, "harp": -6.0}, widths={"harp": 0.3}),
-                       preset="sting", reverbs=C.reverbs(), fade_out=0.3, bus_eq=[C.PK(300, -1.0, 0.9), C.PK(4500, 1.5, 0.7), C.HS(9000, 1.5)],
-                       ceiling_dbtp=STING_CEILING_DBTP)
+    arr = Arrangement("intro-sting-zoora", st.s, ZOORA_STING_SEC, st.tracks({"vibes_hard": -5.0, "vibes": -8.0, "harp": -6.0}, widths={"harp": 0.3}),
+                      preset="sting", reverbs=C.reverbs(), fade_out=0.3, bus_eq=[C.PK(300, -1.0, 0.9), C.PK(4500, 1.5, 0.7), C.HS(9000, 1.5)],
+                      ceiling_dbtp=STING_CEILING_DBTP)
+    # the concert bass drum and the suspended cymbal are one-shot samples that ring for seconds: with the
+    # bloom released they were all that sounded at 4.2 s (bass drum -39 dBFS, cymbal -43, 11-17 dB under
+    # their hit), so the final fade still cut them. A player damps both by hand: ZOORA_DAMP
+    for t in arr.tracks:
+        if t.name in ("bdrum", "cymbals"):
+            t.ride = list(ZOORA_DAMP)
+    return arr

@@ -44,25 +44,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.1,
-    "shortTermMedianLufs": -26.1,
-    "shortTermMaxLufs": -25.1,
-    "lraLu": 1.2,
+    "integratedLufs": -27.7,
+    "shortTermMedianLufs": -27.6,
+    "shortTermMaxLufs": -26.5,
+    "lraLu": 1.8,
     "truePeakDbtp": -6.2
   },
   "spectrum": {
-    "slopeDbPerOct": -4.78,
-    "harshnessDb": -10.57,
-    "mudDb": 2.7,
-    "boxinessDb": 0.79,
-    "voicePocketDb": -7.91,
-    "centroidHz": 683.0
+    "slopeDbPerOct": -5.03,
+    "harshnessDb": -9.72,
+    "mudDb": 2.49,
+    "boxinessDb": 0.64,
+    "voicePocketDb": -7.9,
+    "centroidHz": 648.0
   },
   "voice": {
-    "index": 0.7992,
-    "ssnIndex": 0.7077,
-    "indexMinusSsn": 0.0915,
-    "broadbandIndex": 0.7605,
+    "index": 0.8286,
+    "ssnIndex": 0.7372,
+    "indexMinusSsn": 0.0914,
+    "broadbandIndex": 0.7968,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -73,19 +73,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 16.09,
-    "snr1to4kMedianDb": 14.95,
-    "framesUnder3dB": 0.1746,
+    "voiceOverBedLu": 17.07,
+    "snr1to4kMedianDb": 18.95,
+    "framesUnder3dB": 0.1231,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 10.6
+      "snrDb": 11.5
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/_dev/zoo-badger-demo/en/narration.wav",
+      "sha256": "67b91e1f7bd25eed"
+    },
+    "worstNarration": "zoo-badger-demo/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.8338,
+        "indexMinusSsn": 0.0999,
+        "broadbandIndex": 0.8017,
+        "snr1to4kMedianDb": 19.44,
+        "framesUnder3dB": 0.1114
+      },
+      "_engine-demo/es": {
+        "index": 0.839,
+        "indexMinusSsn": 0.0952,
+        "broadbandIndex": 0.8081,
+        "snr1to4kMedianDb": 19.3,
+        "framesUnder3dB": 0.105
+      },
+      "engine-demo/en": {
+        "index": 0.8427,
+        "indexMinusSsn": 0.1083,
+        "broadbandIndex": 0.8129,
+        "snr1to4kMedianDb": 19.57,
+        "framesUnder3dB": 0.1111
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.8286,
+        "indexMinusSsn": 0.0914,
+        "broadbandIndex": 0.7968,
+        "snr1to4kMedianDb": 18.95,
+        "framesUnder3dB": 0.1231
+      }
     }
   },
   "aac": null,
@@ -99,7 +132,7 @@
   },
   "file": "audio/music/bed-story-curious-underscore.flac",
   "format": "flac-16bit",
-  "bytes": 5125586,
+  "bytes": 4770303,
   "description": "A harp ostinato, soft bowed-vibes sustains and the motif augmented on soft vibes; kalimba, pizzicato and a muted frame drum from bar 8; marimba from bar 16. Underscore: the motif statements and lead lines are muted.",
   "usage": "The UNDERSCORE: the same bed with the motif and lead lines muted, for use under narration. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -112,6 +145,6 @@
     "VCSL frame drum, shaker",
     "analog pad"
   ],
-  "selfReview": "The curious story bed without the motif statements, for use under speech. See bed-story-curious.",
+  "selfReview": "The curious story bed without the motif statements, for use under speech. See bed-story-curious. Critic round 2 (2026-11-24): Voice index 0.829-0.843 (worst zoo-badger en) over the four narrations; -27.6 LUFS-S; phone prominence against Zoo +2.3 dB. No bowed vibes, harp -8 dB, mastered at -27.5 LUFS-S.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -87,25 +87,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.1,
-    "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -25.1,
-    "lraLu": 1.3,
+    "integratedLufs": -27.5,
+    "shortTermMedianLufs": -27.5,
+    "shortTermMaxLufs": -26.5,
+    "lraLu": 1.4,
     "truePeakDbtp": -6.2
   },
   "spectrum": {
-    "slopeDbPerOct": -4.53,
-    "harshnessDb": -10.46,
-    "mudDb": 2.71,
-    "boxinessDb": 1.92,
-    "voicePocketDb": -7.99,
-    "centroidHz": 718.0
+    "slopeDbPerOct": -4.49,
+    "harshnessDb": -10.03,
+    "mudDb": 2.56,
+    "boxinessDb": 1.47,
+    "voicePocketDb": -7.98,
+    "centroidHz": 748.0
   },
   "voice": {
-    "index": 0.7977,
-    "ssnIndex": 0.7119,
-    "indexMinusSsn": 0.0858,
-    "broadbandIndex": 0.7591,
+    "index": 0.7987,
+    "ssnIndex": 0.747,
+    "indexMinusSsn": 0.0517,
+    "broadbandIndex": 0.7603,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -116,19 +116,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 16.28,
-    "snr1to4kMedianDb": 14.33,
-    "framesUnder3dB": 0.1793,
+    "voiceOverBedLu": 17.54,
+    "snr1to4kMedianDb": 14.65,
+    "framesUnder3dB": 0.185,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 9.8
+      "snrDb": 10.4
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/_dev/zoo-badger-demo/en/narration.wav",
+      "sha256": "67b91e1f7bd25eed"
+    },
+    "worstNarration": "zoo-badger-demo/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.8039,
+        "indexMinusSsn": 0.0563,
+        "broadbandIndex": 0.7653,
+        "snr1to4kMedianDb": 14.98,
+        "framesUnder3dB": 0.1743
+      },
+      "_engine-demo/es": {
+        "index": 0.8097,
+        "indexMinusSsn": 0.0542,
+        "broadbandIndex": 0.7721,
+        "snr1to4kMedianDb": 15.44,
+        "framesUnder3dB": 0.1576
+      },
+      "engine-demo/en": {
+        "index": 0.8138,
+        "indexMinusSsn": 0.0688,
+        "broadbandIndex": 0.7769,
+        "snr1to4kMedianDb": 14.84,
+        "framesUnder3dB": 0.1583
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.7987,
+        "indexMinusSsn": 0.0517,
+        "broadbandIndex": 0.7603,
+        "snr1to4kMedianDb": 14.65,
+        "framesUnder3dB": 0.185
+      }
     }
   },
   "aac": null,
@@ -142,7 +175,7 @@
   },
   "file": "audio/music/bed-story-curious.flac",
   "format": "flac-16bit",
-  "bytes": 5060475,
+  "bytes": 4881925,
   "description": "A harp ostinato, soft bowed-vibes sustains and the motif augmented on soft vibes; kalimba, pizzicato and a muted frame drum from bar 8; marimba from bar 16.",
   "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -155,6 +188,6 @@
     "VCSL frame drum, shaker",
     "analog pad"
   ],
-  "selfReview": "F lydian: a harp ostinato, high bowed-vibes sustains and the motif augmented on soft vibes; kalimba and pizzicato from bar 8, marimba from 16. Critic round 1 (2026-11-24): the bowed vibes came down 6 dB (they were a constant line at 1 kHz under the voice), the marimba, harp and pad are narrower (correlation 0.52, windowed minimum +0.17, mono loss 1.4 dB; it was 0.37, -0.12 and 1.75 dB, with an anti-correlated marimba; boxiness 1.9 dB, was 3.7), the celesta is gone (soft vibes carry the motif) and the bus takes 2 dB out of 700 Hz. Under Zoo with the band-split duck the 1-4 kHz median SNR is 14-15 dB (6 dB before, with 40 % of speech frames under 3 dB; now 17-18 %) and the narrowest band has 10 dB of margin (3.8 before). Still open: it loses only 2.6-2.8 LU on the phone model against Zoo's 5.4, so on a phone it sits about 2.5 dB more forward against him than on headphones. The -underscore version mutes the motif and lead lines; use it under speech.",
+  "selfReview": "F lydian: a harp ostinato, high bowed-vibes sustains and the motif augmented on soft vibes; kalimba and pizzicato from bar 8, marimba from 16. Critic round 1 (2026-11-24): the bowed vibes came down 6 dB (they were a constant line at 1 kHz under the voice), the marimba, harp and pad are narrower (correlation 0.52, windowed minimum +0.17, mono loss 1.4 dB; it was 0.37, -0.12 and 1.75 dB, with an anti-correlated marimba; boxiness 1.9 dB, was 3.7), the celesta is gone (soft vibes carry the motif) and the bus takes 2 dB out of 700 Hz. Under Zoo with the band-split duck the 1-4 kHz median SNR is 14-15 dB (6 dB before, with 40 % of speech frames under 3 dB; now 17-18 %) and the narrowest band has 10 dB of margin (3.8 before). Still open: it loses only 2.6-2.8 LU on the phone model against Zoo's 5.4, so on a phone it sits about 2.5 dB more forward against him than on headphones. The -underscore version mutes the motif and lead lines; use it under speech. Critic round 2 (2026-11-24): Voice index 0.799-0.814 (worst zoo-badger en) over the four narrations; -27.5 LUFS-S; phone prominence against Zoo +3.2 dB (a spectral ratio the level does not change; the bed masters 1.5 LU under the others for that reason). Harp +0.1 c median (n 159, 0 beyond 10 c) (critic: -9.2 c over 159 notes); harp width 0.3: 200 ms correlation minimum -0.03 (critic: -0.26); mastered at -27.5 LUFS-S.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

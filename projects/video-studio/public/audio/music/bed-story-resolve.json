@@ -87,25 +87,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.5,
+    "integratedLufs": -27.0,
     "shortTermMedianLufs": -26.0,
     "shortTermMaxLufs": -25.0,
-    "lraLu": 3.4,
-    "truePeakDbtp": -11.1
+    "lraLu": 5.8,
+    "truePeakDbtp": -10.3
   },
   "spectrum": {
-    "slopeDbPerOct": -5.5,
-    "harshnessDb": -14.36,
-    "mudDb": 0.82,
-    "boxinessDb": -0.84,
-    "voicePocketDb": -11.3,
-    "centroidHz": 552.0
+    "slopeDbPerOct": -5.43,
+    "harshnessDb": -13.48,
+    "mudDb": -1.29,
+    "boxinessDb": -2.63,
+    "voicePocketDb": -10.2,
+    "centroidHz": 559.0
   },
   "voice": {
-    "index": 0.8345,
-    "ssnIndex": 0.7143,
-    "indexMinusSsn": 0.1202,
-    "broadbandIndex": 0.802,
+    "index": 0.8219,
+    "ssnIndex": 0.7175,
+    "indexMinusSsn": 0.1044,
+    "broadbandIndex": 0.7862,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -116,19 +116,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 16.39,
-    "snr1to4kMedianDb": 21.65,
-    "framesUnder3dB": 0.0826,
+    "voiceOverBedLu": 16.25,
+    "snr1to4kMedianDb": 20.54,
+    "framesUnder3dB": 0.0973,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 9.8
+      "snrDb": 10.4
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/zoora-security/2026-11-24-binance/en/narration.wav",
+      "sha256": "976f84bd9883a42a"
+    },
+    "worstNarration": "2026-11-24-binance/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.8219,
+        "indexMinusSsn": 0.1044,
+        "broadbandIndex": 0.7862,
+        "snr1to4kMedianDb": 20.54,
+        "framesUnder3dB": 0.0973
+      },
+      "_engine-demo/es": {
+        "index": 0.8307,
+        "indexMinusSsn": 0.1045,
+        "broadbandIndex": 0.7955,
+        "snr1to4kMedianDb": 20.91,
+        "framesUnder3dB": 0.0845
+      },
+      "engine-demo/en": {
+        "index": 0.8535,
+        "indexMinusSsn": 0.1251,
+        "broadbandIndex": 0.8262,
+        "snr1to4kMedianDb": 23.88,
+        "framesUnder3dB": 0.0742
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.8242,
+        "indexMinusSsn": 0.1028,
+        "broadbandIndex": 0.7908,
+        "snr1to4kMedianDb": 21.8,
+        "framesUnder3dB": 0.0986
+      }
     }
   },
   "aac": null,
@@ -142,7 +175,7 @@
   },
   "file": "audio/music/bed-story-resolve.flac",
   "format": "flac-16bit",
-  "bytes": 5305685,
+  "bytes": 4802727,
   "description": "Piano arpeggios and the major motif; strings, a soft kick and shaker from bar 8; violins and a harp lift in bars 16-19.",
   "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -155,6 +188,6 @@
     "VCSL harp",
     "analog pad"
   ],
-  "selfReview": "D major: piano arpeggios an octave up, the major motif on vibes and violins, strings, a soft kick and shaker from bar 8, and a harp lift at bar 16; the A7sus4 at the loop end leads back to D. Critic round 1 (2026-11-24): the piano (width 0.6; its stem was uncorrelated left to right) and harp (0.7) are narrower: stereo correlation 0.61 and mono loss 1.1 dB, with no anti-phase window (0.43, 1.7 dB and a windowed minimum of -0.39 before). The bass is the dark finger-plucked one. Under Zoo with the band-split duck its index is 0.83 (0.77 before with the broadband duck, just under speech-shaped noise); the narrowest band, 800 Hz, has 10-11 dB of margin (7.5 before). The -underscore version mutes the motif and lead lines; use it under speech.",
+  "selfReview": "D major: piano arpeggios an octave up, the major motif on vibes and violins, strings, a soft kick and shaker from bar 8, and a harp lift at bar 16; the A7sus4 at the loop end leads back to D. Critic round 1 (2026-11-24): the piano (width 0.6; its stem was uncorrelated left to right) and harp (0.7) are narrower: stereo correlation 0.61 and mono loss 1.1 dB, with no anti-phase window (0.43, 1.7 dB and a windowed minimum of -0.39 before). The bass is the dark finger-plucked one. Under Zoo with the band-split duck its index is 0.83 (0.77 before with the broadband duck, just under speech-shaped noise); the narrowest band, 800 Hz, has 10-11 dB of margin (7.5 before). The -underscore version mutes the motif and lead lines; use it under speech. Critic round 2 (2026-11-24): Voice index 0.822-0.854 (worst show en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo +0.6 dB. Harp +0.2 c median (n 10, 0 beyond 10 c) (critic: -10.1 c); piano -0.1 c median (n 159, 0 beyond 10 c) (critic: D4 -11.7 c).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

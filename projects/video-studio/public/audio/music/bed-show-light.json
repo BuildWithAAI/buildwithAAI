@@ -89,23 +89,23 @@
     "profile": "bed",
     "integratedLufs": -25.8,
     "shortTermMedianLufs": -26.0,
-    "shortTermMaxLufs": -24.8,
-    "lraLu": 1.3,
+    "shortTermMaxLufs": -24.9,
+    "lraLu": 1.2,
     "truePeakDbtp": -6.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.62,
-    "harshnessDb": -6.38,
-    "mudDb": 2.36,
-    "boxinessDb": -1.74,
-    "voicePocketDb": -9.77,
-    "centroidHz": 1061.0
+    "slopeDbPerOct": -4.88,
+    "harshnessDb": -6.36,
+    "mudDb": 1.97,
+    "boxinessDb": -3.88,
+    "voicePocketDb": -10.06,
+    "centroidHz": 896.0
   },
   "voice": {
-    "index": 0.8295,
-    "ssnIndex": 0.6886,
-    "indexMinusSsn": 0.1409,
-    "broadbandIndex": 0.8004,
+    "index": 0.8423,
+    "ssnIndex": 0.6862,
+    "indexMinusSsn": 0.1561,
+    "broadbandIndex": 0.8169,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -116,33 +116,67 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 15.24,
-    "snr1to4kMedianDb": 23.69,
-    "framesUnder3dB": 0.0938,
+    "voiceOverBedLu": 14.85,
+    "snr1to4kMedianDb": 25.69,
+    "framesUnder3dB": 0.0692,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 15.3
+      "snrDb": 17.8
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/zoora-security/2026-11-24-binance/en/narration.wav",
+      "sha256": "976f84bd9883a42a"
+    },
+    "worstNarration": "2026-11-24-binance/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.8423,
+        "indexMinusSsn": 0.1561,
+        "broadbandIndex": 0.8169,
+        "snr1to4kMedianDb": 25.69,
+        "framesUnder3dB": 0.0692
+      },
+      "_engine-demo/es": {
+        "index": 0.8501,
+        "indexMinusSsn": 0.1555,
+        "broadbandIndex": 0.8236,
+        "snr1to4kMedianDb": 25.31,
+        "framesUnder3dB": 0.061
+      },
+      "engine-demo/en": {
+        "index": 0.8567,
+        "indexMinusSsn": 0.1733,
+        "broadbandIndex": 0.8344,
+        "snr1to4kMedianDb": 27.41,
+        "framesUnder3dB": 0.07
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.8464,
+        "indexMinusSsn": 0.1638,
+        "broadbandIndex": 0.8221,
+        "snr1to4kMedianDb": 26.65,
+        "framesUnder3dB": 0.0769
+      }
     }
   },
   "aac": null,
   "checks": {
     "pass": true,
     "failures": 0,
-    "warnings": 1,
+    "warnings": 2,
     "failed": [
+      "noise.humDb",
       "loop.levelStepDb"
     ]
   },
   "file": "audio/music/bed-show-light.flac",
   "format": "flac-16bit",
-  "bytes": 5506776,
+  "bytes": 5389950,
   "description": "Swung pizzicato in quarter notes (eighths in bars 16-21), a two-feel bass, soft taps and quarter-note hats; the major motif (F F C B A) on vibes every 8 bars.",
   "usage": "The motif version: for intros, outros and gaps between lines. Under speech prefer the -underscore version. Loops seamlessly (sample 0 to the end). -26 LUFS-S with a voice pocket at 1.25-2 kHz: duck it under Zoo's narration with scripts/audio/duck.py (the band-split duck, its default). Same tempo and key family as the other show beds: cross-fade between them on a bar line (every 2.667 s).",
   "instruments": [
@@ -153,6 +187,6 @@
     "FM tine piano",
     "VSCO 2 celli"
   ],
-  "selfReview": "Pizzicato, a two-feel bass, soft taps and hats, with the major motif on vibes every 8 bars (the lydian B is the wink). Critic round 1 (2026-11-24): it was the busiest masker in the set, so the pizzicato plays quarter notes (8ths only in bars 16-21) 3 dB lower, the hats play quarters and the claps are gone. Under Zoo with the band-split duck its index is 0.83 (0.72 before, with the broadband duck), and the onsets that come within 15 dB of his voice in 1-4 kHz fell from about 147 to 82 a minute. Its share of 1-4 kHz modulation at syllable rate is still the highest of the beds (0.45, was 0.53): if it still reads as a stock 'quirky explainer' after a listen, re-arrange it on brushes, walking bass and vibes comping, keeping tempo, key and form. The -underscore version mutes the motif and lead lines; use it under speech.",
+  "selfReview": "Pizzicato, a two-feel bass, soft taps and hats, with the major motif on vibes every 8 bars (the lydian B is the wink). Critic round 1 (2026-11-24): it was the busiest masker in the set, so the pizzicato plays quarter notes (8ths only in bars 16-21) 3 dB lower, the hats play quarters and the claps are gone. Under Zoo with the band-split duck its index is 0.83 (0.72 before, with the broadband duck), and the onsets that come within 15 dB of his voice in 1-4 kHz fell from about 147 to 82 a minute. Its share of 1-4 kHz modulation at syllable rate is still the highest of the beds (0.45, was 0.53): if it still reads as a stock 'quirky explainer' after a listen, re-arrange it on brushes, walking bass and vibes comping, keeping tempo, key and form. The -underscore version mutes the motif and lead lines; use it under speech. Critic round 2 (2026-11-24): Voice index 0.842-0.857 (worst show en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo +0.7 dB. Hall return -2 dB at width 0.8, bus LS(250, +2) and PK(800, -2); 200 ms correlation minimum -0.24 (critic: -0.45).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

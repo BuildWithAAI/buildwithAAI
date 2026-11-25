@@ -40,7 +40,7 @@ Derived forms (each cue states which it uses):
 - **Augmentation.** 2x to 4x longer, for the Zoora AI story beds.
 - **Ticker.** The repeated tonic becomes a 16th-note pulse, for DEVELOPING.
 
-**Badger's figure.** Badger is nonverbal, so his musical voice is a reply: two dry low notes, a falling semitone (♭2 to 1: E♭2 to D2), on pizzicato bass, the plucked bass and a muted kick. It is the musical side-eye. Leave room after it for the owner's real dog sounds; never write anything that imitates a dog. Since critic round 1 the celli double it an octave up (E♭4 to D4) and a dry cross-stick on its own track marks each note, because a phone speaker plays nothing of the low octaves.
+**Badger's figure.** Badger is nonverbal, so his musical voice is a reply: a falling semitone (♭2 to 1: E♭2 to D2) on pizzicato basses and celli and the finger-plucked bass. It is the musical side-eye. Leave room after it for the owner's real dog sounds; never write anything that imitates a dog. Since critic round 1 the celli double it an octave up (E♭4 to D4) and a dry cross-stick on its own track marks each note, because a phone speaker plays nothing of the low octaves. Since critic round 2 the figure has no kick (its sub was inaudible on a phone but drove the master limiter), and the double is compressed hard and fast and lifted at 1.5 kHz instead of being pushed: it reads as two low notes with a mid-register shadow, within 3 dB of the motif on a phone.
 
 ## 3. Harmony and writing rules
 
@@ -73,9 +73,11 @@ Every tempo has an **integer number of video frames per beat at 30 fps** (BPM = 
 | Piano (motif, comping) | VCSL Kawai grand, levelled velocity layers, pedal and releases (CC0) |
 | Noir colour | VCSL vibraphone, soft and hard mallets; bowed vibraphone for textures (CC0) |
 | Strings | MuseScore_General VSCO 2 sections (violins, violas, celli, basses: slow, fast, pizzicato, tremolo; the CC2 "Expr." banks for swells) (MIT; the samples are CC0) |
-| Bass | Our finger-plucked string (`FingerBass`: a Karplus-Strong string with a triangle-and-noise finger excitation, harmonics rolling off from the note's own fundamental) plus a sine sub layer. It replaced the engine's plucked string in critic round 1: that one put 44 % of its power at 1-4 kHz and read clavinet-bright |
-| Drums | Synth kick (engine; 0.11 s body, tuned per hit to the bass note above it) layered with the MuseScore kit kick; VCSL snares, cross-stick, hi-hats, claps, shaker, cymbals, toms, frame drum, concert bass drum, timpani (CC0/MIT) |
+| Bass | Our finger-plucked string (`FingerBass`: a waveguide string with a triangle-and-noise finger excitation, a frequency-dependent loss filter and a fractional-delay allpass) plus a sine sub layer. It replaced the engine's plucked string in critic round 1 (44 % of its power at 1-4 kHz, clavinet-bright). Critic round 2 found its spectrum static (every harmonic decaying at the same 17 dB/s, an organ signature); the loss filter now makes the upper harmonics die 3-12 times faster than the fundamental, as on a plucked string |
+| Drums | Synth kick (engine; 0.11 s body, one fixed tuning, 52 Hz, for every hit: per-hit tuning to the bass spread its pitch over 3.6 semitones, an 808 idiom) layered with the MuseScore kit kick; VCSL snares, cross-stick, hi-hats, claps, shaker, cymbals, toms, frame drum, concert bass drum, timpani (CC0/MIT) |
 | Mallets and sparkle | VCSL marimba, glockenspiel (sparingly), tubular bells, concert harp, kalimba, vibraphone (soft, hard and bowed). The MuseScore celesta is no longer used (weak sample credit, a slow attack) |
+
+**Intonation (critic round 2).** Every sampled instrument plays in tune with the synths (which are exact). The VCSL harp (6-12 cents flat) and the Kawai's bottom two octaves (10-26 cents flat) are played from each sample's measured root (`instruments.measured_root`: the harmonic partials 1-4 within 10 dB of the strongest, so a weak fundamental cannot pull it); the MuseScore VSCO 2 strings (up to 30 cents off per key, and per velocity layer) get a measured per-key correction sent as MIDI Tuning Standard messages (`composer/gmtune.py`, table `gm_tuning.json`).
 | Tech edge | Our own synthesis: FM tine electric piano, analog pad, pulse arpeggiator, brass stab, sub drone, risers and reverse swells |
 
 ## 6. Mix and master rules
@@ -84,8 +86,9 @@ Every tempo has an **integer number of video frames per beat at 30 fps** (BPM = 
 - **Underscore.** Every bed ships twice: with the motif (for intros, outros and gaps) and as `-underscore`, with the motif and lead lines muted, for use under speech.
 - **Low end.** Mono below about 120 Hz, the kick and bass in separate bands, no 200-500 Hz build-up (mud of 3 dB or less), and reverb returns high-passed at about 200 Hz.
 - **Loudness** (engine presets):
-  - theme full and 15 s: `standalone` (-14 LUFS-I) with a -2.2 dBTP ceiling and 2 dB less air above 9 kHz, so they stay under -1 dBTP after AAC 128 kb/s (the worst of five encodes);
-  - 5 s sting, bumpers and intro stings: `sting` (-16 LUFS-I, -1 dBTP, clean tail);
+  - theme full and 15 s: `standalone` at -16 LUFS-I (critic round 2: at -14 the master limiter took 7-10 dB off the hits and Badger's notes; at -16 it takes under 4) with a -2.2 dBTP ceiling and 2 dB less air above 9 kHz, so they stay under -1 dBTP after AAC 128 kb/s (the worst of ten encodes);
+  - 5 s sting, bumpers and intro stings: `sting` (-16 LUFS-I, -1.5 dBTP, clean tail);
+  - band cues hold their attacks before the master: fast compressors on the kick, snare, hats, claps, EP and brass, and the piano's hammer peaks held to 14 dB over its own loudness, so the master limiter never works more than 4 dB;
   - beds and the end-screen bed: `bed` (-26 LUFS-S median, -6 dBTP; loops mastered with `loop=True`);
   - the end-screen music with nobody speaking: `endscreen` (-18 LUFS-I, -2 dBTP).
 - **Loops are seamless by construction.** One cycle is rendered with its tail. The tail is folded onto the start, so the release and reverb from the last bar ring into bar 1. The cycle is mixed with wrap-around padding, so the reverb and compressors see the seam, then mastered with `loop=True`. Each bed is checked with `metrics.py --loop`.
@@ -108,9 +111,9 @@ Every tempo has an **integer number of video frames per beat at 30 fps** (BPM = 
 | Show bed, tension | 64 s loop | D minor and phrygian; muted 16th pulse (two octaves over the bass, out of Zoo's register), low string drone with an E♭ neighbour, ticking; the motif slow on soft vibes at D5 |
 | Show bed, light | 64 s loop | F major (lydian wink); pizzicato, swung brushes-style hats, short bass, vibes; the major motif |
 | Story bed, curious | 64 s loop | F lydian; harp, kalimba or celesta ostinato, pizzicato, marimba, bowed-vibes sustains; the motif augmented |
-| Story bed, tension | 64 s loop | D minor; low string ostinato doubled an octave up by violas, pulse, ticking, cymbal swells; motif fragments on vibes and violins |
+| Story bed, tension | 64 s loop | D minor; low string ostinato doubled an octave up by violas, pulse, ticking, cymbal swells; motif fragments on vibes and violins. The underscore plays the ostinato an octave up (G3-F4), out of Zoo's F0 range |
 | Story bed, ominous | 64 s loop | D phrygian; drones, sparse low piano with the tritone, gong and bass-drum swells; the motif very slow |
 | Story bed, resolve/uplift | 64 s loop | D major; piano arpeggios, string swells, a gentle pulse; the major motif resolving |
 | End-screen bed | 20 s | Theme groove, light; under Zoo's voice-over the vibes rest until the motif and button at 16.8 s, ending at exactly 20.0 s (end-aligned). A second version, `endscreen-music`, keeps the vibes answers for an end screen with nobody speaking (-18 LUFS-I) |
-| Zoora AI intro sting | 4 s | A rising harp and string shimmer; the lydian motif on hard-mallet vibes doubled by the harp lands on the logo hit at 1.80 s; two soft notes under the wordmark (2.33 s and 2.6 s); out by 4.0 s |
+| Zoora AI intro sting | 4.5 s | A rising harp and string shimmer; the lydian motif on hard-mallet vibes doubled by the harp lands on the logo hit at 1.80 s; two notes under the wordmark and the tag (2.33 s and 2.6 s); the bloom is released by 3.3 s and decays naturally (critic round 2: at 4.0 s it was cut, not finished) |
 | Show intro sting | 4 s | A drum pickup; the motif with SHOW on the ampersand hit (1.00 s); Badger's figure on his judging look (1.93 s); out cleanly by 4.0 s (the sting hard-cuts) |

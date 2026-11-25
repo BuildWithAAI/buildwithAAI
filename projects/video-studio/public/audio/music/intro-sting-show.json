@@ -139,25 +139,25 @@
   },
   "loudness": {
     "profile": "sting",
-    "integratedLufs": -16.1,
+    "integratedLufs": -16.0,
     "shortTermMedianLufs": -17.1,
     "shortTermMaxLufs": -16.5,
-    "lraLu": 1.6,
-    "truePeakDbtp": -1.3
+    "lraLu": 1.8,
+    "truePeakDbtp": -1.8
   },
   "spectrum": {
-    "slopeDbPerOct": -5.08,
-    "harshnessDb": -6.02,
-    "mudDb": 2.17,
-    "boxinessDb": -1.49,
-    "voicePocketDb": -1.33,
-    "centroidHz": 553.0
+    "slopeDbPerOct": -5.44,
+    "harshnessDb": -6.94,
+    "mudDb": 1.69,
+    "boxinessDb": -1.74,
+    "voicePocketDb": -0.92,
+    "centroidHz": 486.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -1.1,
-    "truePeak128kMedian": -1.2,
-    "encodes": 5
+    "truePeak128k": -2.1,
+    "truePeak128kMedian": -2.1,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -178,6 +178,6 @@
     "VCSL drums",
     "brass stab"
   ],
-  "selfReview": "Locked to the ShowSting frames: SHOW on frame 30 and Badger's D on frame 58. Critic round 1 (2026-11-24): the kick came down 3 dB and its beater sits 5 dB under it, the snare is 2 dB up and the piano octaves on SHOW 2 dB firmer: on the hit the piano now leads (5.1 dB under the mix) and the kick is 12.9 dB under it (it was the loudest element). Measured onsets: the SHOW hit's snare, cymbal and brass start between -2 and +5 ms of frame 30, within half a frame; Badger's D lands 7-15 ms after frame 58. Badger, now on the finger-plucked bass with the celli double and his cross-stick, sits 0.9 dB over the motif on full range and 1.3 dB on the phone model. The hum warning (if shown) is a false positive from short, bass-heavy material.",
+  "selfReview": "Locked to the ShowSting frames: SHOW on frame 30 and Badger's D on frame 58. Critic round 1 (2026-11-24): the kick came down 3 dB and its beater sits 5 dB under it, the snare is 2 dB up and the piano octaves on SHOW 2 dB firmer: on the hit the piano now leads (5.1 dB under the mix) and the kick is 12.9 dB under it (it was the loudest element). Measured onsets: the SHOW hit's snare, cymbal and brass start between -2 and +5 ms of frame 30, within half a frame; Badger's D lands 7-15 ms after frame 58. Badger, now on the finger-plucked bass with the celli double and his cross-stick, sits 0.9 dB over the motif on full range and 1.3 dB on the phone model. The hum warning (if shown) is a false positive from short, bass-heavy material. Critic round 2 (2026-11-24): Limiter 1.92 dB max, over 1 dB 1.8 % of the time; Badger +0.1 dB against the motif (phone model 0.0 dB). Piano D2 -0.3 c (-17.0). Ceiling -1.5 dBTP: Opus 128k -1.6 dBTP (critic: -1.0); -2.1 dBTP after AAC 128k (worst of ten).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

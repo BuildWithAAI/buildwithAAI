@@ -81,7 +81,7 @@
       "hits": [],
       "file": "audio/music/bed-show-neutral.flac",
       "format": "flac-16bit",
-      "integratedLufs": -25.8,
+      "integratedLufs": -25.7,
       "shortTermMedianLufs": -26.0,
       "truePeakDbtp": -6.3,
       "profile": "bed",
@@ -109,7 +109,7 @@
       "hits": [],
       "file": "audio/music/bed-show-neutral-underscore.flac",
       "format": "flac-16bit",
-      "integratedLufs": -25.7,
+      "integratedLufs": -25.6,
       "shortTermMedianLufs": -26.0,
       "truePeakDbtp": -6.3,
       "profile": "bed",
@@ -193,8 +193,8 @@
       "hits": [],
       "file": "audio/music/bed-story-curious.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.1,
-      "shortTermMedianLufs": -26.0,
+      "integratedLufs": -27.5,
+      "shortTermMedianLufs": -27.5,
       "truePeakDbtp": -6.2,
       "profile": "bed",
       "metadata": "audio/music/bed-story-curious.json"
@@ -221,8 +221,8 @@
       "hits": [],
       "file": "audio/music/bed-story-curious-underscore.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.1,
-      "shortTermMedianLufs": -26.1,
+      "integratedLufs": -27.7,
+      "shortTermMedianLufs": -27.6,
       "truePeakDbtp": -6.2,
       "profile": "bed",
       "metadata": "audio/music/bed-story-curious-underscore.json"
@@ -249,9 +249,9 @@
       "hits": [],
       "file": "audio/music/bed-story-ominous.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.0,
+      "integratedLufs": -25.9,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -10.5,
+      "truePeakDbtp": -8.3,
       "profile": "bed",
       "metadata": "audio/music/bed-story-ominous.json"
     },
@@ -277,9 +277,9 @@
       "hits": [],
       "file": "audio/music/bed-story-ominous-underscore.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.1,
+      "integratedLufs": -26.0,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -10.8,
+      "truePeakDbtp": -9.2,
       "profile": "bed",
       "metadata": "audio/music/bed-story-ominous-underscore.json"
     },
@@ -305,9 +305,9 @@
       "hits": [],
       "file": "audio/music/bed-story-resolve.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.5,
+      "integratedLufs": -27.0,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -11.1,
+      "truePeakDbtp": -10.3,
       "profile": "bed",
       "metadata": "audio/music/bed-story-resolve.json"
     },
@@ -333,9 +333,9 @@
       "hits": [],
       "file": "audio/music/bed-story-resolve-underscore.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.6,
+      "integratedLufs": -27.0,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -10.8,
+      "truePeakDbtp": -10.6,
       "profile": "bed",
       "metadata": "audio/music/bed-story-resolve-underscore.json"
     },
@@ -361,9 +361,9 @@
       "hits": [],
       "file": "audio/music/bed-story-tension.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.0,
+      "integratedLufs": -25.9,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -8.9,
+      "truePeakDbtp": -8.3,
       "profile": "bed",
       "metadata": "audio/music/bed-story-tension.json"
     },
@@ -389,9 +389,9 @@
       "hits": [],
       "file": "audio/music/bed-story-tension-underscore.flac",
       "format": "flac-16bit",
-      "integratedLufs": -26.1,
+      "integratedLufs": -25.9,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -8.4,
+      "truePeakDbtp": -7.8,
       "profile": "bed",
       "metadata": "audio/music/bed-story-tension-underscore.json"
     },
@@ -405,30 +405,30 @@
       "bpm": 100,
       "durationSec": 3.4,
       "durationSamples": 163200,
-      "downbeatSec": 0.0,
+      "downbeatSec": 0.066667,
       "loop": null,
       "hits": [
         {
-          "sec": 0.0,
-          "frame30": 0,
+          "sec": 0.067,
+          "frame30": 2,
           "what": "rewind swell"
         },
         {
-          "sec": 0.9,
-          "frame30": 27,
+          "sec": 0.967,
+          "frame30": 29,
           "what": "motif backwards: F"
         },
         {
-          "sec": 2.1,
-          "frame30": 63,
+          "sec": 2.167,
+          "frame30": 65,
           "what": "D: resolved"
         }
       ],
       "file": "audio/music/bumper-correction.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.4,
-      "truePeakDbtp": -3.2,
+      "integratedLufs": -16.2,
+      "shortTermMedianLufs": -16.6,
+      "truePeakDbtp": -3.6,
       "profile": "sting",
       "metadata": "audio/music/bumper-correction.json"
     },
@@ -442,22 +442,22 @@
       "bpm": 100,
       "durationSec": 3.4,
       "durationSamples": 163200,
-      "downbeatSec": 0.0,
+      "downbeatSec": 0.066667,
       "loop": null,
       "hits": [
         {
-          "sec": 0.0,
-          "frame30": 0,
+          "sec": 0.067,
+          "frame30": 2,
           "what": "ticker starts"
         },
         {
-          "sec": 1.8,
-          "frame30": 54,
+          "sec": 1.867,
+          "frame30": 56,
           "what": "motif head"
         },
         {
-          "sec": 2.4,
-          "frame30": 72,
+          "sec": 2.467,
+          "frame30": 74,
           "what": "Dsus4(add9), unresolved (crash)"
         }
       ],
@@ -465,7 +465,7 @@
       "format": "wav-24bit",
       "integratedLufs": -16.1,
       "shortTermMedianLufs": -16.0,
-      "truePeakDbtp": -1.3,
+      "truePeakDbtp": -1.8,
       "profile": "sting",
       "metadata": "audio/music/bumper-developing.json"
     },
@@ -479,25 +479,25 @@
       "bpm": 100,
       "durationSec": 3.0,
       "durationSamples": 144000,
-      "downbeatSec": 0.0,
+      "downbeatSec": 0.066667,
       "loop": null,
       "hits": [
         {
-          "sec": 0.0,
-          "frame30": 0,
+          "sec": 0.067,
+          "frame30": 2,
           "what": "major motif"
         },
         {
-          "sec": 1.2,
-          "frame30": 36,
+          "sec": 1.267,
+          "frame30": 38,
           "what": "the fix clicks into place (D6/9, harp lift)"
         }
       ],
       "file": "audio/music/bumper-one-fix.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.1,
-      "shortTermMedianLufs": -16.4,
-      "truePeakDbtp": -1.3,
+      "integratedLufs": -16.0,
+      "shortTermMedianLufs": -16.3,
+      "truePeakDbtp": -2.0,
       "profile": "sting",
       "metadata": "audio/music/bumper-one-fix.json"
     },
@@ -511,30 +511,30 @@
       "bpm": 100,
       "durationSec": 3.2,
       "durationSamples": 153600,
-      "downbeatSec": 0.0,
+      "downbeatSec": 0.066667,
       "loop": null,
       "hits": [
         {
-          "sec": 0.0,
-          "frame30": 0,
+          "sec": 0.067,
+          "frame30": 2,
           "what": "motif head"
         },
         {
-          "sec": 1.5,
-          "frame30": 45,
+          "sec": 1.567,
+          "frame30": 47,
           "what": "Badger: E-flat"
         },
         {
-          "sec": 2.1,
-          "frame30": 63,
+          "sec": 2.167,
+          "frame30": 65,
           "what": "Badger: D (the button)"
         }
       ],
       "file": "audio/music/bumper-red-flag.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.6,
-      "truePeakDbtp": -1.3,
+      "integratedLufs": -16.2,
+      "shortTermMedianLufs": -16.4,
+      "truePeakDbtp": -1.8,
       "profile": "sting",
       "metadata": "audio/music/bumper-red-flag.json"
     },
@@ -548,35 +548,35 @@
       "bpm": 100,
       "durationSec": 3.2,
       "durationSamples": 153600,
-      "downbeatSec": 0.0,
+      "downbeatSec": 0.066667,
       "loop": null,
       "hits": [
         {
-          "sec": 0.0,
-          "frame30": 0,
+          "sec": 0.067,
+          "frame30": 2,
           "what": "meter starts filling"
         },
         {
-          "sec": 1.2,
-          "frame30": 36,
+          "sec": 1.267,
+          "frame30": 38,
           "what": "A: the fall begins"
         },
         {
-          "sec": 1.5,
-          "frame30": 45,
+          "sec": 1.567,
+          "frame30": 47,
           "what": "A-flat"
         },
         {
-          "sec": 1.8,
-          "frame30": 54,
+          "sec": 1.867,
+          "frame30": 56,
           "what": "F lands (crash)"
         }
       ],
       "file": "audio/music/bumper-rekt-meter.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.1,
-      "shortTermMedianLufs": -16.2,
-      "truePeakDbtp": -1.3,
+      "integratedLufs": -16.2,
+      "shortTermMedianLufs": -16.3,
+      "truePeakDbtp": -1.8,
       "profile": "sting",
       "metadata": "audio/music/bumper-rekt-meter.json"
     },
@@ -590,35 +590,35 @@
       "bpm": 100,
       "durationSec": 3.4,
       "durationSamples": 163200,
-      "downbeatSec": 0.0,
+      "downbeatSec": 0.066667,
       "loop": null,
       "hits": [
         {
-          "sec": 0.0,
-          "frame30": 0,
+          "sec": 0.067,
+          "frame30": 2,
           "what": "motif, low"
         },
         {
-          "sec": 1.2,
-          "frame30": 36,
+          "sec": 1.267,
+          "frame30": 38,
           "what": "lands on Bb7(b9)"
         },
         {
-          "sec": 1.95,
-          "frame30": 58,
+          "sec": 2.017,
+          "frame30": 60,
           "what": "vibes glint: E"
         },
         {
-          "sec": 2.25,
-          "frame30": 68,
+          "sec": 2.317,
+          "frame30": 70,
           "what": "B-flat"
         }
       ],
       "file": "audio/music/bumper-scam-of-the-week.wav",
       "format": "wav-24bit",
       "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.4,
-      "truePeakDbtp": -1.3,
+      "shortTermMedianLufs": -16.1,
+      "truePeakDbtp": -2.3,
       "profile": "sting",
       "metadata": "audio/music/bumper-scam-of-the-week.json"
     },
@@ -653,9 +653,9 @@
       ],
       "file": "audio/music/endscreen-bed.wav",
       "format": "wav-24bit",
-      "integratedLufs": -26.1,
+      "integratedLufs": -26.0,
       "shortTermMedianLufs": -26.0,
-      "truePeakDbtp": -6.9,
+      "truePeakDbtp": -7.2,
       "profile": "bed",
       "metadata": "audio/music/endscreen-bed.json"
     },
@@ -690,9 +690,9 @@
       ],
       "file": "audio/music/endscreen-music.wav",
       "format": "wav-24bit",
-      "integratedLufs": -18.1,
+      "integratedLufs": -18.0,
       "shortTermMedianLufs": -18.0,
-      "truePeakDbtp": -2.3,
+      "truePeakDbtp": -2.5,
       "profile": "endscreen",
       "metadata": "audio/music/endscreen-music.json"
     },
@@ -732,9 +732,9 @@
       ],
       "file": "audio/music/intro-sting-show.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.1,
+      "integratedLufs": -16.0,
       "shortTermMedianLufs": -17.1,
-      "truePeakDbtp": -1.3,
+      "truePeakDbtp": -1.8,
       "profile": "sting",
       "metadata": "audio/music/intro-sting-show.json"
     },
@@ -746,8 +746,8 @@
       "mood": "curious, luminous, cinematic",
       "key": "F lydian",
       "bpm": 100,
-      "durationSec": 4.0,
-      "durationSamples": 192000,
+      "durationSec": 4.5,
+      "durationSamples": 216000,
       "downbeatSec": 0.0,
       "loop": null,
       "hits": [
@@ -780,8 +780,8 @@
       "file": "audio/music/intro-sting-zoora.wav",
       "format": "wav-24bit",
       "integratedLufs": -16.0,
-      "shortTermMedianLufs": -15.7,
-      "truePeakDbtp": -2.7,
+      "shortTermMedianLufs": -16.25,
+      "truePeakDbtp": -2.3,
       "profile": "sting",
       "metadata": "audio/music/intro-sting-zoora.json"
     },
@@ -841,8 +841,8 @@
       ],
       "file": "audio/music/theme-15s.wav",
       "format": "wav-24bit",
-      "integratedLufs": -14.1,
-      "shortTermMedianLufs": -14.3,
+      "integratedLufs": -16.1,
+      "shortTermMedianLufs": -16.3,
       "truePeakDbtp": -2.5,
       "profile": "standalone",
       "metadata": "audio/music/theme-15s.json"
@@ -883,9 +883,9 @@
       ],
       "file": "audio/music/theme-5s.wav",
       "format": "wav-24bit",
-      "integratedLufs": -16.0,
-      "shortTermMedianLufs": -16.2,
-      "truePeakDbtp": -1.3,
+      "integratedLufs": -16.1,
+      "shortTermMedianLufs": -16.6,
+      "truePeakDbtp": -1.8,
       "profile": "sting",
       "metadata": "audio/music/theme-5s.json"
     },
@@ -950,8 +950,8 @@
       ],
       "file": "audio/music/theme-full.flac",
       "format": "flac-16bit",
-      "integratedLufs": -14.0,
-      "shortTermMedianLufs": -14.0,
+      "integratedLufs": -16.0,
+      "shortTermMedianLufs": -16.6,
       "truePeakDbtp": -2.5,
       "profile": "standalone",
       "metadata": "audio/music/theme-full.json"

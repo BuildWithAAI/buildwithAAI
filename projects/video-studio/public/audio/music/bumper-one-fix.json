@@ -13,18 +13,18 @@
   "durationSec": 3.0,
   "durationSamples": 144000,
   "sampleRate": 48000,
-  "downbeatSec": 0.0,
-  "downbeatFrame30": 0,
+  "downbeatSec": 0.066667,
+  "downbeatFrame30": 2,
   "loop": null,
   "hits": [
     {
-      "sec": 0.0,
-      "frame30": 0,
+      "sec": 0.067,
+      "frame30": 2,
       "what": "major motif"
     },
     {
-      "sec": 1.2,
-      "frame30": 36,
+      "sec": 1.267,
+      "frame30": 38,
       "what": "the fix clicks into place (D6/9, harp lift)"
     }
   ],
@@ -64,25 +64,25 @@
   },
   "loudness": {
     "profile": "sting",
-    "integratedLufs": -16.1,
-    "shortTermMedianLufs": -16.4,
-    "shortTermMaxLufs": -16.4,
+    "integratedLufs": -16.0,
+    "shortTermMedianLufs": -16.3,
+    "shortTermMaxLufs": -16.3,
     "lraLu": 20.0,
-    "truePeakDbtp": -1.3
+    "truePeakDbtp": -2.0
   },
   "spectrum": {
-    "slopeDbPerOct": -5.73,
-    "harshnessDb": -8.59,
-    "mudDb": 1.42,
-    "boxinessDb": 1.94,
-    "voicePocketDb": 1.81,
-    "centroidHz": 535.0
+    "slopeDbPerOct": -5.93,
+    "harshnessDb": -8.66,
+    "mudDb": 1.13,
+    "boxinessDb": 2.19,
+    "voicePocketDb": 3.25,
+    "centroidHz": 505.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -2.0,
-    "truePeak128kMedian": -2.1,
-    "encodes": 5
+    "truePeak128k": -1.4,
+    "truePeak128kMedian": -1.6,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -96,7 +96,7 @@
   "format": "wav-24bit",
   "bytes": 864044,
   "description": "Segment bumper for Zoo's One Fix, built from Zoo's motif (3.0 s).",
-  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "usage": "Cut on the downbeat at the segment change: the file starts with two frames of silence, so start it at downbeatStartFrame(cue, cutFrame) (2 frames early). The music is finished before the file ends. -16 LUFS-I.",
   "instruments": [
     "VCSL Kawai piano",
     "VCSL vibraphone",
@@ -106,6 +106,6 @@
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "The major motif (D D A G# F#) on vibes and piano, then a rim click and a harp lift into D6/9 (critic round 1: it was labelled Dmaj9, but there is no major 7th under the tonic). The exposed FM-EP chord has 2 dB less 400 Hz. -16 LUFS-I, -2.0 dBTP after AAC, 3.4 LU lost on the phone model.",
+  "selfReview": "The major motif (D D A G# F#) on vibes and piano, then a rim click and a harp lift into D6/9 (critic round 1: it was labelled Dmaj9, but there is no major 7th under the tonic). The exposed FM-EP chord has 2 dB less 400 Hz. -16 LUFS-I, -2.0 dBTP after AAC, 3.4 LU lost on the phone model. Critic round 2 (2026-11-24): Harp +0.1 c median (n 9, 0 beyond 10 c) (critic: -11.2 c median, 6 of 9 beyond -10 c); the master limiter does not work (0.0 dB). -1.4 dBTP after AAC 128k (worst of ten).",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

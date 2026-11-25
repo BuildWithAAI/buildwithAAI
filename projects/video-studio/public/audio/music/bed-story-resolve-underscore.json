@@ -44,25 +44,25 @@
   },
   "loudness": {
     "profile": "bed",
-    "integratedLufs": -26.6,
+    "integratedLufs": -27.0,
     "shortTermMedianLufs": -26.0,
     "shortTermMaxLufs": -25.1,
-    "lraLu": 3.4,
-    "truePeakDbtp": -10.8
+    "lraLu": 5.1,
+    "truePeakDbtp": -10.6
   },
   "spectrum": {
-    "slopeDbPerOct": -5.49,
-    "harshnessDb": -14.26,
-    "mudDb": 1.19,
-    "boxinessDb": -0.96,
-    "voicePocketDb": -11.36,
-    "centroidHz": 548.0
+    "slopeDbPerOct": -5.45,
+    "harshnessDb": -13.02,
+    "mudDb": -0.57,
+    "boxinessDb": -3.14,
+    "voicePocketDb": -10.0,
+    "centroidHz": 550.0
   },
   "voice": {
-    "index": 0.8317,
-    "ssnIndex": 0.713,
-    "indexMinusSsn": 0.1187,
-    "broadbandIndex": 0.7964,
+    "index": 0.8134,
+    "ssnIndex": 0.7155,
+    "indexMinusSsn": 0.0979,
+    "broadbandIndex": 0.773,
     "duck": {
       "plannedMode": "split",
       "crossoversHz": [
@@ -73,19 +73,52 @@
         2.0,
         12.0,
         4.0
-      ]
+      ],
+      "minGapS": 0.8,
+      "releaseS": 1.2
     },
-    "voiceOverBedLu": 16.33,
-    "snr1to4kMedianDb": 21.13,
-    "framesUnder3dB": 0.0826,
+    "voiceOverBedLu": 16.06,
+    "snr1to4kMedianDb": 19.34,
+    "framesUnder3dB": 0.1203,
     "narrowestBand": {
       "hz": 800,
-      "snrDb": 11.1
+      "snrDb": 13.1
     },
     "reference": {
       "voice": "Kokoro im_nicola (Zoo)",
-      "source": "public/generated/_dev/engine-demo/en/narration.wav",
-      "sha256": "021b3f141cdf3237"
+      "source": "public/generated/_dev/zoo-badger-demo/en/narration.wav",
+      "sha256": "67b91e1f7bd25eed"
+    },
+    "worstNarration": "zoo-badger-demo/en",
+    "byNarration": {
+      "2026-11-24-binance/en": {
+        "index": 0.814,
+        "indexMinusSsn": 0.1004,
+        "broadbandIndex": 0.7731,
+        "snr1to4kMedianDb": 18.78,
+        "framesUnder3dB": 0.116
+      },
+      "_engine-demo/es": {
+        "index": 0.8246,
+        "indexMinusSsn": 0.1028,
+        "broadbandIndex": 0.7836,
+        "snr1to4kMedianDb": 18.77,
+        "framesUnder3dB": 0.0965
+      },
+      "engine-demo/en": {
+        "index": 0.8455,
+        "indexMinusSsn": 0.1225,
+        "broadbandIndex": 0.8109,
+        "snr1to4kMedianDb": 21.03,
+        "framesUnder3dB": 0.0929
+      },
+      "zoo-badger-demo/en": {
+        "index": 0.8134,
+        "indexMinusSsn": 0.0979,
+        "broadbandIndex": 0.773,
+        "snr1to4kMedianDb": 19.34,
+        "framesUnder3dB": 0.1203
+      }
     }
   },
   "aac": null,
@@ -99,7 +132,7 @@
   },
   "file": "audio/music/bed-story-resolve-underscore.flac",
   "format": "flac-16bit",
-  "bytes": 5346525,
+  "bytes": 4899677,
   "description": "Piano arpeggios and the major motif; strings, a soft kick and shaker from bar 8; violins and a harp lift in bars 16-19. Underscore: the motif statements and lead lines are muted.",
   "usage": "The UNDERSCORE: the same bed with the motif and lead lines muted, for use under narration. Loops seamlessly. -26 LUFS-S with a voice pocket at 1.25-2 kHz for the narration; duck it with scripts/audio/duck.py (the band-split duck, its default). All four story beds share 75 BPM, so they can be switched on a bar line (every 3.2 s).",
   "instruments": [
@@ -112,6 +145,6 @@
     "VCSL harp",
     "analog pad"
   ],
-  "selfReview": "The resolve story bed without the motif statements, for use under speech. See bed-story-resolve.",
+  "selfReview": "The resolve story bed without the motif statements, for use under speech. See bed-story-resolve. Critic round 2 (2026-11-24): Voice index 0.813-0.846 (worst zoo-badger en) over the four narrations; -26.0 LUFS-S; phone prominence against Zoo +0.2 dB.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

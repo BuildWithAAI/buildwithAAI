@@ -124,25 +124,25 @@
   },
   "loudness": {
     "profile": "endscreen",
-    "integratedLufs": -18.1,
+    "integratedLufs": -18.0,
     "shortTermMedianLufs": -18.0,
     "shortTermMaxLufs": -17.4,
     "lraLu": 1.0,
-    "truePeakDbtp": -2.3
+    "truePeakDbtp": -2.5
   },
   "spectrum": {
-    "slopeDbPerOct": -4.97,
-    "harshnessDb": -7.57,
-    "mudDb": -0.25,
-    "boxinessDb": -1.36,
-    "voicePocketDb": -6.09,
-    "centroidHz": 1143.0
+    "slopeDbPerOct": -5.55,
+    "harshnessDb": -9.66,
+    "mudDb": -0.27,
+    "boxinessDb": -0.74,
+    "voicePocketDb": -7.19,
+    "centroidHz": 680.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -1.9,
-    "truePeak128kMedian": -1.9,
-    "encodes": 5
+    "truePeak128k": -2.4,
+    "truePeak128kMedian": -2.8,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -164,6 +164,6 @@
     "pulse",
     "VSCO 2 celli"
   ],
-  "selfReview": "New in critic round 1: the end-screen music for an end screen with nobody speaking, mastered at -18 LUFS-I (-2 dBTP; -1.9 after AAC). The same 20 s and the same button at 18.0 s as `endscreen-bed`, but with the vibes answers kept and no voice pocket. Use `endscreen-bed` under a voice-over.",
+  "selfReview": "New in critic round 1: the end-screen music for an end screen with nobody speaking, mastered at -18 LUFS-I (-2 dBTP; -1.9 after AAC). The same 20 s and the same button at 18.0 s as `endscreen-bed`, but with the vibes answers kept and no voice pocket. Use `endscreen-bed` under a voice-over. Critic round 2 (2026-11-24): The FingerBass now decays like a plucked string, and the bass sits 1.5 dB under the theme's: bass share -4.1 dB of the mix on full range (critic: -4.0; still the loudest stem, as in most grooves) and -12.2 dB on the phone model (critic: -8.9). the master limiter does not work (0.0 dB). -2.4 dBTP after AAC 128k (worst of ten); metrics.py now computes that check itself.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }

@@ -13,28 +13,28 @@
   "durationSec": 3.4,
   "durationSamples": 163200,
   "sampleRate": 48000,
-  "downbeatSec": 0.0,
-  "downbeatFrame30": 0,
+  "downbeatSec": 0.066667,
+  "downbeatFrame30": 2,
   "loop": null,
   "hits": [
     {
-      "sec": 0.0,
-      "frame30": 0,
+      "sec": 0.067,
+      "frame30": 2,
       "what": "motif, low"
     },
     {
-      "sec": 1.2,
-      "frame30": 36,
+      "sec": 1.267,
+      "frame30": 38,
       "what": "lands on Bb7(b9)"
     },
     {
-      "sec": 1.95,
-      "frame30": 58,
+      "sec": 2.017,
+      "frame30": 60,
       "what": "vibes glint: E"
     },
     {
-      "sec": 2.25,
-      "frame30": 68,
+      "sec": 2.317,
+      "frame30": 70,
       "what": "B-flat"
     }
   ],
@@ -89,24 +89,24 @@
   "loudness": {
     "profile": "sting",
     "integratedLufs": -16.0,
-    "shortTermMedianLufs": -16.4,
+    "shortTermMedianLufs": -16.1,
     "shortTermMaxLufs": -15.6,
-    "lraLu": 1.2,
-    "truePeakDbtp": -1.3
+    "lraLu": 1.1,
+    "truePeakDbtp": -2.3
   },
   "spectrum": {
-    "slopeDbPerOct": -4.34,
-    "harshnessDb": -3.7,
-    "mudDb": -0.48,
-    "boxinessDb": -3.85,
-    "voicePocketDb": -3.25,
-    "centroidHz": 979.0
+    "slopeDbPerOct": -4.74,
+    "harshnessDb": -5.22,
+    "mudDb": 0.09,
+    "boxinessDb": -3.78,
+    "voicePocketDb": -3.26,
+    "centroidHz": 747.0
   },
   "voice": null,
   "aac": {
-    "truePeak128k": -0.7,
-    "truePeak128kMedian": -1.4,
-    "encodes": 5
+    "truePeak128k": -2.0,
+    "truePeak128kMedian": -2.3,
+    "encodes": 10
   },
   "checks": {
     "pass": true,
@@ -120,7 +120,7 @@
   "format": "wav-24bit",
   "bytes": 979244,
   "description": "Segment bumper for Scam of the Week, built from Zoo's motif (3.4 s).",
-  "usage": "Cut on the downbeat at the segment change; the music is finished before the file ends. -16 LUFS-I.",
+  "usage": "Cut on the downbeat at the segment change: the file starts with two frames of silence, so start it at downbeatStartFrame(cue, cutFrame) (2 frames early). The music is finished before the file ends. -16 LUFS-I.",
   "instruments": [
     "VCSL Kawai piano",
     "VCSL vibraphone",
@@ -130,6 +130,6 @@
     "brass stab",
     "FM tine piano"
   ],
-  "selfReview": "Low and sly: the motif in piano octaves and pizzicato over a cymbal scrape, landing unresolved on Bb7(b9), then a vibes tritone glint (E then Bb). Critic round 1 (2026-11-24): the kick is tuned to the bass under it (on the landing it no longer beats against B-flat) and sits 12.4 dB under the mix there; the bass is the dark finger-plucked one. It leans towards the noir spy idiom; the minor-major Bond chord stays out on purpose.",
+  "selfReview": "Low and sly: the motif in piano octaves and pizzicato over a cymbal scrape, landing unresolved on Bb7(b9), then a vibes tritone glint (E then Bb). Critic round 1 (2026-11-24): the kick is tuned to the bass under it (on the landing it no longer beats against B-flat) and sits 12.4 dB under the mix there; the bass is the dark finger-plucked one. It leans towards the noir spy idiom; the minor-major Bond chord stays out on purpose. Critic round 2 (2026-11-24): release-ready; re-rendered with the shared fixes (measured tuning, the decaying FingerBass, one kick tuning, the band compressors, the -1.5 dBTP sting ceiling). Master limiter 0.61 dB at most; -2.0 dBTP after AAC 128k (worst of ten), -1.4 dBTP after Opus 128k.",
   "licence": "Original composition (Zoora). Rendered from our own synthesis, VCSL (CC0) and MuseScore_General / FluidR3 (MIT) samples; see docs/AUDIO_LICENSES.md."
 }
