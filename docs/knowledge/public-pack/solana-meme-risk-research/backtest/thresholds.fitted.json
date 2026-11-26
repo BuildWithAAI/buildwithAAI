@@ -1,0 +1,20 @@
+{
+  "version": "bt20261106-f2644efa",
+  "fitted_on": {
+    "n": 1053,
+    "from": "2026-10-31T10:27Z",
+    "to": "2026-11-02T21:45Z"
+  },
+  "objective": "balanced accuracy on TRAIN: skip_score vs bad_24h; reduced_score vs adverse_24h (bad_24h OR return_24h <= -10%)",
+  "thresholds": {
+    "skip_score": 40,
+    "reduced_score": 35
+  },
+  "weights": {
+    "creator_sold": 0,
+    "serial_deployer": 0
+  },
+  "weight_variant": "both_off",
+  "test_auc": 0.7803,
+  "live_test_auc": 0.7803
+}

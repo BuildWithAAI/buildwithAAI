@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Zoora Glass Bowl moods — faithful Scene.tsx render</title>
+  <style>
+    html, body { margin: 0; background: #071418; color: #e7fff6; font-family: "Avenir Next", "Segoe UI", sans-serif; }
+    h1 { font-family: Palatino, Georgia, serif; font-weight: 500; margin: 1rem 1.2rem 0.2rem; }
+    p { color: #9eb8b2; margin: 0 1.2rem 1rem; max-width: 70rem; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; padding: 0 1rem 1.5rem; }
+    figure { margin: 0; background: #062026; border: 1px solid rgba(184, 255, 232, 0.22); border-radius: 18px; overflow: hidden; }
+    canvas { width: 100%; height: 420px; display: block; background: #062026; }
+    figcaption { padding: 0.6rem 0.8rem 0.8rem; font-size: 0.9rem; }
+    code { color: #ffd27a; }
+  </style>
+</head>
+<body>
+  <h1>Zoora in the Glass Bowl</h1>
+  <p>Drawn with the same canvas recipe as <code>projects/lumen/src/components/Scene.tsx</code> (PR #88, SHA 20ff075). Glow colors, pulse, and amplitude come from <code>glowFor()</code> in <code>src/brain/emotions.ts</code> lines 68–83. This page is a style-pack preview, not a live brain.</p>
+  <div class="grid" id="grid"></div>
+  <script>
+    // Exact table from emotions.ts glowFor()
+    const GLOWS = {
+      joy: { color: "#ffd27a", pulseMs: 1600, amplitude: 0.85 },
+      calm: { color: "#8ef0d8", pulseMs: 3200, amplitude: 0.35 },
+      curiosity: { color: "#7ee7ff", pulseMs: 1400, amplitude: 0.6 },
+      loneliness: { color: "#6f8cff", pulseMs: 2800, amplitude: 0.28 },
+      frustration: { color: "#ff6b8a", pulseMs: 700, amplitude: 0.95 },
+      pride: { color: "#fff1c9", pulseMs: 2000, amplitude: 0.7 },
+      boredom: { color: "#8aa399", pulseMs: 2400, amplitude: 0.22 },
+      worry: { color: "#c7b0ff", pulseMs: 900, amplitude: 0.55 },
+      asleep: { color: "#8ef0d8", pulseMs: 3200, amplitude: 0.35, asleep: true, mood: 0.2 },
+    };
+
+    // Faithful port of Scene.tsx draw() (lines 24–96)
+    function startScene(canvas, { color, pulseMs, amplitude, eventKind, asleep, mood }) {
+      const ctx = canvas.getContext("2d");
+      let frame = 0;
+      const draw = () => {
+        frame += 1;
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(width * ratio);
+        canvas.height = Math.floor(height * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        const g = ctx.createLinearGradient(0, 0, 0, height);
+        g.addColorStop(0, "#0d3a44");
+        g.addColorStop(1, "#041014");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = "#10262b";
+        ctx.beginPath();
+        ctx.ellipse(width * 0.5, height * 0.92, width * 0.48, 36, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const pulse = asleep ? 0.15 : (Math.sin((frame / Math.max(pulseMs, 400)) * 16) * 0.5 + 0.5) * amplitude;
+        const cx = width * 0.5;
+        const cy = height * 0.42 + Math.sin(frame / 40) * 8;
+        const bell = 70 + pulse * 26 + mood * 8;
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.22 + pulse * 0.35;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, bell, bell * 0.72, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 0.9;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, bell * 0.72, bell * 0.48, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        for (let i = 0; i < 7; i += 1) {
+          const x = cx - 48 + i * 16;
+          ctx.beginPath();
+          ctx.moveTo(x, cy + bell * 0.35);
+          for (let y = 0; y < 120; y += 8) {
+            const sway = Math.sin(frame / 18 + i + y / 30) * (8 + pulse * 10);
+            ctx.lineTo(x + sway, cy + bell * 0.35 + y);
+          }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 0.8;
+        for (let i = 0; i < 18; i += 1) {
+          const px = (i * 97 + frame) % width;
+          const py = (i * 53 + frame * 0.4) % height;
+          ctx.beginPath();
+          ctx.arc(px, py, eventKind === "plankton-bloom" ? 3 : 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        requestAnimationFrame(draw);
+      };
+      draw();
+    }
+
+    const grid = document.getElementById("grid");
+    for (const [name, glow] of Object.entries(GLOWS)) {
+      const fig = document.createElement("figure");
+      fig.dataset.mood = name;
+      const canvas = document.createElement("canvas");
+      canvas.className = "bowl";
+      canvas.setAttribute("aria-label", "Zoora in the Glass Bowl, " + name);
+      const cap = document.createElement("figcaption");
+      cap.innerHTML = `<strong>${name}</strong> — <code>${glow.color}</code>, pulse ${glow.pulseMs}ms, amplitude ${glow.amplitude}${glow.asleep ? ", asleep (pulse forced to 0.15)" : ""}`;
+      fig.append(canvas, cap);
+      grid.append(fig);
+      startScene(canvas, { eventKind: null, asleep: !!glow.asleep, mood: glow.mood ?? 0.4, ...glow });
+    }
+  </script>
+</body>
+</html>

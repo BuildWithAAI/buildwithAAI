@@ -1,0 +1,745 @@
+{
+ "schema": "known_entities.v1",
+ "description": "Solana addresses verified against a public explorer label. category cex = centralized-exchange hot wallet (never used to link wallets into clusters); service = router/bot/DEX infrastructure (also never links).",
+ "verification_method": "HTTP GET of source_url; label = explorer page heading; tags = explorer entity/type tags.",
+ "entities": {
+  "5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9": {
+   "name": "Binance",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9",
+   "verified_at": "2026-11-01T23:17:26Z",
+   "candidate_source": "Solscan 'Binance 2' https://solscan.io/account/5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9 ; Arkham https://arkm.com/explorer/address/5tzFkiKscXHK5ZXCGbXZxdw7gTjjD1mBwuoFbhUvuAi9"
+  },
+  "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM": {
+   "name": "Binance",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+   "verified_at": "2026-11-01T23:17:27Z",
+   "candidate_source": "Vybe docs 'Binance Hot Wallet 1' https://docs.vybenetwork.com/docs/labeled-wallets"
+  },
+  "2ojv9BAiHUrvsm9gxDe7fJSzbNZSJcxZvf8dqmWGHG8S": {
+   "name": "Binance",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/2ojv9BAiHUrvsm9gxDe7fJSzbNZSJcxZvf8dqmWGHG8S",
+   "verified_at": "2026-11-01T23:17:28Z",
+   "candidate_source": "@sip-protocol/sdk exchange list (lists it as Coinbase; explorer says otherwise) https://cdn.jsdelivr.net/npm/@sip-protocol/sdk@0.9.0/src/surveillance/algorithms/exchange.ts"
+  },
+  "3yFwqXBfZY4jBVUafQ1YEXw189y2dN3V5KQq9uzBDy1E": {
+   "name": "Binance",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/3yFwqXBfZY4jBVUafQ1YEXw189y2dN3V5KQq9uzBDy1E",
+   "verified_at": "2026-11-01T23:17:29Z",
+   "candidate_source": "v0 config (memory) - verified independently"
+  },
+  "3gd3dqgtJ4jWfBfLYTX67DALFetjc5iS72sCgRhCkW2u": {
+   "name": "Binance",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/3gd3dqgtJ4jWfBfLYTX67DALFetjc5iS72sCgRhCkW2u",
+   "verified_at": "2026-11-01T23:17:30Z",
+   "candidate_source": "v0 research - verified independently"
+  },
+  "A77HErqtfN1hLLpvZ9pCtu66FEtM8BveoaKbbMoZ4RiR": {
+   "name": "Bitget",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/A77HErqtfN1hLLpvZ9pCtu66FEtM8BveoaKbbMoZ4RiR",
+   "verified_at": "2026-11-01T23:17:46Z",
+   "candidate_source": "v0 config (memory) - verified independently"
+  },
+  "2UL8hbNaoErAYNePqgQYPP9yDCDRZGWbzKW4krLqkhNL": {
+   "name": "Bitvavo",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/2UL8hbNaoErAYNePqgQYPP9yDCDRZGWbzKW4krLqkhNL",
+   "verified_at": "2026-11-02T00:12:58Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "AC5RDfQFmDS1deWZos921JfqscXdByf8BKHs5ACWjtW2": {
+   "name": "Bybit",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/AC5RDfQFmDS1deWZos921JfqscXdByf8BKHs5ACWjtW2",
+   "verified_at": "2026-11-01T23:17:38Z",
+   "candidate_source": "@sip-protocol/sdk lists under Binance (and a typo'd copy under Bybit) - conflict resolved by explorer label",
+   "conflicts": [
+    "sip-protocol: Binance"
+   ]
+  },
+  "4raqd4tCEnm2yGeUocVqPgN2MPB1W6A3EZfC8LoMChvf": {
+   "name": "Bybit",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/4raqd4tCEnm2yGeUocVqPgN2MPB1W6A3EZfC8LoMChvf",
+   "verified_at": "2026-11-01T23:17:39Z",
+   "candidate_source": "funding_graph.db frequent funder"
+  },
+  "iGdFcQoyR2MwbXMHQskhmNsqddZ6rinsipHc4TNSdwu": {
+   "name": "Bybit",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/iGdFcQoyR2MwbXMHQskhmNsqddZ6rinsipHc4TNSdwu",
+   "verified_at": "2026-11-01T23:18:24Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "CSEncqtqbmNRjve42sNnbs5cCSmrjUNsAEwc17XY2RCs": {
+   "name": "CoinSpot",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/CSEncqtqbmNRjve42sNnbs5cCSmrjUNsAEwc17XY2RCs",
+   "verified_at": "2026-11-02T00:13:09Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "H8sMJSCQxfKiFTCfDR3DUMLPwcRbM61LGFJ8N4dK3WjS": {
+   "name": "Coinbase",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/H8sMJSCQxfKiFTCfDR3DUMLPwcRbM61LGFJ8N4dK3WjS",
+   "verified_at": "2026-11-01T23:17:31Z",
+   "candidate_source": "@sip-protocol/sdk (Coinbase); Vybe docs example calls it 'Kraken Hot Wallet' - conflict resolved by explorer label",
+   "conflicts": [
+    "Vybe docs: Kraken"
+   ]
+  },
+  "2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm": {
+   "name": "Coinbase",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/2AQdpHJ2JpcEgPiATUXjQxA8QmafFegfQwSLWSprPicm",
+   "verified_at": "2026-11-01T23:17:32Z",
+   "candidate_source": "Vybe docs 'Coinbase Commerce' https://docs.vybenetwork.com/docs/labeled-wallets"
+  },
+  "GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE": {
+   "name": "Coinbase",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/GJRs4FwHtemZ5ZE9x3FNvJ8TMwitKTh21yxdRPqn7npE",
+   "verified_at": "2026-11-01T23:17:33Z",
+   "candidate_source": "@sip-protocol/sdk exchange list (Coinbase)"
+  },
+  "FpwQQhQQoEaVu3WU2qZMfF1hx48YyfwsLoRgXG83E99Q": {
+   "name": "Coinbase",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/FpwQQhQQoEaVu3WU2qZMfF1hx48YyfwsLoRgXG83E99Q",
+   "verified_at": "2026-11-01T23:17:34Z",
+   "candidate_source": "v0 research - verified independently"
+  },
+  "6FEVkH17P9y8Q9aCkDdPcMDjvj7SVxrTETaYEm8f51Jy": {
+   "name": "Crypto.com",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/6FEVkH17P9y8Q9aCkDdPcMDjvj7SVxrTETaYEm8f51Jy",
+   "verified_at": "2026-11-01T23:17:48Z",
+   "candidate_source": "v0 research - verified independently"
+  },
+  "AobVSwdW9BbpMdJvTqeCN4hPAmh4rHm7vwLnQ5ATSyrS": {
+   "name": "Crypto.com",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/AobVSwdW9BbpMdJvTqeCN4hPAmh4rHm7vwLnQ5ATSyrS",
+   "verified_at": "2026-11-01T23:17:49Z",
+   "candidate_source": "v0 research (thought Robinhood) - explorer label used"
+  },
+  "u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w": {
+   "name": "Gate.io",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/u6PJ8DtQuPFnfmwHbGFULQ4u4EgjDiyYKjVEsynXq2w",
+   "verified_at": "2026-11-01T23:17:44Z",
+   "candidate_source": "@sip-protocol/sdk exchange list (Gate.io)"
+  },
+  "88xTWZMeKfiTgbfEmPLdsUCQcZinwUfk25EBQZ21XMAZ": {
+   "name": "HTX",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/88xTWZMeKfiTgbfEmPLdsUCQcZinwUfk25EBQZ21XMAZ",
+   "verified_at": "2026-11-01T23:17:47Z",
+   "candidate_source": "v0 research - verified independently"
+  },
+  "FWznbcNXWQuHTawe9RxvQ2LdCENssh12dsznf4RiouN5": {
+   "name": "Kraken",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/FWznbcNXWQuHTawe9RxvQ2LdCENssh12dsznf4RiouN5",
+   "verified_at": "2026-11-01T23:17:40Z",
+   "candidate_source": "v0 config (memory) - verified independently"
+  },
+  "6LY1JzAFVZsP2a2xKrtU6znQMQ5h4i7tocWdgrkZzkzF": {
+   "name": "Kraken",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/6LY1JzAFVZsP2a2xKrtU6znQMQ5h4i7tocWdgrkZzkzF",
+   "verified_at": "2026-11-01T23:18:02Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6": {
+   "name": "KuCoin",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/BmFdpraQhkiDQE6SnfG5omcA1VwzqfXrwtNYBwWTymy6",
+   "verified_at": "2026-11-01T23:17:45Z",
+   "candidate_source": "@sip-protocol/sdk exchange list (KuCoin)"
+  },
+  "ASTyfSima4LLAdDgoFGkgqoKowG1LZFDr9fAQrg7iaJZ": {
+   "name": "MEXC",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/ASTyfSima4LLAdDgoFGkgqoKowG1LZFDr9fAQrg7iaJZ",
+   "verified_at": "2026-11-01T23:17:41Z",
+   "candidate_source": "v0 config (memory) - verified independently"
+  },
+  "5PAhQiYdLBd6SVdjzBQDxUAEFyDdF5ExNPQfcscnPRj5": {
+   "name": "MEXC",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/5PAhQiYdLBd6SVdjzBQDxUAEFyDdF5ExNPQfcscnPRj5",
+   "verified_at": "2026-11-01T23:17:42Z",
+   "candidate_source": "v0 research - verified independently"
+  },
+  "5VCwKtCXgCJ6kit5FybXjvriW3xELsFDhYrPSqtJNmcD": {
+   "name": "OKX",
+   "explorer_tags": [
+    "exchange",
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/5VCwKtCXgCJ6kit5FybXjvriW3xELsFDhYrPSqtJNmcD",
+   "verified_at": "2026-11-01T23:17:35Z",
+   "candidate_source": "v0 config (memory) - verified independently"
+  },
+  "is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV": {
+   "name": "OKX",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV",
+   "verified_at": "2026-11-01T23:17:36Z",
+   "candidate_source": "Solscan 'OKX: Hot Wallet 1' https://solscan.io/account/is6MTRHEgyFLNTfYcuV4QBWLjrZBfmhVNYR6ccgr8KV"
+  },
+  "C68a6RCGLiPskbPYtAcsCjhG8tfTWYcoB4JjCrXFdqyo": {
+   "name": "OKX",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/C68a6RCGLiPskbPYtAcsCjhG8tfTWYcoB4JjCrXFdqyo",
+   "verified_at": "2026-11-01T23:17:37Z",
+   "candidate_source": "v0 research - verified independently"
+  },
+  "Biw4eeaiYYYq6xSqEd7GzdwsrrndxA8mqdxfAtG3PTUU": {
+   "name": "Revolut",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/Biw4eeaiYYYq6xSqEd7GzdwsrrndxA8mqdxfAtG3PTUU",
+   "verified_at": "2026-11-02T00:12:44Z",
+   "candidate_source": "funding_graph.db: funded 9 distinct traced wallets"
+  },
+  "EMXJqHznGSnSzeMyigBGQNEFw4EeaNDbj1UwaFTpp3sg": {
+   "name": "Robinhood",
+   "explorer_tags": [
+    "hot wallet"
+   ],
+   "category": "cex",
+   "source_url": "https://scan.codex.io/sol/address/EMXJqHznGSnSzeMyigBGQNEFw4EeaNDbj1UwaFTpp3sg",
+   "verified_at": "2026-11-01T23:18:17Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "AxiomRXZAq1Jgjj9pHmNqVP7Lhu67wLXZJZbaK87TTSk": {
+   "name": "Axiom",
+   "explorer_tags": [
+    "other"
+   ],
+   "category": "service",
+   "source_url": "https://scan.codex.io/sol/address/AxiomRXZAq1Jgjj9pHmNqVP7Lhu67wLXZJZbaK87TTSk",
+   "verified_at": "2026-11-01T23:17:51Z",
+   "candidate_source": "funding_graph.db frequent funder"
+  },
+  "69SNcRC8NqjHBSXEcugCN5oFKRQoKmddmWzZYc3tqtxk": {
+   "name": "GMGN",
+   "explorer_tags": [
+    "other"
+   ],
+   "category": "service",
+   "source_url": "https://scan.codex.io/sol/address/69SNcRC8NqjHBSXEcugCN5oFKRQoKmddmWzZYc3tqtxk",
+   "verified_at": "2026-11-01T23:18:00Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "GGztQqQ6pCPaJQnNpXBgELr5cs3WwDakRbh1iEMzjgSJ": {
+   "name": "Jupiter",
+   "explorer_tags": [
+    "other",
+    "pair"
+   ],
+   "category": "service",
+   "source_url": "https://scan.codex.io/sol/address/GGztQqQ6pCPaJQnNpXBgELr5cs3WwDakRbh1iEMzjgSJ",
+   "verified_at": "2026-11-01T23:17:50Z",
+   "candidate_source": "@sip-protocol/sdk lists as OKX - explorer says Jupiter (service)",
+   "conflicts": [
+    "sip-protocol: OKX"
+   ]
+  },
+  "ARu4n5mFdZogZAravu7CcizaojWnS6oqka37gdLT5SZn": {
+   "name": "OKX DEX",
+   "explorer_tags": [
+    "other"
+   ],
+   "category": "service",
+   "source_url": "https://scan.codex.io/sol/address/ARu4n5mFdZogZAravu7CcizaojWnS6oqka37gdLT5SZn",
+   "verified_at": "2026-11-01T23:17:52Z",
+   "candidate_source": "funding_graph.db frequent funder"
+  }
+ },
+ "rejected": {
+  "krakenmRKej41L9sX8N8Z2mhjZ8UpVHHBMzkKzfBh54": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/krakenmRKej41L9sX8N8Z2mhjZ8UpVHHBMzkKzfBh54",
+   "verified_at": "2026-11-02T00:12:30Z",
+   "candidate_source": "@sip-protocol/sdk exchange list (Kraken) - vanity address, NOT confirmed by explorer"
+  },
+  "FTXkd8cjuYGRLzPVdvqxNxNNNYBfFPPjrF3vW2Yq8p7": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/FTXkd8cjuYGRLzPVdvqxNxNNNYBfFPPjrF3vW2Yq8p7",
+   "verified_at": "2026-11-02T00:12:32Z",
+   "candidate_source": "@sip-protocol/sdk (FTX) - NOT confirmed by explorer"
+  },
+  "AkWqRKSsLtaCFuDzVVxcnvWxUZSFAGgoFqpu8imD3Acd": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/AkWqRKSsLtaCFuDzVVxcnvWxUZSFAGgoFqpu8imD3Acd",
+   "verified_at": "2026-11-02T00:12:37Z",
+   "candidate_source": "funding_graph.db: funded 20 distinct traced wallets"
+  },
+  "DYmsQudNqJyyDvq86XmzAvrU9T7xwfQEwh6gPQw9TPNF": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/DYmsQudNqJyyDvq86XmzAvrU9T7xwfQEwh6gPQw9TPNF",
+   "verified_at": "2026-11-02T00:12:54Z",
+   "candidate_source": "funding_graph.db: funded 4 distinct traced wallets"
+  },
+  "7szg1RYBGB4hvawkvJXu3ndbqTfMY1jrN17SCwSAGvKJ": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/7szg1RYBGB4hvawkvJXu3ndbqTfMY1jrN17SCwSAGvKJ",
+   "verified_at": "2026-11-01T23:17:57Z",
+   "candidate_source": "funding_graph.db: funded 2 distinct traced wallets"
+  },
+  "5kA7ymdtzPg9foX453NfgioCv9JVVREVB9WaG764tGtG": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/5kA7ymdtzPg9foX453NfgioCv9JVVREVB9WaG764tGtG",
+   "verified_at": "2026-11-01T23:17:58Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "8nydE7gPWw71yJNWRttA7pTn3fxY5ZmRKEk6sqSkvqbR": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/8nydE7gPWw71yJNWRttA7pTn3fxY5ZmRKEk6sqSkvqbR",
+   "verified_at": "2026-11-01T23:18:03Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "9cGag4WecBTbtQeWRkQrigD7jdhj1bTGLvVXqYP3RYQ6": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/9cGag4WecBTbtQeWRkQrigD7jdhj1bTGLvVXqYP3RYQ6",
+   "verified_at": "2026-11-01T23:18:04Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "A3w3dtnG9QSWgzE4d2cD78t5YXmqCqn6TREi3ux6hT69": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/A3w3dtnG9QSWgzE4d2cD78t5YXmqCqn6TREi3ux6hT69",
+   "verified_at": "2026-11-01T23:18:05Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "ARJnZ2nNq4ym8gwQeZzfMAWbqMpLiWUFFxqs2vAkNun1": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/ARJnZ2nNq4ym8gwQeZzfMAWbqMpLiWUFFxqs2vAkNun1",
+   "verified_at": "2026-11-01T23:18:07Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "Ax4JR7fzEiqpttQSujHk87ha8MzeL3EJRo9gPZc4bsgJ": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/Ax4JR7fzEiqpttQSujHk87ha8MzeL3EJRo9gPZc4bsgJ",
+   "verified_at": "2026-11-01T23:18:08Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "BW8iFigA84SNZgeh6UNy6TgWGZtzQTco5Caw1SGSr66o": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/BW8iFigA84SNZgeh6UNy6TgWGZtzQTco5Caw1SGSr66o",
+   "verified_at": "2026-11-01T23:18:09Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "Bmj6FntGfHVBAagJbwv1coVfjfVFC717pEXFHNa6Gi6E": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/Bmj6FntGfHVBAagJbwv1coVfjfVFC717pEXFHNa6Gi6E",
+   "verified_at": "2026-11-01T23:18:10Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "C5gfBYoJtHTW3U1fZ1ezHbhkehfFHsiB5XAAQ5cxZeW6": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/C5gfBYoJtHTW3U1fZ1ezHbhkehfFHsiB5XAAQ5cxZeW6",
+   "verified_at": "2026-11-01T23:18:11Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+   "verified_at": "2026-11-01T23:18:12Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "DtoCJTd1AetXMxar8HhzKbPod9rzPgp3eU3WZZRXP1sR": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/DtoCJTd1AetXMxar8HhzKbPod9rzPgp3eU3WZZRXP1sR",
+   "verified_at": "2026-11-01T23:18:13Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "EH3FgRVJqVRD2r7UUvPhQGve8iapvaeT9i6cDEBWeZvs": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/EH3FgRVJqVRD2r7UUvPhQGve8iapvaeT9i6cDEBWeZvs",
+   "verified_at": "2026-11-01T23:18:14Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "EKDYUntfS6zwB9UhjamWf7DiBT5qRZGiVidDiQD2akrj": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/EKDYUntfS6zwB9UhjamWf7DiBT5qRZGiVidDiQD2akrj",
+   "verified_at": "2026-11-01T23:18:15Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "FncazAs6omJJjtLVzquzT9KoyXn6tFixr9kGjr42ktLj": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/FncazAs6omJJjtLVzquzT9KoyXn6tFixr9kGjr42ktLj",
+   "verified_at": "2026-11-02T00:12:56Z",
+   "candidate_source": "funding_graph.db: funded 4 distinct traced wallets"
+  },
+  "HMjabXtQo8tkjCgSrnqub9nFLve3ShaH1QGRCCPhM1Ct": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/HMjabXtQo8tkjCgSrnqub9nFLve3ShaH1QGRCCPhM1Ct",
+   "verified_at": "2026-11-01T23:18:19Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "HaVPVKcymM5Jbp29M1NZCxjAEXcPRxvyXZDQXhdSMPMA": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/HaVPVKcymM5Jbp29M1NZCxjAEXcPRxvyXZDQXhdSMPMA",
+   "verified_at": "2026-11-01T23:18:22Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "Hbz3eDiGKKvZRidFNbrSuSKMXj7djoPpFJRAcV9EJmEy": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/Hbz3eDiGKKvZRidFNbrSuSKMXj7djoPpFJRAcV9EJmEy",
+   "verified_at": "2026-11-01T23:18:23Z",
+   "candidate_source": "funding_graph.db: funded 1 distinct traced wallets"
+  },
+  "9CLsdGiPsJ5sppogahCLRre88YX7ibbSKMFgSHLkGnpP": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/9CLsdGiPsJ5sppogahCLRre88YX7ibbSKMFgSHLkGnpP",
+   "verified_at": "2026-11-02T00:12:33Z",
+   "candidate_source": "funding_graph.db: funded 40 distinct traced wallets"
+  },
+  "BGfLD8adVJqvb7m6RgszTTCwFY7h1N47AQi1bTUvXczC": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/BGfLD8adVJqvb7m6RgszTTCwFY7h1N47AQi1bTUvXczC",
+   "verified_at": "2026-11-02T00:12:34Z",
+   "candidate_source": "funding_graph.db: funded 31 distinct traced wallets"
+  },
+  "H4Nsnb5nPoqcRSuA3bABtMEY4FayS8Pwvspc1XkGEgzp": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/H4Nsnb5nPoqcRSuA3bABtMEY4FayS8Pwvspc1XkGEgzp",
+   "verified_at": "2026-11-02T00:12:35Z",
+   "candidate_source": "funding_graph.db: funded 28 distinct traced wallets"
+  },
+  "6HU9YwhLrmoFvifTgudH5wvUFRt8pJqthcYJHqS2CM8N": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/6HU9YwhLrmoFvifTgudH5wvUFRt8pJqthcYJHqS2CM8N",
+   "verified_at": "2026-11-02T00:12:36Z",
+   "candidate_source": "funding_graph.db: funded 27 distinct traced wallets"
+  },
+  "8VvqPBnbmgLaEgs7Hsnn4VbDwzboe4J4nwMyYwf6Sry8": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/8VvqPBnbmgLaEgs7Hsnn4VbDwzboe4J4nwMyYwf6Sry8",
+   "verified_at": "2026-11-02T00:12:38Z",
+   "candidate_source": "funding_graph.db: funded 19 distinct traced wallets"
+  },
+  "5F1seMKUqSNhv45f6FhB2cFmgJbk8U1avJw7M6TexUq1": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/5F1seMKUqSNhv45f6FhB2cFmgJbk8U1avJw7M6TexUq1",
+   "verified_at": "2026-11-02T00:12:40Z",
+   "candidate_source": "funding_graph.db: funded 14 distinct traced wallets"
+  },
+  "Hw8QguJDcd57FD1sh86Lr2sWLPBbU1BTSnnG5mKFq3o5": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/Hw8QguJDcd57FD1sh86Lr2sWLPBbU1BTSnnG5mKFq3o5",
+   "verified_at": "2026-11-02T00:12:41Z",
+   "candidate_source": "funding_graph.db: funded 11 distinct traced wallets"
+  },
+  "3kFQcUfLyG9A6FG8UQPH7aGNWtd4mno6YxnZhgwWt9hk": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/3kFQcUfLyG9A6FG8UQPH7aGNWtd4mno6YxnZhgwWt9hk",
+   "verified_at": "2026-11-02T00:12:42Z",
+   "candidate_source": "funding_graph.db: funded 9 distinct traced wallets"
+  },
+  "Cc3bpPzUvgAzdW9Nv7dUQ8cpap8Xa7ujJgLdpqGrTCu6": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/Cc3bpPzUvgAzdW9Nv7dUQ8cpap8Xa7ujJgLdpqGrTCu6",
+   "verified_at": "2026-11-02T00:12:45Z",
+   "candidate_source": "funding_graph.db: funded 7 distinct traced wallets"
+  },
+  "F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe": {
+   "name": "Relay",
+   "explorer_tags": [
+    "fee account"
+   ],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe",
+   "verified_at": "2026-11-02T00:12:46Z",
+   "candidate_source": "funding_graph.db: funded 7 distinct traced wallets"
+  },
+  "DoAsxPQgiyAxyaJNvpAAUb2ups6rbJRdYrCPyWxwRxBb": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/DoAsxPQgiyAxyaJNvpAAUb2ups6rbJRdYrCPyWxwRxBb",
+   "verified_at": "2026-11-02T00:12:48Z",
+   "candidate_source": "funding_graph.db: funded 6 distinct traced wallets"
+  },
+  "FHpcNSe6tb2n15bAdq4BkeYWGyZKFD7yLYrH92ng7wCT": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/FHpcNSe6tb2n15bAdq4BkeYWGyZKFD7yLYrH92ng7wCT",
+   "verified_at": "2026-11-02T00:12:49Z",
+   "candidate_source": "funding_graph.db: funded 6 distinct traced wallets"
+  },
+  "HBQ2TC2gmX9qeNuCsY9gRTk9hiZLRZaKhvHGj2ZbVoWB": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/HBQ2TC2gmX9qeNuCsY9gRTk9hiZLRZaKhvHGj2ZbVoWB",
+   "verified_at": "2026-11-02T00:12:50Z",
+   "candidate_source": "funding_graph.db: funded 6 distinct traced wallets"
+  },
+  "2UPzAimP45QrxJbp5GvxtGYSgdQ1yxYemL6oZrTgMt4s": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/2UPzAimP45QrxJbp5GvxtGYSgdQ1yxYemL6oZrTgMt4s",
+   "verified_at": "2026-11-02T00:12:51Z",
+   "candidate_source": "funding_graph.db: funded 5 distinct traced wallets"
+  },
+  "6aQtW5iAbWYnymVJHPSUPM44dC1XDE7B4TjHrFGoTZm6": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/6aQtW5iAbWYnymVJHPSUPM44dC1XDE7B4TjHrFGoTZm6",
+   "verified_at": "2026-11-02T00:12:52Z",
+   "candidate_source": "funding_graph.db: funded 4 distinct traced wallets"
+  },
+  "92wtWR236votBakxzej8eCMimK7za9NAqqfyY5ZmqHkx": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/92wtWR236votBakxzej8eCMimK7za9NAqqfyY5ZmqHkx",
+   "verified_at": "2026-11-02T00:12:53Z",
+   "candidate_source": "funding_graph.db: funded 4 distinct traced wallets"
+  },
+  "FBfQEqTqKRDaPx8tdMnYfbF7GJESqpVq1h1YY4kUWnys": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/FBfQEqTqKRDaPx8tdMnYfbF7GJESqpVq1h1YY4kUWnys",
+   "verified_at": "2026-11-02T00:12:55Z",
+   "candidate_source": "funding_graph.db: funded 4 distinct traced wallets"
+  },
+  "6cuD478uxVCkJWZYvd1ZvQtw8ERNAkst1x8rEqzKCHRv": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/6cuD478uxVCkJWZYvd1ZvQtw8ERNAkst1x8rEqzKCHRv",
+   "verified_at": "2026-11-02T00:12:59Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "6rVfaGRtTcH6pyk8jDTcocXUgPKknYrYrzg4UTvvQCFe": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/6rVfaGRtTcH6pyk8jDTcocXUgPKknYrYrzg4UTvvQCFe",
+   "verified_at": "2026-11-02T00:13:00Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "7Wzqp4t8FyHh5aYCeNC1QKtMkb4jSNzXgTRVe62vGNBW": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/7Wzqp4t8FyHh5aYCeNC1QKtMkb4jSNzXgTRVe62vGNBW",
+   "verified_at": "2026-11-02T00:13:01Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "8QL16oHQLcs6SuXV2uCYqKjnb6ExdUXNUYPNSLth9a7W": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/8QL16oHQLcs6SuXV2uCYqKjnb6ExdUXNUYPNSLth9a7W",
+   "verified_at": "2026-11-02T00:13:03Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "98T65wcMEjoNLDTJszBHGZEX75QRe8QaANXokv4yw3Mp": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/98T65wcMEjoNLDTJszBHGZEX75QRe8QaANXokv4yw3Mp",
+   "verified_at": "2026-11-02T00:13:04Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "BdKKNQxH1KwkoxmVjrmEkU9YVcbYC5ewU1JHv4TmfErx": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/BdKKNQxH1KwkoxmVjrmEkU9YVcbYC5ewU1JHv4TmfErx",
+   "verified_at": "2026-11-02T00:13:05Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "BtfaZXV8TzUsu1Nw4f3xxdW9BR9Dn9FghKATwKJnHq1S": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/BtfaZXV8TzUsu1Nw4f3xxdW9BR9Dn9FghKATwKJnHq1S",
+   "verified_at": "2026-11-02T00:13:06Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  },
+  "CEgyKwCF9j7a71TLJKPwBsfQYjxoJf2BQvdSvoPERTDL": {
+   "name": null,
+   "explorer_tags": [],
+   "category": null,
+   "source_url": "https://scan.codex.io/sol/address/CEgyKwCF9j7a71TLJKPwBsfQYjxoJf2BQvdSvoPERTDL",
+   "verified_at": "2026-11-02T00:13:07Z",
+   "candidate_source": "funding_graph.db: funded 3 distinct traced wallets"
+  }
+ }
+}
