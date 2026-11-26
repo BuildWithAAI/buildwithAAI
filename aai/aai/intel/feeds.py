@@ -10,6 +10,8 @@ def registry() -> dict[str, Feed]:
     fs = [
         Feed("markets", "Cross-asset quotes", "Yahoo Finance chart API (keyless, unofficial)", "https://finance.yahoo.com/",
              2 * M, 20 * M, yahoo.fetch, "markets", "Equities/ETFs may be up to 15 min delayed; closed markets keep the last session close."),
+        Feed("sectors", "US sector ETFs (breadth)", "Yahoo Finance chart API (keyless, unofficial)", "https://www.sectorspdrs.com/",
+             5 * M, 30 * M, yahoo.fetch_sectors, "equities", "11 SPDR Select Sector ETFs; up to 15 min delayed; closed markets keep the last session close."),
         Feed("rates", "US Treasury par yield curve", "U.S. Treasury (home.treasury.gov)", treasury.PAGE,
              30 * M, 4 * D, treasury.fetch, "macro", "Published once per business day after ~3:30 pm ET."),
         Feed("fred", "FRED macro series", "Federal Reserve Bank of St. Louis (FRED fredgraph CSV)", "https://fred.stlouisfed.org/",

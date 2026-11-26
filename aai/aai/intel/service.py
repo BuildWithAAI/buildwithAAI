@@ -8,7 +8,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .. import guard
-from . import alarms, fxdesk, regime
+from . import alarms, breadth, fxdesk, regime
 from .cache import IntelCache
 from .core import Fetcher, FetchError
 from .feeds import registry
@@ -151,6 +151,25 @@ class Intel:
             out.extend(alarms.fx_bias_flip_alarms(fxdesk.compute(payloads, now).get("rows")))
         except Exception:  # never let a malformed cached payload break the alert list
             pass
+        try:  # sector rotation / breadth flip (INFO, soft chime once per session); only on a live sectors feed
+            sv = views.get("sectors") or {}
+            if sv.get("payload") and sv.get("status") == "live":
+                rows = (sv["payload"] or {}).get("rows") or []
+                mrows = ((views.get("markets") or {}).get("payload") or {}).get("rows") or []
+                b = breadth.compute(rows, next((r for r in mrows if isinstance(r, dict) and r.get("symbol") == "SPY"), None))
+                b["history"] = breadth.history(rows)
+                out.extend(alarms.sector_rotation_alarms(b, "OK"))
+                ah = breadth.above_history(rows, now=now)
+                out.extend(alarms.breadth_above_cross_alarms(ah, "OK"))
+                out.extend(alarms.breadth_above_cross_followup_alarms(ah, "OK"))
+        except Exception:  # never let a malformed cached payload break the alert list
+            pass
+        try:  # watchlist earnings estimated within 7 days (EDGAR 8-K 2.02 cadence; silent INFO; live filings feed only)
+            fv = views.get("filings") or {}
+            if fv.get("payload") and fv.get("status") == "live":
+                out.extend(alarms.earnings_soon_alarms((fv["payload"] or {}).get("earnings"), now))
+        except Exception:  # never let a malformed cached payload break the alert list
+            pass
         der = (views.get("options_deribit") or {}).get("payload") or {}
         out.extend(alarms.dvol_spike_alarms(der.get("assets")))
         mk = (views.get("markets") or {}).get("payload") or {}
@@ -252,6 +271,11 @@ class Intel:
         k8 = [x for x in p["filings"] if x["form"] == "8-K"][:3]
         if k8:
             s += " Latest 8-Ks: " + "; ".join(f"{x['ticker']} {x['filed']} {', '.join(x['items_text']) or 'n/a'}" for x in k8) + "."
+        up = [e for e in p.get("earnings_next") or [] if e.get("est_in_days") is not None and e["est_in_days"] >= -14][:3]
+        if up:
+            s += (" Next earnings by 8-K cadence, estimates only: "
+                  + "; ".join(f"{e['ticker']} around {e['est_next']}" + (f" (in {e['est_in_days']} days)" if e["est_in_days"] >= 0 else " (due now)")
+                              for e in up) + ".")
         return s
 
     def brief_text(self) -> str:
