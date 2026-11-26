@@ -21,6 +21,8 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("America/Chicago")
 MONITOR = Path("/workspace/agent-guard/monitor/zoora")
+DNSTWIST_VENV = MONITOR / "venv"
+DNSTWIST_BIN_PATH = DNSTWIST_VENV / "bin" / "dnstwist"
 TOOLS = Path("/tmp/zsec-tools")
 GITLEAKS = TOOLS / "gitleaks"
 CLONE = Path("/tmp/zoora-watch")
@@ -34,6 +36,7 @@ INFO_NAMES = [FLY_APP]
 DNS_TYPES = ["A", "AAAA", "CNAME", "MX", "TXT", "CAA", "NS", "DS"]
 EXPECTED_ISSUER = "let's encrypt"
 TLS_WARN_DAYS = 21
+PLACEHOLDER_SECRETS = {"REDACTED", "XXXXXXXX", "CHANGEME", "PLACEHOLDER", "YOUR_API_KEY", "YOUR-API-KEY"}
 HEADER_NAMES = [
     "content-security-policy",
     "strict-transport-security",
@@ -110,10 +113,14 @@ def run(cmd: list[str] | str, timeout: int = 120, cwd: str | None = None, env: d
     e["GCM_INTERACTIVE"] = "never"
     if env:
         e.update(env)
-    return subprocess.run(
-        cmd, cwd=cwd, env=e, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        timeout=timeout, shell=isinstance(cmd, str),
-    )
+    try:
+        return subprocess.run(
+            cmd, cwd=cwd, env=e, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=timeout, shell=isinstance(cmd, str),
+        )
+    except FileNotFoundError as exc:
+        name = exc.filename or (cmd[0] if isinstance(cmd, list) else str(cmd))
+        return subprocess.CompletedProcess(cmd, 127, stdout="", stderr=f"No such file or directory: {name}")
 
 
 def _strip_txt(val: str) -> str:
@@ -570,6 +577,7 @@ def gitleaks_scan(since_iso: str) -> dict[str, Any]:
             "author": it.get("Author") or it.get("author"),
             "date": it.get("Date") or it.get("date"),
             "redacted": True,
+            "placeholder": (str(it.get("Secret") or "").strip().strip("`'\"<>[]{}*").upper() in PLACEHOLDER_SECRETS),
         })
     return {"collected_at": iso(), "since": since_iso, "commits_in_rev_list": len(commits), "commits_scanned_by_gitleaks": len(commits), "findings": len(safe), "items": safe, "gitleaks_exit": p.returncode, "ok": True}
 
@@ -590,29 +598,40 @@ def classify_findings(items: list, known_fps: list):
             it["reason"] = "Test file generic-api-key hit; treated as synthetic unless proven otherwise. Secret not printed."
             fps.append(it)
             continue
+        if it.get("placeholder"):
+            it["classification"] = "false_positive_placeholder"
+            it["reason"] = "Matched value is a redaction/placeholder marker, not a credential. Secret not printed."
+            fps.append(it)
+            continue
         it["classification"] = "unreviewed_potential_secret"
         real.append(it)
     return real, fps
 
 def ensure_dnstwist():
-    p = run(["dnstwist", "--version"], timeout=15)
-    if p.returncode == 0:
-        return (p.stdout or p.stderr or "").strip()
-    p = run([sys.executable, "-m", "pip", "install", "--user", "dnstwist"], timeout=180)
+    for binp in (str(DNSTWIST_BIN_PATH), "dnstwist"):
+        p = run([binp, "--version"], timeout=15)
+        if p.returncode == 0:
+            return (p.stdout or p.stderr or "").strip()
+    py = sys.executable
+    if not (DNSTWIST_VENV / "bin" / "python").exists():
+        p = run([py, "-m", "venv", str(DNSTWIST_VENV)], timeout=120)
+        if p.returncode != 0:
+            log("dnstwist venv failed: " + (p.stderr or "")[:300])
+            return None
+    pip = str(DNSTWIST_VENV / "bin" / "pip")
+    p = run([pip, "install", "dnstwist"], timeout=180)
     if p.returncode != 0:
         log("pip dnstwist failed: " + (p.stderr or "")[:300])
         return None
-    p = run(["dnstwist", "--version"], timeout=15)
+    p = run([str(DNSTWIST_BIN_PATH), "--version"], timeout=15)
     if p.returncode == 0:
         return (p.stdout or p.stderr or "").strip()
-    cand = str(Path.home() / ".local/bin/dnstwist")
-    if Path(cand).exists():
-        p = run([cand, "--version"], timeout=15)
-        return (p.stdout or "").strip() or cand
-    return "installed"
+    return "installed" if DNSTWIST_BIN_PATH.exists() else None
 
 
 def dnstwist_bin() -> str:
+    if DNSTWIST_BIN_PATH.exists():
+        return str(DNSTWIST_BIN_PATH)
     p = run(["which", "dnstwist"], timeout=10)
     s = (p.stdout or "").strip()
     if s:
