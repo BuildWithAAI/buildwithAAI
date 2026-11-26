@@ -1,0 +1,615 @@
+{
+  "generated_at": "2026-11-06T13:27:59Z",
+  "dataset": "backtest/dataset.jsonl",
+  "n_usable": 1756,
+  "label_definition": "bad_24h = (price(as_of+24h) <= 0.5 x price(as_of)) OR (not graduated AND price(as_of+24h) <= 1.10 x launch price AND <= 0.8 x entry); as_of = launch + 300 s; prices from on-chain bonding-curve / PumpSwap pool balances",
+  "split": {
+    "method": "time-ordered",
+    "train_frac": 0.6,
+    "train": {
+      "n": 1053,
+      "from": "2026-10-31T10:27Z",
+      "to": "2026-11-02T21:45Z"
+    },
+    "test": {
+      "n": 703,
+      "from": "2026-11-02T21:45Z",
+      "to": "2026-11-03T03:48Z"
+    }
+  },
+  "fitted": {
+    "skip_score": 40,
+    "reduced_score": 35,
+    "objective": "balanced accuracy on TRAIN: skip_score vs bad_24h; reduced_score vs adverse_24h (bad_24h OR return_24h <= -10%)",
+    "train_fit": {
+      "n": 1053,
+      "bad": 96,
+      "base_rate_bad": 0.0912,
+      "confusion": {
+        "SKIP": {
+          "bad": 81,
+          "ok": 421
+        },
+        "REDUCED": {
+          "bad": 9,
+          "ok": 136
+        },
+        "NORMAL": {
+          "bad": 6,
+          "ok": 400
+        }
+      },
+      "tiers": {
+        "SKIP": {
+          "n": 502,
+          "share": 0.4767,
+          "bad_rate": 0.1614
+        },
+        "REDUCED": {
+          "n": 145,
+          "share": 0.1377,
+          "bad_rate": 0.0621
+        },
+        "NORMAL": {
+          "n": 406,
+          "share": 0.3856,
+          "bad_rate": 0.0148
+        }
+      },
+      "skip_precision_bad": 0.1614,
+      "skip_recall_bad": 0.8438,
+      "skip_or_reduced_precision_bad": 0.1391,
+      "skip_or_reduced_recall_bad": 0.9375,
+      "normal_precision_ok": 0.9852,
+      "normal_recall_ok": 0.418,
+      "mean_sized_return_pct_of_bankroll": -0.0094,
+      "fit_notes": [],
+      "balanced_acc_skip_vs_bad": 0.7019167972831766,
+      "balanced_acc_reduced_vs_adverse": 0.6618236698652971
+    }
+  },
+  "defaults": {
+    "skip_score": 60,
+    "reduced_score": 30
+  },
+  "train": {
+    "n": 1053,
+    "bad": 96,
+    "base_rate_bad": 0.0912,
+    "confusion": {
+      "SKIP": {
+        "bad": 81,
+        "ok": 421
+      },
+      "REDUCED": {
+        "bad": 9,
+        "ok": 136
+      },
+      "NORMAL": {
+        "bad": 6,
+        "ok": 400
+      }
+    },
+    "tiers": {
+      "SKIP": {
+        "n": 502,
+        "share": 0.4767,
+        "bad_rate": 0.1614
+      },
+      "REDUCED": {
+        "n": 145,
+        "share": 0.1377,
+        "bad_rate": 0.0621
+      },
+      "NORMAL": {
+        "n": 406,
+        "share": 0.3856,
+        "bad_rate": 0.0148
+      }
+    },
+    "skip_precision_bad": 0.1614,
+    "skip_recall_bad": 0.8438,
+    "skip_or_reduced_precision_bad": 0.1391,
+    "skip_or_reduced_recall_bad": 0.9375,
+    "normal_precision_ok": 0.9852,
+    "normal_recall_ok": 0.418,
+    "mean_sized_return_pct_of_bankroll": -0.0094
+  },
+  "test": {
+    "n": 703,
+    "bad": 62,
+    "base_rate_bad": 0.0882,
+    "confusion": {
+      "SKIP": {
+        "bad": 56,
+        "ok": 233
+      },
+      "REDUCED": {
+        "bad": 2,
+        "ok": 123
+      },
+      "NORMAL": {
+        "bad": 4,
+        "ok": 285
+      }
+    },
+    "tiers": {
+      "SKIP": {
+        "n": 289,
+        "share": 0.4111,
+        "bad_rate": 0.1938
+      },
+      "REDUCED": {
+        "n": 125,
+        "share": 0.1778,
+        "bad_rate": 0.016
+      },
+      "NORMAL": {
+        "n": 289,
+        "share": 0.4111,
+        "bad_rate": 0.0138
+      }
+    },
+    "skip_precision_bad": 0.1938,
+    "skip_recall_bad": 0.9032,
+    "skip_or_reduced_precision_bad": 0.1401,
+    "skip_or_reduced_recall_bad": 0.9355,
+    "normal_precision_ok": 0.9862,
+    "normal_recall_ok": 0.4446,
+    "mean_sized_return_pct_of_bankroll": -0.0185
+  },
+  "test_with_default_thresholds": {
+    "n": 703,
+    "bad": 62,
+    "base_rate_bad": 0.0882,
+    "confusion": {
+      "SKIP": {
+        "bad": 34,
+        "ok": 125
+      },
+      "REDUCED": {
+        "bad": 25,
+        "ok": 418
+      },
+      "NORMAL": {
+        "bad": 3,
+        "ok": 98
+      }
+    },
+    "tiers": {
+      "SKIP": {
+        "n": 159,
+        "share": 0.2262,
+        "bad_rate": 0.2138
+      },
+      "REDUCED": {
+        "n": 443,
+        "share": 0.6302,
+        "bad_rate": 0.0564
+      },
+      "NORMAL": {
+        "n": 101,
+        "share": 0.1437,
+        "bad_rate": 0.0297
+      }
+    },
+    "skip_precision_bad": 0.2138,
+    "skip_recall_bad": 0.5484,
+    "skip_or_reduced_precision_bad": 0.098,
+    "skip_or_reduced_recall_bad": 0.9516,
+    "normal_precision_ok": 0.9703,
+    "normal_recall_ok": 0.1529,
+    "mean_sized_return_pct_of_bankroll": -0.032
+  },
+  "test_baselines": {
+    "all_NORMAL": {
+      "n": 703,
+      "tier": "NORMAL",
+      "base_rate_bad": 0.0882,
+      "mean_sized_return_pct_of_bankroll": -0.1612
+    },
+    "all_REDUCED": {
+      "n": 703,
+      "tier": "REDUCED",
+      "base_rate_bad": 0.0882,
+      "mean_sized_return_pct_of_bankroll": -0.0537
+    }
+  },
+  "auc_raw_points": {
+    "train": 0.7132,
+    "test": 0.7803
+  },
+  "auc_ci95": {
+    "train": [
+      0.6673,
+      0.7516
+    ],
+    "test": [
+      0.7206,
+      0.828
+    ]
+  },
+  "fresh_holdout": {
+    "after": 1793677694,
+    "n": 268,
+    "n_bad": 15,
+    "from": "2026-11-03T06:09Z",
+    "to": "2026-11-04T20:30Z",
+    "auc": 0.6752,
+    "auc_ci95": [
+      0.5328,
+      0.8115
+    ],
+    "passed": true
+  },
+  "auc_moved_subset": {
+    "train": {
+      "min_entry_x_launch": 1.1,
+      "n": 234,
+      "n_bad": 82,
+      "auc": 0.7861,
+      "auc_ci95": [
+        0.7252,
+        0.8448
+      ]
+    },
+    "test": {
+      "min_entry_x_launch": 1.1,
+      "n": 159,
+      "n_bad": 55,
+      "auc": 0.7811,
+      "auc_ci95": [
+        0.706,
+        0.8525
+      ]
+    },
+    "fresh": {
+      "min_entry_x_launch": 1.1,
+      "n": 45,
+      "n_bad": 12,
+      "auc": 0.7109,
+      "auc_ci95": [
+        0.5414,
+        0.8636
+      ]
+    }
+  },
+  "test_balanced_accuracy": {
+    "skip_vs_bad": 0.7698656333350108,
+    "reduced_vs_adverse": 0.6791566222967543,
+    "adverse_base_rate": 0.1337
+  },
+  "auc_raw_points_vs_adverse": {
+    "train": 0.6943,
+    "test": 0.7633
+  },
+  "test_ci95": {
+    "skip_precision_bad": [
+      0.1479,
+      0.2391
+    ],
+    "skip_recall_bad": [
+      0.8269,
+      0.9692
+    ],
+    "mean_sized_return_pct_of_bankroll": [
+      -0.0296,
+      -0.0086
+    ]
+  },
+  "weight_experiment": {
+    "variants": {
+      "live": {
+        "scale": {},
+        "train_auc": 0.6489,
+        "test_auc": 0.7803
+      },
+      "creator_sold_off": {
+        "scale": {
+          "creator_sold": 0.0
+        },
+        "train_auc": 0.6844,
+        "test_auc": 0.7803
+      },
+      "serial_off": {
+        "scale": {
+          "serial_deployer": 0.0
+        },
+        "train_auc": 0.6862,
+        "test_auc": 0.7803
+      },
+      "both_off": {
+        "scale": {
+          "creator_sold": 0.0,
+          "serial_deployer": 0.0
+        },
+        "train_auc": 0.7132,
+        "test_auc": 0.7803
+      },
+      "both_half": {
+        "scale": {
+          "creator_sold": 0.5,
+          "serial_deployer": 0.5
+        },
+        "train_auc": 0.6872,
+        "test_auc": 0.7803
+      }
+    },
+    "picked_on_train": "both_off",
+    "report_only": {
+      "creator_sold_inverted": {
+        "scale": {
+          "creator_sold": -1.0,
+          "serial_deployer": 0.0
+        },
+        "train_auc": 0.7132,
+        "test_auc": 0.7803
+      },
+      "both_inverted": {
+        "scale": {
+          "creator_sold": -1.0,
+          "serial_deployer": -1.0
+        },
+        "train_auc": 0.7113,
+        "test_auc": 0.7803
+      }
+    }
+  },
+  "weights": {
+    "creator_sold": 0,
+    "serial_deployer": 0
+  },
+  "live_test_auc": 0.7803,
+  "rule_stats": {
+    "all": {
+      "authority_not_revoked": {
+        "fired": 0,
+        "hit_rate": 0.0,
+        "bad_rate_when_fired": null,
+        "bad_rate_when_not_fired": 0.09,
+        "lift": null,
+        "no_data": 0
+      },
+      "creator_holds": {
+        "fired": 39,
+        "hit_rate": 0.0222,
+        "bad_rate_when_fired": 0.4615,
+        "bad_rate_when_not_fired": 0.0815,
+        "lift": 5.663,
+        "no_data": 51
+      },
+      "creator_sold": {
+        "fired": 274,
+        "hit_rate": 0.156,
+        "bad_rate_when_fired": 0.062,
+        "bad_rate_when_not_fired": 0.0951,
+        "lift": 0.652,
+        "no_data": 0
+      },
+      "early_concentration": {
+        "fired": 435,
+        "hit_rate": 0.2477,
+        "bad_rate_when_fired": 0.2161,
+        "bad_rate_when_not_fired": 0.0484,
+        "lift": 4.465,
+        "no_data": 51
+      },
+      "fresh_deployer": {
+        "fired": 1550,
+        "hit_rate": 0.8827,
+        "bad_rate_when_fired": 0.0923,
+        "bad_rate_when_not_fired": 0.0728,
+        "lift": 1.268,
+        "no_data": 44
+      },
+      "fresh_wallet_ratio": {
+        "fired": 1635,
+        "hit_rate": 0.9311,
+        "bad_rate_when_fired": 0.0948,
+        "bad_rate_when_not_fired": 0.0248,
+        "lift": 3.823,
+        "no_data": 72
+      },
+      "same_slot_bundle": {
+        "fired": 638,
+        "hit_rate": 0.3633,
+        "bad_rate_when_fired": 0.1458,
+        "bad_rate_when_not_fired": 0.0581,
+        "lift": 2.509,
+        "no_data": 0
+      },
+      "serial_deployer": {
+        "fired": 223,
+        "hit_rate": 0.127,
+        "bad_rate_when_fired": 0.0448,
+        "bad_rate_when_not_fired": 0.0965,
+        "lift": 0.464,
+        "no_data": 0
+      },
+      "shared_funder_cluster": {
+        "fired": 921,
+        "hit_rate": 0.5245,
+        "bad_rate_when_fired": 0.1336,
+        "bad_rate_when_not_fired": 0.0419,
+        "lift": 3.189,
+        "no_data": 0
+      }
+    },
+    "train": {
+      "authority_not_revoked": {
+        "fired": 0,
+        "hit_rate": 0.0,
+        "bad_rate_when_fired": null,
+        "bad_rate_when_not_fired": 0.0912,
+        "lift": null,
+        "no_data": 0
+      },
+      "creator_holds": {
+        "fired": 21,
+        "hit_rate": 0.0199,
+        "bad_rate_when_fired": 0.4762,
+        "bad_rate_when_not_fired": 0.0833,
+        "lift": 5.717,
+        "no_data": 33
+      },
+      "creator_sold": {
+        "fired": 274,
+        "hit_rate": 0.2602,
+        "bad_rate_when_fired": 0.062,
+        "bad_rate_when_not_fired": 0.1014,
+        "lift": 0.611,
+        "no_data": 0
+      },
+      "early_concentration": {
+        "fired": 274,
+        "hit_rate": 0.2602,
+        "bad_rate_when_fired": 0.1971,
+        "bad_rate_when_not_fired": 0.0539,
+        "lift": 3.657,
+        "no_data": 33
+      },
+      "fresh_deployer": {
+        "fired": 915,
+        "hit_rate": 0.8689,
+        "bad_rate_when_fired": 0.0929,
+        "bad_rate_when_not_fired": 0.0797,
+        "lift": 1.166,
+        "no_data": 33
+      },
+      "fresh_wallet_ratio": {
+        "fired": 980,
+        "hit_rate": 0.9307,
+        "bad_rate_when_fired": 0.0969,
+        "bad_rate_when_not_fired": 0.0137,
+        "lift": 7.073,
+        "no_data": 37
+      },
+      "same_slot_bundle": {
+        "fired": 433,
+        "hit_rate": 0.4112,
+        "bad_rate_when_fired": 0.1316,
+        "bad_rate_when_not_fired": 0.0629,
+        "lift": 2.092,
+        "no_data": 0
+      },
+      "serial_deployer": {
+        "fired": 223,
+        "hit_rate": 0.2118,
+        "bad_rate_when_fired": 0.0448,
+        "bad_rate_when_not_fired": 0.1036,
+        "lift": 0.432,
+        "no_data": 0
+      },
+      "shared_funder_cluster": {
+        "fired": 530,
+        "hit_rate": 0.5033,
+        "bad_rate_when_fired": 0.1377,
+        "bad_rate_when_not_fired": 0.044,
+        "lift": 3.13,
+        "no_data": 0
+      }
+    },
+    "test": {
+      "authority_not_revoked": {
+        "fired": 0,
+        "hit_rate": 0.0,
+        "bad_rate_when_fired": null,
+        "bad_rate_when_not_fired": 0.0882,
+        "lift": null,
+        "no_data": 0
+      },
+      "creator_holds": {
+        "fired": 18,
+        "hit_rate": 0.0256,
+        "bad_rate_when_fired": 0.4444,
+        "bad_rate_when_not_fired": 0.0788,
+        "lift": 5.64,
+        "no_data": 18
+      },
+      "creator_sold": {
+        "fired": 0,
+        "hit_rate": 0.0,
+        "bad_rate_when_fired": null,
+        "bad_rate_when_not_fired": 0.0882,
+        "lift": null,
+        "no_data": 0
+      },
+      "early_concentration": {
+        "fired": 161,
+        "hit_rate": 0.229,
+        "bad_rate_when_fired": 0.2484,
+        "bad_rate_when_not_fired": 0.0406,
+        "lift": 6.118,
+        "no_data": 18
+      },
+      "fresh_deployer": {
+        "fired": 635,
+        "hit_rate": 0.9033,
+        "bad_rate_when_fired": 0.0913,
+        "bad_rate_when_not_fired": 0.0588,
+        "lift": 1.553,
+        "no_data": 11
+      },
+      "fresh_wallet_ratio": {
+        "fired": 655,
+        "hit_rate": 0.9317,
+        "bad_rate_when_fired": 0.0916,
+        "bad_rate_when_not_fired": 0.0417,
+        "lift": 2.197,
+        "no_data": 35
+      },
+      "same_slot_bundle": {
+        "fired": 205,
+        "hit_rate": 0.2916,
+        "bad_rate_when_fired": 0.1756,
+        "bad_rate_when_not_fired": 0.0522,
+        "lift": 3.364,
+        "no_data": 0
+      },
+      "serial_deployer": {
+        "fired": 0,
+        "hit_rate": 0.0,
+        "bad_rate_when_fired": null,
+        "bad_rate_when_not_fired": 0.0882,
+        "lift": null,
+        "no_data": 0
+      },
+      "shared_funder_cluster": {
+        "fired": 391,
+        "hit_rate": 0.5562,
+        "bad_rate_when_fired": 0.1279,
+        "bad_rate_when_not_fired": 0.0385,
+        "lift": 3.322,
+        "no_data": 0
+      }
+    }
+  },
+  "secondary_labels_test": {
+    "loss50_24h": {
+      "base_rate": 0.0413,
+      "auc": 0.7651
+    },
+    "dead_24h": {
+      "base_rate": 0.0811,
+      "auc": 0.7823
+    },
+    "crash_24h": {
+      "base_rate": 0.0,
+      "auc": null
+    },
+    "bad_1h": {
+      "base_rate": 0.0683,
+      "auc": 0.7887
+    },
+    "bad_6h": {
+      "base_rate": 0.0754,
+      "auc": 0.7795
+    }
+  },
+  "outcome_mix": {
+    "graduated_24h": 9,
+    "median_return_24h": 0
+  },
+  "deployed": false,
+  "deploy_rule": "deploy fitted thresholds/weights only if held-out AUC >= 0.6, it beats the live version, and a fresh holdout (>= 30 launches, >= 5 bad, created after every launch used so far) also has AUC >= 0.6"
+}
