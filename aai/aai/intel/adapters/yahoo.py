@@ -11,9 +11,16 @@ SYMBOLS = [("SPY", "SPY", "S&P 500 ETF", "equity"), ("QQQ", "QQQ", "Nasdaq 100 E
            ("EURUSD=X", "EURUSD", "EUR/USD", "fx"), ("USDJPY=X", "USDJPY", "USD/JPY", "fx"), ("AUDUSD=X", "AUDUSD", "AUD/USD", "fx"),
            ("GBPUSD=X", "GBPUSD", "GBP/USD", "fx"), ("USDCAD=X", "USDCAD", "USD/CAD", "fx"), ("USDCHF=X", "USDCHF", "USD/CHF", "fx"),
            ("BTC-USD", "BTCUSD", "Bitcoin spot", "crypto")]
+# The 11 SPDR Select Sector ETFs (GICS sectors) for the stocks-desk breadth strip (own feed: `sectors`).
+SECTORS = [("XLK", "XLK", "Technology", "sector"), ("XLC", "XLC", "Communication Services", "sector"),
+           ("XLY", "XLY", "Consumer Discretionary", "sector"), ("XLF", "XLF", "Financials", "sector"),
+           ("XLI", "XLI", "Industrials", "sector"), ("XLV", "XLV", "Health Care", "sector"),
+           ("XLP", "XLP", "Consumer Staples", "sector"), ("XLE", "XLE", "Energy", "sector"),
+           ("XLB", "XLB", "Materials", "sector"), ("XLU", "XLU", "Utilities", "sector"),
+           ("XLRE", "XLRE", "Real Estate", "sector")]
 
 
-def parse(sym, label, name, cls, j) -> dict:
+def parse(sym, label, name, cls, j, spark_n: int = 30) -> dict:
     try:
         res = j["chart"]["result"][0]
         meta = res["meta"]
@@ -36,17 +43,27 @@ def parse(sym, label, name, cls, j) -> dict:
     return {"symbol": label, "yahoo": sym, "name": name, "class": cls, "last": last, "prev_close": prev,
             "chg": round(last / prev - 1, 5) if prev else None, "chg_20d": round(last / c20 - 1, 5) if c20 else None,
             "ts": num(meta.get("regularMarketTime")), "currency": str(meta.get("currency") or "")[:4],
-            "spark": series[-30:]}
+            "spark": series[-max(2, int(spark_n)):]}
 
 
-def fetch(f, cfg, prev=None) -> dict:
+# Sectors keep ~3 months of closes so breadth can rebuild "% above the close 20 sessions earlier" for 20+ sessions
+# (20 sessions of lookback + 20 sessions of history + margin for holidays); markets keep the lighter 2mo / 30-bar spark.
+SECTOR_RANGE, SECTOR_SPARK = "3mo", 64
+
+
+def fetch(f, cfg, prev=None, symbols=None, rng: str = "2mo", spark_n: int = 30) -> dict:
     rows, errors = [], {}
-    for sym, label, name, cls in SYMBOLS:
+    for sym, label, name, cls in (symbols or SYMBOLS):
         try:
-            rows.append(parse(sym, label, name, cls, f.get(URL.format(s=sym), params={"range": "2mo", "interval": "1d"}, timeout=10)))
+            rows.append(parse(sym, label, name, cls, f.get(URL.format(s=sym), params={"range": rng, "interval": "1d"}, timeout=10), spark_n))
         except FetchError as e:
             errors[label] = e.reason
         time.sleep(0.12)  # be polite
     if not rows:
         raise FetchError("yahoo: " + "; ".join(f"{k} {v}" for k, v in errors.items())[:200])
     return {"rows": rows, "errors": errors}
+
+
+def fetch_sectors(f, cfg, prev=None) -> dict:
+    """SPDR sector ETFs only (11 chart calls); same parser and politeness as `fetch`. Partial results keep the errors."""
+    return fetch(f, cfg, prev, symbols=SECTORS, rng=SECTOR_RANGE, spark_n=SECTOR_SPARK)

@@ -193,7 +193,7 @@ _CHROMES = ("google-chrome", "google-chrome-stable", "chromium", "chromium-brows
 def browser_console_errors(url: str, budget_ms: int = 6000, timeout: float = 45.0, window: tuple | None = None) -> dict:
     """Load `url` in headless Chrome and report every JS console message (uncaught errors, CSP refusals, console.*).
     The Zoora client logs nothing on a healthy load, so any CONSOLE line is a finding. Localhost URLs only."""
-    import re, shutil, subprocess
+    import shutil, subprocess
     from urllib.parse import urlparse
     u = urlparse(url)
     if u.scheme == "http" and u.hostname not in ("127.0.0.1", "localhost", "::1"):
@@ -203,8 +203,10 @@ def browser_console_errors(url: str, budget_ms: int = 6000, timeout: float = 45.
     exe = next((shutil.which(c) for c in _CHROMES if shutil.which(c)), None)
     if not exe:
         return {"ok": None, "status": "no_browser", "detail": "headless Chrome not installed"}
-    # headless Chrome runs on its own temporary profile, so a ticket cookie never outlives the check
-    cmd = [exe, "--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--v=0",
+    # headless Chrome (--headless=new) runs on its own temporary profile, so a ticket cookie never outlives the check.
+    # (An explicit --user-data-dir makes it hang after --dump-dom, so it is not passed.) --disable-extensions keeps a
+    # machine-policy force-installed extension from logging into the console; parse_console drops any that still do.
+    cmd = [exe, "--headless=new", "--no-sandbox", "--disable-gpu", "--enable-logging=stderr", "--v=0", "--disable-extensions",
            f"--virtual-time-budget={int(budget_ms)}"]
     if window:
         cmd.append(f"--window-size={int(window[0])},{int(window[1])}")
@@ -213,7 +215,31 @@ def browser_console_errors(url: str, budget_ms: int = 6000, timeout: float = 45.
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     except subprocess.TimeoutExpired:
         return {"ok": None, "status": "timeout", "detail": f"browser did not finish in {timeout:.0f}s"}
-    rx = re.compile(r':CONSOLE(?:\(\d+\)|:\d+)\]\s*(.*)$')
-    msgs = [m.group(1)[:300] for line in (p.stderr or "").splitlines() if (m := rx.search(line))]
-    return {"ok": not msgs, "errors": msgs[:10], "n_errors": len(msgs), "dom_bytes": len(p.stdout or "")}
+    return parse_console(p.stderr or "", len(p.stdout or ""))
+
+
+_CONSOLE_RX = None
+
+
+def parse_console(stderr: str, dom_bytes: int = 0) -> dict:
+    """Console findings from headless Chrome's stderr. Lines whose source is a browser extension
+    (chrome-extension://, e.g. a machine-policy force-installed password manager) are not the page's and are
+    counted as `ignored_extension`, never as Zoora findings; everything else still fails the check."""
+    import re
+    global _CONSOLE_RX
+    if _CONSOLE_RX is None:
+        _CONSOLE_RX = re.compile(r':CONSOLE(?:\(\d+\)|:\d+)\]\s*(.*)$')
+    msgs, ignored = [], 0
+    for line in (stderr or "").splitlines():
+        m = _CONSOLE_RX.search(line)
+        if not m:
+            continue
+        if re.search(r'source:\s*chrome-extension://', m.group(1)):
+            ignored += 1
+            continue
+        msgs.append(m.group(1)[:300])
+    out = {"ok": not msgs, "errors": msgs[:10], "n_errors": len(msgs), "dom_bytes": dom_bytes}
+    if ignored:
+        out["ignored_extension"] = ignored
+    return out
 

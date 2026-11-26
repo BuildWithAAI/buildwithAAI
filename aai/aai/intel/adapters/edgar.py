@@ -87,6 +87,53 @@ def recent_filings(sub: dict, forms=("4", "8-K"), days=LOOKBACK_DAYS, now_ts=Non
     return out
 
 
+EARN_LOOKBACK_DAYS = 400
+EARN_NOTE = "estimate from the 8-K item 2.02 filing cadence, not a confirmed date"
+
+
+def earnings_history(sub: dict, now_ts=None, days=EARN_LOOKBACK_DAYS) -> dict:
+    """Earnings releases = 8-K (or 8-K/A) filings carrying item 2.02 "Results of operations", from the submissions JSON
+    already fetched for the watchlist (no extra request). Pure. Returns the filing dates (newest first, one per day),
+    the median gap (2.02 filings within 7 days count as one release) and, only for a quarterly-looking cadence (2+ releases, median gap 60-120 days), an estimated next
+    date. The estimate is a cadence projection, never a confirmed date; past due by more than 14 days is flagged."""
+    now = now_ts or _clock()
+    r = ((sub or {}).get("filings") or {}).get("recent") or {}
+    forms = r.get("form") or []
+    n = len(forms)
+    items_col = r.get("items") or [""] * n
+    dates = set()
+    for i in range(n):
+        if forms[i] not in ("8-K", "8-K/A"):
+            continue
+        try:
+            items = {x.strip() for x in str(items_col[i] or "").split(",")}
+            d = datetime.strptime(str(r["filingDate"][i])[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except (ValueError, KeyError, IndexError, TypeError):
+            continue
+        if "2.02" in items and 0 <= now - d.timestamp() <= days * 86400:
+            dates.add(d)
+    ds = []
+    for d in sorted(dates, reverse=True):  # a follow-up 2.02 within 7 days (amendment, re-furnished release) is one event
+        if ds and (ds[-1] - d).days <= 7:
+            ds[-1] = d                     # keep the cluster's first filing day
+        else:
+            ds.append(d)
+    out = {"reports": [d.strftime("%Y-%m-%d") for d in ds][:6], "n": len(ds), "median_gap_days": None,
+           "est_next": None, "est_in_days": None, "overdue": False, "cadence": "insufficient" if len(ds) < 2 else "irregular",
+           "note": EARN_NOTE}
+    if len(ds) >= 2:
+        gaps = sorted((ds[i] - ds[i + 1]).days for i in range(len(ds) - 1))
+        med = gaps[len(gaps) // 2] if len(gaps) % 2 else (gaps[len(gaps) // 2 - 1] + gaps[len(gaps) // 2]) / 2
+        out["median_gap_days"] = med
+        if 60 <= med <= 120:
+            out["cadence"] = "quarterly"
+            nxt = ds[0].timestamp() + med * 86400
+            out["est_next"] = datetime.fromtimestamp(nxt, timezone.utc).strftime("%Y-%m-%d")
+            out["est_in_days"] = int((nxt - now) // 86400)
+            out["overdue"] = out["est_in_days"] < -14
+    return out
+
+
 def fetch(f, cfg, prev=None) -> dict:
     ic = cfg.get("intel", {})
     watch = [str(t).upper() for t in (ic.get("watchlist") or DEFAULT_WATCH)][:25]
@@ -105,7 +152,7 @@ def fetch(f, cfg, prev=None) -> dict:
         pause()
     if not cik_map:
         raise FetchError("EDGAR: no watchlist ticker resolved to a CIK", retryable=False)
-    filings, errors, fetched4 = [], {}, 0
+    filings, errors, fetched4, earnings = [], {}, 0, {}
     for t, (cik, title) in cik_map.items():
         try:
             sub = f.get(SUBS.format(cik=cik), headers=hdr, timeout=20, retries=1)
@@ -113,6 +160,10 @@ def fetch(f, cfg, prev=None) -> dict:
             errors[t] = e.reason; continue
         finally:
             pause()
+        try:
+            earnings[t] = {**earnings_history(sub), "company": title}
+        except Exception:  # noqa: BLE001  a malformed submissions block only drops this ticker's cadence
+            pass
         for x in recent_filings(sub):
             acc = x["accession"].replace("-", "")
             base = re.sub(r"^xsl[^/]*/", "", x["doc"])
@@ -133,6 +184,12 @@ def fetch(f, cfg, prev=None) -> dict:
             filings.append(row)
     filings.sort(key=lambda x: -x["accepted_ts"])
     buys = [x for x in filings if x["form"] == "4" and (x.get("insider") or {}).get("is_buy")]
-    return {"watchlist": watch, "cik_map": cik_map, "filings": filings[:120], "insider_buys": buys[:20],
+    src = "file" if ic.get("watchlist_source") == "file" else "config"  # aai/watchlist.py: owner list vs tracked default
+    return {"watchlist": watch, "watchlist_source": src, "unresolved": [t for t in watch if t not in cik_map],
+            "cik_map": cik_map, "filings": filings[:120], "insider_buys": buys[:20],
             "n_form4": sum(1 for x in filings if x["form"] == "4"), "n_8k": sum(1 for x in filings if x["form"] == "8-K"),
-            "lookback_days": LOOKBACK_DAYS, "errors": errors, "form4_fetched": fetched4}
+            "lookback_days": LOOKBACK_DAYS, "errors": errors, "form4_fetched": fetched4,
+            "earnings": earnings, "earnings_next": sorted(
+                ({"ticker": t, "est_next": e["est_next"], "est_in_days": e["est_in_days"], "last": e["reports"][0],
+                  "overdue": e["overdue"]} for t, e in earnings.items() if e.get("est_next")),
+                key=lambda e: e["est_in_days"])[:25], "earnings_note": EARN_NOTE}
