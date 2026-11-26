@@ -47,3 +47,9 @@ def _no_live_shotdiff_record(tmp_path, monkeypatch):
     from aai import shotcheck
     monkeypatch.setattr(shotcheck, "RESULT_PATH", tmp_path / "shotdiff_last.json")
     monkeypatch.setattr(shotcheck, "BASELINE_DIR", tmp_path / "baseline")
+
+
+@pytest.fixture(autouse=True)
+def _no_live_watchlist_file(tmp_path, monkeypatch):
+    """Tests never read (or write) the owner's data/watchlist.json; config.load sees no owner file unless a test writes one."""
+    monkeypatch.setenv("AAI_WATCHLIST", str(tmp_path / "no-such-watchlist.json"))
