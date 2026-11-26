@@ -1,0 +1,440 @@
+{
+  "overall": "fail",
+  "provider": "public-rpc",
+  "checked_at": 1793987965,
+  "checks": [
+    {
+      "check": "rpc_reachable_latency",
+      "pass": true,
+      "required": true,
+      "ms": 379,
+      "detail": {
+        "endpoint": "publicnode",
+        "url": "https://solana-rpc.publicnode.com",
+        "slot": 466201903,
+        "latency_ms": [
+          102,
+          34,
+          91
+        ],
+        "median_ms": 91
+      }
+    },
+    {
+      "check": "rpc_endpoint:publicnode",
+      "pass": true,
+      "required": false,
+      "ms": 412,
+      "detail": {
+        "endpoint": "publicnode",
+        "url": "https://solana-rpc.publicnode.com",
+        "slot": 466201905,
+        "latency_ms": [
+          115,
+          67,
+          71
+        ],
+        "median_ms": 71
+      }
+    },
+    {
+      "check": "rpc_endpoint:mainnet-beta",
+      "pass": true,
+      "required": false,
+      "ms": 1506,
+      "detail": {
+        "endpoint": "mainnet-beta",
+        "url": "https://api.mainnet-beta.solana.com",
+        "slot": 466201913,
+        "latency_ms": [
+          403,
+          123,
+          121
+        ],
+        "median_ms": 123
+      }
+    },
+    {
+      "check": "rpc_pool_failover",
+      "pass": true,
+      "required": true,
+      "ms": 104,
+      "detail": {
+        "cache_hits": 0,
+        "network_calls": 1,
+        "history_skips": 0,
+        "timeouts": 0,
+        "endpoints": {
+          "publicnode": {
+            "calls": 1,
+            "ok": 1,
+            "rate_limited": 0,
+            "errors": 0,
+            "avg_latency_ms": 104.1,
+            "breaker": {
+              "state": "closed",
+              "failures": 0,
+              "trips": 0
+            }
+          },
+          "mainnet-beta": {
+            "calls": 0,
+            "ok": 0,
+            "rate_limited": 0,
+            "errors": 0,
+            "avg_latency_ms": 0.0,
+            "breaker": {
+              "state": "closed",
+              "failures": 0,
+              "trips": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "check": "pumpfun_latest_coins",
+      "pass": false,
+      "required": true,
+      "ms": 8307,
+      "detail": "HttpError: pumpfun GET /coins?offset=0&limit=1&sort=created_timestamp&order=DESC&includeNsfw=false failed: HTTP 403"
+    },
+    {
+      "check": "pumpfun_coin_detail",
+      "pass": false,
+      "required": true,
+      "ms": 5791,
+      "detail": "HttpError: pumpfun GET /coins-v2/BZGN4nDkGJehed9LyzxExHNxfbyxyg9mSsNDdqjhpump failed: HTTP 403"
+    },
+    {
+      "check": "pumpfun_user_created_coins",
+      "pass": false,
+      "required": true,
+      "ms": 0,
+      "detail": "HttpError: pumpfun: circuit open"
+    },
+    {
+      "check": "dexscreener_tokens",
+      "pass": true,
+      "required": true,
+      "ms": 918,
+      "detail": {
+        "status": 200,
+        "url": "https://api.dexscreener.com/latest/dex/tokens/BZGN4nDkGJehed9LyzxExHNxfbyxyg9mSsNDdqjhpump"
+      }
+    },
+    {
+      "check": "solscan_public_api (optional, not used)",
+      "pass": false,
+      "required": false,
+      "ms": 236,
+      "detail": {
+        "status": 404,
+        "url": "https://public-api.solscan.io/token/meta?tokenAddress=So11111111111111111111111111111111111111112"
+      }
+    },
+    {
+      "check": "geckoterminal_token_pools (optional)",
+      "pass": true,
+      "required": false,
+      "ms": 3,
+      "detail": {
+        "status": 200,
+        "url": "https://api.geckoterminal.com/api/v2/networks/solana/tokens/So11111111111111111111111111111111111111112/pools"
+      }
+    },
+    {
+      "check": "funding_graph_db_rw",
+      "pass": true,
+      "required": true,
+      "ms": 85,
+      "detail": {
+        "path": "/workspace/solana-meme-risk/data/funding_graph.db",
+        "write_read": true,
+        "row_counts": {
+          "wallets": 172,
+          "edges": 27968,
+          "trace_runs": 87117,
+          "wallet_probes": 75244,
+          "tx_fanout": 25859
+        }
+      }
+    },
+    {
+      "check": "cache_db_rw",
+      "pass": true,
+      "required": true,
+      "ms": 489,
+      "detail": {
+        "path": "/workspace/solana-meme-risk/data/cache.db",
+        "rows": 1464411,
+        "mode": "readwrite"
+      }
+    },
+    {
+      "check": "anchor_index_db_rw",
+      "pass": true,
+      "required": true,
+      "ms": 163,
+      "detail": {
+        "path": "/workspace/solana-meme-risk/data/launches.db",
+        "rows": 517308,
+        "covered_hours": 259.8,
+        "anchor_3min_ago": true
+      }
+    },
+    {
+      "check": "labels_file",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": {
+        "path": "/workspace/solana-meme-risk/data/labels/known_entities.json",
+        "verified_entities": 33
+      }
+    },
+    {
+      "check": "watch_db",
+      "pass": true,
+      "required": false,
+      "ms": 1,
+      "detail": {
+        "path": "/workspace/solana-meme-risk/data/watch/scored_tokens.db",
+        "scored_tokens_rows": 44
+      }
+    },
+    {
+      "check": "import:config",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:data_sources",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:early_buyer_extractor",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:batch_tracer",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:cluster_extractor",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:data_extractors",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:signal_extractor",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:rug_detection_rules",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:risk_score",
+      "pass": true,
+      "required": true,
+      "ms": 51,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.config",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.cache",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.resilience",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.sources.rpc",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.sources.http",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.labels",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.chain",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.context",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.early_buyer_extractor",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.batch_tracer",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.cluster_extractor",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.data_extractors",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.signal_extractor",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.rug_detection_rules",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.risk_score",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.report",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.legacy",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.pipeline",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.watch",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "import:smr.backtest.cli",
+      "pass": true,
+      "required": true,
+      "ms": 0,
+      "detail": "ok"
+    },
+    {
+      "check": "tests_quick",
+      "pass": false,
+      "required": true,
+      "ms": 16033,
+      "detail": {
+        "returncode": 1,
+        "summary": "1 failed, 228 passed, 22 warnings in 15.70s"
+      }
+    },
+    {
+      "check": "e2e_score",
+      "pass": true,
+      "required": true,
+      "ms": 811,
+      "detail": {
+        "mint": "BZGN4nDkGJehed9LyzxExHNxfbyxyg9mSsNDdqjhpump",
+        "score": 20,
+        "recommendation": "REDUCED",
+        "flags": [
+          "same_slot_bundle",
+          "fresh_deployer"
+        ],
+        "early_buyers": 1,
+        "seconds": 0.8,
+        "schema_valid": true,
+        "confidence": "high",
+        "note": "reduced params (15 buyers, 1 hop, 8 traced wallets); cached data reused when present"
+      }
+    }
+  ]
+}

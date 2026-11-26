@@ -1,0 +1,1337 @@
+{
+  "mint": "tUjDS64QUqQb4Jm129QYnrLLtzyNgMZZJXcNHNipump",
+  "token": {
+    "name": "Starlink Dog",
+    "symbol": "BOWIE",
+    "creator": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+    "created_timestamp": 1793434952000,
+    "complete": false,
+    "usd_market_cap": 3371.0376012408337,
+    "ath_market_cap": 9025.293118508374,
+    "bonding_curve": "wb6qHcF6iMHjTNTGpacShybqoqsADJPt8HBKw8WEidB",
+    "pool_address": "GR7ppqdyPcWCUiU6WAe5q1otGHVumWkKepXf3uNuvNYN",
+    "quote_mint": "SPCXxcqXj6e5dJDVNovHN8744zkbhM2bYudU45BimGb",
+    "program": "pump"
+  },
+  "score": 70,
+  "recommendation": "SKIP",
+  "suggested_size": "0%",
+  "confidence": "medium",
+  "hard_flags": [],
+  "flags": [
+    "same_slot_bundle",
+    "shared_funder_cluster",
+    "serial_deployer",
+    "early_concentration"
+  ],
+  "reasons": [
+    "[+25] same_slot_bundle: 3 non-creator wallet(s) bought in the creation slot (3.954% of supply); 3 within 2 slots",
+    "[+15] shared_funder_cluster: 1 shared-funder cluster(s); largest bought/holds 6.423% of supply (still held by all clusters: 0%); 2 early buyers clustered; deployer cluster has 2 wallets / 6.423%",
+    "[+25] serial_deployer: deployer launched 9051 other pump.fun coins (bad-outcome ratio 0.94); deployer's funder launched 0",
+    "[+5] early_concentration: top-10 holders own 4.98% of circulating supply (excl. curve/pool/burn); first 50 buyers bought 60.463%",
+    "liquidity $165 below $2,000 minimum -> SKIP"
+  ],
+  "small_size": {
+    "small_size_trade_reasonable": false,
+    "best_liquidity_usd": 165.21809876006887,
+    "holder_count": 16,
+    "market_cap_usd": 3371.0376012408337,
+    "max_order_usd_for_~1pct_impact": 1.65,
+    "notes": [
+      "liquidity $165 < $2,000: even small orders move price a lot",
+      "only 16 holders"
+    ]
+  },
+  "rules": [
+    {
+      "rule": "same_slot_bundle",
+      "triggered": true,
+      "points": 25,
+      "max_points": 25,
+      "hard": false,
+      "reason": "3 non-creator wallet(s) bought in the creation slot (3.954% of supply); 3 within 2 slots",
+      "evidence": {
+        "wallets": [
+          "FiFawHqxeTVBhv6YbqbLwDVuvokRpPUM1bNwAyxhGc6W",
+          "HsnsaZ3at3qzoxcxetsMfubGppwBmv7kSMWhkPU5rHSx",
+          "Z769H24NG8fuqedDshQVyqvtWUbdcHNXKhp9jgT2iA6"
+        ],
+        "within_2_slots_supply_pct": 3.954
+      }
+    },
+    {
+      "rule": "shared_funder_cluster",
+      "triggered": true,
+      "points": 15,
+      "max_points": 30,
+      "hard": false,
+      "reason": "1 shared-funder cluster(s); largest bought/holds 6.423% of supply (still held by all clusters: 0%); 2 early buyers clustered; deployer cluster has 2 wallets / 6.423%",
+      "evidence": {
+        "clusters": [
+          {
+            "size": 2,
+            "includes_deployer": true,
+            "pct_supply_bought_early": 6.423,
+            "pct_supply_held_now": 0.0,
+            "shared_funders": [
+              "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule": "serial_deployer",
+      "triggered": true,
+      "points": 25,
+      "max_points": 25,
+      "hard": false,
+      "reason": "deployer launched 9051 other pump.fun coins (bad-outcome ratio 0.94); deployer's funder launched 0",
+      "evidence": {
+        "outcomes": {
+          "dead": 47,
+          "active_or_recent": 3
+        },
+        "examples": [
+          {
+            "mint": "D1RPC8cnWawGDvhQhNW12Sj9wJRKJhrV6mbJ3jBQpump",
+            "symbol": "WIN",
+            "class": "dead",
+            "ath_usd": 0,
+            "mc_usd": 0
+          },
+          {
+            "mint": "2jYiHXzWBQWtkDrxYWEnqXTSjCZT7DHUtvKBYNRZpump",
+            "symbol": "CRYPTO",
+            "class": "dead",
+            "ath_usd": 0,
+            "mc_usd": 0
+          },
+          {
+            "mint": "9BgBbaqfkYLcPbQg5Cc2sJF9m1TF2e7ZhRCUFD4xpump",
+            "symbol": "RROLL",
+            "class": "dead",
+            "ath_usd": 0,
+            "mc_usd": 0
+          },
+          {
+            "mint": "8vN8HkrhwkmJuD6zkqNJqmQtXNkuWrFRY8JvQBxQpump",
+            "symbol": "MILES",
+            "class": "dead",
+            "ath_usd": 0,
+            "mc_usd": 0
+          },
+          {
+            "mint": "ESzXphVvgYLQ1YBZ9Ud22WanKQh5tgz9uAgRrERdpump",
+            "symbol": "PPP",
+            "class": "dead",
+            "ath_usd": 0,
+            "mc_usd": 0
+          }
+        ],
+        "funder_outcomes": null
+      }
+    },
+    {
+      "rule": "creator_holds",
+      "triggered": false,
+      "points": 0,
+      "max_points": 20,
+      "hard": false,
+      "reason": "creator currently holds 0.0% of supply (initial buy 5.2627%)",
+      "evidence": {
+        "creator_pct_of_supply": 0.0,
+        "creator_initial_buy_pct": 5.2627
+      }
+    },
+    {
+      "rule": "early_concentration",
+      "triggered": true,
+      "points": 5,
+      "max_points": 25,
+      "hard": false,
+      "reason": "top-10 holders own 4.98% of circulating supply (excl. curve/pool/burn); first 50 buyers bought 60.463%",
+      "evidence": {
+        "top10": [
+          {
+            "owner": "Ft69GEPRmjToc7q2RNSVnj5DtLVviqXNCMB23rLkXcJc",
+            "pct_of_supply": 1.753
+          },
+          {
+            "owner": "DMTFF7ZvnLmKeiRuxuD8GVcr4YdQXoRPQcSz4yT76dkU",
+            "pct_of_supply": 1.71
+          },
+          {
+            "owner": "DLogcTunmBdoNcdwxi8YKcKoPU2VGHPU2AYm4uuwg6Je",
+            "pct_of_supply": 0.706
+          },
+          {
+            "owner": "GjcN8geEeR4kieKJPQuzGtvvmH9SiNNx1gidBfp4AM97",
+            "pct_of_supply": 0.328
+          },
+          {
+            "owner": "3X6tzPdPoScBbLgVxEnkZ8UcJk17unSXNRyx3ivWXYpH",
+            "pct_of_supply": 0.134
+          },
+          {
+            "owner": "5V7DjFEExDbCWpPB8Q7zLMAkjsaiiKjTxxhKsRSMfnf6",
+            "pct_of_supply": 0.132
+          },
+          {
+            "owner": "BjxjLQSD96inYSi3AE27geQmeja4pfAB3MPaT1mBBJiU",
+            "pct_of_supply": 0.082
+          },
+          {
+            "owner": "8KNEbgjjMCditN3qP9KRhTFXaE2viKiuzjm9wtJP7iio",
+            "pct_of_supply": 0.053
+          },
+          {
+            "owner": "FygazsS3BANoqS9FvgmEqvqciQVF6LeKKBcA8NsXS8UL",
+            "pct_of_supply": 0.043
+          },
+          {
+            "owner": "7n6hFyhpFpsHfBuLFZ1gFaXKBy87u59Nk3dFe1i4EaHk",
+            "pct_of_supply": 0.038
+          }
+        ],
+        "holder_count": 16
+      }
+    },
+    {
+      "rule": "fresh_wallet_ratio",
+      "triggered": false,
+      "points": 0,
+      "max_points": 20,
+      "hard": false,
+      "reason": "1/49 traceable early buyers were < 48h old at buy time (1.161% of supply); note: very active bot wallets count as not-fresh",
+      "evidence": {
+        "fresh_wallets": [
+          "HWUsxqPCt1e4hMxfigJhRKBNghYrRpT9XShuYiohdtYG"
+        ]
+      }
+    },
+    {
+      "rule": "fresh_deployer",
+      "triggered": false,
+      "points": 0,
+      "max_points": 10,
+      "hard": false,
+      "reason": "deployer wallet age at launch: unknown (>1000 txs or untraced) h; primary funder None (sig_count None)",
+      "evidence": {
+        "deployer_funders": []
+      }
+    },
+    {
+      "rule": "authority_not_revoked",
+      "triggered": false,
+      "points": 0,
+      "max_points": 40,
+      "hard": false,
+      "reason": "mint authority=None, freeze authority=None",
+      "evidence": {}
+    }
+  ],
+  "clusters": {
+    "clusters": [
+      {
+        "size": 2,
+        "wallets": [
+          "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+          "HWUsxqPCt1e4hMxfigJhRKBNghYrRpT9XShuYiohdtYG"
+        ],
+        "includes_deployer": true,
+        "shared_funders": [
+          "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b"
+        ],
+        "linked_via_hub_funder": [
+          "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b"
+        ],
+        "linked_via_member_funding": [
+          "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b"
+        ],
+        "min_hop": 0,
+        "pct_supply_bought_early": 6.423,
+        "pct_supply_held_now": 0.0,
+        "balances_known_for": 2,
+        "same_slot_buyers": 1
+      }
+    ],
+    "n_clusters": 1,
+    "clustered_buyers": 2,
+    "clustered_buyer_ratio": 0.04,
+    "total_cluster_supply_pct": 6.423,
+    "total_cluster_held_now_pct": 0,
+    "largest_cluster_supply_pct": 6.423,
+    "deployer_cluster": {
+      "size": 2,
+      "wallets": [
+        "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+        "HWUsxqPCt1e4hMxfigJhRKBNghYrRpT9XShuYiohdtYG"
+      ],
+      "includes_deployer": true,
+      "shared_funders": [
+        "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b"
+      ],
+      "linked_via_hub_funder": [
+        "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b"
+      ],
+      "linked_via_member_funding": [
+        "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b"
+      ],
+      "min_hop": 0,
+      "pct_supply_bought_early": 6.423,
+      "pct_supply_held_now": 0.0,
+      "balances_known_for": 2,
+      "same_slot_buyers": 1
+    },
+    "deployer_cluster_supply_pct": 6.423,
+    "funding_window_hours": 72
+  },
+  "deployer": {
+    "creator": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+    "creation_fee_payer": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+    "fee_payer_is_creator": true,
+    "deployer_sig_count": 250,
+    "deployer_history_complete": false,
+    "deployer_is_hub": true,
+    "deployer_age_hours_at_create": null,
+    "deployer_funders": [],
+    "deployer_primary_funder": null,
+    "deployer_funded_by_cex": false
+  },
+  "serial_deployer": {
+    "wallet": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+    "total_created_other": 9051,
+    "sampled": 50,
+    "outcomes": {
+      "dead": 47,
+      "active_or_recent": 3
+    },
+    "bad_outcome_ratio": 0.94,
+    "recent_examples": [
+      {
+        "mint": "D1RPC8cnWawGDvhQhNW12Sj9wJRKJhrV6mbJ3jBQpump",
+        "symbol": "WIN",
+        "class": "dead",
+        "ath_usd": 0,
+        "mc_usd": 0
+      },
+      {
+        "mint": "2jYiHXzWBQWtkDrxYWEnqXTSjCZT7DHUtvKBYNRZpump",
+        "symbol": "CRYPTO",
+        "class": "dead",
+        "ath_usd": 0,
+        "mc_usd": 0
+      },
+      {
+        "mint": "9BgBbaqfkYLcPbQg5Cc2sJF9m1TF2e7ZhRCUFD4xpump",
+        "symbol": "RROLL",
+        "class": "dead",
+        "ath_usd": 0,
+        "mc_usd": 0
+      },
+      {
+        "mint": "8vN8HkrhwkmJuD6zkqNJqmQtXNkuWrFRY8JvQBxQpump",
+        "symbol": "MILES",
+        "class": "dead",
+        "ath_usd": 0,
+        "mc_usd": 0
+      },
+      {
+        "mint": "ESzXphVvgYLQ1YBZ9Ud22WanKQh5tgz9uAgRrERdpump",
+        "symbol": "PPP",
+        "class": "dead",
+        "ath_usd": 0,
+        "mc_usd": 0
+      }
+    ]
+  },
+  "deployer_funder_serial": null,
+  "authorities": {
+    "token_program": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    "mint_authority": null,
+    "freeze_authority": null,
+    "decimals": 6,
+    "supply_raw": 1000000000000000,
+    "mint_authority_revoked": true,
+    "freeze_authority_revoked": true
+  },
+  "holders": {
+    "source": "getProgramAccounts",
+    "holder_count": 16,
+    "top10_pct_of_supply": 4.98,
+    "top10_pct_of_circulating": 4.98,
+    "top1_pct_of_supply": 1.753,
+    "creator_pct_of_supply": 0.0,
+    "excluded_accounts": [],
+    "top10": [
+      {
+        "owner": "Ft69GEPRmjToc7q2RNSVnj5DtLVviqXNCMB23rLkXcJc",
+        "pct_of_supply": 1.753
+      },
+      {
+        "owner": "DMTFF7ZvnLmKeiRuxuD8GVcr4YdQXoRPQcSz4yT76dkU",
+        "pct_of_supply": 1.71
+      },
+      {
+        "owner": "DLogcTunmBdoNcdwxi8YKcKoPU2VGHPU2AYm4uuwg6Je",
+        "pct_of_supply": 0.706
+      },
+      {
+        "owner": "GjcN8geEeR4kieKJPQuzGtvvmH9SiNNx1gidBfp4AM97",
+        "pct_of_supply": 0.328
+      },
+      {
+        "owner": "3X6tzPdPoScBbLgVxEnkZ8UcJk17unSXNRyx3ivWXYpH",
+        "pct_of_supply": 0.134
+      },
+      {
+        "owner": "5V7DjFEExDbCWpPB8Q7zLMAkjsaiiKjTxxhKsRSMfnf6",
+        "pct_of_supply": 0.132
+      },
+      {
+        "owner": "BjxjLQSD96inYSi3AE27geQmeja4pfAB3MPaT1mBBJiU",
+        "pct_of_supply": 0.082
+      },
+      {
+        "owner": "8KNEbgjjMCditN3qP9KRhTFXaE2viKiuzjm9wtJP7iio",
+        "pct_of_supply": 0.053
+      },
+      {
+        "owner": "FygazsS3BANoqS9FvgmEqvqciQVF6LeKKBcA8NsXS8UL",
+        "pct_of_supply": 0.043
+      },
+      {
+        "owner": "7n6hFyhpFpsHfBuLFZ1gFaXKBy87u59Nk3dFe1i4EaHk",
+        "pct_of_supply": 0.038
+      }
+    ],
+    "warnings": []
+  },
+  "same_slot": {
+    "same_slot_buyer_count": 3,
+    "same_slot_wallets": [
+      "FiFawHqxeTVBhv6YbqbLwDVuvokRpPUM1bNwAyxhGc6W",
+      "HsnsaZ3at3qzoxcxetsMfubGppwBmv7kSMWhkPU5rHSx",
+      "Z769H24NG8fuqedDshQVyqvtWUbdcHNXKhp9jgT2iA6"
+    ],
+    "same_slot_supply_pct": 3.954,
+    "within_2_slots_count": 3,
+    "within_2_slots_supply_pct": 3.954,
+    "creator_initial_buy_pct": 5.2627,
+    "early_buyers_supply_pct": 60.463,
+    "n_early_buyers": 50
+  },
+  "fresh_wallets": {
+    "fresh_wallet_count": 1,
+    "buyers_with_history": 49,
+    "fresh_wallet_ratio": 0.02,
+    "fresh_supply_pct": 1.161,
+    "fresh_wallets": [
+      {
+        "wallet": "HWUsxqPCt1e4hMxfigJhRKBNghYrRpT9XShuYiohdtYG",
+        "age_hours_at_buy": 18.58,
+        "sig_count": 141,
+        "pct_supply_bought": 1.1605
+      }
+    ],
+    "fresh_hours": 48
+  },
+  "creation": {
+    "signature": "4Ae3ZRHhNUdt5wm4NCe7aWjJNDT5VBuB81YopZKMewxk9C1zGvQ5SQ7hYdPHW6PrnLoSdERdiLUh42sdro2Mrw9Y",
+    "slot": 463619547,
+    "block_time": 1793434952,
+    "fee_payer": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+    "creator_field": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+    "fee_payer_is_creator": true
+  },
+  "early_buyers": [
+    {
+      "rank": 1,
+      "wallet": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+      "slot": 463619547,
+      "slot_offset": 0,
+      "block_time": 1793434952,
+      "sol_amount": null,
+      "quote_amount": 1.247073,
+      "signer_sol_spent": 1.830357,
+      "pct_supply_bought": 5.2627,
+      "is_creator": true,
+      "same_slot_as_create": true,
+      "signature": "4Ae3ZRHhNUdt5wm4NCe7aWjJNDT5VBuB81YopZKMewxk9C1zGvQ5SQ7hYdPHW6PrnLoSdERdiLUh42sdro2Mrw9Y",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 2,
+      "wallet": "FiFawHqxeTVBhv6YbqbLwDVuvokRpPUM1bNwAyxhGc6W",
+      "slot": 463619547,
+      "slot_offset": 0,
+      "block_time": 1793434952,
+      "sol_amount": null,
+      "quote_amount": 0.694572,
+      "signer_sol_spent": 0.022256,
+      "pct_supply_bought": 2.7133,
+      "is_creator": false,
+      "same_slot_as_create": true,
+      "signature": "hxNyXJ3RBWbK4kbU74URUqpPAVWLoSLF4XRS3nYdLVZzyGCq44hCXH16yyhMLo7b74Zrh5z5pZeenemEqXWiM8b",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 3,
+      "wallet": "HsnsaZ3at3qzoxcxetsMfubGppwBmv7kSMWhkPU5rHSx",
+      "slot": 463619547,
+      "slot_offset": 0,
+      "block_time": 1793434952,
+      "sol_amount": null,
+      "quote_amount": 0.16017,
+      "signer_sol_spent": 0.007889,
+      "pct_supply_bought": 0.6085,
+      "is_creator": false,
+      "same_slot_as_create": true,
+      "signature": "3MDFE1dLNMJ4RECs4rk1GQMNhMg2c81CwV3v9o4Kq3PZo5GpGZKnGbGKdcZEu1mVYmR4dLAa9ZLfxuwKor4Px4xJ",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 4,
+      "wallet": "Z769H24NG8fuqedDshQVyqvtWUbdcHNXKhp9jgT2iA6",
+      "slot": 463619547,
+      "slot_offset": 0,
+      "block_time": 1793434952,
+      "sol_amount": null,
+      "quote_amount": 0.168454,
+      "signer_sol_spent": 0.00407,
+      "pct_supply_bought": 0.632,
+      "is_creator": false,
+      "same_slot_as_create": true,
+      "signature": "2DyvaxPadE8eAy1qrJqraaDw9QuDR6DfufcAS64v4xSqCFx2BGWZ4nkeNFkPrH7stHTjRHkqDta4Hs4Xy4qkPX54",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 5,
+      "wallet": "E1icorNRLQMDr1C8qWBtA9aadRK2uT2daRYQjtkWUQL1",
+      "slot": 463619553,
+      "slot_offset": 6,
+      "block_time": 1793434954,
+      "sol_amount": null,
+      "quote_amount": 0.306618,
+      "signer_sol_spent": 0.453278,
+      "pct_supply_bought": 1.1239,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3BByWrjtyTVLdsZ2aNb3KNrfzJGhtcsbVGcn1gLar5m5kL2DyV9GbFnEQyzVg5FMzLvtm9oKMHMa4CNU6sfksJsJ",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 6,
+      "wallet": "9dVSVwrUJfnFqRZ8ChaGExowQbxWBSRgQbtgEQecCkis",
+      "slot": 463619554,
+      "slot_offset": 7,
+      "block_time": 1793434954,
+      "sol_amount": null,
+      "quote_amount": 0.417396,
+      "signer_sol_spent": 0.003144,
+      "pct_supply_bought": 1.5731,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5H1wX5PdxpKC7WKeTiUTxBFgDtr134bNHJLGKgwyUDR7t2XFb9zV6nTRsa8forPqXG5bmDBfxjiEnk7A6kuGU7Z5",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 7,
+      "wallet": "DPzxSdVPbju8p8NtzGukaPRM2HVNSrStsxuEeSHod3o6",
+      "slot": 463619563,
+      "slot_offset": 16,
+      "block_time": 1793434956,
+      "sol_amount": null,
+      "quote_amount": 0.633868,
+      "signer_sol_spent": 0.932699,
+      "pct_supply_bought": 2.3539,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5BqXzmArKBj5LEcPCTRLnUdruWEukb38P28dr9QGT5zzTbk9KDppeSQo3FdUo2qeHmadDxKMSXwKF1WDhbx81a5t",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 8,
+      "wallet": "3hrYmGuSV9J3p1hrQDwgsW6Ln3LfhPoizRBispNYtvr3",
+      "slot": 463619563,
+      "slot_offset": 16,
+      "block_time": 1793434956,
+      "sol_amount": null,
+      "quote_amount": 0.734755,
+      "signer_sol_spent": 1.080751,
+      "pct_supply_bought": 2.5927,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "4T1M6nkytQqMMUktjG7cfUJS4VLbkseuHoTyosr7YGMeqSfyspXcoRVUaXFNo86qYRHFQeJ67kRcqyfXqKaj6dQz",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 9,
+      "wallet": "DqhwoMKpN2kPfSqRpuHovfoqBT8oweYgBdYfMzJ6jMDB",
+      "slot": 463619563,
+      "slot_offset": 16,
+      "block_time": 1793434956,
+      "sol_amount": null,
+      "quote_amount": 0.675709,
+      "signer_sol_spent": 0.994106,
+      "pct_supply_bought": 2.2649,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "24xc2WzU2BVvSry68owKbFjGZ8RpwRyh29enCphQaSj1DvDGQpe8jW43UFcaywoFKF11sYnEPgeqQK9M6KqwEeo3",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 10,
+      "wallet": "Fny8ZjKtaoEmFZhRjHsrbFPr25m9hDj4gW4ENUgqsG6P",
+      "slot": 463619576,
+      "slot_offset": 29,
+      "block_time": 1793434958,
+      "sol_amount": null,
+      "quote_amount": 1.036552,
+      "signer_sol_spent": 1.520953,
+      "pct_supply_bought": 3.2873,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5WTkPBeGP8E5W4mkKFgcC4rGF1ZAWnoqVAiay63EiDRfGv2PxtuKgmJG7tQ7TNCDEKdrHrLNSiLG9YbP3ZFctjQ5",
+      "funders": [
+        {
+          "funder": "ARJnZ2nNq4ym8gwQeZzfMAWbqMpLiWUFFxqs2vAkNun1",
+          "sol": 46.2422,
+          "label": null,
+          "hop2": []
+        }
+      ],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 11,
+      "wallet": "naNTa9zBLNtZYX1WsSmdMeKXdoUz7M2jTGSkUiJqrEv",
+      "slot": 463619604,
+      "slot_offset": 57,
+      "block_time": 1793434964,
+      "sol_amount": null,
+      "quote_amount": 0.03455,
+      "signer_sol_spent": 0.054893,
+      "pct_supply_bought": 0.1158,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "4KzSdvqrohQD4Y5fL8XDAPocUP4izcyKgUJvAPqthxhQMxZPaPeejTTAFpRRUtJ8NRAYFTrPkxDY1fqrk9kuCZYn",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 12,
+      "wallet": "GUYKTgf96gJJZLdaw4soHdwZxenY3sRDP3zSrJDg8h8v",
+      "slot": 463619613,
+      "slot_offset": 66,
+      "block_time": 1793434966,
+      "sol_amount": null,
+      "quote_amount": 0.07235,
+      "signer_sol_spent": 0.107673,
+      "pct_supply_bought": 0.3671,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5qtp3uvhQRNUMNiZmDe2S7srYLHxhTJu1bDsgJhhAh7Dt3yE6dqy77uRHaSoG61dZY7dffvHZ4WwjKeENjxnpvmK",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 13,
+      "wallet": "2Rj7wm182eChJQKjmCBgP2VABESX6eVNHs9ek8SR1Nqi",
+      "slot": 463619626,
+      "slot_offset": 79,
+      "block_time": 1793434969,
+      "sol_amount": null,
+      "quote_amount": 0.136289,
+      "signer_sol_spent": 0.203088,
+      "pct_supply_bought": 0.4862,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5gEt13WNhE2iqAQAjv7x4mgch8XTH6DJUqp2k4v47Yymt9gDJFxeWFfJan43CCte9ACbJPvgPbz1QvKGNToBfiJZ",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 14,
+      "wallet": "2ynfvYmukZVbmoWAfUq457hg3TBHzKDMPq4czn1sJW7R",
+      "slot": 463619638,
+      "slot_offset": 91,
+      "block_time": 1793434972,
+      "sol_amount": null,
+      "quote_amount": 0.136274,
+      "signer_sol_spent": 0.205078,
+      "pct_supply_bought": 0.4812,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3LKsf28TLVcwtyQ4nE8pezZKGbEKg1bpVN6qzgqdJytPPWsWBzWfjVTpAMRBFMtVkERFhu77BX8ixe9TcABUrfV3",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 15,
+      "wallet": "5DUDkntQv1Y3ovAjNygqo5CYap8j6SZTzJN7SpHKUDrZ",
+      "slot": 463619649,
+      "slot_offset": 102,
+      "block_time": 1793434974,
+      "sol_amount": null,
+      "quote_amount": 0.136289,
+      "signer_sol_spent": 0.212519,
+      "pct_supply_bought": 0.4752,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "65YDzjavzn8wGQGouaXN9B1KTyLL5XS5yxATBSwxmWaSX3eJ48eWKkiHvqzNHZHQ5pACFkJrMN8Cq4rZtGeLidcE",
+      "funders": [
+        {
+          "funder": "EMXJqHznGSnSzeMyigBGQNEFw4EeaNDbj1UwaFTpp3sg",
+          "sol": 0.1847,
+          "label": null,
+          "hop2": []
+        }
+      ],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 16,
+      "wallet": "4qDXAdSqeskjErmFbtSv73jyBULpgX12cqMffdcSCK2V",
+      "slot": 463619667,
+      "slot_offset": 120,
+      "block_time": 1793434978,
+      "sol_amount": null,
+      "quote_amount": 0.034597,
+      "signer_sol_spent": 0.053101,
+      "pct_supply_bought": 0.1199,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "61zF1pVfVHAiiV8ces5Lc98HwELVyJdzEX7hgyastXPANZD2VmS8PG8wHzWGqmvJSNKrCScCMabAjnbCiS2GPtAD",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 17,
+      "wallet": "Ggo1QNNp1yjLdnsf62WdnLVrz8vnfHKzTGkvtwRj9fxu",
+      "slot": 463619674,
+      "slot_offset": 127,
+      "block_time": 1793434979,
+      "sol_amount": null,
+      "quote_amount": 0.072288,
+      "signer_sol_spent": 0.107724,
+      "pct_supply_bought": 0.2916,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "NeNvbkCckonbGH6noy4XMWhdiWzkgi8qB9CoHjpxkmQCpiLDEJQkm52Ykv1fYnq148WYTe5XdfG8tpK4aBRFaaz",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 18,
+      "wallet": "AgB6AXEdBe2JMbrWMY8fdXKDRSgmVBLWekMHJzwEHopX",
+      "slot": 463619677,
+      "slot_offset": 130,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.691035,
+      "signer_sol_spent": 1.012836,
+      "pct_supply_bought": 3.2149,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "Q1z9PZBroEcADYHoQp5yMPFhY4vuoX251yZvrutZ61zg5JvL14dhWbLti3mU7KqGe59F9X1Sbm1hmW4rSnthLcP",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 19,
+      "wallet": "Fhbh1DTUDKt6qu9zVg8Q5VgnZa1WWWbxBxG6pCoJoggA",
+      "slot": 463619677,
+      "slot_offset": 130,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 2.086979,
+      "signer_sol_spent": 0.042044,
+      "pct_supply_bought": 7.3654,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "4aQBtCGXeCuLmK9m3UQkNmnJATKds6NGsXizSgu24jtkU5McihSfZKEt76VtavB1ZZFSu3oN4uiLZs3V9SnSXZXP",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 20,
+      "wallet": "6cVDFe3GEmZJbZ9goVk8a2bXTcacJFN2cbKUEZEDkD9X",
+      "slot": 463619677,
+      "slot_offset": 130,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.690472,
+      "signer_sol_spent": 1.012836,
+      "pct_supply_bought": 2.7218,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "498UmDzTvXmTUcCMUhc7T11rAdQvfQD7nEZw4Jj4Y2rybnBLea1DzAixdanVLb8urd6cDiDBUk4L46CQ5GDuSryK",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 21,
+      "wallet": "CUDpTnTicUvFpAiK4HVGg11d3htadk1Dkp6hE6tKTsKL",
+      "slot": 463619677,
+      "slot_offset": 130,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.690341,
+      "signer_sol_spent": 1.012836,
+      "pct_supply_bought": 2.6107,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "535E1HfoLrzTtUNxVMUtXveaQmsm3UD4RSgiGi2e4wakgSboUGpQi9RGpha35DG3F3S4Hq6uEaBMK6yuyDhaYLZu",
+      "funders": [
+        {
+          "funder": "69SNcRC8NqjHBSXEcugCN5oFKRQoKmddmWzZYc3tqtxk",
+          "sol": 0.1689,
+          "label": null,
+          "hop2": []
+        }
+      ],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 22,
+      "wallet": "4sAUSQFdvWRBxR8UoLBYbw8CcXuwXWxnN8pXa4mtm5nU",
+      "slot": 463619677,
+      "slot_offset": 130,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.690341,
+      "signer_sol_spent": 1.012836,
+      "pct_supply_bought": 2.0126,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "SNctx946Ja8avonUbFvQqAZBhQD9FzeXY8B1tss8AxqWgTw3VN1LvUtjvLcVjMNBHtmev9Sy9TPjmMFTHhxK7JJ",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 23,
+      "wallet": "6anjqMeWigQFo5wpciARAunVQUXTqoat8w8fFWarCkpc",
+      "slot": 463619678,
+      "slot_offset": 131,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.345312,
+      "signer_sol_spent": 0.010524,
+      "pct_supply_bought": 0.9725,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "u1FyHsrGPg5ExNfpbNXEyrsFUiPQb2CP5ws6ivpR36ma5RAokXHzmUHwFKmUjZwVpzkfVjFXYJPmqP2rU7QfMpo",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 24,
+      "wallet": "66vDAQEe3HzE3qyKuZ1hmGGgwxmCtTrmHUuqahaceXj1",
+      "slot": 463619678,
+      "slot_offset": 131,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.854444,
+      "signer_sol_spent": 0.004244,
+      "pct_supply_bought": 2.3023,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "36uJ6eQNUKHoHrAprFbqU8T2x8jLXbY7J8LiUrRYceir29RwLtfPu6NkvTJdhhB7GDU5b4Rp8bGYjMUyBXFeN2Tm",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 25,
+      "wallet": "5TFXfcHbVYxdZaw2qBdT9rjRitv6qTvGqtzJQwLnuANw",
+      "slot": 463619678,
+      "slot_offset": 131,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.347829,
+      "signer_sol_spent": 0.003164,
+      "pct_supply_bought": 0.9018,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "4yFZg1Pn42xnbZR7QhBfu1KS3MXYKx9FicFNLWLfdpd9M5vaV6Ep6wFZLts2QC4PYJ7w9bLQ4cPsw1hCRhA5VNkK",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 26,
+      "wallet": "HRBonvjq6YE62jKnXpwH9wjxLqhiikf2hdFgVTef1Cvm",
+      "slot": 463619678,
+      "slot_offset": 131,
+      "block_time": 1793434980,
+      "sol_amount": null,
+      "quote_amount": 0.20731,
+      "signer_sol_spent": 0.002049,
+      "pct_supply_bought": 0.5309,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "dX6d5Y9RB1D4PbUDUzYywMsNradd61w1cqZQV1gMtcvfbmaNg5S256Pg14T1y58qSaUHFR8Y4t7T4k8raiNuPYU",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 27,
+      "wallet": "CjbR3XxCw3LmBF3X1uDC1ynsk1rhd1gGtuMkLHF6AT6L",
+      "slot": 463619682,
+      "slot_offset": 135,
+      "block_time": 1793434981,
+      "sol_amount": null,
+      "quote_amount": 0.690683,
+      "signer_sol_spent": 1.014397,
+      "pct_supply_bought": 2.1049,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "N1j8bjM8oZgmxo1yYyRWzRetyz836FW3Wpgb6ynrNcVEFtM6fRxMhGhbdumdzXnnEsNTQx4fi8k1VcuNscViE1k",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 28,
+      "wallet": "8pisMPgQvkTc1x6jYtqCubVpASKGHAovN87m7XLtbbd5",
+      "slot": 463619682,
+      "slot_offset": 135,
+      "block_time": 1793434981,
+      "sol_amount": null,
+      "quote_amount": 0.315564,
+      "signer_sol_spent": 0.003144,
+      "pct_supply_bought": 0.7986,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5FwmRX21hvUVBkX262Zgfudd9zNqqE1eykXyC5RUbhPhWpkQ82inmGBJx9UC5XwgN2fdsJEhRRDMYfLhc8J1j3BD",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 29,
+      "wallet": "C3GKGjaNd2Tdw6rUsEd1MLhmkY7K3VgNQh5aQZQtngUm",
+      "slot": 463619686,
+      "slot_offset": 139,
+      "block_time": 1793434981,
+      "sol_amount": null,
+      "quote_amount": 0.068145,
+      "signer_sol_spent": 0.114078,
+      "pct_supply_bought": 0.4353,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "4qmAEYU8reKjQeEYMVWWFZVxcWVymxifMQmgR3qfztdHhRTEQwGL2u5ae3K92AFR1PPDHFUkF35yNvxa5vDXUinz",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 30,
+      "wallet": "GNb3ieuqqNBGsT5XwDtLnMaywK51uy9RfzeXHoHuzDE7",
+      "slot": 463619691,
+      "slot_offset": 144,
+      "block_time": 1793434983,
+      "sol_amount": null,
+      "quote_amount": 0.013812,
+      "signer_sol_spent": 0.024858,
+      "pct_supply_bought": 0.0357,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "wnbgKCevPr1hB8t6LkbcZvX2mwATH7qdeCurv7eunbBDD8im5awJCEHYX775GSxfVV8aWdPvJaV1XV5r9rDp1bU",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 31,
+      "wallet": "2QGQYHfLa2GSqpM3oALhspCjsbQTGeYoQJ9QyMyZE3Mz",
+      "slot": 463619691,
+      "slot_offset": 144,
+      "block_time": 1793434983,
+      "sol_amount": null,
+      "quote_amount": 0.015969,
+      "signer_sol_spent": 0.001924,
+      "pct_supply_bought": 0.041,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3ficwcqA3tENkVfesFitNPMwSPGf1W8AcoHJbZUTmCQKgbAKe4yUhHK7N23AWpK5vjErUiay7CSWNe6gv8fp1t9S",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 32,
+      "wallet": "5zbqm7PGEJy1d1p25NWNty9arbNZPUTGpBK7bHgYsnHF",
+      "slot": 463619695,
+      "slot_offset": 148,
+      "block_time": 1793434983,
+      "sol_amount": null,
+      "quote_amount": 0.497021,
+      "signer_sol_spent": 0.732878,
+      "pct_supply_bought": 1.2783,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "4vvQnAMTJSVqHzG15dwc8WQjUHgMJgCBkNX1Gxqvpf348sBYPM9DAK493CuUNeXfwfL9Ra1SuS4RmGLWdPKXvTo7",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 33,
+      "wallet": "4T2v3tnr9soDMfAVxmmTyivcpCFie8oGRAGwZKGWF4xc",
+      "slot": 463619695,
+      "slot_offset": 148,
+      "block_time": 1793434983,
+      "sol_amount": null,
+      "quote_amount": 0.556832,
+      "signer_sol_spent": 0.820648,
+      "pct_supply_bought": 1.3855,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5re462JiXoWjvBsvZ2bQ9BHBVCQLRs8D8a5xPi9nJrtsvUNnMV1WiDHW7w83HRdkmLstkc6dXgjc2H4EmjEAWNiS",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 34,
+      "wallet": "HT9e1ZuEmTupYQjk4mRWu37EFYKB5ENFH82Zyi1YUp8i",
+      "slot": 463619695,
+      "slot_offset": 148,
+      "block_time": 1793434983,
+      "sol_amount": null,
+      "quote_amount": 0.495277,
+      "signer_sol_spent": 0.73032,
+      "pct_supply_bought": 1.1961,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "C21P9JsFEVEH2NkU9kraXDr8qejc1eGfFgRzKfyWKGL5YQXfFXNKCM5zvUn1X6F5CcNgNeAtEZywKimjNcNdNcL",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 35,
+      "wallet": "HWUsxqPCt1e4hMxfigJhRKBNghYrRpT9XShuYiohdtYG",
+      "slot": 463619695,
+      "slot_offset": 148,
+      "block_time": 1793434983,
+      "sol_amount": null,
+      "quote_amount": 0.495213,
+      "signer_sol_spent": 0.731788,
+      "pct_supply_bought": 1.1605,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5ewqKvmvCSEEVvaaDGsiZCZxURUbdSuSF1hJcrqJ1DYCXGrpppAeSptYUVXjq8eHhPvVFEiBC985Hef2mhfT64sS",
+      "funders": [
+        {
+          "funder": "DbG7RyLFBWXpEWgfKUA8qByvBZEZ3chqGh9TLkpjpF3b",
+          "sol": 4.7133,
+          "label": null,
+          "hop2": []
+        }
+      ],
+      "wallet_sig_count": 141
+    },
+    {
+      "rank": 36,
+      "wallet": "5ZoLFpjn5YhZgyz1Ug5uaLsNeYK67HuNw8hyb8Gc7nZJ",
+      "slot": 463619696,
+      "slot_offset": 149,
+      "block_time": 1793434984,
+      "sol_amount": null,
+      "quote_amount": 0.081773,
+      "signer_sol_spent": 0.12308,
+      "pct_supply_bought": 0.1863,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "5A5qCZG2hEhj1rCnHH3fJk1RR1FNBJiMR6cFDW9sDDnNMRBBXWRpSwzpoeBasLzqFjgkEAVybJFA3fMTfYQxRLTn",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 37,
+      "wallet": "AyKqGjhzmpicGKKZcsShn9TGjTqdmsn18sXtiG53x5cq",
+      "slot": 463619697,
+      "slot_offset": 150,
+      "block_time": 1793434984,
+      "sol_amount": null,
+      "quote_amount": 0.340722,
+      "signer_sol_spent": 0.501719,
+      "pct_supply_bought": 0.7665,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "55uee3BNYtv28rttqsF86S69on5phvhdNhz9sSKNh2ijiL39F9NZv8tVosKcAWW4e8osLhxB2xLjPmuANDbC3gSV",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 38,
+      "wallet": "JCuH7TPJ3dytKijNkaiqWP5rqNWFDPzZcg8pRpeRamiT",
+      "slot": 463619699,
+      "slot_offset": 152,
+      "block_time": 1793434984,
+      "sol_amount": null,
+      "quote_amount": 0.068702,
+      "signer_sol_spent": 0.104519,
+      "pct_supply_bought": 0.1527,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "4vxbVYPWtXCzECivpa7NAis1aKEFBAo8geYU4Ddgz8DB798Fgi4CTo7Bj1MWzHcbtnfTEFKd8RAy15mRhYRm7TzB",
+      "funders": [
+        {
+          "funder": "C5gfBYoJtHTW3U1fZ1ezHbhkehfFHsiB5XAAQ5cxZeW6",
+          "sol": 0.7942,
+          "label": null,
+          "hop2": [
+            "FncazAs6omJJjtLVzquzT9KoyXn6tFixr9kGjr42ktLj"
+          ]
+        },
+        {
+          "funder": "BW8iFigA84SNZgeh6UNy6TgWGZtzQTco5Caw1SGSr66o",
+          "sol": 2.0583,
+          "label": null,
+          "hop2": [
+            "DtoCJTd1AetXMxar8HhzKbPod9rzPgp3eU3WZZRXP1sR"
+          ]
+        }
+      ],
+      "wallet_sig_count": 109
+    },
+    {
+      "rank": 39,
+      "wallet": "BMib5cMFAKs5d3VBh5jKPSnu8B2ciCEhUhCA8Yyfg2qn",
+      "slot": 463619704,
+      "slot_offset": 157,
+      "block_time": 1793434985,
+      "sol_amount": null,
+      "quote_amount": 0.024057,
+      "signer_sol_spent": 0.038089,
+      "pct_supply_bought": 0.0533,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3jqQcix41amJvZi7Ap4LN7Y8MjFYF6gYpGtMkL5H6xBF8b7zS8UdXfuSJ29Znpbduw9tKKPqDBhGfycFmWVLh6Pd",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 40,
+      "wallet": "CrXfYRSzV6bvLZxWMALc4c3whAGTyGsLXmEh4sQquR9q",
+      "slot": 463619704,
+      "slot_offset": 157,
+      "block_time": 1793434985,
+      "sol_amount": null,
+      "quote_amount": 0.006813,
+      "signer_sol_spent": 0.013078,
+      "pct_supply_bought": 0.0151,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3KVpNqaP4hxExA1bdCtyGyp43MmGnCwuvKCJcCxk7dhraKzYv6xd8djKJk5vCmbosASAjhGRvHS1nqVHiJe7HfJS",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 41,
+      "wallet": "2ZWduss2BkwFkoPWeBRKVceUrpzfqURcBkZG2hzcDoFE",
+      "slot": 463619710,
+      "slot_offset": 163,
+      "block_time": 1793434986,
+      "sol_amount": null,
+      "quote_amount": 0.068702,
+      "signer_sol_spent": 0.104178,
+      "pct_supply_bought": 0.1517,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "G6u2ea7pH2dtXahmT5mbLGFnf2uzxrJBh4otNH2ggcVnUSmdDcoyhPjT2KH5nqrfesHUmbuL6KfQQRz8EPrX1fk",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 42,
+      "wallet": "5v8iwGd7Z6PcWwWhH21DsYA96f8dwUQwYF8LzT1XCMnC",
+      "slot": 463619712,
+      "slot_offset": 165,
+      "block_time": 1793434987,
+      "sol_amount": null,
+      "quote_amount": 0.081552,
+      "signer_sol_spent": 0.121193,
+      "pct_supply_bought": 0.1809,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3eXZ4vvA5QhxF6FmfvCP3UX1JsnGuXMCtDDgQioRswMerRibeiT1TMZhapFozqKXcKVtTmep5k7LoA9VXKMHimR1",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 43,
+      "wallet": "HBqyubp8VsbM64HAZFMaQZd8fMA7PnL1ZomKh7d6ZcY7",
+      "slot": 463619727,
+      "slot_offset": 180,
+      "block_time": 1793434990,
+      "sol_amount": null,
+      "quote_amount": 0.345757,
+      "signer_sol_spent": 0.503109,
+      "pct_supply_bought": 0.7486,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3GfRaTKoZXMTZ9YdnQF77qhuf4CvxK6TN9edVjJvDKhjc3612RL7QPKASQ4Nm3gC8BWJcevtFJm1KthgAbwY5NbC",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 44,
+      "wallet": "FohLVk9yZCsUPXzVaGcvNqMJMobQd9BG7GZZbvahcLcr",
+      "slot": 463619728,
+      "slot_offset": 181,
+      "block_time": 1793434990,
+      "sol_amount": null,
+      "quote_amount": 0.117437,
+      "signer_sol_spent": 0.175614,
+      "pct_supply_bought": 0.2509,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "gXcKXZNhvXD5ds9MmeAS5TxMz9XVrDdSjPS36yxDY8sdqyG31LrvoLCX7bkrf8FixvfS3meWgVQgBxQCSP3pFqy",
+      "funders": [
+        {
+          "funder": "AxiomRXZAq1Jgjj9pHmNqVP7Lhu67wLXZJZbaK87TTSk",
+          "sol": 0.0185,
+          "label": null,
+          "hop2": []
+        }
+      ],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 45,
+      "wallet": "HrJsWSSoa12sayQTdhSCd8psiLY27iMe56eCKwhXEiJo",
+      "slot": 463619728,
+      "slot_offset": 181,
+      "block_time": 1793434990,
+      "sol_amount": null,
+      "quote_amount": 0.114915,
+      "signer_sol_spent": 0.171913,
+      "pct_supply_bought": 0.2439,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "Nvu8txUi1BLBdTjtQvDgZtpmiRBfUqz1dMUcQG93JmKgsEToKdgXpfxLk1c5AgTkHrCGbFsr9HRC6oK68Rxkg1Y",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 46,
+      "wallet": "CrRC7YbnjiPMHzBDQeWxhi2DmaWHY6Kf6cLzDt78P4MV",
+      "slot": 463619728,
+      "slot_offset": 181,
+      "block_time": 1793434990,
+      "sol_amount": null,
+      "quote_amount": 0.108369,
+      "signer_sol_spent": 0.160748,
+      "pct_supply_bought": 0.2285,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "2TqXx8MeiDasnCe6fqcAZQLS48x9iSAghhuVuReuazPyYaFXUiLuySaVMJhka66q5iy1wDwv8QX1NuYEYNRnFVnd",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 47,
+      "wallet": "BkZSe6tgU48Z2KcYr9T62ZFpZ8gCrRjBi6tp5Re5bvui",
+      "slot": 463619732,
+      "slot_offset": 185,
+      "block_time": 1793434991,
+      "sol_amount": null,
+      "quote_amount": 0.001363,
+      "signer_sol_spent": 0.005084,
+      "pct_supply_bought": 0.0057,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "3q6vFK8JZ5v9j5s2nfWwEpFoSPxLsSwrNr52BR596ZPTEFYzSwx26gUQ1ttgwtzgDAcTpwJT94WkwYkGmpyDXY7T",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 48,
+      "wallet": "5oczCEvc4FYZdHu8XhBnkd9tEJwEnyXaw9A7BQFDVPs8",
+      "slot": 463619736,
+      "slot_offset": 189,
+      "block_time": 1793434991,
+      "sol_amount": null,
+      "quote_amount": 0.343674,
+      "signer_sol_spent": 0.502619,
+      "pct_supply_bought": 0.71,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "2BfmiZ2LCUPLoKKqVY1kjPUhvGLUAXZBWELYSBoFBzokK2LNVc24ZRSkTovi4bd2FBascrvj3VqitaknmwqRE4aZ",
+      "funders": [
+        {
+          "funder": "ARu4n5mFdZogZAravu7CcizaojWnS6oqka37gdLT5SZn",
+          "sol": 0.0419,
+          "label": null,
+          "hop2": []
+        }
+      ],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 49,
+      "wallet": "CqVgEfk7ZsKzVKoADfnF34UfHg76V426WaYKxu8VYEJs",
+      "slot": 463619752,
+      "slot_offset": 205,
+      "block_time": 1793434996,
+      "sol_amount": null,
+      "quote_amount": 0.02044,
+      "signer_sol_spent": 0.033078,
+      "pct_supply_bought": 0.0482,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "pJV4ywsN3PopeQ2d29aREAvpC51TyekPV4dhmLAMudfdh9n4e5VQZ2ipDmp9rDxqPmAAPyXnFa7k1245sz6cHSy",
+      "funders": [],
+      "wallet_sig_count": 250
+    },
+    {
+      "rank": 50,
+      "wallet": "GoDsB4R1aeYkZAojVKq974NSyWt8rvxw4J39BmmEQzN9",
+      "slot": 463619765,
+      "slot_offset": 218,
+      "block_time": 1793434999,
+      "sol_amount": null,
+      "quote_amount": 0.345332,
+      "signer_sol_spent": 0.516519,
+      "pct_supply_bought": 0.9023,
+      "is_creator": false,
+      "same_slot_as_create": false,
+      "signature": "2M9KcPqy9LSiGRyWvJEA4z2vWSV3Lg9WBjyCce1ziB81fZuVrioH5Gvxq3HHopoU5eLXt2cBS5ms98cVZKGfkb29",
+      "funders": [],
+      "wallet_sig_count": 250
+    }
+  ],
+  "data_warnings": [],
+  "coverage": {
+    "wallets_traced": 50,
+    "hub_wallets_not_expanded": 48,
+    "graph_db_counts": {
+      "wallets": 164,
+      "edges": 61,
+      "trace_runs": 169
+    },
+    "trace_warnings": [],
+    "rpc_provider": "public-rpc",
+    "rpc_stats": {
+      "calls": 282,
+      "cache_hits": 137,
+      "429s": 11,
+      "errors": 0
+    }
+  },
+  "timings": {
+    "early_buyers_s": 39.4,
+    "funding_traces_s": 100.7,
+    "holders_s": 0.8,
+    "clusters_s": 0.0,
+    "serial_liquidity_s": 0.4,
+    "total_s": 141.5
+  },
+  "generated_at": 1793436251,
+  "disclaimer": "Heuristic risk screen only. No trading performed."
+}
