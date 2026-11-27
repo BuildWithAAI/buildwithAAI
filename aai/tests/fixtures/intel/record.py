@@ -20,6 +20,15 @@ def trim(url, body):
         n = 60
         body = {"cik": body.get("cik"), "name": body.get("name"), "filings": {"recent": {k: v[:n] for k, v in r.items()}}}
         return body
+    if "api/xbrl/companyfacts" in url and isinstance(body, dict):   # keep only the tags the fundamentals adapter reads
+        from aai.intel.adapters.xbrl import BANK_TAGS, CONCEPTS, SHARES, SHARES_FALLBACK
+        keep = {c for cs in CONCEPTS.values() for c in cs} | {SHARES_FALLBACK, *BANK_TAGS}
+        def recent(c):
+            return {**c, "units": {u: [x for x in xs if str(x.get("end", "")) >= "2023-01-01"] for u, xs in c.get("units", {}).items()}}
+        f = body.get("facts") or {}
+        return {"cik": body.get("cik"), "entityName": body.get("entityName"),
+                "facts": {"us-gaap": {k: recent(v) for k, v in (f.get("us-gaap") or {}).items() if k in keep},
+                          "dei": {k: recent(v) for k, v in (f.get("dei") or {}).items() if k == SHARES}}}
     if "get_book_summary_by_currency" in url and isinstance(body, dict):
         return {**body, "result": body["result"][:60]}
     if "stablecoins.llama.fi" in url and isinstance(body, dict):
@@ -39,7 +48,10 @@ class Rec(Fetcher):
 if __name__ == "__main__":
     cfg = {"intel": {"watchlist": WATCH, "sec_contact": "zoora-aai-terminal@localhost"}}
     f = Rec()
+    only = set(sys.argv[1:])   # e.g. `record.py fundamentals` re-records just that feed
     for n, feed in registry().items():
+        if only and n not in only:
+            continue
         try:
             feed.fn(f, cfg, None); print("recorded", n)
         except Exception as e:

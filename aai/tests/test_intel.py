@@ -38,7 +38,7 @@ def run(name, icfg):
 def test_registry_has_every_feed_with_budgets():
     reg = registry()
     assert set(reg) == {"markets", "rates", "fred", "calendar", "deriv_blofin", "deriv_okx", "options_deribit", "fear_greed",
-                        "stablecoins", "cot", "filings"}
+                        "stablecoins", "cot", "filings", "sectors", "fundamentals", "watch_quotes"}
     for f in reg.values():
         assert f.interval > 0 and f.budget >= f.interval and f.source and f.url.startswith("https://")
     assert reg["deriv_okx"].interval == 60 and reg["calendar"].interval == 900 and reg["filings"].interval == 600
@@ -413,7 +413,7 @@ def loaded(app):
 def test_api_intel_empty_cache_is_honest(app):
     c = app.test_client()
     d = c.get("/api/intel").json
-    assert d["summary"] == {"live": 0, "stale": 0, "unavailable": 11}
+    assert d["summary"] == {"live": 0, "stale": 0, "unavailable": 14}
     assert all(v["payload"] is None and v["stale_reason"] == "not fetched yet" for v in d["feeds"].values())
     assert d["regime"]["label"] == "INSUFFICIENT DATA"
     r = c.post("/api/zoora", json={"text": "brief me"}).json
@@ -422,7 +422,7 @@ def test_api_intel_empty_cache_is_honest(app):
 
 def test_api_intel_loaded(loaded):
     d = loaded.get("/api/intel").json
-    assert d["summary"]["live"] == 11 and set(d["feeds"]) == set(registry())
+    assert d["summary"]["live"] == 14 and set(d["feeds"]) == set(registry())
     for v in d["feeds"].values():
         assert v["status"] == "live" and v["source"] and v["fetched_ct"].endswith("CT") and v["budget_sec"] > 0
     assert d["regime"]["rows"]
