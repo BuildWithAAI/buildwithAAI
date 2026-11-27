@@ -15,6 +15,100 @@ function el(tag, cls, text, attrs) {
 }
 function sv(tag, attrs) { const n = document.createElementNS(SVGNS, tag); for (const k in attrs || {}) n.setAttribute(k, attrs[k]); return n; }
 const isNum = (v) => typeof v === 'number' && isFinite(v);
+// Sparklines stretch with preserveAspectRatio=none, so an SVG <circle> inside them draws as an ellipse. Marks that must stay
+// round sit in an HTML overlay instead: spkWrap() gives the svg a position:relative box and spkDot() places a fixed-px dot or
+// ring at viewBox (x, y) by percentage, so it tracks any rendered size. aria-hidden, no text, pointer-events off (CSS).
+function spkWrap(svg, cls) { const w = el('span', 'spk-wrap' + (cls ? ' ' + cls : '')); w.append(svg); return w; }
+function spkDotPos(x, y, W, H) {
+  const c = (v) => Math.min(1, Math.max(0, v));
+  if (!isNum(x) || !isNum(y) || !isNum(W) || !isNum(H) || W <= 0 || H <= 0) return null;
+  return { left: (c(x / W) * 100).toFixed(2) + '%', top: (c(y / H) * 100).toFixed(2) + '%' };
+}
+function spkDot(x, y, W, H, cls, px) {
+  const d = el('i', 'spk-dot' + (cls ? ' ' + cls : ''), null, { 'aria-hidden': 'true' });
+  const pos = spkDotPos(Number(x), Number(y), W, H);
+  if (pos) { d.style.left = pos.left; d.style.top = pos.top; } else d.hidden = true;
+  if (isNum(px) && px > 0) d.style.setProperty('--d', px + 'px');
+  return d;
+}
+// Keyboard reading for sparklines. Hover-only charts were unreadable without a mouse: spkKeys() makes a row focusable as
+// role=slider. Arrow keys / Home / End / PageUp / PageDown step the points it already draws (no new data), the reading goes
+// into aria-valuetext (spoken by screen readers) and an optional visible readout, and o.mark(i) moves a cursor (-1 hides it).
+// Esc clears the cursor. A live re-render replaces the row while it has focus, so the stepped-to point id is kept in spkSel
+// and the new row takes focus back on the same point (or the newest one if that point left the window).
+const spkSel = new Map();
+const SPK_STEP = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -5, PageUp: 5 };
+function spkKeys(node, o) {
+  const n = o && isNum(o.n) ? Math.floor(o.n) : 0;
+  if (!node || n < 1 || typeof o.read !== 'function') return node;
+  const idle = String(o.idle || '');
+  const at = { tabindex: '0', role: 'slider', 'aria-orientation': 'horizontal', 'aria-valuemin': '1', 'aria-valuemax': String(n),
+    'aria-valuenow': String(n), 'aria-valuetext': idle };
+  if (o.label) at['aria-label'] = String(o.label);
+  for (const k in at) node.setAttribute(k, at[k]);
+  if (node.classList) node.classList.add('spk-kbd');
+  let cur = -1;
+  const ok = (i) => { const r = i >= 0 && i < n ? o.read(i) : null; return r && r.text ? r : null; };
+  const show = (i, dir) => {
+    i = Math.max(0, Math.min(n - 1, i));
+    let r = ok(i);
+    for (let j = i; !r && j >= 0 && j < n; j += dir || -1) { r = ok(j); if (r) i = j; }  // skip a point with no reading
+    if (!r) return cur;
+    cur = i;
+    node.setAttribute('aria-valuenow', String(i + 1));
+    node.setAttribute('aria-valuetext', String(r.text));
+    if (o.mark) o.mark(i);
+    if (o.out) { o.out.textContent = String(r.text); o.out.hidden = false; if (o.out.classList) o.out.classList.remove('dim'); }
+    spkSel.set(o.key, r.id);
+    return i;
+  };
+  const reset = () => {
+    cur = -1;
+    node.setAttribute('aria-valuenow', String(n)); node.setAttribute('aria-valuetext', idle);
+    if (o.mark) o.mark(-1);
+    if (o.out) {
+      if (o.outIdle === undefined) o.out.hidden = true;
+      else { o.out.textContent = String(o.outIdle); if (o.out.classList) o.out.classList.add('dim'); }
+    }
+  };
+  const find = (id) => { for (let i = n - 1; i >= 0; i--) { const r = ok(i); if (r && r.id === id) return i; } return n - 1; };
+  node.addEventListener('focus', () => show(spkSel.has(o.key) ? find(spkSel.get(o.key)) : n - 1, -1));
+  // Chrome fires blur while a live re-render is removing the row (still connected at that instant), so decide afterwards:
+  // a row still in the page lost focus to the user (forget the point); a removed one is being replaced (keep it).
+  node.addEventListener('blur', () => { reset(); setTimeout(() => { if (node.isConnected) spkSel.delete(o.key); }, 0); });
+  node.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { if (cur >= 0) reset(); return; }  // not swallowed: Esc still stops Zoora talking
+    const from = cur < 0 ? n - 1 : cur;
+    let to = null, dir = -1;
+    if (SPK_STEP[e.key]) { to = from + SPK_STEP[e.key]; dir = SPK_STEP[e.key] > 0 ? 1 : -1; }
+    else if (e.key === 'Home') { to = 0; dir = 1; }
+    else if (e.key === 'End') to = n - 1;
+    if (to === null) return;
+    e.preventDefault(); e.stopPropagation();
+    show(to, dir);
+  });
+  node.spkShow = show; node.spkReset = reset;  // for tests / programmatic stepping
+  if (spkSel.has(o.key) && typeof document !== 'undefined') {
+    const later = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : (f) => setTimeout(f, 0);
+    later(() => {
+      const a = document.activeElement;
+      if (node.isConnected && (!a || a === document.body)) node.focus({ preventScroll: true });
+      else if (node.isConnected && a !== node) spkSel.delete(o.key);  // focus moved on: forget the point
+    });
+  }
+  return node;
+}
+// Cursor for fixed-size sparklines (width/height = viewBox, default aspect, so an SVG circle stays round): returns a
+// mover (x, y) that shows the ring at viewBox coords, or hides it when called with a non-number. aria-hidden via the svg.
+function spkCur(svg, r) {
+  const c = sv('circle', { class: 'spk-cur', cx: 0, cy: 0, r: String(r || 2.6), visibility: 'hidden' });
+  svg.append(c);
+  return (x, y) => {
+    if (!isNum(Number(x)) || !isNum(Number(y)) || x === null || y === null) { c.setAttribute('visibility', 'hidden'); return; }
+    c.setAttribute('cx', String(x)); c.setAttribute('cy', String(y)); c.setAttribute('visibility', 'visible');
+  };
+}
 function money(v, d = 2) {
   if (!isNum(v)) return '—';
   const s = Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -354,7 +448,7 @@ function speak(text) {
 /* ------------------------------------------------------------ commands */
 const FOCUS = { risk: '#p-risk', positions: '#p-positions', ideas: '#p-ideas', memes: '#p-memes', security: '#p-security',
   longterm: '#p-longterm', pipelines: '#p-pipelines', alerts: '#alarm', fresh: '#p-fresh', audit: '#p-audit', economy: '#p-economy',
-  intel: '#intel', macro: '#p-macro', calendar: '#p-calendar', derivs: '#p-derivs', cot: '#p-cot', filings: '#p-filings', fxdesk: '#p-fxdesk' };
+  intel: '#intel', macro: '#p-macro', calendar: '#p-calendar', derivs: '#p-derivs', cot: '#p-cot', filings: '#p-filings', fxdesk: '#p-fxdesk', fundamentals: '#p-fund' };
 function focusPanel(f) {
   const n = FOCUS[f] && $(FOCUS[f]);
   if (!n) return;
@@ -378,7 +472,7 @@ async function ask(text, via) {
   showReply(d.reply, d.refused);
   if (d.focus) focusPanel(d.focus);
   if (d.intent === 'economy') pollEconomy();
-  if (['market_brief', 'calendar', 'funding', 'positioning', 'filings', 'rates'].includes(d.intent)) pollIntel();
+  if (['market_brief', 'calendar', 'funding', 'positioning', 'filings', 'rates', 'fx_desk', 'fundamentals'].includes(d.intent)) pollIntel();
   if (d.intent === 'ideas') {
     const m = text.toLowerCase().match(/\b(perps?|forex|fx|memes?|stocks?|billy)\b/);
     const map = { perp: 'perps', perps: 'perps', forex: 'forex', fx: 'forex', meme: 'solana_meme', memes: 'solana_meme', stock: 'stocks', stocks: 'stocks', billy: 'billy' };
@@ -589,9 +683,19 @@ function renderAlarm(ov) {
     if (!S.seen.has(a.id) && loud && (!S.firstAlerts || a.sev === 'critical' || a.chime)) fresh = fresh === 'critical' ? fresh : fresh === 'high' && a.sev === 'warn' ? fresh : a.sev;
     S.seen.add(a.id);
   });
+  // INFO alarms flagged chime (sector rotation, breadth flip, COT flip) get one soft chime per id, remembered in
+  // localStorage so a reload or a second tab does not chime the same session's alarm again
+  let soft = false;
+  try {
+    const done = JSON.parse(localStorage.getItem('zoora.infoChimed') || '[]');
+    const known = new Set(Array.isArray(done) ? done.map(String) : []);
+    alerts.forEach((a) => { if (a.sev === 'info' && a.chime && a.id && !known.has(String(a.id))) { known.add(String(a.id)); soft = true; } });
+    if (soft) localStorage.setItem('zoora.infoChimed', JSON.stringify([...known].slice(-60)));
+  } catch (_) { soft = false; }
   announceAlarms(alerts, S.firstAlerts);
   S.firstAlerts = false;
   if (fresh) chime(fresh);
+  else if (soft) chime('info');
 }
 
 const gaugeNodes = {};
@@ -688,7 +792,10 @@ function renderEquityCurve(c) {
   head.append(el('b', up ? 'pos' : 'neg', `${signed(c.change)} (${sgn((c.change_pct || 0) * 100, 2, '%')})`),
     el('small', 'dim', `lo ${money(c.lo)} · hi ${money(c.hi)} · max DD ${pct(c.max_dd || 0, 2)}`));
   const tip = el('div', 'eqc-tip dim', 'hover the curve for a CT reading');
-  const sp = spark(pts, 300, 34, up ? 'var(--green)' : 'var(--red)', { tip });
+  const sp = spark(pts, 300, 34, up ? 'var(--green)' : 'var(--red)', { tip, kbd: {
+    key: 'eq-' + S.eqDays, fmt: (pt) => `${fmtEqHover.format(new Date(pt[0] * 1000))} CT · ${money(pt[1])}`,
+    label: `Paper equity curve, ${S.eqDays}D. Arrow keys step the marks`,
+    idle: `${up ? 'up' : 'down'} ${money(Math.abs(c.change))}, max drawdown ${pct(c.max_dd || 0, 2)}` } });
   box.append(head, sp, tip);
   const t0 = fmtEqHover.format(new Date(pts[0][0] * 1000));
   box.title = `${c.n_marks} marks since ${t0} CT (+ live equity) · paper ledger only · ${S.eqDays}D window`;
@@ -808,12 +915,16 @@ function renderPipes(ov) {
     if (sc) tip.push(`scheduler: ${sc.ticks} ticks, ${sc.errors} errors since HUD start${isNum(sc.interval_sec) ? ` · every ${Math.round(sc.interval_sec / 60)} min` : ''}`);
     if (sc && typeof p.error === 'string' && p.error) tip.push('last error: ' + p.error);
     // HUD layout check row: per-layout grid-diff verdicts vs the blessed baselines (facts from aai.shotcheck, read-only).
+    const lcNames = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x).slice(0, 4) : []);
     const lc = p.id === 'layout_check' && Array.isArray(p.layouts) ? p.layouts.filter((l) => l && typeof l.label === 'string').slice(0, 4) : null;
     if (lc) lc.forEach((l) => tip.push(`${l.label}: ${l.verdict || 'not checked'}` +
       (isNum(l.changed_frac) ? ` · ${Math.round(l.changed_frac * 100)}% of grid cells moved` : '') +
       (isNum(l.new_blank) && l.new_blank ? ` · ${l.new_blank} cells went blank` : '') +
       (Array.isArray(l.history) && l.history.length > 1 ? ` · last ${l.history.length}: ${l.history.map((v) => (v === 'PASS' ? '●' : '✕')).join('')}` : '') +
-      (l.reason && l.verdict !== 'PASS' ? ` · ${l.reason}` : '')));
+      (l.reason && l.verdict !== 'PASS' ? ` · ${l.reason}` : '') +
+      (lcNames(l.panels_blank).length ? ` · blank panel: ${lcNames(l.panels_blank).join(', ')}` : '') +
+      (lcNames(l.panels_moved).length ? ` · panels moved: ${lcNames(l.panels_moved).join(', ')}` : '') +
+      (lcNames(l.regions_stale).length ? ` · baseline region(s) on empty page, re-measure: ${lcNames(l.regions_stale).join(', ')}` : '')));
     const li = el('li', 'pipe ' + stClass(p.state), null, { title: tip.join('\n') });
     li.append(el('i'), el('span', 'nm', p.name), el('span', 'st', p.state),
       el('span', 'dt', (p.detail || '') + (isNum(p.age_sec) ? ` · ${ago(p.age_sec)} ago` : '')));
@@ -827,6 +938,13 @@ function renderPipes(ov) {
       const f = el('span', 'pf', null, { 'aria-label': 'layout check facts' });
       lc.forEach((l) => f.append(el('span', 'pf-c ' + (l.state === 'OK' ? 'ok' : l.state === 'FAIL' ? 'bad' : 'warn'),
         `${l.label} ${l.verdict || '—'}${isNum(l.changed_frac) ? ' · ' + Math.round(l.changed_frac * 100) + '%' : ''}`)));
+      // name the panel on a failing layout (blank first, else the panel that moved most), so the chip says where to look
+      lc.filter((l) => l.state === 'FAIL').forEach((l) => {
+        const blank = lcNames(l.panels_blank), moved = lcNames(l.panels_moved);
+        if (blank.length || moved.length) f.append(el('span', 'pf-c bad', `${l.label} ✕ ${blank.length ? blank[0] + ' blank' : moved[0]}`));
+      });
+      // a named region that sits on empty page in the blessed baseline is blind to a blank panel: say which to re-measure
+      lc.forEach((l) => { const rs = lcNames(l.regions_stale); if (rs.length) f.append(el('span', 'pf-c warn', `${l.label} ⚠ re-measure ${rs[0]}${rs.length > 1 ? ' +' + (rs.length - 1) : ''}`)); });
       li.append(f);
     }
     if (ck || req.length || opt.length || up || ga) {
@@ -913,6 +1031,164 @@ function renderPipes(ov) {
     }
   }
 }
+// Sector breadth strip (11 SPDR ETFs) for the STOCKS tab: counts, EW vs SPY, a heat row of daily moves, leaders/laggards.
+// Read-only and descriptive ("not a signal"); every string goes in via textContent (el()).
+const pctS = (x, nd = 1) => (isNum(x) ? ((x >= 0 ? '+' : '') + (x * 100).toFixed(nd) + '%') : '—');
+function renderSectorBreadth(sec) {
+  if (!sec || typeof sec !== 'object') return null;
+  const b = sec.breadth && typeof sec.breadth === 'object' ? sec.breadth : null;
+  const st = String(sec.state || 'MISSING').toUpperCase();
+  const li = el('li', 'sector-breadth', null, {
+    title: [sec.source || 'Yahoo via intel sectors', sec.disclaimer || '', sec.detail || ''].filter(Boolean).join(' · ')
+  });
+  const hd = el('div', 'sb-hd');
+  hd.append(el('span', 'sb-lab', 'SECTOR BREADTH'), el('span', 'sq-st ' + st.toLowerCase(), st));
+  if (b) hd.append(el('span', 'sb-label', String(b.label || '')));
+  hd.append(el('span', 'sq-age', isNum(sec.age_sec) ? ago(sec.age_sec) + ' ago' : 'not fetched'));
+  li.append(hd);
+  if (!b || !b.n_with_chg) {
+    li.append(el('div', 'sb-empty', 'No sector ETF quotes cached yet' + (sec.detail ? ' — ' + String(sec.detail) : '') + '. Nothing invented.'));
+    return li;
+  }
+  const n = b.n_with_chg;
+  const stats = el('div', 'sb-stats');
+  const bar = el('div', 'sb-bar', null, { role: 'img', 'aria-label': `${b.up} sectors up, ${b.down} down, ${b.flat} flat of ${n}` });
+  [['up', b.up], ['flat', b.flat], ['down', b.down]].forEach(([k, v]) => {
+    if (v > 0) { const seg = el('i', 'sb-seg ' + k); seg.style.flexGrow = String(v); bar.append(seg); }
+  });
+  stats.append(el('b', 'sb-count', `${b.up}/${n} ▲`), bar,
+    el('span', 'sb-ew', 'EW ' + pctS(b.ew_chg, 2) + (isNum(b.spy_chg) ? ' · SPY ' + pctS(b.spy_chg, 2) : '')),
+    el('span', 'sb-20', `${b.above_20d}/${b.n_with_20d} > 20D`, { title: 'Sectors above their close 20 sessions ago' }));
+  li.append(stats);
+  const grid = el('div', 'sb-grid');
+  const cells = (b.cells || []).slice().sort((a, c) => (isNum(c.chg) ? c.chg : -9) - (isNum(a.chg) ? a.chg : -9));
+  cells.slice(0, 11).forEach((c) => {
+    const ch = isNum(c.chg) ? c.chg : null;
+    const k = ch == null ? 'na' : ch > 0.0005 ? 'pos' : ch < -0.0005 ? 'neg' : 'flat';
+    const cell = el('div', 'sb-c ' + k, null, {
+      title: [`${c.symbol} · ${c.name || ''}`, 'today ' + pctS(c.chg, 2), '20D ' + pctS(c.chg_20d, 1),
+        isNum(c.rel_spy) ? 'vs SPY ' + pctS(c.rel_spy, 2) : '', isNum(c.last) ? 'last ' + px(c.last) : ''].filter(Boolean).join('\n')
+    });
+    // intensity: 3% move = full colour
+    if (ch != null) cell.style.setProperty('--a', String(Math.min(1, Math.abs(ch) / 0.03).toFixed(2)));
+    cell.append(el('b', '', String(c.symbol || '?')), el('span', '', pctS(c.chg, 1)));
+    grid.append(cell);
+  });
+  li.append(grid);
+  // One visible readout for both rows, shown only while a row is focused (screen readers get the slider's valuetext).
+  const read = el('div', 'sb-read', null, { 'aria-hidden': 'true' }); read.hidden = true;
+  const ad = renderBreadthAD(b.history, read);
+  if (ad) li.append(ad);
+  const ab = renderBreadthAbove(b.above_hist, read);
+  if (ab) li.append(ab);
+  if (ad || ab) li.append(read);
+  const foot = el('div', 'sb-foot');
+  if ((b.leaders || []).length) foot.append(el('span', 'pos', 'LEAD ' + b.leaders.slice(0, 3).join(' ')));
+  if ((b.laggards || []).length) foot.append(el('span', 'neg', 'LAG ' + b.laggards.slice(0, 3).join(' ')));
+  foot.append(el('span', 'dim', 'not a signal'));
+  li.append(foot);
+  return li;
+}
+// 20-session advance/decline row: per-session net bars (advancers minus decliners of 11) under the cumulative A/D line.
+// Rebuilt server-side from the daily closes the sectors feed already carries; a session with <6 sectors is skipped.
+function renderBreadthAD(h, out) {
+  const pts = h && Array.isArray(h.points) ? h.points.filter((p) => p && isNum(p.net) && isNum(p.ad) && isNum(p.n)) : [];
+  if (pts.length < 2) return null;
+  const W = 220, H = 34, mid = H / 2, bw = W / pts.length;
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'spk sb-ad-spk', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+  svg.append(sv('line', { x1: 0, x2: W, y1: mid, y2: mid, class: 'sb-ad-zero' }));
+  const bars = [], tips = [];
+  pts.forEach((p, i) => {
+    const hgt = Math.max(1, Math.abs(p.net) / Math.max(1, p.n) * (mid - 1));
+    const r = sv('rect', { x: (i * bw + 1).toFixed(1), width: Math.max(1, bw - 2).toFixed(1), y: (p.net >= 0 ? mid - hgt : mid).toFixed(1),
+      height: hgt.toFixed(1), class: p.net > 0 ? 'up' : p.net < 0 ? 'down' : 'flat' });
+    const t = sv('title'); t.textContent = `${p.day}: ${p.up} up · ${p.down} down · ${p.flat} flat of ${p.n} · A/D ${p.ad >= 0 ? '+' : ''}${p.ad}` + (i === pts.length - 1 ? (h.last_live ? ' (today, live while open)' : ' (closed)') : '');
+    r.append(t); svg.append(r); bars.push(r); tips.push(t.textContent);
+  });
+  const lo = Math.min(0, ...pts.map((p) => p.ad)), hi = Math.max(0, ...pts.map((p) => p.ad)), span = Math.max(1, hi - lo);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${(i * bw + bw / 2).toFixed(1)},${(H - 2 - (p.ad - lo) / span * (H - 4)).toFixed(1)}`).join('');
+  svg.append(sv('path', { d, class: 'sb-ad-line' }));
+  const last = pts[pts.length - 1].ad, sk = h.streak || {};
+  const row = el('div', 'sb-ad', null, { role: 'img', 'aria-label': `Advance-decline line over ${pts.length} sessions: ${last >= 0 ? 'up' : 'down'} ${Math.abs(last)} net` });
+  row.append(el('span', 'sb-ad-lab', `${pts.length}S A/D`), svg,
+    el('b', last > 0 ? 'pos' : last < 0 ? 'neg' : 'dim0', (last > 0 ? '+' : '') + last, { title: 'Cumulative advancers minus decliners over the window' }));
+  if (sk.side && isNum(sk.n) && sk.n > 0) {
+    row.append(el('span', 'sb-ad-streak ' + (sk.side === 'advancers' ? 'pos' : 'neg'), (sk.side === 'advancers' ? '▲' : '▼') + sk.n,
+      { title: `${sk.side === 'advancers' ? 'Advancers' : 'Decliners'} have led ${sk.n} session${sk.n === 1 ? '' : 's'} in a row` }));
+  }
+  // Keyboard: arrows step the session bars; the stepped bar gets a cyan outline, the reading is the same text as its hover.
+  const barCls = bars.map((r) => r.getAttribute ? r.getAttribute('class') : r.attrs['class']);
+  return spkKeys(row, {
+    key: 'sb-ad', n: pts.length, out, idle: row.getAttribute ? row.getAttribute('aria-label') : '',
+    label: `Advance-decline, ${pts.length} sessions. Arrow keys step the sessions`,
+    read: (i) => ({ id: pts[i].day, text: `A/D ${tips[i]}` }),
+    mark: (i) => bars.forEach((r, j) => r.setAttribute('class', barCls[j] + (j === i ? ' kbd' : ''))),
+  });
+}
+// "% of sectors above their close 20 sessions earlier", per session (server: aai/intel/breadth.above_history, from each
+// ETF's own daily closes). Dashed line at 50%; invisible per-session columns carry the hover. SVG + textContent only.
+function renderBreadthAbove(h, out) {
+  const pts = h && Array.isArray(h.points) ? h.points.filter((p) => p && isNum(p.pct) && isNum(p.n) && isNum(p.above) && p.pct >= 0 && p.pct <= 1) : [];
+  if (pts.length < 2) return null;
+  const W = 220, H = 34, bw = W / pts.length, y = (v) => (H - 2 - v * (H - 4)).toFixed(1);
+  const svg = sv('svg', { viewBox: `0 0 ${W} ${H}`, class: 'spk sb-ab-spk', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+  const box = spkWrap(svg, 'sb-ab-wrap');  // cross rings go in this HTML overlay so they stay round
+  svg.append(sv('line', { x1: 0, x2: W, y1: y(0.5), y2: y(0.5), class: 'sb-ad-zero' }));
+  const xs = (i) => (i * bw + bw / 2).toFixed(1);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${xs(i)},${y(p.pct)}`).join('');
+  svg.append(sv('path', { d: `${line}L${xs(pts.length - 1)},${H}L${xs(0)},${H}Z`, class: 'sb-ab-area' }), sv('path', { d: line, class: 'sb-ab-line' }));
+  const tips = [];
+  pts.forEach((p, i) => {
+    const r = sv('rect', { x: (i * bw).toFixed(1), width: bw.toFixed(1), y: 0, height: H, class: 'sb-ab-hit' });
+    const t = sv('title');
+    t.textContent = `${p.day}: ${p.above} of ${p.n} above their close 20 sessions earlier (${Math.round(p.pct * 100)}%)` + (i === pts.length - 1 ? (h.last_live ? ' (today, live while open)' : ' (closed)') : '');
+    r.append(t); svg.append(r); tips.push(t.textContent);
+  });
+  const last = pts[pts.length - 1], c5 = isNum(h.change_5s) ? h.change_5s : null;
+  const k = last.pct > 0.5 ? 'pos' : last.pct < 0.5 ? 'neg' : 'dim0';
+  const row = el('div', 'sb-ad sb-ab', null, { role: 'img', 'aria-label': `Share of sectors above their 20-session level over ${pts.length} sessions: now ${Math.round(last.pct * 100)} percent` });
+  row.append(el('span', 'sb-ad-lab', `${pts.length}S >20D`), box,
+    el('b', k, `${Math.round(last.pct * 100)}%`, { title: `${last.above} of ${last.n} sectors above their close 20 sessions earlier` }));
+  if (c5 !== null) {
+    row.append(el('span', 'sb-ad-streak ' + (c5 > 0 ? 'pos' : c5 < 0 ? 'neg' : 'dim0'), (c5 > 0 ? '▲' : c5 < 0 ? '▼' : '=') + Math.abs(Math.round(c5 * 100)) + ' 5S',
+      { title: `Change in the share above 20D versus 5 sessions earlier (${Math.round((last.pct - c5) * 100)}% then)` }));
+  }
+  // Fresh 50% cross (server: above_history.cross, 5+ sessions on the other side first; same facts raise the INFO alarm).
+  const cr = h.cross;
+  if (cr && (cr.to === 'above_half' || cr.to === 'below_half') && cr.day === last.day && isNum(cr.prev_sessions)) {
+    const upX = cr.to === 'above_half';
+    box.append(spkDot(xs(pts.length - 1), y(last.pct), W, H, 'sb-ab-cross ' + (upX ? 'pos' : 'neg'), 9));
+    row.append(el('span', 'sb-ab-x ' + (upX ? 'pos' : 'neg'), (upX ? '⤒' : '⤓') + '50%', {
+      title: `Crossed ${upX ? 'above' : 'below'} 50% today after ${cr.prev_whole_window ? 'at least ' : ''}${cr.prev_sessions} sessions ${upX ? 'below' : 'above'} half (${cr.live === false ? 'held at the close' : 'live while the session is open, can still undo before the close'}; descriptive, not a signal)`
+    }));
+  } else {
+    // Follow-up on the newest earlier cross (server: above_history.recent_cross, judged on closed sessions only).
+    const rc = h.recent_cross;
+    const ri = rc && (rc.to === 'above_half' || rc.to === 'below_half') ? pts.findIndex((p) => p.day === rc.day) : -1;
+    if (ri >= 0 && (rc.status === 'held' || rc.status === 'unwound') && isNum(rc.held_sessions)) {
+      const upR = rc.to === 'above_half', held = rc.status === 'held';
+      box.append(spkDot(xs(ri), y(pts[ri].pct), W, H, 'sb-ab-cross ' + (held ? (upR ? 'pos' : 'neg') : 'amb'), 8));
+      const nClosed = isNum(rc.closed_sessions) ? rc.closed_sessions : rc.held_sessions;
+      row.append(el('span', 'sb-ab-x ' + (held ? (upR ? 'pos' : 'neg') : 'amb'),
+        (upR ? '⤒' : '⤓') + (held ? `HELD ${nClosed}` : 'UNWOUND'), {
+          title: held
+            ? `The ${rc.day} cross ${upR ? 'above' : 'below'} 50% has held at ${nClosed} close${nClosed === 1 ? '' : 's'} (after ${rc.prev_whole_window ? 'at least ' : ''}${rc.prev_sessions} sessions on the other side; descriptive, not a signal)`
+            : `The ${rc.day} cross ${upR ? 'above' : 'below'} 50% lasted ${rc.held_sessions} session${rc.held_sessions === 1 ? '' : 's'} and unwound on ${rc.unwound_day || '?'}${rc.unwind_live ? ' (today, live: may re-cross by the close)' : ''} (descriptive, not a signal)`
+        }));
+    }
+  }
+  // Keyboard: arrows step the sessions; a round cyan cursor (HTML overlay, stays round) marks the point being read.
+  const cur = spkDot(0, 0, W, H, 'sb-ab-kbd', 7); cur.hidden = true; box.append(cur);
+  return spkKeys(row, {
+    key: 'sb-ab', n: pts.length, out, idle: row.getAttribute ? row.getAttribute('aria-label') : '',
+    label: `Share of sectors above 20D, ${pts.length} sessions. Arrow keys step the sessions`,
+    read: (i) => ({ id: pts[i].day, text: `>20D ${tips[i]}` }),
+    mark: (i) => {
+      const pos = i >= 0 ? spkDotPos(Number(xs(i)), Number(y(pts[i].pct)), W, H) : null;
+      if (pos) { cur.style.left = pos.left; cur.style.top = pos.top; cur.hidden = false; } else cur.hidden = true;
+    },
+  });
+}
 const TABS = [['all', 'ALL'], ['perps', 'PERPS'], ['forex', 'FOREX'], ['solana_meme', 'MEMES'], ['billy', 'BILLY'], ['stocks', 'STOCKS']];
 function renderIdeas(ov) {
   const ideas = ov.ideas || [];
@@ -924,6 +1200,7 @@ function renderIdeas(ov) {
     tabs.append(b);
   });
   const ul = $('#ideas'); ul.replaceChildren();
+  ul.classList.toggle('stocks-desk', S.ideaTab === 'stocks');  // taller list: quotes + breadth strip (A/D + >20D rows) fit without scrolling
   const list = S.ideaTab === 'all' ? ideas : ideas.filter((i) => i.sector === S.ideaTab);
   // Stocks desk: show read-only Yahoo equity quotes (SPY/QQQ/IWM) above the empty-ideas note. Never invent ideas.
   if (S.ideaTab === 'stocks') {
@@ -951,6 +1228,8 @@ function renderIdeas(ov) {
       strip.append(row);
       ul.append(strip);
     }
+    const sb = renderSectorBreadth(sq.sectors);
+    if (sb) ul.append(sb);
   }
   if (!list.length) {
     const empty = S.ideaTab === 'stocks'
@@ -1002,6 +1281,145 @@ function renderMemes(ov) {
     li.append(ring, mid, right); li.title = s.note || '';
     ul.append(li);
   });
+  renderSmrDesk(ov);
+}
+// T10 meme scanner desk: solana-meme-risk's own scanner book (data/paper.db, read-only on the server). Shows the latest
+// risk-scored mints with the DEX liquidity / market cap the scanner saw and the holder concentration the score found
+// (creation-slot bundle % and largest shared-funder cluster % of supply). Stale is shown with its real age, never hidden.
+const usdK = (v) => !isNum(v) ? '—' : v >= 1e6 ? '$' + (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'M' : v >= 1e3 ? '$' + Math.round(v / 1e3) + 'K' : '$' + Math.round(v);
+const pc1 = (v) => isNum(v) ? (v >= 10 ? Math.round(v) : v.toFixed(1)) + '%' : '—';
+const ctStamp = (ts) => isNum(ts) ? new Date(ts * 1000).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' CT' : '—';
+function renderSmrDesk(ov) {
+  const box = $('#smrDesk'); if (!box) return;
+  box.replaceChildren();
+  const d = (ov.ext && ov.ext.smr_scanner) || {};
+  const st = String(d.status || 'missing');
+  const head = el('div', 'sd-head');
+  head.append(el('span', 'sd-t', 'SCANNER DESK'));
+  if (st === 'missing' || st === 'error') {
+    head.append(el('span', 'fb amb', st === 'error' ? 'UNREADABLE' : 'NO SCANNER BOOK'));
+    box.append(head, el('p', 'sd-note', (d.detail || 'solana-meme-risk scanner output not found') + '. Read-only; nothing is scored from here.'));
+    return;
+  }
+  const c = d.cycle || {};
+  head.append(el('span', 'fb ' + (st === 'stale' ? 'amb' : 'pos'), st === 'stale' ? `STALE · ${ago(d.age_sec)}` : `LIVE · ${ago(d.age_sec)} ago`));
+  // T10b: first cycle after a gap > 1 h (server sources.scanner_resume), shown for 24 h while the scanner is live again.
+  const rs = d.resumed;
+  if (st === 'ok' && rs && isNum(rs.at) && isNum(ov.now) && ov.now - rs.at <= 86400) {
+    head.append(el('span', 'fb pos sd-res', `RESUMED · ${ago(ov.now - rs.at)} ago`,
+      { title: `Scanner resumed ${ctStamp(rs.at)} (cycle ${rs.cycle_id}) after a ${ago(rs.gap_sec)} gap; last cycle before it ${ctStamp(rs.prev_at)}. ${rs.cycles_since} cycle(s) since. Read-only.` }));
+  }
+  head.title = `Last scanner cycle ${ctStamp(d.ts)}` + (isNum(d.n_cycles) ? ` · ${d.n_cycles} cycles logged` : '') + ' · read-only from solana-meme-risk data/paper.db';
+  box.append(head);
+  const fun = [];
+  if (isNum(c.candidates)) fun.push(`${c.candidates} seen`);
+  if (isNum(c.prefilter_pass)) fun.push(`${c.prefilter_pass} past prefilter`);
+  const dec = Object.entries(c.risk_decisions || {}).map(([k, v]) => `${v} ${k}`).join(', ');
+  if (dec) fun.push(`risk: ${dec}`);
+  if (isNum(c.entries)) fun.push(`${c.entries} paper entr${c.entries === 1 ? 'y' : 'ies'}`);
+  box.append(el('p', 'sd-note', `Last cycle ${ctStamp(d.ts)}` + (fun.length ? ' · ' + fun.join(' · ') : '') + (st === 'stale' ? ' · scanner not running, figures are from then' : '')));
+  const rows = (d.rows || []).slice(0, 4);
+  if (!rows.length) { box.append(el('p', 'sd-note', 'No mints risk-scored by the scanner yet.')); return; }
+  const t = el('table', 'sd-tbl');
+  const hr = el('tr');
+  [['Token', ''], ['Risk', 'Risk score (higher = riskier) and decision'], ['Liq', 'DEX liquidity the scanner saw (hover: market cap)'],
+   ['Liq/MC', 'Liquidity as % of market cap; thin pools make exits fail'], ['Bundle', '% of supply bought by non-creator wallets in the creation slot'],
+   ['Cluster', 'Largest shared-funder wallet cluster, % of supply']].forEach(([h, tip]) => hr.append(el('th', '', h, tip ? { title: tip } : null)));
+  const th = el('thead'); th.append(hr); t.append(th);
+  const tb = el('tbody');
+  rows.forEach((r) => {
+    const tr = el('tr');
+    const dcs = String(r.decision || r.status || '').toUpperCase();
+    const cls = /SKIP|AVOID|REJECT/.test(dcs) ? 'red' : /REDUCED|CAUTION|WATCH|TIMEOUT/.test(dcs) ? 'amb' : /NORMAL|OK/.test(dcs) ? 'grn' : '';
+    const tok = el('td', 'sd-tok');
+    tok.append(el('span', 'sd-sym', r.symbol || (r.mint ? r.mint.slice(0, 4) + '…' + r.mint.slice(-4) : '?')));
+    tok.title = `${r.mint || ''}\nscored ${ctStamp(r.scored_at)}` + (r.reason ? `\n${r.reason}` : '') + (r.n_flags ? `\n${r.n_flags} hard flag(s)` : '');
+    const rk = el('td', 'sd-risk ' + cls);
+    rk.append(el('b', '', isNum(r.score) ? Math.round(r.score) : '—'), el('span', 'sd-dec', ' ' + (dcs || '—')));
+    const lq = el('td', 'num', usdK(r.liq_usd), { title: `mkt cap ${usdK(r.mcap_usd)}` + (isNum(r.age_h) ? ` · age ${r.age_h < 48 ? r.age_h.toFixed(1) + 'h' : Math.round(r.age_h / 24) + 'd'}` : '') + (r.market_at ? ` · seen ${ctStamp(r.market_at)}` : '') });
+    const lm = el('td', 'num' + (isNum(r.liq_mcap_pct) && r.liq_mcap_pct < 5 ? ' amb' : ''), pc1(r.liq_mcap_pct));
+    const bu = el('td', 'num' + (isNum(r.bundle_pct) && r.bundle_pct >= 20 ? ' red' : ''), pc1(r.bundle_pct), isNum(r.bundle_wallets) ? { title: `${r.bundle_wallets} wallet(s)` } : null);
+    const cl = el('td', 'num' + (isNum(r.cluster_pct) && r.cluster_pct >= 10 ? ' red' : ''), pc1(r.cluster_pct));
+    tr.append(tok, rk, lq, lm, bu, cl); tb.append(tr);
+  });
+  t.append(tb); box.append(t);
+}
+// T8b aai-forex paper books (server sources.forex_book, read-only from aai-forex state/paper/*.json): equity, drawdown from
+// the book's own peak, today's change from its own day-start mark, the newest bar it processed, and each open position /
+// resting order with entry, stop and target. A book whose last bar is over 4 days old is not being run (amber, real age).
+const FXB_STALE = 4 * 86400;
+const fxPx = (pair, v) => isNum(v) ? v.toFixed(String(pair || '').includes('JPY') ? 3 : String(pair || '').startsWith('XAU') ? 2 : 5) : '—';
+// T8c closed-trade ledger cell: count · win rate · sum R, hover = net P&L, avg R, last exit and the newest trades.
+function fxLedgerCell(L) {
+  if (!L) return el('td', 'n dim', '—');
+  if (L.status === 'error') return el('td', 'n neg', 'unreadable', { title: 'trades.jsonl could not be read' });
+  if (!L.closed) return el('td', 'n dim', '0', { title: L.status === 'none' ? 'No trades.jsonl ledger for this book yet' : 'Ledger has no complete closed trades' + (L.bad ? ` (${L.bad} unreadable line(s))` : '') });
+  const r = isNum(L.sum_r) ? L.sum_r : 0;
+  const td = el('td', 'n ' + (r > 0 ? 'pos' : r < 0 ? 'neg' : 'dim'), `${L.closed} · ${isNum(L.win_rate) ? Math.round(L.win_rate) + '%' : '—'} · ${r >= 0 ? '+' : ''}${r.toFixed(1)}R`);
+  td.title = [`${L.closed} closed, ${L.wins} won (net P&L > 0)`, isNum(L.net_pnl) ? `net ${signed(L.net_pnl)}` : '', isNum(L.avg_r) ? `avg ${L.avg_r >= 0 ? '+' : ''}${L.avg_r.toFixed(2)}R` : '',
+    isNum(L.last_exit) ? `last exit ${ctStamp(L.last_exit)}` : '', L.partial ? 'newest ~2 MB of the ledger only' : '', L.bad ? `${L.bad} unreadable line(s) skipped` : ''].filter(Boolean).join(' · ') +
+    (Array.isArray(L.recent) && L.recent.length ? '\n' + L.recent.map((t) => `${t.pair} ${t.side || '?'} ${t.exit_kind || ''} ${isNum(t.r) ? (t.r >= 0 ? '+' : '') + t.r.toFixed(2) + 'R' : ''} ${isNum(t.exit_ts) ? ctStamp(t.exit_ts) : ''}`.replace(/ +/g, ' ').trim()).join('\n') : '') +
+    '\nsimulated, read-only';
+  return td;
+}
+function renderFxBooks(ov) {
+  const box = $('#fxBooks'); if (!box) return;
+  box.replaceChildren();
+  const f = (ov.ext && ov.ext.forex) || {}, books = Array.isArray(f.paper) ? f.paper : [];
+  const head = el('div', 'fxb-head');
+  head.append(el('span', 'fxb-t', 'PAPER BOOKS · AAI-FOREX'));
+  if (!books.length) {
+    head.append(el('span', 'fb amb', f.status === 'missing' ? 'NO FOREX AGENT DATA' : 'NO BOOKS'));
+    box.append(head, el('p', 'fxb-note', (f.detail || 'aai-forex has no state/paper books on this computer') + '. Read-only; Zoora never trades these books.'));
+    return;
+  }
+  const now = isNum(ov.now) ? ov.now : Date.now() / 1000;
+  const nOpen = books.reduce((a, b) => a + (b.open || 0), 0), nPend = books.reduce((a, b) => a + (b.pending || 0), 0);
+  const newest = Math.max(...books.map((b) => (isNum(b.last_bar) ? b.last_bar : 0)));
+  const stale = !newest || now - newest > FXB_STALE;
+  head.append(el('span', 'fb ' + (nOpen ? 'pos' : 'dim'), nOpen ? `${nOpen} OPEN` : 'ALL FLAT'));
+  if (nPend) head.append(el('span', 'fb amb', `${nPend} RESTING`));
+  const nClosed = books.reduce((a, b) => a + ((b.ledger && b.ledger.closed) || 0), 0);
+  const sumR = books.reduce((a, b) => a + ((b.ledger && isNum(b.ledger.sum_r)) ? b.ledger.sum_r : 0), 0);
+  head.append(el('span', 'fb ' + (!nClosed ? 'dim' : sumR > 0 ? 'pos' : sumR < 0 ? 'neg' : 'dim'),
+    nClosed ? `${nClosed} CLOSED · ${sumR >= 0 ? '+' : ''}${sumR.toFixed(1)}R` : 'NO CLOSED TRADES',
+    { title: nClosed ? 'Closed paper trades across all books, from each book\'s own trades.jsonl ledger' : 'No book has a closed trade in its trades.jsonl ledger yet (nothing backfilled)' }));
+  head.append(el('span', 'fb ' + (stale ? 'amb' : 'pos'), newest ? (stale ? `NOT RUNNING · last bar ${ago(now - newest)} ago` : `LAST BAR ${ago(now - newest)} ago`) : 'NO BARS'));
+  head.title = `aai-forex ${f.mode || 'paper'} books, read-only from state/paper/*.json` + (f.live_trading ? ' · report says live_trading (Zoora still never trades it)' : '') +
+    (f.kill_switch ? ' · aai-forex KILL_SWITCH present' : '') + (isNum(f.age_sec) ? ` · scan report ${ago(f.age_sec)} old` : '');
+  box.append(head);
+  const t = el('table', 'tbl fxb');
+  const hr = el('tr');
+  [['Book', ''], ['Equity', 'Paper equity (account ccy) from the book file'], ['DD', 'Drawdown from the book\'s own peak equity'],
+    ['Day', 'Change since the book\'s own day-start mark (its risk.day, UTC)'], ['Positions', 'Open positions / resting orders'],
+    ['Closed', 'Closed paper trades in the book\'s own ledger (state/paper/<book>/trades.jsonl): count · win rate (net P&L > 0) · sum of R. No backfill'],
+    ['Last bar', 'Newest bar the book has processed, any pair (CT)']].forEach(([h, tip], i) =>
+    hr.append(el('th', (i && i < 4) || i === 5 ? 'n' : i === 6 ? 'hide-sm' : '', h, tip ? { title: tip } : null)));
+  const th = el('thead'); th.append(hr); t.append(th);
+  const tb = el('tbody');
+  books.forEach((b) => {
+    const tr = el('tr', b.error ? 'fxb-err' : '');
+    const nm = el('td', 'fxb-n', String(b.book || '?').replace(/_/g, ' ').toUpperCase());
+    nm.title = `${b.book}.json` + (isNum(b.saved_at) ? ` · file saved ${ctStamp(b.saved_at)}` : '') + (isNum(b.cash) ? ` · cash ${money(b.cash)}` : '') +
+      (isNum(b.peak) ? ` · peak ${money(b.peak)}` : '') + (b.day ? ` · day ${b.day}` : '') + (isNum(b.n_pairs) ? ` · ${b.n_pairs} pairs tracked` : '');
+    const dd = el('td', 'n' + (isNum(b.dd_pct) && b.dd_pct >= 5 ? ' neg' : isNum(b.dd_pct) && b.dd_pct > 0 ? ' amb' : ' dim'), isNum(b.dd_pct) ? b.dd_pct.toFixed(2) + '%' : '—');
+    const dy = el('td', 'n ' + (isNum(b.day_chg) && b.day_chg > 0 ? 'pos' : isNum(b.day_chg) && b.day_chg < 0 ? 'neg' : 'dim'), isNum(b.day_chg) ? signed(b.day_chg) : '—');
+    const ps = b.error ? 'unreadable' : (b.open || b.pending) ? [b.open ? `${b.open} open` : '', b.pending ? `${b.pending} resting` : ''].filter(Boolean).join(' · ') : 'flat';
+    const lb = el('td', 'hide-sm' + (isNum(b.last_bar) && now - b.last_bar > FXB_STALE ? ' amb' : ' dim'), isNum(b.last_bar) ? ctStamp(b.last_bar) : '—');
+    tr.append(nm, el('td', 'n', money(b.equity, 0)), dd, dy, el('td', b.open ? 'pos' : b.error ? 'neg' : 'dim', ps), fxLedgerCell(b.ledger), lb);
+    tb.append(tr);
+    [...(b.positions || []).map((p) => [p, 'open']), ...(b.orders || []).map((p) => [p, 'resting'])].forEach(([p, kind]) => {
+      const pr = el('tr', 'fxb-pos');
+      const td = el('td', '', null, { colspan: 7 });
+      td.append(el('span', 'fxb-pair', p.pair), el('span', 'side ' + String(p.side || '').toLowerCase(), p.side || '?'),
+        el('span', 'fxb-d', `${kind === 'resting' ? 'resting ' + (p.kind || 'order').toLowerCase() + ' · ' : ''}${isNum(p.lots) ? p.lots + ' lots' : ''}` +
+          (kind === 'open' ? ` @ ${fxPx(p.pair, p.entry)}` : '') + ` · stop ${fxPx(p.pair, p.stop)} · target ${fxPx(p.pair, p.target)}` +
+          (isNum(p.risk) ? ` · risk ${money(p.risk, 0)}` : '') + (isNum(p.bars_held) && kind === 'open' ? ` · ${p.bars_held} bars` : '')));
+      td.title = `${p.strategy || b.book}${isNum(p.ts) ? ' · ' + (kind === 'open' ? 'entered ' : 'placed ') + ctStamp(p.ts) : ''}${isNum(p.swap) && p.swap ? ' · swap ' + money(p.swap) : ''} · simulated, read-only`;
+      pr.append(td); tb.append(pr);
+    });
+  });
+  t.append(tb); box.append(t);
 }
 function renderSecurity(ov) {
   const s = ov.security || {};
@@ -1132,7 +1550,7 @@ function renderAudit(ov) {
   });
 }
 function render(ov) {
-  const parts = [renderTop, renderAlarm, renderRisk, renderPositions, renderPipes, renderIdeas, renderMemes, renderSecurity, renderLT, renderFresh, renderAudit];
+  const parts = [renderTop, renderAlarm, renderRisk, renderPositions, renderPipes, renderIdeas, renderMemes, renderSecurity, renderLT, renderFresh, renderAudit, renderFxBooks];
   parts.forEach((fn) => { try { fn(ov); } catch (e) { console.error(fn.name, e); } });
 }
 
@@ -1254,7 +1672,7 @@ async function pollEconomy() {
 // Cyan steps behind the line = computed stage S0-S3 that day; the line = expectancy R around a dashed 0R line;
 // a ring marks a day the stage changed, a red tick a killed/benched day. A missing day is a gap, never interpolated.
 const ECON_DAYS = 14;
-function econHist(sr, sid) {
+function econHist(sr, sid, out) {
   const td = el('div', 'econ-h');  // sits under the Exp R value (no extra column: panel 10 is narrow)
   const s = sr && sr.strategies ? sr.strategies[sid] : null;
   const days = sr && Array.isArray(sr.days) ? sr.days : [];
@@ -1311,10 +1729,25 @@ function econHist(sr, sid) {
     (overdue > 0 ? `\nno snapshot for the last ${overdue} due day${overdue === 1 ? '' : 's'}` : '') + '\n' +
     pts.map((p, i) => [skipped(i), p ? `${p.day.slice(5)} S${p.stage}/G${p.granted_stage}${p.killed ? ' KILLED' : ''} ${isNum(p.expectancy_r) ? (p.expectancy_r >= 0 ? '+' : '') + p.expectancy_r.toFixed(2) + 'R' : '—'} ${p.trades}tr`
       : `${days[i].slice(5)} not reported`].filter(Boolean).join('\n')).join('\n');
-  td.setAttribute('aria-label', `${sid.split(':').pop().replace(/_/g, ' ')}: ${s.n}-day history, stage S${s.first_stage} to S${s.last_stage}` +
+  const nmS = sid.split(':').pop().replace(/_/g, ' ');
+  td.setAttribute('aria-label', `${nmS}: ${s.n}-day history, stage S${s.first_stage} to S${s.last_stage}` +
     (isNum(dl) ? `, expectancy ${dl >= 0 ? 'up' : 'down'} ${Math.abs(dl).toFixed(2)} R` : '') +
     (nMiss > 0 ? `, ${nMiss} of ${sr.span_days | 0} days missing` : ''));
-  return td;
+  // Keyboard: arrows step the daily snapshots (a day with no snapshot is skipped, never filled); a cyan ring marks the day.
+  const curMv = spkCur(svg, 2.6);
+  return spkKeys(td, {
+    key: 'econ-' + sid, n, out, idle: td.getAttribute ? td.getAttribute('aria-label') : '',
+    label: `${nmS} 14-day stage and expectancy. Arrow keys step the days`,
+    read: (i) => {
+      const p = pts[i];
+      if (!p || !p.day) return null;
+      const g = i > 0 ? gb[i] | 0 : 0;
+      return { id: p.day, text: `${nmS} ${p.day}: S${p.stage | 0}/G${p.granted_stage | 0}${p.killed ? ' KILLED' : ''} · exp ` +
+        (isNum(p.expectancy_r) ? (p.expectancy_r >= 0 ? '+' : '') + p.expectancy_r.toFixed(2) + 'R' : '—') +
+        ` · ${p.trades | 0} trades` + (g > 0 ? ` · after ${g}d with no snapshot` : '') + ` · day ${i + 1} of ${n}` };
+    },
+    mark: (i) => i >= 0 && pts[i] ? curMv(Number(x(i)), Number(y(isNum(ys[i]) ? ys[i] : 0))) : curMv(null, null),
+  });
 }
 function renderEconomy(ec, series) {
   const rows = Array.isArray(ec.panel) ? ec.panel : [];
@@ -1359,7 +1792,7 @@ function renderEconomy(ec, series) {
       gst === 'ok' ? `granted S${gs}${r.granted_by ? ' by ' + r.granted_by : ''}` : 'never granted: runs human-run (S0)' }));
     const e = r.expectancy_r, dd = r.max_drawdown;
     const expTd = el('td', 'n econ-exp ' + (isNum(e) ? (e >= 0 ? 'pos' : 'neg') : ''), isNum(e) ? (e > 0 ? '+' : '') + e.toFixed(2) + 'R' : '—');
-    expTd.append(econHist(series, id));
+    expTd.append(econHist(series, id, $('#econRead')));
     tr.append(nm, st, el('td', 'n', String(r.trades | 0)),
       expTd,
       el('td', 'n hide-sm ' + (isNum(dd) ? (dd > 0.10 ? 'neg' : dd > 0.03 ? 'amb' : '') : ''), isNum(dd) ? pct(dd, 1) : '—'),
@@ -1413,6 +1846,58 @@ function countdown(sec) {
   if (h) return `${h}h ${String(m).padStart(2, '0')}m`;
   return `${m}:${String(s).padStart(2, '0')}`;
 }
+// T11h: new-filing marks for a P/S history row. hd.period_marks come from aai/intel/multiples_history.series; each one is
+// placed on the drawn (numeric-P/S) points by session. Marks whose session is not drawn, or that sit on the first point
+// (nothing before it to compare), are dropped rather than guessed.
+function psMarks(hd, hpts) {
+  if (!hd || !Array.isArray(hd.period_marks) || !Array.isArray(hpts) || hpts.length < 2) return [];
+  const at = new Map(hpts.map((pt, i) => [pt[0], i]));
+  return hd.period_marks.filter((k) => k && typeof k.session === 'string' && at.get(k.session) > 0)
+    .map((k) => ({ session: k.session, period_end: String(k.period_end || '?'), prev_period_end: String(k.prev_period_end || '?'), i: at.get(k.session) }));
+}
+// T11g/T11j: the panel-18 P/S sparkline for one ticker, keyboard-readable. Draws the same 40x12 line as before (amber =
+// richer than the first logged session, cyan = cheaper) plus the T11h new-filing ticks, wrapped in a focusable spkKeys
+// slider: arrows step the logged sessions (only drawn, numeric-P/S points; nothing is filled in), a round SVG cursor marks
+// the session (the 40x12 svg is drawn at its viewBox size, so spkCur stays round), and the readout says P/S, the change
+// vs the previous logged session, mkt cap and FCF yield, and "new filing" on a period_marks session so the tick is not
+// visual-only. Returns null with fewer than 2 points (no line to read). textContent only via spkKeys.
+function psHist(hd, hpts, tkr, out) {
+  const W = 40, H = 12;
+  const pts = Array.isArray(hpts) ? hpts.filter((pt) => Array.isArray(pt) && typeof pt[0] === 'string' && isNum(pt[1])) : [];
+  if (pts.length < 2) return null;
+  const n = pts.length, ys = pts.map((pt) => pt[1]);
+  const sp = spark(ys, W, H, ys[n - 1] >= ys[0] ? 'var(--amber)' : 'var(--cyan)');
+  const marks = psMarks(hd, pts), byI = new Map(marks.map((k) => [k.i, k]));
+  // T11h: a vertical tick at the first session priced off a new filing (new revenue TTM), so a P/S step from the
+  // denominator is not read as a price move. Non-scaling stroke.
+  marks.forEach((k) => {
+    const x = (k.i / (n - 1) * W).toFixed(1);
+    sp.append(sv('line', { x1: x, x2: x, y1: '0', y2: String(H), class: 'spk-period', 'vector-effect': 'non-scaling-stroke' }));
+  });
+  const lo = Math.min(...ys), hi = Math.max(...ys), rg = hi - lo || 1;
+  const yp = (y) => hi === lo ? H / 2 : H - 1 - (y - lo) / rg * (H - 2);  // same mapping as spark()
+  const curMv = spkCur(sp, 2);
+  const f = (v) => (v >= 100 ? v.toFixed(0) : v.toFixed(1)) + '×';
+  const box = el('span', 'ps-kbd'); box.append(sp);
+  const t = String(tkr || '?');
+  const idle = `${t} P/S history, ${n} sessions ${pts[0][0]} to ${pts[n - 1][0]}` + (marks.length ? `, ${marks.length} new filing${marks.length === 1 ? '' : 's'} inside` : '');
+  return spkKeys(box, {
+    key: 'ps-' + t, n, out, idle, label: `${t} price-to-sales, one point per session. Arrow keys step the sessions`,
+    read: (i) => {
+      const pt = pts[i];
+      if (!pt) return null;
+      const pv = i > 0 ? pts[i - 1] : null, k = byI.get(i);
+      const ch = pv && pv[1] > 0 ? (pt[1] / pv[1] - 1) * 100 : null;
+      return { id: pt[0], text: `${t} ${pt[0]}: P/S ${f(pt[1])}`
+        + (isNum(ch) ? ` · ${ch >= 0 ? '+' : '−'}${Math.abs(ch).toFixed(1)}% vs ${pv[0]}` : '')
+        + (isNum(pt[2]) ? ` · mkt cap $${big(pt[2])}` : '')
+        + (isNum(pt[3]) ? ` · FCF yld ${pt[3] < 0 ? '−' : ''}${Math.abs(pt[3] * 100).toFixed(1)}%` : '')
+        + (k ? ` · new filing (period ending ${k.period_end}, was ${k.prev_period_end}): sales TTM changed, part of the move is the denominator` : '')
+        + ` · session ${i + 1} of ${n}` };
+    },
+    mark: (i) => (i >= 0 && pts[i] ? curMv(Number((i / (n - 1) * W).toFixed(1)), Number(yp(ys[i]).toFixed(1))) : curMv(null, null)),
+  });
+}
 function spark(points, w = 64, h = 18, c = 'var(--cyan)', opts) {
   const svg = sv('svg', { viewBox: `0 0 ${w} ${h}`, class: 'spk', 'aria-hidden': 'true', preserveAspectRatio: 'none' });
   const raw = points || [];
@@ -1424,8 +1909,10 @@ function spark(points, w = 64, h = 18, c = 'var(--cyan)', opts) {
   svg.append(sv('path', { d, fill: 'none', stroke: c, 'stroke-width': '1.2', 'vector-effect': 'non-scaling-stroke' }));
   // Optional CT hover tip (equity curve only). Other call sites pass no opts and get the bare svg.
   if (opts && opts.tip && raw.length >= 2 && Array.isArray(raw[0])) {
-    const mark = sv('circle', { r: '2.2', fill: c, opacity: '0', class: 'spk-mark' });
-    svg.append(mark);
+    const wrap = spkWrap(svg, 'spk-tipwrap');  // round hover dot in an HTML overlay (the svg stretches)
+    const mark = spkDot(0, 0, w, h, 'spk-mark', 5);
+    mark.style.background = c; mark.style.opacity = '0';
+    wrap.append(mark);
     const tip = opts.tip;
     svg.addEventListener('mousemove', (ev) => {
       const rect = svg.getBoundingClientRect();
@@ -1434,18 +1921,32 @@ function spark(points, w = 64, h = 18, c = 'var(--cyan)', opts) {
       const i = Math.round(x * (raw.length - 1));
       const pt = raw[i];
       if (!pt || !isNum(pt[0]) || !isNum(pt[1])) return;
-      mark.setAttribute('cx', (i / (raw.length - 1) * w).toFixed(1));
-      mark.setAttribute('cy', yp(pt[1]).toFixed(1));
-      mark.setAttribute('opacity', '1');
+      const pos = spkDotPos(i / (raw.length - 1) * w, yp(pt[1]), w, h);
+      if (pos) { mark.style.left = pos.left; mark.style.top = pos.top; mark.hidden = false; mark.style.opacity = '1'; }
       tip.textContent = `${fmtEqHover.format(new Date(pt[0] * 1000))} CT · ${money(pt[1])}`;
       tip.classList.remove('dim');
     });
     svg.addEventListener('mouseleave', () => {
-      mark.setAttribute('opacity', '0');
+      mark.style.opacity = '0';
       tip.textContent = 'hover the curve for a CT reading';
       tip.classList.add('dim');
     });
     svg.style.cursor = 'crosshair';
+    if (opts.kbd) {
+      const idx = [];  // keyboard steps only the points that have a timestamp and value
+      raw.forEach((pt, i) => { if (Array.isArray(pt) && isNum(pt[0]) && isNum(pt[1])) idx.push(i); });
+      const fmtK = opts.kbd.fmt || ((pt) => `${pt[0]} · ${pt[1]}`);
+      spkKeys(wrap, {
+        key: opts.kbd.key, n: idx.length, out: tip, outIdle: tip.textContent, idle: opts.kbd.idle || '', label: opts.kbd.label,
+        read: (k) => { const pt = raw[idx[k]]; return { id: pt[0], text: `${fmtK(pt)} · point ${k + 1} of ${idx.length}` }; },
+        mark: (k) => {
+          const pos = k >= 0 ? spkDotPos(idx[k] / (raw.length - 1) * w, yp(raw[idx[k]][1]), w, h) : null;
+          if (pos) { mark.style.left = pos.left; mark.style.top = pos.top; mark.hidden = false; mark.style.opacity = '1'; }
+          else mark.style.opacity = '0';
+        },
+      });
+    }
+    return wrap;
   }
   return svg;
 }
@@ -1690,7 +2191,7 @@ function renderCot() {
 // T8 FX pair desk: server-computed (aai/intel/fxdesk.py) per-pair overlay. COT net % OI in pair terms, crowding,
 // the next medium/high calendar event for either leg with a live countdown, and the cached quote. Read-only context.
 // 12-week specs bias sparkline in pair terms, drawn around a dashed zero line so long/short reads at a glance.
-function fxdHist(c, pair) {
+function fxdHist(c, pair, out) {
   const td = el('td', 'hide-sm fxd-h');
   const h = (c && c.pair_pct_hist || []).filter((p) => Array.isArray(p) && isNum(p[1]));
   if (h.length < 2) { td.append(el('span', 'dim', '—')); return td; }
@@ -1705,7 +2206,8 @@ function fxdHist(c, pair) {
   const fl = (Array.isArray(c.flips_12w) ? c.flips_12w : []).filter((f) => f && Number.isInteger(f.idx) && f.idx > 0 && f.idx < h.length);
   fl.forEach((f) => svg.append(sv('circle', { class: 'fxd-flip', cx: x(f.idx), cy: y(h[f.idx][1]), r: '2.4', fill: 'none',
     stroke: f.to === 'long' ? 'var(--green)' : 'var(--red)', 'stroke-width': '1' })));
-  td.append(svg);
+  const box = el('span', 'fxd-kbd');  // the slider (a td keeps its cell role)
+  box.append(svg); td.append(box);
   if (fl.length) td.append(el('span', 'fxd-fc', `⇄${fl.length}`, { 'aria-hidden': 'true' }));
   const chg = c.pct_chg_hist;
   td.title = `${pair} specs net % OI, ${h.length} weekly reports ${h[0][0]} → ${h[h.length - 1][0]}: ` +
@@ -1713,6 +2215,18 @@ function fxdHist(c, pair) {
     (fl.length ? '\nflips (newest first): ' + fl.map((f) => `${f.date} to net ${f.to} (${sgn(f.from_pct, 1, '%')} → ${sgn(f.to_pct, 1, '%')})`).join(' · ')
       : '\nno bias flips in this window');
   td.setAttribute('aria-label', `${pair} 12-week specs bias ${sgn(h[0][1], 1, '%')} to ${sgn(last, 1, '%')}`);
+  // Keyboard: arrows step the weekly reports; the reading adds the week-on-week change and a flip at that week.
+  const curMv = spkCur(svg, 2.6);
+  spkKeys(box, {
+    key: 'fxd-' + pair, n: h.length, out, idle: td.getAttribute ? td.getAttribute('aria-label') : '',
+    label: `${pair} 12-week specs bias. Arrow keys step the weekly reports`,
+    read: (i) => {
+      const f = fl.find((q) => q.idx === i), d = i > 0 ? h[i][1] - h[i - 1][1] : null;
+      return { id: String(h[i][0]), text: `${pair} ${h[i][0]}: specs ${sgn(h[i][1], 1, '%')} of OI (${h[i][1] >= 0 ? 'long' : 'short'} ${pair})` +
+        (isNum(d) ? ` · ${sgn(d, 1, ' pts')} w/w` : '') + (f ? ` · flipped to net ${f.to}` : '') + ` · week ${i + 1} of ${h.length}` };
+    },
+    mark: (i) => i >= 0 ? curMv(Number(x(i)), Number(y(h[i][1]))) : curMv(null, null),
+  });
   return td;
 }
 function renderFxDesk() {
@@ -1738,7 +2252,7 @@ function renderFxDesk() {
         c.extreme ? el('span', 'crowd', c.extreme) : el('span', 'n dim', sgn(p, 1, '%')));
       tdc.append(fb);
     } else tdc.append(el('span', 'dim', 'no COT'));
-    tr.append(tdc, fxdHist(c, r.pair), el('td', 'n hide-sm dim', c && isNum(c.pair_index_26w) ? String(c.pair_index_26w) : '—'),
+    tr.append(tdc, fxdHist(c, r.pair, $('#fxdRead')), el('td', 'n hide-sm dim', c && isNum(c.pair_index_26w) ? String(c.pair_index_26w) : '—'),
       el('td', 'hide-sm ' + (c && c.flow === 'TO LONG' ? 'pos' : c && c.flow === 'TO SHORT' ? 'neg' : 'dim'), c && c.flow ? c.flow : '—'));
     const te = el('td', 'ev');
     if (e) {
@@ -1752,11 +2266,17 @@ function renderFxDesk() {
 function renderFilings() {
   const p = P('filings'), tb = $('#filTable tbody'), bx = $('#filBuys');
   tb.replaceChildren(); bx.replaceChildren();
-  $('#filMeta').textContent = p ? `${(p.watchlist || []).length} tickers · ${p.lookback_days}d` : '';
+  const fm = $('#filMeta');
+  fm.textContent = p ? `${(p.watchlist || []).length} tickers${p.watchlist_source === 'file' ? ' (owner list)' : ''} · ${p.lookback_days}d` : '';
+  fm.title = p ? `Watching: ${(p.watchlist || []).join(', ')}` + (p.watchlist_source === 'file' ? ' · owner list from aai filings-watch' : ' · config default; edit with aai filings-watch add/remove (CLI only)') : '';
   if (!p) { tb.append(noteRow('EDGAR', ((I.d.feeds.filings || {}).stale_reason) || 'unavailable', 4)); return; }
   const buys = p.insider_buys || [];
   bx.append(el('span', buys.length ? 'fb pos' : 'fb dim', buys.length ? `${buys.length} OPEN-MARKET INSIDER BUY${buys.length > 1 ? 'S' : ''}` : 'No open-market insider buys (code P) in parsed Form 4s'),
     el('span', 'fb dim', `${p.n_8k} 8-K · ${p.n_form4} Form 4`));
+  const unr = (Array.isArray(p.unresolved) ? p.unresolved : []).filter((t) => typeof t === 'string').slice(0, 10);
+  if (unr.length) bx.append(el('span', 'fb amb', `NO CIK: ${unr.join(' ')}`, { title: 'SEC company_tickers.json has no CIK for these watchlist tickers, so they are skipped (check the symbol with aai filings-watch list)' }));
+  const ern = renderEarningsCadence(p);
+  if (ern) bx.append(ern);
   (p.filings || []).slice(0, 30).forEach((f) => {
     const ins = f.insider || {};
     let det = '';
@@ -1770,9 +2290,182 @@ function renderFilings() {
     tb.append(tr);
   });
 }
+// T11 fundamentals (aai/intel/adapters/xbrl.py): reported 10-Q/10-K numbers only. Burners sort first by shortest runway;
+// a value the filings do not support renders '—', never a guess. textContent only; links only to sec.gov (https).
+function renderFundamentals() {
+  const p = P('fundamentals'), tb = $('#funTable tbody'), bx = $('#funChips'), fm = $('#funMeta');
+  if (!tb || !bx) return;
+  tb.replaceChildren(); bx.replaceChildren();
+  const rows = p && Array.isArray(p.rows) ? p.rows.filter((r) => r && typeof r.ticker === 'string') : [];
+  fm.textContent = p ? `${rows.length} names · burn · runway · dilution · multiples` : 'burn · runway · dilution · multiples';
+  fm.title = p ? `Watching: ${(p.watchlist || []).join(', ')}` + (p.watchlist_source === 'file' ? ' · owner list from aai filings-watch' : ' · config default; edit with aai filings-watch add/remove (CLI only)') : '';
+  if (!rows.length) { tb.append(noteRow('XBRL', ((I.d.feeds.fundamentals || {}).stale_reason) || 'unavailable', 12)); return; }
+  // T11d multiples (aai/intel/valuation.py): server-side join of these rows with the watch_quotes feed; withheld, never guessed.
+  const va = I.d && I.d.valuation && typeof I.d.valuation === 'object' ? I.d.valuation : null;
+  const vrows = va && va.rows && typeof va.rows === 'object' ? va.rows : {};
+  const qv = (I.d.feeds || {}).watch_quotes || {};
+  if (va && va.priced) {
+    const qst = String(va.quotes_status || qv.status || '');
+    const at = isNum(va.quotes_ts) ? `${fmtMD.format(new Date(va.quotes_ts * 1000))} ${fmtHM.format(new Date(va.quotes_ts * 1000))} CT` : '';
+    bx.append(el('span', qst === 'stale' ? 'fb amb' : 'fb cy', `PRICED ${va.priced}/${va.n}${at ? ' · ' + at : ''}${qst === 'stale' ? ' · STALE' : ''}`,
+      { title: `${va.note || ''}\nQuotes: Yahoo chart API, up to 15 min delayed; closed markets keep the last close.${qv.stale_reason ? '\n' + qv.stale_reason : ''}` }));
+    const fy = Object.values(vrows).filter((m) => m && isNum(m.fcf_yield) && m.fcf_yield > 0).sort((a, b) => b.fcf_yield - a.fcf_yield);
+    if (fy.length) bx.append(el('span', 'fb pos', `TOP FCF YIELD ${fy[0].ticker} ${(fy[0].fcf_yield * 100).toFixed(1)}%`,
+      { title: 'Highest free-cash-flow yield (FCF TTM ÷ market cap) on the watchlist. Research only, not a signal.\n' + fy.slice(0, 5).map((m) => `${m.ticker} ${(m.fcf_yield * 100).toFixed(1)}%`).join(' · ') }));
+  } else {
+    bx.append(el('span', 'fb dim', 'NO PRICE · NO MULTIPLES', { title: `watchlist quotes: ${qv.stale_reason || qv.status || 'unavailable'}` }));
+  }
+  // T11e: share counts split-adjusted by Yahoo's split ratio (exact arithmetic; the 1Y change gets the same treatment)
+  const sa = Object.values(vrows).filter((m) => m && m.split_adj && typeof m.split_adj === 'object').slice(0, 4);
+  if (sa.length) bx.append(el('span', 'fb cy', `SPLIT-ADJUSTED: ${sa.map((m) => m.ticker).join(' ')}`,
+    { title: sa.map((m) => `${m.ticker}: ${m.split_adj.note || 'split-adjusted share count'}`).join('\n') }));
+  // 1Y share change per ticker: the split-adjusted one from the valuation join when a split sits inside the window
+  const yoyOf = (r) => {
+    const m = vrows[String(r.ticker).toUpperCase()];
+    if (m && (m.shares_yoy_status === 'adjusted' || m.shares_yoy_status === 'unknown')) return { v: isNum(m.shares_yoy) ? m.shares_yoy : null, st: m.shares_yoy_status, note: String(m.shares_yoy_note || '') };
+    return { v: isNum(r.shares_yoy) ? r.shares_yoy : null, st: 'raw', note: '' };
+  };
+  // T11f multiples history (aai/intel/multiples_history.py): one P/S point per NY session, 90 days, no backfill
+  const mh = va && va.history && typeof va.history === 'object' && va.history.tickers && typeof va.history.tickers === 'object' ? va.history : null;
+  if (mh && va.priced) {
+    const rk = Object.entries(mh.tickers).filter(([, d]) => d && isNum(d.ps_pos)).sort((a, b) => a[1].ps_pos - b[1].ps_pos);
+    const ns = isNum(mh.sessions) ? mh.sessions : 0, need = isNum(mh.min_range_sessions) ? mh.min_range_sessions : 5;
+    if (rk.length) {
+      const [t, d] = rk[0];
+      bx.append(el('span', 'fb cy', `CHEAPEST VS ${d.n}-SESSION P/S RANGE: ${t}`, { title: `Where today's P/S sits in each name's own logged range (0% = its cheapest, 100% = its richest). Research only, not a signal.\n`
+        + rk.slice(0, 8).map(([k, x]) => `${k} ${Math.round(x.ps_pos * 100)}% · ${isNum(x.ps_lo) ? x.ps_lo.toFixed(1) : '—'}–${isNum(x.ps_hi) ? x.ps_hi.toFixed(1) : '—'}×${x.period_changed ? ' (new filing inside the window)' : ''}`).join('\n') }));
+    } else {
+      bx.append(el('span', 'fb dim', `P/S HISTORY ${ns}/${need} SESSIONS`, { title: `One P/S point per ticker per New York session since the HUD first priced the watchlist (no backfill). A range needs ${need} sessions; up to ${mh.days || 90} days kept.` }));
+    }
+  }
+  const wh = Object.values(vrows).filter((m) => m && m.withheld && m.withheld !== 'no quote').slice(0, 4);
+  if (wh.length) bx.append(el('span', 'fb amb', `MULTIPLES WITHHELD: ${wh.map((m) => m.ticker).join(' ')}`, { title: wh.map((m) => `${m.ticker}: ${m.withheld}`).join('\n') }));
+  const rw = (r) => (isNum(r.runway_months) ? r.runway_months : Infinity);
+  const order = rows.slice().sort((a, b) => rw(a) - rw(b));
+  const burn = rows.filter((r) => isNum(r.runway_months));
+  const capx = rows.filter((r) => (r.flags || []).includes('CAPEX_GT_OCF'));
+  bx.append(el('span', burn.length ? 'fb amb' : 'fb pos', burn.length ? `${burn.length} OF ${rows.length} BURNING CASH (OPERATING)` : 'NO OPERATING CASH BURN',
+    { title: 'Operating cash flow < 0 over the trailing four quarters; runway counts the months until cash + short-term investments run out at that burn' }));
+  if (capx.length) bx.append(el('span', 'fb dim', `CAPEX > OCF: ${capx.map((r) => r.ticker).join(' ')}`, { title: 'Positive operating cash flow, negative free cash flow because of capital spending (no runway clock)' }));
+  order.filter((r) => isNum(r.runway_months) && r.runway_months < 12).slice(0, 4).forEach((r) =>
+    bx.append(el('span', 'fb neg', `${r.ticker} ~${r.runway_months.toFixed(1)} MO RUNWAY`, { title: `${r.ticker}: cash + short-term investments $${big(r.liquidity)} at ${r.cash_end || '?'} ÷ FCF burn $${big(-r.fcf_ttm)}/yr. Funding risk: a raise (dilution) or debt is likely inside a year unless burn falls.` })));
+  rows.filter((r) => { const y = yoyOf(r).v; return isNum(y) && y >= 0.10; }).slice(0, 4).forEach((r) => {
+    const y = yoyOf(r);
+    bx.append(el('span', 'fb amb', `${r.ticker} SHARES ${pctS(y.v, 0)} 1Y${y.st === 'adjusted' ? ' (SPLIT-ADJ.)' : ''}`,
+      { title: `${r.ticker}: ${big(r.shares)} shares on the ${r.shares_end} cover vs about a year earlier` + (y.st === 'adjusted' ? `; ${y.note}` : ' (no split in the window)') }));
+  });
+  const stale = rows.filter((r) => (r.flags || []).includes('STALE PERIOD'));
+  if (stale.length) bx.append(el('span', 'fb amb', `STALE 10-Q: ${stale.map((r) => r.ticker).join(' ')}`, { title: 'Newest reported period is older than 200 days: late filer or stopped reporting' }));
+  const errs = p.errors && typeof p.errors === 'object' ? Object.keys(p.errors).slice(0, 6) : [];
+  if (errs.length) bx.append(el('span', 'fb amb', `NO XBRL: ${errs.join(' ')}`, { title: errs.map((t) => `${t}: ${p.errors[t]}`).join('\n') }));
+  const unr = (Array.isArray(p.unresolved) ? p.unresolved : []).filter((t) => typeof t === 'string').slice(0, 10);
+  if (unr.length) bx.append(el('span', 'fb amb', `NO CIK: ${unr.join(' ')}`));
+  const money = (v) => (isNum(v) ? (v < 0 ? '−' : '') + '$' + big(Math.abs(v)) : '—');
+  order.forEach((r) => {
+    const hot = isNum(r.runway_months) && r.runway_months < 12;
+    const tr = el('tr', hot ? 'fun-hot' : '');
+    const sym = el('td', 'sym');
+    const name = r.company ? String(r.company) : '';
+    if (typeof r.url === 'string' && r.url.startsWith('https://www.sec.gov/')) sym.append(el('a', '', r.ticker, { href: r.url, target: '_blank', rel: 'noopener noreferrer nofollow', title: `${name} · SEC filings` }));
+    else sym.append(document.createTextNode(r.ticker));
+    if (name) sym.append(el('small', '', name));
+    const per = el('td', 'dim hide-sm', r.period_end ? `${String(r.period_end).slice(0, 7)} ${r.form || ''}`.trim() : 'no data',
+      { title: `period ended ${r.period_end || '—'}${r.filed ? ', filed ' + r.filed : ''}${r.revenue_concept ? '\nrevenue tag: ' + r.revenue_concept : ''}${(r.flags || []).length ? '\nflags: ' + r.flags.join(', ') : ''}` });
+    const yoy = el('td', 'n ' + cls(r.revenue_yoy), pctS(r.revenue_yoy, 0));
+    const fcf = el('td', 'n ' + cls(r.fcf_ttm), money(r.fcf_ttm), { title: `operating cash flow ${money(r.ocf_ttm)} · capex ${money(r.capex_ttm)} · net income ${money(r.net_income_ttm)} (TTM)${r.fcf_basis ? '\n' + r.fcf_basis : ''}` });
+    const liq = el('td', 'n', money(r.liquidity), { title: `cash ${money(r.cash)} + short-term investments ${money(r.st_investments)}${r.cash_end ? ' at ' + r.cash_end : ''}` });
+    let run;
+    if (isNum(r.runway_months)) {
+      const k = r.runway_months < 12 ? 'neg' : r.runway_months < 24 ? 'amb' : 'pos';
+      run = el('td', 'n rw ' + k, r.runway_months >= 120 ? '10Y+' : `${r.runway_months.toFixed(1)} mo`, { title: 'months of cash at the trailing FCF burn (no new funding, burn unchanged)' });
+      const g = el('span', 'fun-gauge'), i = el('i');
+      i.style.width = `${Math.max(3, Math.min(100, (r.runway_months / 36) * 100)).toFixed(0)}%`;
+      g.append(i); run.append(g);
+    } else {
+      const fl = r.flags || [];
+      const [txt, tip] = fl.includes('BANK') ? ['BANK', 'deposit-taking lender: operating cash flow carries loans and trading assets, so FCF and runway do not apply']
+        : fl.includes('CAPEX_GT_OCF') ? ['CAPEX', `operating cash flow is positive (${money(r.ocf_ttm)}); FCF is negative only because capex (${money(r.capex_ttm)}) exceeds it, so no runway clock`]
+        : isNum(r.fcf_ttm) && r.fcf_ttm >= 0 ? ['FCF+', 'free cash flow is positive: no burn'] : ['—', 'no cash-flow data'];
+      run = el('td', 'n dim', txt, { title: tip });
+    }
+    const yo = yoyOf(r), sy = yo.v, shk = !isNum(sy) ? 'dim' : sy >= 0.10 ? 'neg' : sy >= 0.03 ? 'amb' : sy <= -0.01 ? 'pos' : '';
+    const sh = el('td', 'n ' + shk, yo.st === 'unknown' ? 'split' : pctS(sy, 1), { title: `${big(r.shares)} shares (${r.shares_basis || 'cover page'}, ${r.shares_end || '—'}${r.share_classes > 1 ? ', ' + r.share_classes + ' classes summed' : ''}); vs ~1 year earlier`
+      + (yo.st === 'adjusted' || yo.st === 'unknown' ? `; ${yo.note}` : '; no split in the window (or no split data)') + '. Negative = buybacks.' });
+    if (yo.st === 'adjusted') sh.append(el('small', 'spl', 'split-adj.'));
+    const m = vrows[String(r.ticker).toUpperCase()] || null;
+    const why = m ? (m.withheld || '') : 'no valuation join yet';
+    let cap, ps, fy;
+    if (m && isNum(m.mcap)) {
+      const px = isNum(m.price) ? `$${m.price.toFixed(2)}` : '—';
+      const pxt = isNum(m.price_ts) ? ` (${fmtMD.format(new Date(m.price_ts * 1000))} ${fmtHM.format(new Date(m.price_ts * 1000))} CT)` : '';
+      const spl = m.split_adj && typeof m.split_adj === 'object' ? m.split_adj : null;
+      cap = el('td', 'n hide-sm', money(m.mcap), { title: `${px}${pxt} × ${big(isNum(m.shares) ? m.shares : r.shares)} shares (${r.shares_basis || 'cover page'}, ${r.shares_end || '—'}${spl ? ', split-adjusted' : ''})`
+        + (spl ? `\n${spl.note || 'split-adjusted'} (reported ${big(spl.shares_reported)})` : '')
+        + `${(m.flags || []).includes('SHARES_WAVG') ? '\nweighted-average basic shares: lags new issuance, so market cap may read low' : ''}`
+        + `\nEV ${isNum(m.ev) ? money(m.ev) : '— (needs LT debt and cash tags' + ((r.flags || []).includes('BANK') ? '; n/a for a bank' : '') + ')'}`
+        + `${isNum(m.ev_fcf) ? ` · EV/FCF ${m.ev_fcf.toFixed(1)}×` : ''}` });
+      if (spl) cap.append(el('small', 'spl', 'split-adj.'));
+      const hd = mh ? mh.tickers[String(r.ticker).toUpperCase()] : null;
+      const hpts = hd && Array.isArray(hd.points) ? hd.points.filter((pt) => Array.isArray(pt) && isNum(pt[1])) : [];
+      const htip = hpts.length ? `\nP/S history: ${hpts.length} session${hpts.length === 1 ? '' : 's'} (${hd.first} → ${hd.last})`
+        + (isNum(hd.ps_lo) && hpts.length > 1 ? `, range ${hd.ps_lo.toFixed(1)}–${hd.ps_hi.toFixed(1)}×` : '')
+        + (isNum(hd.ps_pos) ? `, now at ${Math.round(hd.ps_pos * 100)}% of its range` : '')
+        + (hd.period_changed ? '\nnew filing inside the window: sales TTM changed, so part of the move is the denominator' : '')
+        + psMarks(hd, hpts).map((k) => `\n│ tick: ${k.session} first priced off the ${k.period_end} filing (was ${k.prev_period_end})`).join('') : '';
+      ps = el('td', 'n ' + (isNum(m.ps) ? (m.ps >= 20 ? 'amb' : '') : 'dim'), isNum(m.ps) ? `${m.ps >= 100 ? m.ps.toFixed(0) : m.ps.toFixed(1)}×` : '—',
+        { title: (isNum(m.ps) ? 'price / sales: market cap ÷ revenue TTM' : 'no positive revenue TTM in the filings') + htip });
+      const ph = psHist(hd, hpts, String(r.ticker).toUpperCase(), $('#funRead'));
+      if (ph) ps.append(ph);
+      const fv = m.fcf_yield;
+      fy = el('td', 'n ' + (!isNum(fv) ? 'dim' : fv < 0 ? 'neg' : fv >= 0.04 ? 'pos' : ''), isNum(fv) ? `${(fv * 100).toFixed(Math.abs(fv) < 0.001 ? 2 : 1)}%` : '—',
+        { title: isNum(fv) ? 'free-cash-flow yield: FCF TTM ÷ market cap (negative = burning cash)' : ((r.flags || []).includes('BANK') ? 'n/a for a bank' : 'no FCF in the filings') });
+    } else {
+      const tip = `multiples withheld: ${why || 'no price'}`;
+      cap = el('td', 'n dim hide-sm', '—', { title: tip }); ps = el('td', 'n dim', '—', { title: tip }); fy = el('td', 'n dim', '—', { title: tip });
+    }
+    tr.append(sym, per, el('td', 'n', money(r.revenue_ttm)), yoy, fcf, liq, el('td', 'n dim hide-sm', money(r.debt)), run, sh, cap, ps, fy);
+    tb.append(tr);
+  });
+}
+// Earnings cadence (T9b): next release estimated from each ticker's 8-K item 2.02 history (aai/intel/adapters/edgar.py
+// earnings_history). Always labelled "est."; irregular / too-short histories say so instead of guessing. textContent only.
+function renderEarningsCadence(p) {
+  const all = p && p.earnings && typeof p.earnings === 'object' ? p.earnings : null;
+  if (!all) return null;
+  const nx = (p.earnings_next || []).filter((e) => e && e.ticker && e.est_next && isNum(e.est_in_days));
+  const row = el('div', 'fil-earn', null, { title: 'Earnings: ' + String(p.earnings_note || 'estimate from 8-K item 2.02 cadence') });
+  row.append(el('span', 'fe-lab', 'EARNINGS EST.'));
+  // Calendar days from today's New York date (same count as the 'earnings est.' INFO alarm), not from the fetch time.
+  let nyToday = null;
+  try { nyToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date()); } catch (_) { nyToday = null; }
+  const calDays = (e) => {
+    const a = nyToday ? Date.parse(nyToday + 'T00:00:00Z') : NaN, b = Date.parse(String(e.est_next).slice(0, 10) + 'T00:00:00Z');
+    return isFinite(a) && isFinite(b) ? Math.round((b - a) / 864e5) : e.est_in_days;
+  };
+  nx.slice(0, 6).forEach((e) => {
+    const d = calDays(e), k = e.overdue ? 'neg' : d >= 0 && d <= 14 ? 'amb' : d < 0 ? 'amb' : 'dim';
+    const when = d >= 0 ? `~${String(e.est_next).slice(5)} · ${d}d` : e.overdue ? `overdue ${-d}d` : `due ~${String(e.est_next).slice(5)}`;
+    const h = all[e.ticker] || {};
+    row.append(el('span', 'fe ' + k, `${e.ticker} ${when}`, {
+      title: [`${e.ticker}${h.company ? ' · ' + h.company : ''}`, `estimated ${e.est_next} (median gap ${h.median_gap_days}d)`,
+        'past 8-K 2.02: ' + (h.reports || []).join(', '), 'estimate only, not a confirmed date'].join('\n')
+    }));
+  });
+  if (nx.length > 6) {
+    row.append(el('span', 'fe dim', `+${nx.length - 6} later`, { title: nx.slice(6).map((e) => `${e.ticker} ~${e.est_next} (in ${e.est_in_days}d, est.)`).join('\n') }));
+  }
+  const other = Object.keys(all).filter((t) => !nx.some((e) => e.ticker === t));
+  if (other.length) {
+    row.append(el('span', 'fe dim', `${other.length} no est.`, {
+      title: other.map((t) => `${t}: ${all[t].cadence === 'irregular' ? 'irregular 2.02 cadence (' + all[t].n + ' filings)' : (all[t].n || 0) + ' 2.02 filing(s) in 400d'}`).join('\n')
+    }));
+  }
+  if (!nx.length && !other.length) return null;
+  return row;
+}
 function renderIntel(d) {
   I.d = d;
-  [renderIntelSum, renderTape, renderRegime, renderMacro, renderCalendar, renderDerivs, renderCot, renderFilings, renderFxDesk].forEach((fn) => {
+  [renderIntelSum, renderTape, renderRegime, renderMacro, renderCalendar, renderDerivs, renderCot, renderFilings, renderFundamentals, renderFxDesk].forEach((fn) => {
     try { fn(); } catch (e) { console.error(fn.name, e); }
   });
   document.querySelectorAll('#intel .fmeta').forEach(feedMeta);
@@ -2000,7 +2693,7 @@ pollIntel();
 const openArms = new Set();
 // deep link: /zoora#arm=maker_scalp opens that arm's trades on load
 (location.hash.match(/(?:^#|&)arm=([\w-]{1,40})/) || [])[1] && openArms.add(location.hash.match(/(?:^#|&)arm=([\w-]{1,40})/)[1]);
-function armSpark(curve, initial) {
+function armSpark(curve, initial, kbd) {
   const W = 52, H = 18, P = 2;
   const svg = sv('svg', { class: 'spark', viewBox: `0 0 ${W} ${H}`, width: W, height: H, 'aria-hidden': 'true' });
   const pts = (curve || []).filter((p) => Array.isArray(p) && isNum(p[0]) && isNum(p[1]));
@@ -2016,7 +2709,20 @@ function armSpark(curve, initial) {
   const cls = !isNum(initial) || Math.abs(last - initial) < 1e-9 ? 'sp-flat' : last > initial ? 'sp-up' : 'sp-dn';
   svg.append(sv('polyline', { points: pts.map((p) => `${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join(' '), class: 'sp-line ' + cls }));
   svg.append(sv('circle', { cx: X(pts[pts.length - 1][0]).toFixed(1), cy: Y(last).toFixed(1), r: 1.8, class: 'sp-dot ' + cls }));
-  return svg;
+  if (!kbd) return svg;
+  // Keyboard: arrows step the (server-downsampled) equity marks; reading = CT time, equity, change vs the $100 start.
+  const curMv = spkCur(svg, 2.4), box = el('span', 'arm-kbd'), nm = String(kbd.name || 'arm');
+  box.append(svg);
+  return spkKeys(box, {
+    key: kbd.key, n: pts.length, out: kbd.out, idle: `${nm} equity curve, ${pts.length} marks, now ${money(last)}`,
+    label: `${nm} equity curve. Arrow keys step the marks`,
+    read: (i) => {
+      const [t, v] = pts[i], r = isNum(initial) && initial ? v / initial - 1 : null;
+      return { id: t, text: `${nm} ${fmtEqHover.format(new Date(t * 1000))} CT · ${money(v)}` +
+        (r === null ? '' : ` (${r >= 0 ? '+' : '−'}${Math.abs(r * 100).toFixed(2)}% vs ${money(initial, 0)})`) + ` · mark ${i + 1} of ${pts.length}` };
+    },
+    mark: (i) => i >= 0 ? curMv(Number(X(pts[i][0]).toFixed(1)), Number(Y(pts[i][1]).toFixed(1))) : curMv(null, null),
+  });
 }
 const ctTime = (ts) => isNum(ts) ? new Date(ts * 1000).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' }) + ' CT' : '—';
 const drPx = (v) => !isNum(v) ? '—' : v.toLocaleString('en-US', { maximumFractionDigits: v >= 100 ? 2 : v >= 1 ? 4 : 6 });
@@ -2166,6 +2872,8 @@ function arenaBoard(arms) {
   cols.forEach(([h, c]) => hr.append(el('th', c, h)));
   const th = el('thead'); th.append(hr); t.append(th);
   const tb = el('tbody');
+  // one visible readout for every arm curve, shown only while a curve is focused (screen readers use aria-valuetext)
+  const read = el('div', 'spk-read', null, { 'aria-hidden': 'true' }); read.hidden = true;
   arms.forEach((a, i) => {
     const id = String(a.id || '?');
     const isOpen = openArms.has(id);
@@ -2177,7 +2885,7 @@ function arenaBoard(arms) {
     if ((a.closed || 0) + (a.open || 0)) name.append(el('small', '', `${a.closed || 0}c · ${a.open || 0}o${a.closed ? ` · ${a.wins || 0}W/${a.losses || 0}L` : ''}`));
     // status: SIM is the default and implied; only KILLED / BENCH get a tag (saves a column in the narrow panel)
     if (a.killed || a.benched) name.prepend(el('span', 'tag ' + (a.killed ? 'neg' : 'amb'), a.killed ? 'KILLED' : 'BENCH'), ' ');
-    const sp = el('td', 'spark-cell hide-sm'); sp.append(armSpark(a.curve, a.initial));
+    const sp = el('td', 'spark-cell hide-sm'); sp.append(armSpark(a.curve, a.initial, { key: 'arm-' + id, out: read, name: id.replace(/_/g, ' ') }));
     const dd = isNum(a.drawdown_pct) ? a.drawdown_pct : null;
     tr.append(el('td', 'dim', String(i + 1)), name, sp,
       el('td', 'n ' + (ret == null || Math.abs(ret) < 1e-9 ? '' : ret > 0 ? 'pos' : 'neg'), money(a.equity), { title: ret == null ? '' : `${(ret * 100).toFixed(2)}% vs ${money(a.initial, 0)}` }),
@@ -2198,7 +2906,7 @@ function arenaBoard(arms) {
     tb.append(tr);
     if (isOpen) tb.append(armTrades(a, cols.length));
   });
-  t.append(tb); wrap.append(t);
+  t.append(tb); wrap.append(t, read);
   return wrap;
 }
 

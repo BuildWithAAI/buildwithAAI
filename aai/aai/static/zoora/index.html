@@ -167,6 +167,7 @@
     <h2><em>05</em>Solana meme-risk</h2>
     <div class="meme-health" id="memeHealth"></div>
     <ul class="scores" id="scores"></ul>
+    <div class="smr-desk" id="smrDesk" aria-label="Meme scanner desk (read-only from solana-meme-risk)"></div>
     <form class="score-form" id="scoreForm" autocomplete="off">
       <input id="mintInput" placeholder="Mint address to score" aria-label="Mint address" spellcheck="false" maxlength="44">
       <button class="mini" type="submit">SCORE</button>
@@ -180,6 +181,7 @@
     <h2><em>10</em>Economy ladder <small id="econMeta">paper · eligibility only</small></h2>
     <div class="econ-sum" id="econSum"></div>
     <div class="table-wrap econ-wrap"><table class="tbl econ" id="econTable"><thead><tr><th>Strategy</th><th>Stage</th><th class="n">Trades</th><th class="n" title="Expectancy in R. Below it, the last 14 daily snapshots (CT): line = expectancy R around a dashed 0R line, cyan steps = stage S0-S3, ring = stage change, red tick = killed day; ▲▼ = expectancy change across the window. Hover a row for the per-day list.">Exp R <small>14D</small></th><th class="n hide-sm">Max DD</th><th class="n">Weight</th></tr></thead><tbody></tbody></table></div>
+    <div class="spk-read" id="econRead" aria-hidden="true" hidden></div>
     <div class="econ-feed" id="econFeed" aria-live="polite"><h3>Stage changes <small id="econSnap">daily snapshot</small></h3><ul id="econEvents"></ul></div>
     <div class="econ-foot" id="econFoot">Read-only. S = computed eligibility, G = stage a human granted (CLI only, paper); effective = the lower. Any real money needs Zoorped&rsquo;s sign-off.</div>
   </section>
@@ -229,6 +231,8 @@
       <h2><em>17</em>FX pair desk <small id="fxdMeta">COT bias · next event · quote</small></h2>
       <div class="fmeta" data-feeds="markets,cot,calendar"></div>
       <div class="table-wrap"><table class="tbl fxd" id="fxdTable"><thead><tr><th>Pair</th><th class="n">Last</th><th class="n">1D</th><th>Specs (pair terms)</th><th class="hide-sm" title="Weekly specs net % of OI in pair terms, last 12 reports">12W</th><th class="n hide-sm">26W</th><th class="hide-sm">Flow</th><th>Next event (either leg)</th><th class="n">T-</th></tr></thead><tbody></tbody></table></div>
+      <div class="spk-read" id="fxdRead" aria-hidden="true" hidden></div>
+      <div class="fx-books" id="fxBooks" aria-label="aai-forex paper books (read-only)"></div>
       <div class="econ-foot">Read-only context from cached feeds: COT net % of open interest converted to the pair's direction (USD-base pairs flipped), 26W = where specs sit in their 26-week range in pair terms (26W HIGH ≥90, 26W LOW ≤10); 12W = the last 12 weekly reports of that same net % OI in pair terms (dashed line is flat; hover for the dates). Hover the bias for leveraged-fund net. Amber rows have a high-impact release for either leg inside 24 h. Not a signal; paper only.</div>
     </section>
     <section class="panel ip-fil" id="p-filings" data-focus="filings">
@@ -236,6 +240,14 @@
       <div class="fmeta" data-feeds="filings"></div>
       <div class="fil-buys" id="filBuys"></div>
       <div class="table-wrap fil-wrap"><table class="tbl fil" id="filTable"><thead><tr><th>Filed</th><th>Tkr</th><th>Form</th><th>Detail</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel ip-fun" id="p-fund" data-focus="fundamentals" aria-label="Watchlist fundamentals">
+      <h2><em>18</em>Fundamentals · SEC XBRL <small id="funMeta">burn · runway · dilution · multiples</small></h2>
+      <div class="fmeta" data-feeds="fundamentals,watch_quotes"></div>
+      <div class="fil-buys" id="funChips"></div>
+      <div class="table-wrap"><table class="tbl fun" id="funTable"><thead><tr><th>Tkr</th><th class="hide-sm">Period</th><th class="n">Rev TTM</th><th class="n">YoY</th><th class="n">FCF TTM</th><th class="n">Cash + ST</th><th class="n hide-sm">LT debt</th><th class="n">Runway</th><th class="n">Shares 1Y</th><th class="n hide-sm">Mkt cap</th><th class="n">P/S</th><th class="n">FCF yld</th></tr></thead><tbody></tbody></table></div>
+      <div class="spk-read" id="funRead" aria-hidden="true" hidden></div>
+      <div class="econ-foot">From each company's own 10-Q/10-K (SEC XBRL company facts). TTM = trailing four quarters. FCF = operating cash flow − capex. Runway = (cash + short-term investments) ÷ monthly FCF burn, shown only when FCF is negative. Shares 1Y = cover-page shares outstanding vs about a year earlier, split-adjusted when a split falls in between (SPLIT-ADJ.). Mkt cap = delayed last price × those shares (× the split ratio after a split since the cover date); P/S = mkt cap ÷ revenue TTM, with a sparkline of one point per session (no backfill; Tab to it and use the arrow keys to read each session, a dotted tick marks a new filing); FCF yld = FCF TTM ÷ mkt cap. Multiples are withheld (—) on a share count over 200 days old, an unusable split ratio, a weighted-average count that may already be restated, or with no quote. Research only, not a signal; paper only.</div>
     </section>
   </div>
 </section>
@@ -264,6 +276,7 @@
       <dt><kbd>S</kbd></dt><dd>Toggle London/New York session-open chime (off by default)</dd>
       <dt><kbd>C</kbd></dt><dd>Toggle the high-contrast theme (follows your system setting until you choose)</dd>
       <dt><kbd>R</kbd></dt><dd>Toggle reduced motion for the orb, sweep and grid (follows your system setting until you choose)</dd>
+      <dt><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dt><dd>Step a focused sparkline (equity curve, STOCKS A/D and &gt;20D rows, economy 14D, FX 12W, arena arm curves, panel 18 P/S history) and read each point; <kbd>Home</kbd>/<kbd>End</kbd> first/newest, <kbd>PgUp</kbd>/<kbd>PgDn</kbd> 5 at a time</dd>
       <dt><kbd>?</kbd></dt><dd>Show or hide this help</dd>
       <dt><kbd>Esc</kbd></dt><dd>Stop Zoora talking (barge-in), close this help, or leave the command box</dd>
     </dl>
