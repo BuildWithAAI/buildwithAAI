@@ -67,3 +67,49 @@ def fetch(f, cfg, prev=None, symbols=None, rng: str = "2mo", spark_n: int = 30) 
 def fetch_sectors(f, cfg, prev=None) -> dict:
     """SPDR sector ETFs only (11 chart calls); same parser and politeness as `fetch`. Partial results keep the errors."""
     return fetch(f, cfg, prev, symbols=SECTORS, rng=SECTOR_RANGE, spark_n=SECTOR_SPARK)
+
+
+# T11d watchlist quotes (own feed: `watch_quotes`): one price per watchlist ticker so panel 18 can show market cap / EV /
+# P-S / FCF yield next to the SEC numbers. A year of weekly bars with split events, so a split after the 10-Q cover date
+# is detected (and the multiples withheld) instead of mixing pre-split shares with a post-split price.
+# T11e: two years of split events, so the 1Y share-count change (prior cover up to ~425 days before a cover that is up to
+# 200 days old) can be split-adjusted too.
+WATCH_RANGE, WATCH_INTERVAL, WATCH_MAX = "2y", "1wk", 25
+
+
+def parse_watch(t: str, j) -> dict:
+    try:
+        res = j["chart"]["result"][0]
+        meta = res["meta"]
+    except (KeyError, IndexError, TypeError):
+        raise FetchError(f"{t}: no chart result", retryable=False)
+    last = num(meta.get("regularMarketPrice"))
+    if last is None or last <= 0:
+        raise FetchError(f"{t}: no price", retryable=False)
+    splits = []
+    for s in (((res.get("events") or {}).get("splits") or {}).values()):
+        if not isinstance(s, dict):
+            continue
+        d, n, dn = num(s.get("date")), num(s.get("numerator")), num(s.get("denominator"))
+        if d and n and dn and n > 0 and dn > 0:
+            splits.append({"ts": d, "ratio": round(n / dn, 6), "label": f"{n:g}:{dn:g}"})
+    splits.sort(key=lambda s: s["ts"])
+    return {"ticker": t, "last": last, "ts": num(meta.get("regularMarketTime")), "currency": str(meta.get("currency") or "")[:4],
+            "exchange": str(meta.get("exchangeName") or "")[:12], "splits": splits[-4:]}
+
+
+def fetch_watch(f, cfg, prev=None) -> dict:
+    """Last price + split events for the owner's watchlist (same list the filings/fundamentals feeds use, max 25)."""
+    from .edgar import DEFAULT_WATCH
+    ic = cfg.get("intel", {}) if hasattr(cfg, "get") else {}
+    watch = [str(t).upper() for t in (ic.get("watchlist") or DEFAULT_WATCH)][:WATCH_MAX]
+    rows, errors = [], {}
+    for t in watch:
+        try:
+            rows.append(parse_watch(t, f.get(URL.format(s=t), params={"range": WATCH_RANGE, "interval": WATCH_INTERVAL, "events": "split"}, timeout=10)))
+        except FetchError as e:
+            errors[t] = e.reason
+        time.sleep(0.12)  # be polite
+    if not rows:
+        raise FetchError("yahoo watchlist: " + "; ".join(f"{k} {v}" for k, v in errors.items())[:200])
+    return {"watchlist": watch, "rows": rows, "errors": errors}

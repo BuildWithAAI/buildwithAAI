@@ -364,3 +364,105 @@ def earnings_soon_alarms(earn: dict | None, now: float, days: int = EARN_SOON_DA
                            + " · not a confirmed date · watchlist · descriptive, not a signal"),
             "source": "intel", "ticker": tk, "est_next": d.isoformat(), "in_days": n})
     return out
+
+
+FUND_RUNWAY_MONTHS = 12      # matches xbrl RUNWAY_LT_12M: an operating burn with under this many months of cash
+FUND_DILUTION = 0.10         # matches xbrl DILUTION_GT_10PCT: 1Y share count growth of at least 10%
+FUND_ALARM_MAX = 4           # at most this many fundamentals alarms at once, so a weak tape never floods the strip
+
+
+def fundamentals_alarms(payload: dict | None, prev: dict | None = None, cap: int = FUND_ALARM_MAX,
+                        quotes: dict | None = None) -> list[dict]:
+    """T11c silent INFO for watchlist names whose latest SEC 10-Q/10-K (aai/intel/adapters/xbrl.snapshot) shows an
+    operating burn with under 12 months of runway, or 1Y share growth of at least +10%. The id carries the ticker, the
+    kind and the period end, so each condition shows once per reporting period and a new 10-Q retires it (a still-true
+    condition comes back under the new period). `prev` (the previous good fundamentals payload) only words the detail
+    "new this period" / "also in the period ending ..." when it holds an older period for that ticker; it never
+    creates or hides an alarm. Stale periods, banks and rows without a period are skipped. Descriptive, not a signal;
+    nothing creates an idea, ticket or order.
+    T11e: `quotes` (the watch_quotes payload) supplies split events; a split inside the 1Y window is taken out of the
+    share-count change (valuation.split_yoy), and a change that cannot be made comparable raises no dilution alarm, so
+    a 10:1 split never reads as +900% dilution. Without quotes the reported change is used as before."""
+    from datetime import date
+    from aai.intel import valuation
+    qrows = {}
+    for q in ((quotes or {}).get("rows") if isinstance(quotes, dict) and isinstance(quotes.get("rows"), list) else []):
+        if isinstance(q, dict) and isinstance(q.get("ticker"), str):
+            qrows[q["ticker"].upper()] = q
+
+    def adj(r):
+        try:
+            return valuation.split_yoy(r, qrows.get(str(r.get("ticker") or "").upper()))
+        except Exception:  # noqa: BLE001 - malformed row: treat as not comparable
+            return {"yoy": None, "status": "unknown", "note": ""}
+    if not isinstance(payload, dict) or not isinstance(payload.get("rows"), list):
+        return []
+    prev_rows = {}
+    for r in ((prev or {}).get("rows") if isinstance(prev, dict) and isinstance(prev.get("rows"), list) else []):
+        if isinstance(r, dict) and isinstance(r.get("ticker"), str):
+            prev_rows[r["ticker"].upper()] = r
+
+    def num(v):
+        return v if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v else None
+
+    def money(v):
+        a = abs(v)
+        return f"${a / 1e9:.1f}B" if a >= 1e9 else f"${a / 1e6:.0f}M" if a >= 1e6 else f"${a:,.0f}"
+
+    def history_note(tk, end, held):
+        p = prev_rows.get(tk)
+        if not isinstance(p, dict) or not isinstance(p.get("period_end"), str):
+            return ""
+        try:
+            pe = date.fromisoformat(p["period_end"][:10])
+        except ValueError:
+            return ""
+        if pe >= end:
+            return ""
+        return (f"; also in the period ending {pe.isoformat()}" if held(p) else f"; new this period (not in {pe.isoformat()})")
+
+    def runway_held(r):
+        m = num(r.get("runway_months"))
+        return m is not None and m < FUND_RUNWAY_MONTHS
+
+    def dil_held(r):
+        y = num(adj(r)["yoy"])
+        return y is not None and y >= FUND_DILUTION
+
+    hits = []
+    for r in payload["rows"]:
+        if not isinstance(r, dict) or not isinstance(r.get("ticker"), str) or not isinstance(r.get("period_end"), str):
+            continue
+        flags = r.get("flags") if isinstance(r.get("flags"), list) else []
+        if "STALE PERIOD" in flags or "BANK" in flags:
+            continue
+        try:
+            end = date.fromisoformat(r["period_end"][:10])
+        except ValueError:
+            continue
+        tk = _sym_id(r["ticker"].upper())[:10]
+        form = str(r.get("form") or "filing")[:8]
+        months, ocf, fcf, liq = num(r.get("runway_months")), num(r.get("ocf_ttm")), num(r.get("fcf_ttm")), num(r.get("liquidity"))
+        if runway_held(r) and ocf is not None and ocf < 0 and fcf is not None and fcf < 0:
+            hits.append((0, months, tk, {
+                "id": f"intel_fund_runway_{tk}_{end.isoformat()}", "sev": "info", "chime": False,
+                "title": f"{tk} runway about {months:.0f} months ({form} {end.strftime('%m-%d')})",
+                "detail": _cap(f"Operating burn: FCF TTM {('-' if fcf < 0 else '') + money(fcf)} against "
+                               + (money(liq) if liq is not None else "n/a")
+                               + " cash and short-term investments, from SEC XBRL"
+                               + history_note(tk, end, runway_held) + "; watchlist; descriptive, not a signal"),
+                "source": "intel", "ticker": tk, "kind": "runway", "period_end": end.isoformat(),
+                "runway_months": months}))
+        ya = adj(r)
+        yoy = num(ya["yoy"])
+        if dil_held(r):
+            hits.append((1, -yoy, tk, {
+                "id": f"intel_fund_dilution_{tk}_{end.isoformat()}", "sev": "info", "chime": False,
+                "title": f"{tk} share count {yoy * 100:+.0f}% in a year ({form} {end.strftime('%m-%d')})",
+                "detail": _cap("1Y share growth of at least 10% from SEC XBRL, basis "
+                               + str(r.get("shares_basis") or "share count")[:32]
+                               + ("; " + str(ya.get("note") or "")[:80] if ya.get("status") == "adjusted" else "")
+                               + history_note(tk, end, dil_held) + "; watchlist; descriptive, not a signal"),
+                "source": "intel", "ticker": tk, "kind": "dilution", "period_end": end.isoformat(),
+                "shares_yoy": yoy, "split_adjusted": ya.get("status") == "adjusted"}))
+    return [h[3] for h in sorted(hits, key=lambda h: (h[0], h[1], h[2]))[:max(0, int(cap))]]

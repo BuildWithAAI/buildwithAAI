@@ -282,13 +282,103 @@ def forex() -> dict:
     eq = []
     pdir = os.path.join(root, "state", "paper")
     for fn in sorted(os.listdir(pdir)) if os.path.isdir(pdir) else []:
-        d = _read_json(os.path.join(pdir, fn)) or {}
-        b = d.get("broker") or {}
-        eq.append({"book": fn[:-5], "equity": d.get("equity"), "open": len(b.get("positions") or []),
-                   "pending": len(b.get("pending") or [])})
+        if fn.endswith(".json"):
+            eq.append(forex_book(os.path.join(pdir, fn)))
     out["paper"] = eq
     out["status"] = "stale" if out["stale"] else "ok"
     return out
+
+
+_FX_SIDE = {1: "LONG", -1: "SHORT"}
+
+
+def _fx_pos(p: dict) -> dict:
+    """One aai-forex paper position / resting order (execution/models.py to_dict), copied field by field."""
+    side = p.get("side")
+    return {"pair": str(p.get("pair") or "?")[:12], "side": _FX_SIDE.get(side) if isinstance(side, int) else None,
+            "lots": _num(p.get("lots")), "entry": _num(p.get("entry_price")), "stop": _num(p.get("stop")),
+            "target": _num(p.get("target")), "risk": _num(p.get("initial_risk", p.get("risk_amount"))),
+            "ts": _ts(p.get("entry_ts", p.get("ts"))), "bars_held": p.get("bars_held") if isinstance(p.get("bars_held"), int) else None,
+            "strategy": str(p.get("strategy") or "")[:40] or None, "kind": str(p.get("kind") or "")[:10] or None,
+            "swap": _num(p.get("swap"))}
+
+
+def forex_book(path: str) -> dict:
+    """T8b: one aai-forex paper book (`state/paper/<book>.json`, read-only): equity, cash, drawdown from the
+    book's own peak, today's change from its own day-start mark, the newest bar it has processed, and its open
+    positions / resting orders with entry, stop and target. Values the file does not carry stay None."""
+    book = os.path.basename(path)[:-5] if path.endswith(".json") else os.path.basename(path)
+    d = _read_json(path)
+    if not isinstance(d, dict):
+        return {"book": book, "error": "unreadable", "equity": None, "open": 0, "pending": 0, "positions": [], "orders": [],
+                "ledger": None}
+    b = d.get("broker") if isinstance(d.get("broker"), dict) else {}
+    rk = d.get("risk") if isinstance(d.get("risk"), dict) else {}
+    pos = [_fx_pos(x) for x in (b.get("positions") or []) if isinstance(x, dict)][:12]
+    pend = [_fx_pos(x) for x in (b.get("pending") or []) if isinstance(x, dict)][:12]
+    eqv, peak, d0 = _num(d.get("equity")), _num(rk.get("peak_equity")), _num(rk.get("day_start_equity"))
+    seen = [t for t in (_ts(v) for v in (d.get("last_seen") or {}).values()) if t] if isinstance(d.get("last_seen"), dict) else []
+    return {"book": book, "equity": eqv, "cash": _num(b.get("cash")), "peak": peak,
+            "dd_pct": round(100 * (peak - eqv) / peak, 2) if eqv is not None and peak else None,
+            "day": rk.get("day") if isinstance(rk.get("day"), str) else None,
+            "day_chg": round(eqv - d0, 2) if eqv is not None and d0 is not None else None,
+            "last_bar": max(seen) if seen else None, "n_pairs": len(seen), "saved_at": _mtime(path),
+            "open": len(b.get("positions") or []), "pending": len(b.get("pending") or []), "positions": pos, "orders": pend,
+            "ledger": forex_ledger(path[:-5] if path.endswith(".json") else path)}
+
+
+FX_LEDGER_MAX_BYTES = 2_000_000   # read at most the newest ~2 MB of trades.jsonl
+FX_LEDGER_RECENT = 5
+
+
+def forex_ledger(book_dir: str) -> dict:
+    """T8c: one aai-forex book's closed-trade ledger (`state/paper/<book>/trades.jsonl`, written by its PaperBroker
+    when `ledger_dir` is set; one execution/models.ClosedTrade per line). Read-only, no backfill: a book with no
+    ledger file reports status 'none' and zero closed trades. Win = net_pnl > 0 (after commission and swap).
+    Lines without a numeric net_pnl and r_multiple are counted as `bad`, never guessed."""
+    p = os.path.join(book_dir, "trades.jsonl")
+    try:
+        size = os.path.getsize(p)
+    except OSError:
+        return {"status": "none", "closed": 0, "wins": 0, "win_rate": None, "sum_r": None, "avg_r": None, "net_pnl": None,
+                "last_exit": None, "recent": [], "bad": 0, "partial": False}
+    try:
+        with open(p, "rb") as f:
+            if size > FX_LEDGER_MAX_BYTES:
+                f.seek(size - FX_LEDGER_MAX_BYTES)
+                f.readline()   # drop the cut line
+            raw = f.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return {"status": "error", "error": "unreadable", "closed": 0, "recent": [], "bad": 0, "partial": False}
+    rows, bad = [], 0
+    for ln in raw:
+        if not ln.strip():
+            continue
+        try:
+            t = json.loads(ln)
+        except ValueError:
+            bad += 1
+            continue
+        net, r = (_num(t.get("net_pnl")), _num(t.get("r_multiple"))) if isinstance(t, dict) else (None, None)
+        if net is None or r is None or not (abs(net) < float("inf") and abs(r) < float("inf")):   # NaN/inf fail too
+            bad += 1
+            continue
+        side = t.get("side")
+        rows.append({"pair": str(t.get("pair") or "?")[:12], "side": _FX_SIDE.get(side) if isinstance(side, int) else None,
+                     "exit_kind": str(t.get("exit_kind") or "")[:10] or None, "r": round(r, 2), "net": round(net, 2),
+                     "entry_ts": _ts(t.get("entry_ts")), "exit_ts": _ts(t.get("exit_ts")),
+                     "bars_held": t.get("bars_held") if isinstance(t.get("bars_held"), int) else None})
+    n = len(rows)
+    wins = sum(1 for x in rows if x["net"] > 0)
+    exits = [x["exit_ts"] for x in rows if x["exit_ts"]]
+    return {"status": "ok" if n else "empty", "closed": n, "wins": wins,
+            "win_rate": round(100 * wins / n, 1) if n else None,
+            "sum_r": round(sum(x["r"] for x in rows), 2) if n else None,
+            "avg_r": round(sum(x["r"] for x in rows) / n, 2) if n else None,
+            "net_pnl": round(sum(x["net"] for x in rows), 2) if n else None,
+            "last_exit": max(exits) if exits else None,
+            "recent": sorted(rows, key=lambda x: x["exit_ts"] or 0, reverse=True)[:FX_LEDGER_RECENT],
+            "bad": bad, "partial": size > FX_LEDGER_MAX_BYTES}
 
 
 def billy() -> dict:
@@ -351,7 +441,116 @@ def smr_local() -> dict:
             **_fresh(_mtime(db))}
 
 
-CHEAP = {"perps": perps, "forex": forex, "billy": billy, "security": security, "agent_guard": agent_guard, "smr_local": smr_local}
+SMR_SCANNER_STALE_SEC = 3600   # the scanner cycles every 5 min; an hour without a cycle means it is not running
+
+
+def _num(v):
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def scanner_resume(cycles) -> dict | None:
+    """T10b: the newest restart in a cycle log [(id, ts), ...] (any order): the first cycle after a gap longer than
+    SMR_SCANNER_STALE_SEC. Returns {cycle_id, at, gap_sec, prev_at, cycles_since} or None (no gap in the window)."""
+    rows = sorted(((int(i), t) for i, t in ((r[0], _ts(r[1])) for r in cycles or []) if i is not None and t), key=lambda r: r[0])
+    for k in range(len(rows) - 1, 0, -1):
+        gap = rows[k][1] - rows[k - 1][1]
+        if gap > SMR_SCANNER_STALE_SEC:
+            return {"cycle_id": rows[k][0], "at": rows[k][1], "gap_sec": round(gap), "prev_at": rows[k - 1][1],
+                    "cycles_since": len(rows) - k}
+    return None
+
+
+def smr_scanner(limit: int = 6) -> dict:
+    """T10: solana-meme-risk scanner desk, read-only from that pipeline's own `data/paper.db` (mode=ro).
+
+    Latest risk-scored mints (decision, score, bundle % / shared-funder cluster % of supply, holders) joined
+    with the scanner's own liquidity / market-cap view of the same mint, plus the last scanner cycle funnel.
+    Nothing is scored, fetched or written here. A scanner that has not cycled for an hour is reported STALE
+    with its real age; numbers the pipeline did not record stay None (never estimated)."""
+    root = _p("solana-meme-risk")
+    db = os.path.join(root, "data", "paper.db")
+    if not os.path.exists(db):
+        return {"name": "solana-meme-risk scanner", "status": "missing", "detail": "data/paper.db not found", "rows": []}
+    out = {"name": "solana-meme-risk scanner", "rows": [], "cycle": None, "decisions": {}}
+    try:
+        con = _ro(db)
+        con.row_factory = sqlite3.Row
+        try:
+            tabs = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            if "scanner_scores" not in tabs:
+                return {**out, "status": "missing", "detail": "no scanner_scores table (scanner never ran)"}
+            if "scanner_cycles" in tabs:
+                c = con.execute("SELECT id, started_at, finished_at, elapsed_s, stats FROM scanner_cycles"
+                                " ORDER BY id DESC LIMIT 1").fetchone()
+                if c:
+                    try:
+                        st = json.loads(c["stats"] or "{}")
+                    except ValueError:
+                        st = {}
+                    st = st if isinstance(st, dict) else {}
+                    rk = st.get("risk") if isinstance(st.get("risk"), dict) else {}
+                    out["cycle"] = {"id": c["id"], "finished_at": c["finished_at"] or c["started_at"],
+                                    "elapsed_s": _num(c["elapsed_s"]), "candidates": st.get("candidates"),
+                                    "prefilter_pass": st.get("prefilter_pass"), "runner_scored": st.get("runner_scored"),
+                                    "risk_scored_new": rk.get("scored_new"),
+                                    "risk_decisions": {str(k): v for k, v in (rk.get("decisions") or {}).items()},
+                                    "entries": len(st.get("entries") or []), "errors": len(st.get("errors") or [])}
+                    out["n_cycles"] = con.execute("SELECT COUNT(*) FROM scanner_cycles").fetchone()[0]
+                    out["resumed"] = scanner_resume(con.execute(
+                        "SELECT id, COALESCE(finished_at, started_at) FROM scanner_cycles ORDER BY id DESC LIMIT 400").fetchall())
+            out["decisions"] = {(r[0] or r[1] or "?").upper(): r[2] for r in con.execute(
+                "SELECT decision, status, COUNT(*) FROM scanner_scores GROUP BY decision, status")}
+            has_c, has_o = "scanner_candidates" in tabs, "scanner_obs" in tabs
+            for r in con.execute("SELECT mint, scored_at, status, decision, score, top_reasons, hard_flags, holder_count,"
+                                 " bundle_pct, bundle_wallets, cluster_pct, error FROM scanner_scores"
+                                 " ORDER BY scored_at DESC LIMIT ?", (int(limit),)):
+                try:
+                    reasons = json.loads(r["top_reasons"] or "[]")
+                except ValueError:
+                    reasons = []
+                try:
+                    flags = json.loads(r["hard_flags"] or "[]")
+                except ValueError:
+                    flags = []
+                row = {"mint": r["mint"], "scored_at": r["scored_at"], "status": r["status"],
+                       "decision": (r["decision"] or "").upper() or None, "score": _num(r["score"]),
+                       "holders": r["holder_count"], "bundle_pct": _num(r["bundle_pct"]), "bundle_wallets": r["bundle_wallets"],
+                       "cluster_pct": _num(r["cluster_pct"]),
+                       "reason": str(reasons[0])[:200] if isinstance(reasons, list) and reasons else (r["error"] or None),
+                       "n_flags": len(flags) if isinstance(flags, list) else 0,
+                       "symbol": None, "liq_usd": None, "mcap_usd": None, "age_h": None, "runner_score": None, "market_at": None}
+                if has_c:
+                    m = con.execute("SELECT symbol, liq, mcap, age_h, runner_score, at FROM scanner_candidates WHERE mint=?"
+                                    " ORDER BY id DESC LIMIT 1", (r["mint"],)).fetchone()
+                    if m:
+                        row.update(symbol=m["symbol"], liq_usd=_num(m["liq"]), mcap_usd=_num(m["mcap"]), age_h=_num(m["age_h"]),
+                                   runner_score=_num(m["runner_score"]), market_at=m["at"])
+                if has_o and (row["liq_usd"] is None or row["mcap_usd"] is None or row["holders"] is None):
+                    o = con.execute("SELECT liq, mcap, holders, at FROM scanner_obs WHERE mint=? ORDER BY at DESC LIMIT 1",
+                                    (r["mint"],)).fetchone()
+                    if o:
+                        row["liq_usd"] = row["liq_usd"] if row["liq_usd"] is not None else _num(o["liq"])
+                        row["mcap_usd"] = row["mcap_usd"] if row["mcap_usd"] is not None else _num(o["mcap"])
+                        row["holders"] = row["holders"] if row["holders"] is not None else o["holders"]
+                        row["market_at"] = row["market_at"] or o["at"]
+                # liquidity as a share of market cap: thin pools are how meme exits fail
+                row["liq_mcap_pct"] = (round(100 * row["liq_usd"] / row["mcap_usd"], 1)
+                                       if row["liq_usd"] is not None and row["mcap_usd"] else None)
+                out["rows"].append(row)
+        finally:
+            con.close()
+    except sqlite3.Error as e:
+        return {**out, "status": "error", "detail": f"paper.db not readable: {type(e).__name__}"}
+    last = (out["cycle"] or {}).get("finished_at") or max((x["scored_at"] or 0 for x in out["rows"]), default=None) or None
+    f = _fresh(_ts(last))
+    f["stale"] = f["age_sec"] is None or f["age_sec"] > SMR_SCANNER_STALE_SEC
+    out.update(f)
+    out["status"] = "stale" if f["stale"] else "ok"
+    return out
+
+
+CHEAP = {"perps": perps, "forex": forex, "billy": billy, "security": security, "agent_guard": agent_guard, "smr_local": smr_local,
+         "smr_scanner": smr_scanner}
 
 
 def cheap_all() -> dict:
