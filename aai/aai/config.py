@@ -66,4 +66,6 @@ def load(path: str | os.PathLike | None = None, overrides: dict | None = None) -
     cfg["store"]["path"] = str(sp if sp.is_absolute() else ROOT / sp)
     if os.environ.get("AAI_DB"):
         cfg["store"]["path"] = os.environ["AAI_DB"]
+    from . import watchlist  # owner-edited EDGAR watchlist (data/watchlist.json, CLI-only writer); invalid file = default
+    watchlist.apply(cfg)
     return validate(cfg)

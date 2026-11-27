@@ -83,7 +83,7 @@ def test_static_column_textcontent_only():
     js = (STATIC / "zoora.js").read_text()
     seg = js.split("Stage history sparkline (backlog P3)")[1].split("function renderEconomy")[0]
     assert "econHist" in seg and "innerHTML" not in seg
-    assert "days=${ECON_DAYS}" in js and "expTd.append(econHist(series, id))" in js and "colspan: 6" in js
+    assert "days=${ECON_DAYS}" in js and "expTd.append(econHist(series, id, $('#econRead')))" in js and "colspan: 6" in js
     html = (STATIC / "index.html").read_text()
     head = html.split('id="econTable"')[1].split("</thead>")[0]
     assert head.count("<th>") + head.count("<th ") == 6 and "<small>14D</small>" in head   # no extra column (narrow panel)

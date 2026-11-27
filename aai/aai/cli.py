@@ -48,23 +48,40 @@ def main(argv=None):
     ht = sub.add_parser("hud-ticket", help="print a single-use 60 s login URL for the running locked HUD (headless screenshots)")
     ht.add_argument("path", nargs="?", default="/zoora", help="HUD path, e.g. '/zoora?nosse=1' (fragment allowed)")
     il = sub.add_parser("improve-lock", help="lock for automated improvement runs (.improve.lock)")
-    il.add_argument("action", choices=["acquire", "release", "status"]); il.add_argument("--owner", default="manual")
-    il.add_argument("--ttl", type=int, default=1800, help="seconds before a held lock counts as stale")
+    il.add_argument("action", choices=["acquire", "refresh", "release", "status"]); il.add_argument("--owner", default="manual")
+    il.add_argument("--ttl", type=int, default=1800, help="seconds before a held lock counts as stale (refresh: new ttl from now)")
     il.add_argument("--force", action="store_true", help="release even if held by another owner")
     it = sub.add_parser("intel", help="institutional market intel (aai/intel): refresh feeds into the cache, status, show")
     it.add_argument("action", choices=["refresh", "status", "show", "brief"])
     it.add_argument("feeds", nargs="*", help="feed names (default: all); 'show' takes one")
     it.add_argument("--force", action="store_true", help="refresh even if not due / breaker open")
+    fw = sub.add_parser("filings-watch", help="OWNER CLI: the EDGAR filings watchlist (data/watchlist.json; list/add/remove/reset)")
+    fw.add_argument("action", choices=["list", "add", "remove", "reset"]); fw.add_argument("tickers", nargs="*")
     ga = sub.add_parser("guard-audit", help="run agent-guard audit.py with a hard timeout; records timed_out instead of hanging")
     ga.add_argument("--timeout", type=float, default=240)
     sc = sub.add_parser("shot-check", help="HUD screenshot layout regression vs blessed baselines (records verdict for healthcheck/HUD)")
-    sc.add_argument("action", choices=["check", "bless", "status"])
+    sc.add_argument("action", choices=["check", "bless", "status", "regions"])
     sc.add_argument("layout", nargs="?", help="desk | phone"); sc.add_argument("png", nargs="?", help="screenshot PNG path")
     a = ap.parse_args(argv)
     if a.cmd == "shot-check":
         from . import shotcheck
         if a.action == "status":
             print(json.dumps(shotcheck.summary(), indent=2)); return
+        if a.action == "regions":   # region fit on the blessed baseline (or PNG); recorded only for the baseline itself
+            try:
+                outs = []
+                for lay in ([a.layout] if a.layout else list(shotcheck.LAYOUTS)):
+                    r = shotcheck.audit_regions(lay, a.png)
+                    if not a.png:
+                        shotcheck.record_audit(lay, r)
+                    outs.append(r)
+            except (ValueError, OSError) as e:
+                sys.exit(f"shot-check regions: {e}")
+            print(json.dumps(outs, indent=2))
+            for r in outs:
+                if r.get("warning"):
+                    print("WARNING: " + r["warning"], file=sys.stderr)
+            sys.exit(0 if all(r["ok"] for r in outs) else 1)
         if not a.layout or not a.png:
             sys.exit(f"shot-check {a.action} needs LAYOUT PNG")
         try:
@@ -72,6 +89,8 @@ def main(argv=None):
         except (ValueError, OSError) as e:
             sys.exit(f"shot-check {a.action}: {e}")
         print(json.dumps(res, indent=2))
+        if res.get("warning"):
+            print("WARNING: " + res["warning"], file=sys.stderr)
         sys.exit(0 if res.get("ok") else (2 if res.get("verdict") in ("ERROR", "NO_BASELINE") else 1))
     if a.cmd == "guard-audit":
         from . import guard_audit
@@ -95,10 +114,17 @@ def main(argv=None):
         return
     if a.cmd == "improve-lock":
         res = {"acquire": lambda: improve_lock.acquire(a.owner, a.ttl), "release": lambda: improve_lock.release(a.owner, a.force),
-               "status": improve_lock.status}[a.action]()
+               "refresh": lambda: improve_lock.refresh(a.owner, a.ttl), "status": improve_lock.status}[a.action]()
         print(json.dumps(res, indent=2)); sys.exit(0 if res.get("ok", True) else 3)
 
     cfg = config.load()
+    if a.cmd == "filings-watch":  # owner-only writer; no HUD/voice/agent path reaches this
+        from . import watchlist
+        try:
+            res = watchlist.effective(cfg) if a.action == "list" else watchlist.edit(cfg, a.action, a.tickers)
+        except watchlist.WatchlistError as e:
+            print(json.dumps({"ok": False, "error": str(e)}, indent=2)); sys.exit(2)
+        print(json.dumps(res, indent=2, default=str)); sys.exit(0 if not res.get("error") else 1)
     store = Store(cfg["store"]["path"])
     out = lambda o: print(json.dumps(o, indent=2, default=str))
     if a.cmd == "healthcheck":

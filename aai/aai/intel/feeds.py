@@ -1,7 +1,7 @@
 """Feed registry: one entry per live source with its refresh interval and staleness budget (seconds)."""
 from __future__ import annotations
 from .core import Breaker, Feed
-from .adapters import blofin, cftc, defillama, deribit, edgar, fear_greed, ff_calendar, fred, okx, treasury, yahoo
+from .adapters import blofin, cftc, defillama, deribit, edgar, fear_greed, ff_calendar, fred, okx, treasury, xbrl, yahoo
 
 M, H, D = 60, 3600, 86400
 
@@ -10,6 +10,8 @@ def registry() -> dict[str, Feed]:
     fs = [
         Feed("markets", "Cross-asset quotes", "Yahoo Finance chart API (keyless, unofficial)", "https://finance.yahoo.com/",
              2 * M, 20 * M, yahoo.fetch, "markets", "Equities/ETFs may be up to 15 min delayed; closed markets keep the last session close."),
+        Feed("sectors", "US sector ETFs (breadth)", "Yahoo Finance chart API (keyless, unofficial)", "https://www.sectorspdrs.com/",
+             5 * M, 30 * M, yahoo.fetch_sectors, "equities", "11 SPDR Select Sector ETFs; up to 15 min delayed; closed markets keep the last session close."),
         Feed("rates", "US Treasury par yield curve", "U.S. Treasury (home.treasury.gov)", treasury.PAGE,
              30 * M, 4 * D, treasury.fetch, "macro", "Published once per business day after ~3:30 pm ET."),
         Feed("fred", "FRED macro series", "Federal Reserve Bank of St. Louis (FRED fredgraph CSV)", "https://fred.stlouisfed.org/",
@@ -32,5 +34,11 @@ def registry() -> dict[str, Feed]:
         Feed("filings", "SEC filings: Form 4 + 8-K", "SEC EDGAR (data.sec.gov)", "https://www.sec.gov/edgar/search/",
              10 * M, 2 * H, edgar.fetch, "equities", "Watchlist only; last 30 days. Form 4 code P = open-market purchase.",
              breaker=Breaker(threshold=2, base_cooloff=600)),
+        Feed("fundamentals", "Fundamentals: SEC XBRL company facts", "SEC EDGAR XBRL API (data.sec.gov)", "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+             6 * H, 3 * D, xbrl.fetch, "equities", "Watchlist only; from each issuer's latest 10-Q/10-K. Filings arrive quarterly, so 6-hourly is plenty.",
+             breaker=Breaker(threshold=2, base_cooloff=1800)),
+        Feed("watch_quotes", "Watchlist quotes (for multiples)", "Yahoo Finance chart API (keyless, unofficial)", "https://finance.yahoo.com/",
+             10 * M, 90 * M, yahoo.fetch_watch, "equities", "Last price per watchlist name, up to 15 min delayed; closed markets keep the last close. "
+             "Used only to price the SEC fundamentals (market cap, EV, P/S, FCF yield)."),
     ]
     return {f.name: f for f in fs}

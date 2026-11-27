@@ -2,7 +2,9 @@
 
 A run MUST `acquire` before touching the repo and `release` when done (also on failure). Creation is atomic
 (O_CREAT|O_EXCL). A lock older than its ttl is stale and may be taken over; the takeover is recorded in the file.
-Contents: {"owner", "pid", "host", "acquired_at", "ttl_sec", "expires_at", "took_over"}.
+Contents: {"owner", "pid", "host", "acquired_at", "ttl_sec", "expires_at", "took_over"} plus, after a `refresh`,
+{"refreshed_at", "refreshes"}. A long run extends its own lock with `refresh` (same owner only); `acquire` by the same
+owner still answers "held" (exit 3) so the contract's "exit 3 means stop" stays unambiguous.
 """
 from __future__ import annotations
 import json, os, socket, time
@@ -46,6 +48,28 @@ def acquire(owner: str, ttl: int = 1800) -> dict:
             os.replace(tmp, LOCK)
             return {"ok": True, "acquired": True, "path": str(LOCK), **rec}
     return {"ok": False, "acquired": False, "reason": "race"}
+
+
+def refresh(owner: str, ttl: int = 1800) -> dict:
+    """Extend a lock this owner already holds: expires_at = now + ttl, records refreshed_at / refreshes.
+
+    Never creates a lock and never takes over another owner's lock (stale or not). If our own lock went stale but nobody
+    took it over, it is still ours, so the refresh is allowed and reported with was_stale=True. The write is an atomic
+    replace; a takeover can only happen once the lock is stale, so read-then-replace cannot steal a live lock."""
+    now = time.time()
+    cur = _read()
+    if not cur:
+        return {"ok": False, "refreshed": False, "reason": "not held"}
+    if cur.get("owner") != owner:
+        return {"ok": False, "refreshed": False, "reason": f"held by {cur.get('owner')}", "holder": cur}
+    ttl = max(1, int(ttl))
+    was_stale = now > cur.get("expires_at", 0)
+    rec = {**cur, "ttl_sec": ttl, "expires_at": now + ttl, "refreshed_at": now,
+           "refreshes": int(cur.get("refreshes") or 0) + 1}
+    tmp = LOCK.with_suffix(f".{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(rec))
+    os.replace(tmp, LOCK)
+    return {"ok": True, "refreshed": True, "was_stale": was_stale, "path": str(LOCK), **rec}
 
 
 def release(owner: str, force: bool = False) -> dict:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import time
 
 from .base import Adapter
+from ..intel import breadth
 from ..intel.cache import IntelCache
 from ..intel.feeds import registry as intel_feeds
 
@@ -18,10 +19,13 @@ SOURCE = "Yahoo Finance chart API via intel markets (keyless, unofficial)"
 NOTE = "Equities/ETFs may be up to 15 min delayed; closed markets keep the last session close. No stocks idea agent."
 
 
-def _stale_budget() -> float:
+def _stale_budget(feed: str = "markets", default: float = 20 * 60) -> float:
     feeds = intel_feeds()
-    m = feeds.get("markets")
-    return float(getattr(m, "budget", 20 * 60) or 20 * 60)
+    m = feeds.get(feed)
+    return float(getattr(m, "budget", default) or default)
+
+
+SECTOR_SOURCE = "Yahoo Finance chart API via intel sectors (11 SPDR Select Sector ETFs; keyless, unofficial)"
 
 
 def _row(r: dict) -> dict | None:
@@ -81,7 +85,7 @@ class StocksAdapter(Adapter):
             err = (st.get("last_error") or "")[:160]
             return {"state": "MISSING", "detail": err or "no Yahoo markets snapshot yet", "quotes": [],
                     "source": SOURCE, "note": NOTE, "age_sec": None, "fetched_at": None,
-                    "stale_after_sec": _stale_budget()}
+                    "stale_after_sec": _stale_budget(), "sectors": self.sectors(now)}
         rows = (snap.get("payload") or {}).get("rows") or []
         quotes = []
         for r in rows:
@@ -101,9 +105,48 @@ class StocksAdapter(Adapter):
             state, detail = "STALE", f"{len(quotes)} equity quotes · {int(age)}s old (budget {int(budget)}s)"
         else:
             state, detail = "OK", f"{len(quotes)} equity quotes · Yahoo via intel · no idea agent"
+        spy = next((q for q in quotes if q["symbol"] == "SPY"), None)
         return {"state": state, "detail": detail, "quotes": quotes, "source": SOURCE, "note": NOTE,
                 "age_sec": round(age, 1), "fetched_at": fetched, "stale_after_sec": budget,
-                "feed_source": str(snap.get("source") or "")[:80]}
+                "feed_source": str(snap.get("source") or "")[:80], "sectors": self.sectors(now, spy)}
+
+    def sectors(self, now: float | None = None, spy: dict | None = None) -> dict:
+        """Sector breadth (aai/intel/breadth.py) from the intel `sectors` cache: OK / STALE / MISSING with real age.
+        `spy` is the SPY quote row (for the relative read); the last good snapshot is shown stale, never invented."""
+        now = now if now is not None else time.time()
+        budget = _stale_budget("sectors", 30 * 60)
+        base = {"source": SECTOR_SOURCE, "stale_after_sec": budget, "disclaimer": breadth.DISCLAIMER}
+        if self.cache is None:
+            return {**base, "state": "MISSING", "detail": "no store", "breadth": None, "age_sec": None, "fetched_at": None}
+        snap = self.cache.latest_ok("sectors")
+        if not snap:
+            err = (self.cache.state("sectors").get("last_error") or "")[:160]
+            return {**base, "state": "MISSING", "detail": err or "no sector ETF snapshot yet", "breadth": None,
+                    "age_sec": None, "fetched_at": None}
+        payload = snap.get("payload") or {}
+        b = breadth.compute(payload.get("rows") or [], spy)
+        try:
+            b["history"] = breadth.history(payload.get("rows") or [], now=now)
+        except Exception:  # noqa: BLE001  a malformed spark must never hide today's breadth
+            b["history"] = None
+        try:
+            b["above_hist"] = breadth.above_history(payload.get("rows") or [], now=now)
+        except Exception:  # noqa: BLE001  same rule: the >20D history is optional
+            b["above_hist"] = None
+        fetched = float(snap["fetched_at"])
+        age = max(0.0, now - fetched)
+        errs = payload.get("errors") or {}
+        missing = sorted(str(k)[:8] for k in errs)[:11] if isinstance(errs, dict) else []
+        if not b["n_with_chg"]:
+            state, detail = "MISSING", "sector snapshot has no daily changes"
+        elif age > budget:
+            state, detail = "STALE", f"{b['up']}/{b['n_with_chg']} sectors up · {int(age)}s old (budget {int(budget)}s)"
+        else:
+            state, detail = "OK", f"{b['up']}/{b['n_with_chg']} sectors up · {b['label'].lower()}"
+        if missing:
+            detail += f" · missing {', '.join(missing)}"
+        return {**base, "state": state, "detail": detail, "breadth": b, "missing": missing,
+                "age_sec": round(age, 1), "fetched_at": fetched}
 
     def health(self) -> dict:
         q = self.quotes()

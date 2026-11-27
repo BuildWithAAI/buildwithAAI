@@ -116,9 +116,68 @@ def grid(img, cols: int = 12, rows: int = 8, step: int = 2) -> list[list[tuple[f
     return out
 
 
+def region_cells(regions, cols: int, rows: int) -> dict:
+    """Assign every grid cell to the named region whose fractional rect (x0, y0, x1, y1 in 0..1) holds the cell centre.
+
+    `regions` is a list of (name, x0, y0, x1, y1); the first match wins, cells outside every rect go to "other".
+    Returns {name: [[x, y], ...]} in region order (regions with no cell are dropped)."""
+    out: dict = {}
+    for y in range(rows):
+        for x in range(cols):
+            cx, cy = (x + 0.5) / cols, (y + 0.5) / rows
+            name = next((r[0] for r in regions if r[1] <= cx < r[3] and r[2] <= cy < r[4]), "other")
+            out.setdefault(name, []).append([x, y])
+    order = [r[0] for r in regions] + ["other"]
+    return {k: out[k] for k in order if k in out}
+
+
+def _panels(regions, cols: int, rows: int, changed: list, new_blank: list, live=None) -> dict:
+    """Per named region: cells / changed / newly blank counts, plus which regions moved or went fully blank.
+
+    `live` (optional) is the set of (x, y) cells that had texture on the baseline. A region "went blank" when every one
+    of its live cells did, so a panel whose rect also covers some empty page (flat on the baseline, which can never
+    "go" blank) is still checked. Without `live` every cell counts (the old rule)."""
+    ch, bl = {tuple(c) for c in changed}, {tuple(c) for c in new_blank}
+    per = {}
+    for name, cells in region_cells(regions, cols, rows).items():
+        n_ch = sum(1 for c in cells if tuple(c) in ch)
+        n_bl = sum(1 for c in cells if tuple(c) in bl)
+        n_lv = len(cells) if live is None else sum(1 for c in cells if tuple(c) in live)
+        per[name] = {"cells": len(cells), "changed": n_ch, "new_blank": n_bl, "live": n_lv}
+    moved = sorted((k for k, v in per.items() if v["changed"]), key=lambda k: (-per[k]["changed"] / per[k]["cells"], k))
+    # a whole named panel going flat is the "empty panel" failure even when it is too small to trip max_new_blank
+    emptied = [k for k, v in per.items() if k != "other" and v["live"] >= 2 and v["new_blank"] == v["live"]]
+    return {"regions": per, "panels_moved": moved, "panels_blank": emptied}
+
+
+def region_audit(img, regions, cols: int = 12, rows: int = 8, blank_std: float = 2.0) -> dict:
+    """How well each named region fits a (baseline) image: per region cells / live (textured) / flat (not live) counts.
+
+    Regions are hand-measured page fractions; when a layout changes, a rect can drift onto empty page. A region is
+    `stale` (re-measure it) when it holds no grid cell, has fewer than 2 live cells (its blank-panel check can never
+    fire) or is mostly flat; `partial` when some of its cells are flat (still checked via its live cells)."""
+    g = grid(img, cols, rows)
+    cells = region_cells(regions, cols, rows)
+    per, stale, partial = {}, [], []
+    for r in regions:
+        name = r[0]
+        cs = cells.get(name, [])
+        live = sum(1 for x, y in cs if g[y][x][1] > blank_std * 3)
+        flat = len(cs) - live   # not textured enough to ever count as "went blank"
+        per[name] = {"cells": len(cs), "live": live, "flat": flat}
+        if not cs or live < 2 or flat * 2 > len(cs):
+            stale.append(name)
+        elif flat:
+            partial.append(name)
+    return {"regions": per, "regions_stale": stale, "regions_partial": partial, "grid": [cols, rows]}
+
+
 def compare(base, new, cols: int = 12, rows: int = 8, mean_tol: float = 18.0, std_tol: float = 14.0,
-            blank_std: float = 2.0, threshold: float = 0.35, max_new_blank: int = 2) -> dict:
-    """Grid diff of two decoded images (see module doc). Returns a JSON-safe verdict dict."""
+            blank_std: float = 2.0, threshold: float = 0.35, max_new_blank: int = 2, regions=None) -> dict:
+    """Grid diff of two decoded images (see module doc). Returns a JSON-safe verdict dict.
+
+    With `regions` (see region_cells) the verdict also names the panels that moved or went blank, and a named panel
+    of 2+ cells that went completely blank fails on its own."""
     if base[:2] != new[:2]:
         return {"ok": False, "verdict": "FAIL", "reason": f"size changed {base[0]}x{base[1]} -> {new[0]}x{new[1]}",
                 "changed_frac": 1.0, "changed": [], "new_blank": []}
@@ -137,8 +196,20 @@ def compare(base, new, cols: int = 12, rows: int = 8, mean_tol: float = 18.0, st
         reasons.append(f"{len(changed)}/{cols * rows} cells changed ({frac:.0%} > {threshold:.0%})")
     if len(new_blank) > max_new_blank:
         reasons.append(f"{len(new_blank)} cells went blank (> {max_new_blank}): possible empty/collapsed panel")
-    return {"ok": not reasons, "verdict": "PASS" if not reasons else "FAIL", "reason": "; ".join(reasons) or "layout stable",
-            "size": [base[0], base[1]], "grid": [cols, rows], "changed_frac": frac, "changed": changed, "new_blank": new_blank}
+    live = {(x, y) for y in range(rows) for x in range(cols) if ga[y][x][1] > blank_std * 3}
+    pan = _panels(regions, cols, rows, changed, new_blank, live) if regions else None
+    if pan and pan["panels_blank"]:
+        reasons.append("panel went blank: " + ", ".join(pan["panels_blank"]))
+    failed = bool(reasons)
+    if pan and failed and pan["panels_moved"]:
+        reasons.append("moved: " + ", ".join(f"{k} {pan['regions'][k]['changed']}/{pan['regions'][k]['cells']}" for k in pan["panels_moved"][:4]))
+    out = {"ok": not failed,
+           "reason": "; ".join(reasons) or "layout stable",
+           "size": [base[0], base[1]], "grid": [cols, rows], "changed_frac": frac, "changed": changed, "new_blank": new_blank}
+    out["verdict"] = "PASS" if out["ok"] else "FAIL"
+    if pan:
+        out.update(pan)
+    return out
 
 
 def compare_files(base_path, new_path, **kw) -> dict:

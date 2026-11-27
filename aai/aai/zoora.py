@@ -15,7 +15,7 @@ from zoneinfo import ZoneInfo
 
 from . import audit, change_stream, economy, equity_curve, guard, snapshots, health as health_mod, longterm as lt, sources
 from .adapters.base import AdapterError
-from .intel import service as intel_service
+from .intel import breadth, service as intel_service
 from .models import Idea
 
 TZ = ZoneInfo("America/Chicago")
@@ -43,6 +43,68 @@ def money(v, signed=False) -> str:
 
 def pct(v, d=1) -> str:
     return "unknown" if v is None else f"{v * 100:.{d}f}%"
+
+
+SMR_RESUMED_WINDOW_SEC = 24 * 3600
+
+
+def dur(sec) -> str:
+    """ago() without the trailing 'ago' (a length of time, e.g. a gap)."""
+    s = ago(sec)
+    return s[:-4] if s.endswith(" ago") else s
+
+
+def smr_resumed(d, now: float) -> dict | None:
+    """T10b: the scanner's restart (sources.scanner_resume) while it is cycling again (status ok) and the first
+    new cycle is under 24 h old; else None. A stale scanner never gets a 'resumed' line."""
+    d = d if isinstance(d, dict) else {}
+    r = d.get("resumed") if isinstance(d.get("resumed"), dict) else None
+    if d.get("status") != "ok" or not r or not isinstance(r.get("at"), (int, float)) or not isinstance(r.get("cycle_id"), int):
+        return None
+    since = max(0.0, now - r["at"])
+    if since > SMR_RESUMED_WINDOW_SEC:
+        return None
+    return {**r, "since_sec": round(since)}
+
+
+FX_NOT_RUNNING_SEC = 4 * 86400   # T8d: a book whose newest bar is older than this, while forex trades, is not being run
+NY = ZoneInfo("America/New_York")
+
+
+def fx_market_open(now: float) -> bool:
+    """Spot FX week: Sunday 17:00 to Friday 17:00 New York time. Holidays are not modelled (a holiday only delays
+    the alarm by staying inside the 4-day window)."""
+    d = datetime.fromtimestamp(now, NY)
+    wd, h = d.weekday(), d.hour   # Mon=0 .. Sun=6
+    if wd == 5:
+        return False
+    if wd == 6:
+        return h >= 17
+    if wd == 4:
+        return h < 17
+    return True
+
+
+def fx_not_running(fx, now: float) -> list[dict]:
+    """T8d: aai-forex paper books (sources.forex_book) whose newest processed bar is over FX_NOT_RUNNING_SEC old while
+    the FX market is open. Unreadable books and books with no bar yet are left out (nothing to date them by).
+    Read-only: Zoora reports a stopped scan, it never starts one."""
+    fx = fx if isinstance(fx, dict) else {}
+    if not fx_market_open(now):
+        return []
+    out = []
+    for b in fx.get("paper") or []:
+        lb = b.get("last_bar") if isinstance(b, dict) else None
+        if b.get("error") or not isinstance(lb, (int, float)) or isinstance(lb, bool):
+            continue
+        age = now - lb
+        if age > FX_NOT_RUNNING_SEC:
+            out.append({"book": str(b.get("book") or "?"), "last_bar": float(lb), "age_sec": round(age)})
+    return sorted(out, key=lambda x: x["book"])
+
+
+def fx_book_name(book: str) -> str:
+    return str(book).replace("_", " ")
 
 
 def ago(sec) -> str:
@@ -91,6 +153,8 @@ INTENTS = [
     ("help", re.compile(r"\b(help|what can you do|commands|how do i|what do you do|capabilities)\b")),
     ("healthcheck", re.compile(r"\b(run|start|kick off|do|perform|trigger)\b.{0,20}\b(health ?check|diagnostics?|self[- ]?test|checks|system check)\b|^health ?check$")),
     # intel intents (read-only market intelligence) sit before economy/security/status so "brief me" / "intel" route here
+    ("sectors", re.compile(r"\b(sector (breadth|rotation|performance|etfs?|leaders?|laggards?|heat ?map|board)|(market|equity|stock) breadth|"
+                           r"breadth|how are (the )?sectors|which sectors?|sectors? (doing|today|leading|lagging)|spdr sectors?)\b|^(the )?sectors?$")),
     ("fx_desk", re.compile(r"\b((fx|forex|currency) (desk|pairs? (desk|overview|board))|pair desk|majors? (desk|board)|"
                           r"how are (the )?(fx|forex|currency) pairs)\b")),
     ("market_brief", re.compile(r"\b(brief me|market (brief|briefing|summary|wrap|overview)|morning brief|macro brief|regime|risk[- ]on|risk[- ]off|"
@@ -101,6 +165,8 @@ INTENTS = [
                            r"derivatives?|perp (funding|premium))\b")),
     ("positioning", re.compile(r"\b(positioning|cot|cftc|commitments? of traders|leveraged funds?|lev funds|speculators?|specs net|"
                                r"crowded (trades?|longs|shorts))\b")),
+    ("fundamentals", re.compile(r"\b(fundamentals?|valuations?|(cash )?runway|cash burn|burn rate|dilution|diluted|share count|"
+                                r"free cash flow|fcf|balance sheets?|revenue (ttm|growth))\b")),
     ("filings", re.compile(r"\b(insiders?( buys?| buying| selling)?|form ?4s?|8-?ks?|sec filings?|edgar|filings?)\b")),
     ("rates", re.compile(r"\b(yields?|yield curve|the curve|treasur\w*|bonds?|2s ?10s|3m ?10y|fed funds|interest rates?|rates|"
                          r"credit spreads?|high[- ]yield|inflation expectations?|breakevens?)\b")),
@@ -559,6 +625,20 @@ class Zoora:
         except Exception as e:  # never break overview for a quote desk
             return {"state": "ERROR", "detail": guard.clean(f"{type(e).__name__}: {e}", 120), "quotes": [], "age_sec": None}
 
+    def _r_sectors(self) -> tuple[str, dict]:
+        """Spoken sector breadth (11 SPDR ETFs) from the stocks panel; read-only, says so when missing/stale."""
+        sq = self.stocks_panel()
+        sec = sq.get("sectors") if isinstance(sq.get("sectors"), dict) else {}
+        st = str(sec.get("state") or "MISSING").upper()
+        b = sec.get("breadth") if isinstance(sec.get("breadth"), dict) else None
+        if not b:
+            why = str(sec.get("detail") or "no sector ETF snapshot yet")[:120]
+            return (f"Sector breadth isn't available yet: {why}. I won't guess.", {"state": st})
+        age = ago(sec["age_sec"]) if isinstance(sec.get("age_sec"), (int, float)) else None
+        data = {"state": st, "breadth": {k: b.get(k) for k in ("label", "up", "down", "flat", "n_with_chg", "above_20d",
+                                                                "n_with_20d", "ew_chg", "spy_chg", "leaders", "laggards")}}
+        return breadth.text(b, st, age), data
+
     def _stocks_pipe(self) -> dict:
         """Pipelines row for the stocks desk: OK/STALE/MISSING from Yahoo quotes; never NOT BUILT once wired."""
         q = self.stocks_panel()
@@ -667,6 +747,20 @@ class Zoora:
         for s in sec.get("failed_sources") or []:
             add("info", "srcdown_" + s, f"Security source down: {s}", "", "security-pipeline")
         add("info", "bybit", "Bybit geo-blocked (HTTP 403)", "Blofin is the live perps source", "perps")
+        rs = smr_resumed(ov["ext"].get("smr_scanner"), ov.get("now") or time.time())
+        if rs:  # T10b silent INFO, one id per restart cycle; the scanner is never started from Zoora
+            add("info", f"smr_resumed_{rs['cycle_id']}", "Meme scanner resumed",
+                f"first cycle {ago(rs['since_sec'])} after a {dur(rs['gap_sec'])} gap · {rs['cycles_since']} cycle(s) since",
+                "solana-meme-risk scanner")
+        fxs = fx_not_running(ov["ext"].get("forex"), ov.get("now") or time.time())
+        if fxs:  # T8d silent INFO; one id per set of (book, last bar), so it re-raises only when a book moves and stops again
+            key = "_".join(f"{x['book']}-{int(x['last_bar'])}" for x in fxs)
+            fk = (ov["ext"].get("forex") or {}).get("kill_switch")
+            add("info", "fx_stopped_" + _hid(key), f"Forex paper book{'s' if len(fxs) > 1 else ''} not running",
+                "; ".join(f"{fx_book_name(x['book'])} last bar {datetime.fromtimestamp(x['last_bar'], TZ):%b %d} ({dur(x['age_sec'])})"
+                          for x in fxs[:4]) + (f" +{len(fxs) - 4} more" if len(fxs) > 4 else "")
+                + (" · aai-forex KILL_SWITCH present" if fk else "") + " · read-only, Zoora never runs the forex scan",
+                "aai-forex")
         for e in (ov.get("econ_events") or []):
             if e["sev"] in ("high", "warn"):
                 arrow = f"S{e['from_stage']} to S{e['to_stage']}" if e["from_stage"] is not None and e["to_stage"] is not None else ""
@@ -702,6 +796,58 @@ class Zoora:
     def voice_context(self) -> dict:
         """Zoora voice context from the LAST cached overview only: never recomputes, never reads the ledger."""
         return voice_context_from(self._ov)
+
+    @staticmethod
+    def _fx_books_line(ov) -> str:
+        """T8c/T8d: one or two spoken sentences on aai-forex's paper books (read-only, agent_guard-cleaned feed)."""
+        fx = ((ov or {}).get("ext") or {}).get("forex") or {}
+        books = [b for b in fx.get("paper") or [] if isinstance(b, dict) and not b.get("error")]
+        if not books:
+            return ""
+        n_open = sum(int(b.get("open") or 0) for b in books)
+        led = [b.get("ledger") or {} for b in books]
+        closed = sum(int(x.get("closed") or 0) for x in led)
+        out = (f"The {len(books)} forex paper book{'s are' if len(books) != 1 else ' is'} "
+               + (f"holding {n_open} open position{'s' if n_open != 1 else ''}" if n_open else "all flat") + ", ")
+        if closed:
+            wins = sum(int(x.get("wins") or 0) for x in led)
+            sr = sum(float(x.get("sum_r") or 0) for x in led)
+            out += f"with {closed} closed trade{'s' if closed != 1 else ''} logged, {100 * wins / closed:.0f}% winners, {sr:+.1f}R in total. "
+        else:
+            out += "with no closed trades logged yet. "
+        stopped = fx_not_running(fx, ov.get("now") or time.time())
+        if stopped:
+            newest = min(x["age_sec"] for x in stopped)
+            who = (("All " if len(books) > 1 else "It ") + (f"{len(books)} " if len(books) > 1 else "")) if len(stopped) == len(books) \
+                else f"{len(stopped)} of them "
+            out += (f"{who}stopped processing bars; the newest is {dur(newest)} old, so the forex scan is not running "
+                    "and these figures are from then. ")
+        return out
+
+    @staticmethod
+    def _smr_scanner_line(ov) -> str:
+        """T10: one spoken sentence about solana-meme-risk's scanner book (read-only, already agent_guard-cleaned)."""
+        d = ((ov or {}).get("ext") or {}).get("smr_scanner") or {}
+        st = d.get("status")
+        if st not in ("ok", "stale"):
+            return ""
+        when = ago(d.get("age_sec"))
+        out = (f"The meme scanner last cycled {when}, so it is not running and its figures are from then. " if st == "stale"
+               else f"The meme scanner last cycled {when}. ")
+        rs = smr_resumed(d, time.time())
+        if rs:
+            out += f"It resumed {ago(rs['since_sec'])} after a {dur(rs['gap_sec'])} gap. "
+        rows = [r for r in d.get("rows") or [] if r.get("decision")]
+        if rows:
+            r = rows[0]
+            bits = [f"{r.get('symbol') or 'an unnamed mint'}, {r['decision']}"
+                    + (f" at risk {r['score']:.0f}" if isinstance(r.get("score"), (int, float)) else "")]
+            if isinstance(r.get("bundle_pct"), (int, float)):
+                bits.append(f"{r['bundle_pct']:.0f}% of supply bundled in the creation slot")
+            if isinstance(r.get("liq_usd"), (int, float)):
+                bits.append(f"liquidity ${r['liq_usd']:,.0f}")
+            out += "Its latest risk-scored mint was " + ", ".join(bits) + ". "
+        return out
 
     def overview(self, max_age: float = 2.0) -> dict:
         with self._ov_lock:
@@ -988,7 +1134,7 @@ class Zoora:
     def _r_help(self):
         return ("Ask me for: status, risk and exposure, positions and P&L, today's ideas by sector — forex, perps, memes or stocks — "
                 "score a Solana mint, security alerts, the long-term plan, the economy ladder, what's broken, or run a healthcheck. "
-                "Market intel: brief me, calendar, rates, funding, positioning, the FX desk, or insider filings. "
+                "Market intel: brief me, calendar, rates, funding, positioning, the FX desk, sector breadth, insider filings, or watchlist fundamentals like cash runway and dilution. "
                 "I can also log a paper idea, like: paper long SOL-USDT at 150 stop 140 target 180. I never place real trades.")
 
     def _score(self, mint: str):
@@ -1143,17 +1289,18 @@ class Zoora:
                 reply = (f"Meme-risk is {h.get('state', 'pending')}. "
                          + (h.get("degraded_reason", "") + " " if h.get("degraded_reason") else "")
                          + (f"Latest score: {sc[0]['symbol']} {sc[0]['score']:.0f}, {sc[0]['status']}, {ago(sc[0]['age_sec'])}. " if sc else "No scores on record. ")
+                         + self._smr_scanner_line(ov)
                          + "Paste or say a mint address to score it.")
         elif intent == "healthcheck":
             focus = "pipelines"
             hc_out = self._healthcheck()
             reply, data, job = hc_out["reply"], hc_out.get("data"), hc_out.get("job")
-        elif intent in ("market_brief", "calendar", "funding", "positioning", "filings", "rates", "fx_desk"):
+        elif intent in ("market_brief", "calendar", "funding", "positioning", "filings", "rates", "fx_desk", "fundamentals"):
             fn = {"market_brief": self.intel.brief_text, "calendar": self.intel.calendar_text, "funding": self.intel.funding_text,
                   "positioning": self.intel.positioning_text, "filings": self.intel.filings_text, "rates": self.intel.rates_text,
-                  "fx_desk": self.intel.fx_desk_text}[intent]
+                  "fx_desk": self.intel.fx_desk_text, "fundamentals": self.intel.fundamentals_text}[intent]
             focus = {"market_brief": "intel", "calendar": "calendar", "funding": "derivs", "positioning": "cot",
-                     "filings": "filings", "rates": "macro", "fx_desk": "fxdesk"}[intent]
+                     "filings": "filings", "rates": "macro", "fx_desk": "fxdesk", "fundamentals": "fundamentals"}[intent]
             try:
                 reply = guard.clean(fn(), 1400)
                 if intent == "market_brief":
@@ -1161,6 +1308,9 @@ class Zoora:
                     data = {"regime": {k: rg.get(k) for k in ("label", "score", "n_inputs", "heuristic", "disclaimer")}}
             except Exception as e:  # report, never crash the request
                 reply = f"Intel is unavailable right now: {guard.clean(f'{type(e).__name__}: {e}', 160)}."
+        elif intent == "sectors":
+            focus = "ideas"
+            reply, data = self._r_sectors()
         elif intent == "status":
             focus, reply = "pipelines", self._r_status(ov)
         elif intent == "risk":
@@ -1169,6 +1319,8 @@ class Zoora:
             focus, reply = "positions", self._r_positions(ov)
         elif intent == "ideas":
             focus, reply = "ideas", self._r_ideas(ov, ex.get("sectors"))
+            if "forex" in (ex.get("sectors") or []):
+                reply = (reply + " " + self._fx_books_line(ov)).strip()
         elif intent == "security":
             focus, reply = "security", self._r_security(ov)
         elif intent == "economy":
