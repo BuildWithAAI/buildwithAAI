@@ -8,7 +8,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from .. import guard
-from . import alarms, breadth, fxdesk, regime
+from . import alarms, breadth, fxdesk, multiples_history, regime, valuation
+from .adapters import xbrl
 from .cache import IntelCache
 from .core import Fetcher, FetchError
 from .feeds import registry
@@ -32,6 +33,7 @@ class Intel:
         self._inflight: set[str] = set()
         self._lock = threading.Lock()
         self._all_cache: tuple[float, dict] | None = None
+        self._mh_last: float | None = None   # T11f: last quotes_ts written to multiples_daily (write only on a new quote)
 
     # ---------------------------------------------------------------- refresh
     def due(self, name: str, now: float | None = None) -> bool:
@@ -129,6 +131,20 @@ class Intel:
                "regime": regime.compute(p), "alerts": self.alerts(views, now),
                "next_high": alarms.next_high(ev, now, self.countries), "calendar_countries": list(self.countries),
                "fx_desk": fxdesk.compute(p, now)}
+        try:  # T11d multiples: SEC fundamentals x watchlist quotes (pure join; a bad payload never breaks /api/intel)
+            out["valuation"] = valuation.compute(p, now, {n: views[n]["status"] for n in ("fundamentals", "watch_quotes") if n in views})
+        except Exception:  # noqa: BLE001
+            log.exception("valuation join failed")
+            out["valuation"] = {"rows": {}, "priced": 0, "n": 0, "missing": [], "withheld": [], "error": "valuation join failed"}
+        try:  # T11f: one point per ticker per NY session (settles on the close), then the 90-day series for panel 18
+            qts = out["valuation"].get("quotes_ts")
+            if out["valuation"].get("priced") and qts and qts != self._mh_last:
+                multiples_history.record(self.cache.store, out["valuation"], p.get("fundamentals"), now)
+                self._mh_last = qts
+            out["valuation"]["history"] = multiples_history.series(self.cache.store, now)
+        except Exception:  # noqa: BLE001 - history is a nice-to-have; never breaks /api/intel
+            log.exception("multiples history failed")
+            out["valuation"]["history"] = {"days": multiples_history.DAYS, "tickers": {}, "sessions": 0, "error": "history unavailable"}
         self._all_cache = (now, out)
         return out
 
@@ -168,6 +184,14 @@ class Intel:
             fv = views.get("filings") or {}
             if fv.get("payload") and fv.get("status") == "live":
                 out.extend(alarms.earnings_soon_alarms((fv["payload"] or {}).get("earnings"), now))
+        except Exception:  # never let a malformed cached payload break the alert list
+            pass
+        try:  # T11c watchlist runway under 12 months / 1Y dilution of 10%+ (SEC XBRL; silent INFO; live fundamentals feed only)
+            uv = views.get("fundamentals") or {}
+            if uv.get("payload") and uv.get("status") == "live":
+                pv = self.cache.previous_ok("fundamentals")
+                out.extend(alarms.fundamentals_alarms(uv["payload"], (pv or {}).get("payload"),
+                                                      quotes=(views.get("watch_quotes") or {}).get("payload")))
         except Exception:  # never let a malformed cached payload break the alert list
             pass
         der = (views.get("options_deribit") or {}).get("payload") or {}
@@ -276,6 +300,33 @@ class Intel:
             s += (" Next earnings by 8-K cadence, estimates only: "
                   + "; ".join(f"{e['ticker']} around {e['est_next']}" + (f" (in {e['est_in_days']} days)" if e["est_in_days"] >= 0 else " (due now)")
                               for e in up) + ".")
+        return s
+
+    def fundamentals_text(self) -> str:
+        p = self._p("fundamentals")
+        if not p or not p.get("rows"):
+            return "Fundamentals unavailable" + self._status_note("fundamentals") + "."
+        s = xbrl.text(p, quotes=self._p("watch_quotes"))
+        try:  # T11c: name every runway / dilution flag, even ones past the first four spoken rows
+            fa = alarms.fundamentals_alarms(p, quotes=self._p("watch_quotes"))
+        except Exception:  # never let a malformed cached payload break the spoken answer
+            fa = []
+        if fa:
+            s += " Flagged this period: " + "; ".join(
+                (f"{a['ticker']} about {a['runway_months']:.0f} months of runway" if a["kind"] == "runway"
+                 else f"{a['ticker']} share count {a['shares_yoy'] * 100:+.0f}% in a year") for a in fa) + "."
+        try:  # T11d: price the snapshot when the watchlist quotes feed has data
+            v = valuation.compute({"fundamentals": p, "watch_quotes": self._p("watch_quotes")}, self.clock())
+        except Exception:  # noqa: BLE001
+            v = None
+        if v and v.get("priced"):
+            s = s.replace(", no price so no multiples", "") + " " + valuation.text(v)
+            try:  # T11f: cheapest vs its own range, once 5+ sessions are logged
+                h = multiples_history.text(multiples_history.series(self.cache.store, self.clock()))
+            except Exception:  # noqa: BLE001
+                h = ""
+            if h:
+                s += " " + h
         return s
 
     def brief_text(self) -> str:
