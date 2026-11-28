@@ -15,7 +15,9 @@ scripts/voice/setup.sh        # idempotent; about 15 s here, 2 s when everything
 - Downloads `kokoro-v1.0.int8.onnx` (114,119,327 B) and `voices-v1.0.bin` (28,214,398 B) from the
   kokoro-onnx `model-files-v1.1` GitHub release into `.cache/kokoro/`, and refuses any file whose
   size or sha256 differs from the pin. `KOKORO_LOCAL_DIR=<dir>` copies instead of downloading (still verified).
-- Needs Python 3.13 (tested), ffmpeg on PATH, and a C compiler for `mojimoji` (ja only).
+- Needs Python 3.12 or newer (3.13 is the tested version), ffmpeg on PATH, and a C compiler for `mojimoji` (ja only).
+  With `PYTHON` unset it uses the first of `python3`, `python3.13`, `python3.12` that is 3.12 or newer, and it
+  rebuilds a `.venv-voice/` that an older Python left behind.
 
 ## Build
 

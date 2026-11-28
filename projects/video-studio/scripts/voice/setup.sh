@@ -8,13 +8,15 @@
 #   scripts/voice/setup.sh
 #   KOKORO_LOCAL_DIR=/path/with/model/files scripts/voice/setup.sh   # copy instead of download (still verified)
 #   PYTHON=python3.13 scripts/voice/setup.sh                         # pick the interpreter
+#
+# Interpreter: PYTHON if set; otherwise the first of python3, python3.13, python3.12 that is Python
+# 3.12 or newer. The pinned numpy needs 3.12+, and some images still default python3 to 3.11.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 VENV="$ROOT/.venv-voice"
 MODELS="$ROOT/.cache/kokoro"
-PY="${PYTHON:-python3}"
 BASE_URL="https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1"
 
 say() { printf '[voice-setup] %s\n' "$*"; }
@@ -34,12 +36,34 @@ pinned_size() {
   esac
 }
 
-command -v "$PY" >/dev/null 2>&1 || die "$PY not found (set PYTHON=...)"
+# True when "$1" is a runnable Python 3.12 or newer.
+py_ok() {
+  command -v "$1" >/dev/null 2>&1 &&
+    "$1" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)' >/dev/null 2>&1
+}
+
+if [ -n "${PYTHON:-}" ]; then
+  PY="$PYTHON"
+  command -v "$PY" >/dev/null 2>&1 || die "$PY not found (set PYTHON=...)"
+  py_ok "$PY" || die "$PY is older than Python 3.12; the pinned packages need 3.12 or newer"
+else
+  PY=""
+  for candidate in python3 python3.13 python3.12; do
+    if py_ok "$candidate"; then PY="$candidate"; break; fi
+  done
+  [ -n "$PY" ] || die "no Python 3.12 or newer found (tried python3, python3.13, python3.12); set PYTHON=/path/to/python"
+fi
 ver="$("$PY" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+say "using $PY (Python $ver)"
 [ "$ver" = "3.13" ] || say "warning: tested with Python 3.13, using $ver"
 command -v ffmpeg >/dev/null 2>&1 || say "warning: ffmpeg is not on PATH; build.py needs it for loudness normalization"
 
 # 1. virtualenv + pinned packages
+# A venv left behind by an earlier run on an older Python cannot install the pins: build it again.
+if [ -x "$VENV/bin/python" ] && ! py_ok "$VENV/bin/python"; then
+  say "$VENV uses a Python older than 3.12; creating it again"
+  rm -rf "$VENV"
+fi
 if [ ! -x "$VENV/bin/python" ]; then
   say "creating $VENV"
   "$PY" -m venv "$VENV"
